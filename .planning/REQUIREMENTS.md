@@ -7,7 +7,7 @@
 
 ### RBAC & Authentication
 
-- [ ] **RBAC-01**: User can log in with a role-scoped account (one of 7 roles: Owner, Admin, Frontline Staff, Artist, Cashier, Production Staff, Accounting Staff) and lands on that role's own dedicated portal
+- [x] **RBAC-01**: User can log in with a role-scoped account (one of 7 roles: Owner, Admin, Frontline Staff, Artist, Cashier, Production Staff, Accounting Staff) and lands on that role's own dedicated portal
 - [ ] **RBAC-02**: User is blocked (403) from accessing any route outside their assigned role, enforced server-side on every request — not just hidden navigation
 - [ ] **RBAC-03**: User account locks out after 5 consecutive failed login attempts for a configurable duration
 - [ ] **RBAC-04**: User can only have one active session at a time; a new login invalidates the prior session
@@ -77,7 +77,7 @@
 ### Audit Trail
 
 - [ ] **AUDIT-01**: Owner/Admin can view a read-only audit trail of every mutating action and auth event, filterable by user/action/date
-- [ ] **AUDIT-02**: No user, including Owner, can edit or delete an audit trail entry — enforced structurally (no update/delete code path exists), not just by permission check
+- [x] **AUDIT-02**: No user, including Owner, can edit or delete an audit trail entry — enforced structurally (no update/delete code path exists), not just by permission check
 
 ### Public Tracking
 
