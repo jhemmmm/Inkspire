@@ -1,0 +1,144 @@
+# Requirements: Inkspire
+
+**Defined:** 2026-08-31
+**Core Value:** A job order flows correctly end-to-end — a customer queues in, gets a job order created, pays, and the order moves through production to pickup with the right role seeing and doing the right thing at each step.
+
+## v1 Requirements
+
+### RBAC & Authentication
+
+- [ ] **RBAC-01**: User can log in with a role-scoped account (one of 7 roles: Owner, Admin, Frontline Staff, Artist, Cashier, Production Staff, Accounting Staff) and lands on that role's own dedicated portal
+- [ ] **RBAC-02**: User is blocked (403) from accessing any route outside their assigned role, enforced server-side on every request — not just hidden navigation
+- [ ] **RBAC-03**: User account locks out after 5 consecutive failed login attempts for a configurable duration
+- [ ] **RBAC-04**: User can only have one active session at a time; a new login invalidates the prior session
+- [ ] **RBAC-05**: User is logged out automatically after a configurable idle session timeout
+- [ ] **RBAC-06**: User's password must meet complexity rules (minimum length, mixed case, numbers, symbols)
+- [ ] **RBAC-07**: Owner/Admin can deactivate a user account; deactivated accounts cannot log in; accounts are never hard-deleted
+- [ ] **RBAC-08**: Every authentication event (login, logout, failed attempt, lockout) is written to the audit trail
+
+### Customer & Queue
+
+- [ ] **QUEUE-01**: Frontline Staff can search for a returning customer by name or contact info
+- [ ] **QUEUE-02**: Frontline Staff can register a new customer
+- [ ] **QUEUE-03**: Frontline Staff can generate a queue number for a customer visit
+- [ ] **QUEUE-04**: A single queue visit can produce more than one job order (e.g. two different products in one visit)
+- [ ] **QUEUE-05**: Frontline Staff marks each job order as Type A (print-ready file) or Type B (needs consultation) at intake
+
+### Job Order & Design
+
+- [ ] **JOB-01**: Frontline Staff can upload a print-ready file for a Type A job order, auto-validated against configured DPI/format/max-size thresholds before being queued for production
+- [ ] **JOB-02**: A Type B job order auto-assigns to an available Artist via round-robin among artists who are clocked in and not on break
+- [ ] **JOB-03**: Artist can record consultation notes and generate a job order for a Type B customer
+- [ ] **JOB-04**: Artist can create and edit a design using the built-in TOAST UI-based image editor
+- [ ] **JOB-05**: Artist can log a design revision and submit it for review ("Send for Review")
+- [ ] **JOB-06**: A design file becomes read-only (locked) once its job order reaches final approval
+- [ ] **JOB-07**: Owner can authorize an override to unlock a locked design file; the override is written to the audit trail
+- [ ] **JOB-08**: Artist can set session status (On Break, End Shift), which affects eligibility for auto-assignment
+- [ ] **JOB-09**: Artist can view their own assigned job orders and use Next/Forward/Not-Appear queue controls
+- [ ] **JOB-10**: Artist can view their own performance metrics report
+
+### POS & Payments
+
+- [ ] **POS-01**: Cashier can compute a job order's price from the pricing database (base price, rush fee, discounts)
+- [ ] **POS-02**: Cashier can record a payment against a job order via Cash, Bank Transfer, GCash, or Maya — every payment links to exactly one job order, no standalone sales
+- [ ] **POS-03**: For GCash/Maya, the system creates a PayMongo Payment Intent/Source; the job order shows "Pending Confirmation" until a signature-verified webhook confirms payment
+- [ ] **POS-04**: Cashier or Accounting can manually trigger a reconciliation check against PayMongo when a webhook hasn't arrived
+- [ ] **POS-05**: Cashier can record a down payment and track the remaining balance on a job order
+- [ ] **POS-06**: Cashier can generate a digital receipt for a completed payment
+- [ ] **POS-07**: Cashier can collect a cancellation fee when a job order is cancelled
+- [ ] **POS-08**: A job order can be placed On Credit, requiring Owner approval before the credit activates and posts to accounts receivable
+- [ ] **POS-09**: A job order cannot be released to the customer until fully paid (or on active credit); otherwise the customer is redirected to Cashier
+
+### Production Monitoring
+
+- [ ] **PROD-01**: Production Staff can view a Production Monitoring board color-coded by urgency (Green = Normal, Amber = Rush)
+- [ ] **PROD-02**: Production Staff can advance a job order sequentially through For Production → Printing → Quality Check → Ready for Pickup, without skipping stages
+- [ ] **PROD-03**: Frontline Staff receives a "Ready for Pickup" alert when a job order reaches that stage
+
+### Accounts Receivable
+
+- [ ] **AR-01**: Accounting Staff can view outstanding balances grouped into aging brackets (Current, 15/30/60/90+ days)
+- [ ] **AR-02**: The system automatically sends escalating reminder notifications as an AR entry crosses each aging bracket (15-day → Accounting+Owner, 30-day → urgent, 60-day → escalation, 90+ → final escalation with write-off option)
+- [ ] **AR-03**: Accounting Staff can update an AR entry's collection status and generate a printable collection letter
+- [ ] **AR-04**: Owner can approve a write-off of an AR balance
+
+### Expenses
+
+- [ ] **EXP-01**: Accounting Staff can record an expense with a category, amount, and date
+
+### Reporting
+
+- [ ] **RPT-01**: Owner can view financial/profit reports
+- [ ] **RPT-02**: Cashier can view Daily Sales & Cancellation reports
+- [ ] **RPT-03**: Production Staff can view a Production Status report
+- [ ] **RPT-04**: Accounting Staff can view Daily/Monthly Sales, Daily/Monthly Expenses, and Summary of Sales & Expenses reports
+- [ ] **RPT-05**: Any role-scoped report can be exported to PDF or Excel
+
+### Audit Trail
+
+- [ ] **AUDIT-01**: Owner/Admin can view a read-only audit trail of every mutating action and auth event, filterable by user/action/date
+- [ ] **AUDIT-02**: No user, including Owner, can edit or delete an audit trail entry — enforced structurally (no update/delete code path exists), not just by permission check
+
+### Public Tracking
+
+- [ ] **TRACK-01**: A customer can enter a job order number on a public, unauthenticated page and see the order's current status
+- [ ] **TRACK-02**: The tracking page shows status only — no pricing, payment, customer PII, or design files
+
+### System Configuration
+
+- [ ] **CONFIG-01**: Owner/Admin can configure rush fee %, DPI thresholds, accepted file formats/max size, per-product SLA, max artist break duration, session timeout, lockout duration, file retention days, and expense categories
+
+## v2 Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### Notifications
+
+- **NOTF-01**: Customer receives SMS/email notification when order is ready for pickup (currently: pull-based QR tracking only, no push)
+
+### Reporting
+
+- **RPT-06**: Admin can view non-financial reports beyond user/config/audit (Admin's report access stops at what's explicitly listed for RBAC-01's role boundary; anything beyond that is deferred)
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Blade-primary + Vue-islands architecture | Superseded — repo is already scaffolded on Inertia; that's the real architecture |
+| Multi-role-per-user | Approved ERD has a single `role` column on `users`; one role per account |
+| Laravel Echo / Reverb / websocket real-time updates | Client-side polling is sufficient at this shop's scale and concurrency |
+| Multi-tenant / multi-branch support | Single-location system for SquareFoot Graphics & Ads |
+| Separate lobby/TV queue-display board | Seen in a client UI demo but not part of the manuscript scope and not confirmed as wanted; revisit if explicitly requested |
+| Materials/inventory management (paper, ink, stock) | Standard in larger print-MIS platforms but absent from the approved 12-table ERD; correct scope decision for a small single-location shop |
+| Quote-to-order workflow, customer self-service ordering | Conflicts with the consultation-driven Type B model; not in the approved scope |
+| Full offset-print preflight (bleed, CMYK, font embedding) | DPI/format/size validation is sufficient for this shop's process; full preflight is a superset not needed here |
+| Loyalty/marketing features | Not part of the approved scope |
+
+## Traceability
+
+Populated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| RBAC-01 through RBAC-08 | TBD | Pending |
+| QUEUE-01 through QUEUE-05 | TBD | Pending |
+| JOB-01 through JOB-10 | TBD | Pending |
+| POS-01 through POS-09 | TBD | Pending |
+| PROD-01 through PROD-03 | TBD | Pending |
+| AR-01 through AR-04 | TBD | Pending |
+| EXP-01 | TBD | Pending |
+| RPT-01 through RPT-05 | TBD | Pending |
+| AUDIT-01, AUDIT-02 | TBD | Pending |
+| TRACK-01, TRACK-02 | TBD | Pending |
+| CONFIG-01 | TBD | Pending |
+
+**Coverage:**
+- v1 requirements: 45 total
+- Mapped to phases: 0 (roadmap not yet created)
+- Unmapped: 45 ⚠️ (expected — roadmap creation fills this in next)
+
+---
+*Requirements defined: 2026-08-31*
+*Last updated: 2026-08-31 after initial definition*
