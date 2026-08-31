@@ -119,4 +119,33 @@ class UserFactory extends Factory
             'role' => UserRole::AccountingStaff->value,
         ]);
     }
+
+    /**
+     * Indicate that the user's account is currently locked out.
+     *
+     * Uses afterCreating() rather than state() because failed_login_attempts
+     * and locked_until are outside User's #[Fillable] list and would be
+     * silently dropped by a state()-merged create() call.
+     */
+    public function locked(): static
+    {
+        return $this->afterCreating(fn (User $user) => $user->forceFill([
+            'failed_login_attempts' => 5,
+            'locked_until' => now()->addMinutes(15),
+        ])->save());
+    }
+
+    /**
+     * Indicate that the user's account has been deactivated.
+     *
+     * Uses afterCreating() rather than state() because is_active is outside
+     * User's #[Fillable] list and would be silently dropped by a
+     * state()-merged create() call.
+     */
+    public function deactivated(): static
+    {
+        return $this->afterCreating(fn (User $user) => $user->forceFill([
+            'is_active' => false,
+        ])->save());
+    }
 }
