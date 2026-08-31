@@ -9,7 +9,7 @@
 
 - [x] **RBAC-01**: User can log in with a role-scoped account (one of 7 roles: Owner, Admin, Frontline Staff, Artist, Cashier, Production Staff, Accounting Staff) and lands on that role's own dedicated portal
 - [x] **RBAC-02**: User is blocked (403) from accessing any route outside their assigned role, enforced server-side on every request — not just hidden navigation
-- [ ] **RBAC-03**: User account locks out after 5 consecutive failed login attempts for a configurable duration
+- [x] **RBAC-03**: User account locks out after 5 consecutive failed login attempts for a configurable duration
 - [x] **RBAC-04**: User can only have one active session at a time; a new login invalidates the prior session
 - [ ] **RBAC-05**: User is logged out automatically after a configurable idle session timeout
 - [x] **RBAC-06**: User's password must meet complexity rules (minimum length, mixed case, numbers, symbols)

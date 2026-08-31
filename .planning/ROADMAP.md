@@ -54,7 +54,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 01-06-PLAN.md — Skeleton: Audited User Deactivation (RBAC-07, closes the walking skeleton)
-- [ ] 01-07-PLAN.md — Account Lockout Enforcement (RBAC-03, RBAC-07, RBAC-08)
+- [x] 01-07-PLAN.md — Account Lockout Enforcement (RBAC-03, RBAC-07, RBAC-08)
 - [ ] 01-08-PLAN.md — Session Boundary Enforcement: Single Session & Idle Timeout (RBAC-04, RBAC-05)
 - [ ] 01-09-PLAN.md — Remaining Role Portals (RBAC-01, RBAC-02 completion)
 
@@ -187,7 +187,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — RBAC, Auth Hardening & Audit Trail | 6/12 | In Progress|  |
+| 1. Foundation — RBAC, Auth Hardening & Audit Trail | 7/12 | In Progress|  |
 | 2. Customer & Queue Management | 0/TBD | Not started | - |
 | 3. Job Order Intake & Auto-Assignment | 0/TBD | Not started | - |
 | 4. Artist Workflow & Design Editor | 0/TBD | Not started | - |
