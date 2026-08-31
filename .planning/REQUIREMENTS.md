@@ -118,27 +118,26 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Populated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RBAC-01 through RBAC-08 | TBD | Pending |
-| QUEUE-01 through QUEUE-05 | TBD | Pending |
-| JOB-01 through JOB-10 | TBD | Pending |
-| POS-01 through POS-09 | TBD | Pending |
-| PROD-01 through PROD-03 | TBD | Pending |
-| AR-01 through AR-04 | TBD | Pending |
-| EXP-01 | TBD | Pending |
-| RPT-01 through RPT-05 | TBD | Pending |
-| AUDIT-01, AUDIT-02 | TBD | Pending |
-| TRACK-01, TRACK-02 | TBD | Pending |
-| CONFIG-01 | TBD | Pending |
+| RBAC-01 through RBAC-08 | Phase 1 - Foundation | Pending |
+| AUDIT-01, AUDIT-02 | Phase 1 - Foundation | Pending |
+| CONFIG-01 | Phase 1 - Foundation | Pending |
+| QUEUE-01 through QUEUE-05 | Phase 2 - Customer & Queue Management | Pending |
+| JOB-01, JOB-02 | Phase 3 - Job Order Intake & Auto-Assignment | Pending |
+| JOB-03 through JOB-10 | Phase 4 - Artist Workflow & Design Editor | Pending |
+| POS-01 through POS-09 | Phase 5 - POS & Payments | Pending |
+| PROD-01 through PROD-03 | Phase 6 - Production Monitoring & Public Tracking | Pending |
+| TRACK-01, TRACK-02 | Phase 6 - Production Monitoring & Public Tracking | Pending |
+| AR-01 through AR-04 | Phase 7 - Accounts Receivable | Pending |
+| EXP-01 | Phase 8 - Expenses & Reporting | Pending |
+| RPT-01 through RPT-05 | Phase 8 - Expenses & Reporting | Pending |
 
 **Coverage:**
-- v1 requirements: 45 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 45 ⚠️ (expected — roadmap creation fills this in next)
+- v1 requirements: 50 total (corrected from initial 45-count summary — see full per-category listing above: RBAC 8, QUEUE 5, JOB 10, POS 9, PROD 3, AR 4, EXP 1, RPT 5, AUDIT 2, TRACK 2, CONFIG 1)
+- Mapped to phases: 50/50 ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-31*
-*Last updated: 2026-08-31 after initial definition*
+*Last updated: 2026-08-31 after roadmap creation (8 phases, 100% coverage)*
