@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-08-31T17:55:07.333Z"
+last_updated: "2026-08-31T18:08:19.754Z"
 last_activity: 2026-08-31
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 12
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (foundation-rbac-auth-hardening-audit-trail) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 Status: Ready to execute
 Last activity: 2026-08-31
 
-Progress: [████░░░░░░] 42%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [████░░░░░░] 42%
 | Phase 01 P03 | 10min | 2 tasks | 5 files |
 | Phase 01 P04 | 35min | 2 tasks | 14 files |
 | Phase 01 P05 | 8min | 2 tasks | 3 files |
+| Phase 01 P06 | 15min | 1 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 01] 01-04: errors/ page names route through AuthLayout in app.ts (alongside auth/) so Forbidden.vue's centered single-message layout actually renders
 - [Phase ?]: [Phase 01] 01-04: regenerate Wayfinder with --with-form (not the bare command) to match vite.config.ts's formVariants:true, or every existing route helper silently loses .form()
 - [Phase 01]: 01-05: guarded $event->user instanceof App\Models\User in HandleSuccessfulLogin since Login event's $user is Authenticatable-typed and Larastan level 7 rejects passing it to AuditLogger's ?User param
+- [Phase 01]: 01-06: used forceFill(['is_active' => false])->save() instead of update() for deactivate, since is_active is intentionally outside User's #[Fillable] list
+- [Phase 01]: 01-06: DeactivateUserRequest::authorize() blocks self-deactivation; finer Owner-vs-Admin authorization split deferred to Plan 01-11
 
 ### Pending Todos
 
@@ -97,6 +100,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-31T17:51:42.162Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-08-31T18:08:19.750Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None
