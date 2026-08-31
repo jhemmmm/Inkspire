@@ -86,7 +86,7 @@
 
 ### System Configuration
 
-- [ ] **CONFIG-01**: Owner/Admin can configure rush fee %, DPI thresholds, accepted file formats/max size, per-product SLA, max artist break duration, session timeout, lockout duration, file retention days, and expense categories
+- [x] **CONFIG-01**: Owner/Admin can configure rush fee %, DPI thresholds, accepted file formats/max size, per-product SLA, max artist break duration, session timeout, lockout duration, file retention days, and expense categories
 
 ## v2 Requirements
 
@@ -122,7 +122,7 @@ Explicitly excluded. Documented to prevent scope creep.
 |-------------|-------|--------|
 | RBAC-01 through RBAC-08 | Phase 1 - Foundation | Pending |
 | AUDIT-01, AUDIT-02 | Phase 1 - Foundation | Pending |
-| CONFIG-01 | Phase 1 - Foundation | Pending |
+| CONFIG-01 | Phase 1 - Foundation | Complete |
 | QUEUE-01 through QUEUE-05 | Phase 2 - Customer & Queue Management | Pending |
 | JOB-01, JOB-02 | Phase 3 - Job Order Intake & Auto-Assignment | Pending |
 | JOB-03 through JOB-10 | Phase 4 - Artist Workflow & Design Editor | Pending |
