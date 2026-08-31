@@ -34,7 +34,21 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Account locks out after 5 consecutive failed login attempts for a configurable duration; only one session is active per user at a time; idle sessions time out after a configurable duration; passwords must meet complexity rules
   4. Owner/Admin can deactivate a user account (never hard-deleted) and configure system-wide business rules (rush fee %, DPI thresholds, file formats/size, SLA, artist break duration, session timeout, lockout duration, file retention, expense categories)
   5. Owner/Admin can view a read-only, filterable (by user/action/date) audit trail of every mutating action and auth event (login/logout/failed attempt/lockout); no update or delete code path exists for any audit entry, for any role including Owner
-**Plans**: TBD
+**Plans**: 12 plans in 6 waves
+
+Plans:
+- [ ] 01-01-PLAN.md — Skeleton: Data Foundation & Audit Substrate (RefreshDatabase fix, UserRole enum, RBAC/lockout columns, audit_trail table, AuditObserver)
+- [ ] 01-02-PLAN.md — Password Complexity Enforcement Fix (RBAC-06)
+- [ ] 01-03-PLAN.md — System Configuration Substrate (CONFIG-01 data layer)
+- [ ] 01-04-PLAN.md — Skeleton: Role Login & Owner Portal (RBAC-01, RBAC-02)
+- [ ] 01-05-PLAN.md — Login Success & Logout Auth Audit + Session Capture (RBAC-04, RBAC-08)
+- [ ] 01-06-PLAN.md — Skeleton: Audited User Deactivation (RBAC-07, closes the walking skeleton)
+- [ ] 01-07-PLAN.md — Account Lockout Enforcement (RBAC-03, RBAC-07, RBAC-08)
+- [ ] 01-08-PLAN.md — Session Boundary Enforcement: Single Session & Idle Timeout (RBAC-04, RBAC-05)
+- [ ] 01-09-PLAN.md — Remaining Role Portals (RBAC-01, RBAC-02 completion)
+- [ ] 01-10-PLAN.md — Audit Trail Viewer (AUDIT-01, AUDIT-02 UI compliance)
+- [ ] 01-11-PLAN.md — User Management Refinement: Authorization Policy & Reactivate (RBAC-07 completion)
+- [ ] 01-12-PLAN.md — System Configuration UI (CONFIG-01 completion)
 **UI hint**: yes
 
 ### Phase 2: Customer & Queue Management

@@ -2,9 +2,10 @@
 phase: 01
 slug: foundation-rbac-auth-hardening-audit-trail
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-08-31
+updated: 2026-08-31
 ---
 
 # Phase 01 — Validation Strategy
@@ -18,7 +19,7 @@ created: 2026-08-31
 | Property | Value |
 |----------|-------|
 | **Framework** | Pest 5.1.3 + pest-plugin-laravel 5.0.1 |
-| **Config file** | `phpunit.xml` (suite config) + `tests/Pest.php` (Pest binding — currently has `RefreshDatabase` commented out, must be fixed in Wave 0) |
+| **Config file** | `phpunit.xml` (suite config) + `tests/Pest.php` (Pest binding — fixed in Plan 01-01, Task 1) |
 | **Quick run command** | `php artisan test --compact --filter={TestName}` |
 | **Full suite command** | `php artisan test --compact` |
 | **Estimated runtime** | ~30 seconds |
@@ -38,34 +39,43 @@ created: 2026-08-31
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 01-01-01 | TBD | 0 | — | — | RefreshDatabase enabled | infra | `php artisan test --compact` | ❌ W0 | ⬜ pending |
-| 01-0x-01 | TBD | TBD | RBAC-01 | — | Login redirects each role to its own portal | feature | `php artisan test --filter=redirects_owner_to_owner_dashboard` | ❌ W0 | ⬜ pending |
-| 01-0x-02 | TBD | TBD | RBAC-02 | T-01-01 | Cross-role direct URL access returns 403 | feature | `php artisan test --filter=blocks_wrong_role_with_403` | ❌ W0 | ⬜ pending |
-| 01-0x-03 | TBD | TBD | RBAC-03 | T-01-02 | 5 failed attempts locks account for configured duration | feature | `php artisan test --filter=locks_account_after_five_failed_attempts` | ❌ W0 | ⬜ pending |
-| 01-0x-04 | TBD | TBD | RBAC-04 | T-01-04 | New login invalidates prior session | feature | `php artisan test --filter=new_login_invalidates_previous_session` | ❌ W0 | ⬜ pending |
-| 01-0x-05 | TBD | TBD | RBAC-05 | — | Idle session times out with message | feature | `php artisan test --filter=idle_session_times_out` | ❌ W0 | ⬜ pending |
-| 01-0x-06 | TBD | TBD | RBAC-06 | — | Weak password rejected in every environment | feature | `php artisan test --filter=password_complexity_enforced_outside_production` | ❌ W0 | ⬜ pending |
-| 01-0x-07 | TBD | TBD | RBAC-07 | — | Deactivated user cannot log in, never hard-deleted | feature | `php artisan test --filter=deactivated_user_cannot_login` | ❌ W0 | ⬜ pending |
-| 01-0x-08 | TBD | TBD | RBAC-08 | T-01-05 | Login/logout/failed/lockout write audit rows | feature | `php artisan test --filter=auth_events_write_audit_trail` | ❌ W0 | ⬜ pending |
-| 01-0x-09 | TBD | TBD | AUDIT-01 | — | Owner/Admin can view + filter audit trail by user/action/date | feature | `php artisan test --filter=owner_can_filter_audit_trail` | ❌ W0 | ⬜ pending |
-| 01-0x-10 | TBD | TBD | AUDIT-02 | T-01-05 | No update/delete code path for audit entries | arch | `php artisan test --filter=arch_audit_log_has_no_mutation_methods` | ❌ W0 | ⬜ pending |
-| 01-0x-11 | TBD | TBD | CONFIG-01 | — | Owner/Admin can update a business rule and it takes effect | feature | `php artisan test --filter=owner_can_update_system_configuration` | ❌ W0 | ⬜ pending |
+| 01-01-01 | 01-01 | 1 | — | — | RefreshDatabase enabled | infra | `php artisan test --compact` | ✅ Plan 01-01 | ⬜ pending |
+| 01-04-02 | 01-04 | 2 | RBAC-01 | — | Login redirects owner/admin to the owner portal | feature | `php artisan test --filter=RoleBoundaryTest` | ✅ Plan 01-04 (`tests/Feature/RoleBoundaryTest.php`) | ⬜ pending |
+| 01-09-02 | 01-09 | 3 | RBAC-01 | — | All 7 roles land on their own dedicated portal | feature | `php artisan test --filter=RoleBoundaryTest` | ✅ Plan 01-09 (extends `tests/Feature/RoleBoundaryTest.php`) | ⬜ pending |
+| 01-04-02 | 01-04 | 2 | RBAC-02 | T-01-01 | Cross-role direct URL access returns 403 (owner case) | feature | `php artisan test --filter=RoleBoundaryTest` | ✅ Plan 01-04 | ⬜ pending |
+| 01-09-02 | 01-09 | 3 | RBAC-02 | T-01-01 | Cross-role direct URL access returns 403 (full 7x7 matrix) | feature | `php artisan test --filter=RoleBoundaryTest` | ✅ Plan 01-09 | ⬜ pending |
+| 01-07-02 | 01-07 | 3 | RBAC-03 | T-01-02 | 5 failed attempts locks account for configured duration | feature | `php artisan test --filter=AccountLockoutTest` | ✅ Plan 01-07 (`tests/Feature/Auth/AccountLockoutTest.php`) | ⬜ pending |
+| 01-08-01 | 01-08 | 3 | RBAC-04 | T-01-04 | New login invalidates prior session | feature | `php artisan test --filter=SingleSessionTest` | ✅ Plan 01-08 (`tests/Feature/Auth/SingleSessionTest.php`) | ⬜ pending |
+| 01-08-02 | 01-08 | 3 | RBAC-05 | T-01-03 | Idle session times out with message | feature | `php artisan test --filter=IdleTimeoutTest` | ✅ Plan 01-08 (`tests/Feature/Auth/IdleTimeoutTest.php`) | ⬜ pending |
+| 01-02-01 | 01-02 | 1 | RBAC-06 | T-01-02 | Weak password rejected in every environment | feature | `php artisan test --filter=PasswordComplexityTest` | ✅ Plan 01-02 (`tests/Feature/Auth/PasswordComplexityTest.php`) | ⬜ pending |
+| 01-06-01 | 01-06 | 3 | RBAC-07 | T-01-01 | Owner/Admin can deactivate a user; never hard-deleted | feature | `php artisan test --filter=UserManagementTest` | ✅ Plan 01-06 (`tests/Feature/Owner/UserManagementTest.php`) | ⬜ pending |
+| 01-07-01 | 01-07 | 3 | RBAC-07 | T-01-01 | Deactivated user cannot log in | feature | `php artisan test --filter=AccountLockoutTest` | ✅ Plan 01-07 | ⬜ pending |
+| 01-11-01 | 01-11 | 5 | RBAC-07 | T-01-01 | Narrow Owner-vs-Admin deactivate/reactivate authorization | feature | `php artisan test --filter=UserManagementTest` | ✅ Plan 01-11 | ⬜ pending |
+| 01-05-01 | 01-05 | 2 | RBAC-08 | T-01-05 | Login writes audit_trail row | feature | `php artisan test --filter=AuthAuditTrailTest` | ✅ Plan 01-05 (`tests/Feature/Auth/AuthAuditTrailTest.php`) | ⬜ pending |
+| 01-05-02 | 01-05 | 2 | RBAC-08 | T-01-05 | Logout writes audit_trail row | feature | `php artisan test --filter=AuthAuditTrailTest` | ✅ Plan 01-05 | ⬜ pending |
+| 01-07-02 | 01-07 | 3 | RBAC-08 | T-01-05 | Failed attempts and lockout write audit_trail rows | feature | `php artisan test --filter=AccountLockoutTest` | ✅ Plan 01-07 | ⬜ pending |
+| 01-10-02 | 01-10 | 4 | AUDIT-01 | — | Owner/Admin can view + filter audit trail by user/action/date | feature | `php artisan test --filter=AuditTrailTest` | ✅ Plan 01-10 (`tests/Feature/Owner/AuditTrailTest.php`) | ⬜ pending |
+| 01-01-02 | 01-01 | 1 | AUDIT-02 | T-01-05 | No update/delete code path for audit entries | arch | `php artisan test --filter=AuditLogArchTest` | ✅ Plan 01-01 (`tests/Unit/Arch/AuditLogArchTest.php`) | ⬜ pending |
+| 01-03-02 | 01-03 | 2 | CONFIG-01 | — | All 12 business-rule keys seeded, cached accessors work | unit | `php artisan test --filter=SystemConfigurationTest` | ✅ Plan 01-03 (`tests/Unit/SystemConfigurationTest.php`) | ⬜ pending |
+| 01-12-02 | 01-12 | 6 | CONFIG-01 | T-01-06 | Owner/Admin can update a business rule and it takes effect immediately | feature | `php artisan test --filter=SystemConfigurationTest` | ✅ Plan 01-12 (`tests/Feature/Owner/SystemConfigurationTest.php`) | ⬜ pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky. Task IDs and wave assignments finalized once PLAN.md files exist — planner fills these in.*
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky. Task IDs and wave assignments now finalized against the 12 PLAN.md files created for this phase. Statuses flip to ✅/❌ during `/gsd-execute-phase`, not during planning.*
+
+**Note on file paths:** planning organized owner-portal-scoped feature tests under `tests/Feature/Owner/` (e.g. `UserManagementTest.php`, `AuditTrailTest.php`, `SystemConfigurationTest.php`) rather than flat under `tests/Feature/`, matching the `app/Http/Controllers/Owner/` namespace convention already established by this phase's `PATTERNS.md`. This is a organizational refinement of the original placeholder paths, not a scope change — the same behaviors are covered under the `--filter={TestName}` class-name filters listed above regardless of directory.
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `tests/Pest.php` — uncomment `->use(RefreshDatabase::class)` (blocking, not optional — every other Wave 0 item depends on this)
-- [ ] `tests/Feature/Auth/AccountLockoutTest.php` — covers RBAC-03, RBAC-08
-- [ ] `tests/Feature/Auth/SingleSessionTest.php` — covers RBAC-04
-- [ ] `tests/Feature/Auth/IdleTimeoutTest.php` — covers RBAC-05
-- [ ] `tests/Feature/RoleBoundaryTest.php` — covers RBAC-01, RBAC-02 (parametrized across all 7 roles × a route outside their portal)
-- [ ] `tests/Feature/AuditTrailTest.php` — covers AUDIT-01, D-03 (old/new value shape)
-- [ ] `tests/Unit/Arch/AuditLogArchTest.php` — covers AUDIT-02 structurally
-- [ ] `tests/Feature/SystemConfigurationTest.php` — covers CONFIG-01
-- [ ] `database/factories/UserFactory.php` — needs a `role` state per enum case (e.g. `UserFactory::new()->owner()`, `->artist()`, etc.) for all the above tests to construct role-specific users
+- [x] `tests/Pest.php` — uncomment `->use(RefreshDatabase::class)` — delivered in Plan 01-01, Task 1
+- [x] `tests/Feature/Auth/AccountLockoutTest.php` — covers RBAC-03, RBAC-08 — delivered in Plan 01-07, Task 2
+- [x] `tests/Feature/Auth/SingleSessionTest.php` — covers RBAC-04 — delivered in Plan 01-08, Task 1
+- [x] `tests/Feature/Auth/IdleTimeoutTest.php` — covers RBAC-05 — delivered in Plan 01-08, Task 2
+- [x] `tests/Feature/RoleBoundaryTest.php` — covers RBAC-01, RBAC-02 (parametrized across all 7 roles × a route outside their portal) — seeded in Plan 01-04 Task 2 (Owner case), completed in Plan 01-09 Task 2 (full 7-role matrix)
+- [x] `tests/Feature/Owner/AuditTrailTest.php` — covers AUDIT-01, D-03 (old/new value shape) — delivered in Plan 01-10, Task 2
+- [x] `tests/Unit/Arch/AuditLogArchTest.php` — covers AUDIT-02 structurally — delivered in Plan 01-01, Task 2
+- [x] `tests/Feature/Owner/SystemConfigurationTest.php` — covers CONFIG-01 — delivered in Plan 01-12, Task 2 (data-layer half in `tests/Unit/SystemConfigurationTest.php`, Plan 01-03)
+- [x] `database/factories/UserFactory.php` — role states (`owner`, `admin`, `frontlineStaff`, `artist`, `cashier`, `productionStaff`, `accountingStaff`) delivered in Plan 01-01 Task 1; `locked()`/`deactivated()` states delivered in Plan 01-07 Task 1
 
 ---
 
@@ -77,11 +87,11 @@ created: 2026-08-31
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** pending (execution not yet run — this sign-off confirms the plan set satisfies Nyquist coverage, not that tests are green yet)
