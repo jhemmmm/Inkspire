@@ -1,36 +1,45 @@
 ---
-status: partial
+status: complete
 phase: 02-customer-queue-management
 source: [02-VERIFICATION.md]
 started: 2026-09-02T01:45:00Z
-updated: 2026-09-02T01:45:00Z
+updated: 2026-09-02T02:05:00Z
 ---
 
 ## Current Test
 
-[awaiting human testing]
+[testing complete]
 
 ## Tests
 
 ### 1. "Start New Visit" resets the page to the search screen
 expected: After completing one visit (queue confirmation shown), clicking "Start New Visit" clears the Customer summary card, Job Orders form, and confirmation card, returning to a blank search bar — not a stale re-render of the previous customer.
-result: [pending]
+result: pass
 
 ### 2. Job order file input visually clears on Type A -> Type B -> Type A toggle
 expected: Selecting a file on a Type A row, switching to Type B (hides the input) and back to Type A shows an empty file input, and the stale File object is not silently resubmitted.
-result: [pending]
+result: pass
+note: "User reported error messages elsewhere in the flow are not user-friendly (see Gaps — logged separately, does not fail this test)."
 
 ### 3. "Add Job Order" dialog works on a Done queue entry
 expected: Clicking the Add Job Order icon on a row with status Done opens a dialog; submitting a Type A row with a file, or a Type B row without one, succeeds and the entry's job order count increases without a page-level status change.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 3
-passed: 0
+passed: 3
 issues: 0
-pending: 3
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+- truth: "Job order file input visually clears on Type A -> Type B -> Type A toggle"
+  status: passed_with_note
+  reason: "User reported: error message are not user friend, but it can be pass"
+  severity: minor
+  test: 2
+  artifacts: []
+  missing: []
