@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests\FrontlineStaff;
 
+use App\Concerns\JobOrderValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class SearchCustomersRequest extends FormRequest
+class StoreQueueEntryRequest extends FormRequest
 {
+    use JobOrderValidationRules;
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -14,10 +17,9 @@ class SearchCustomersRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'q' => ['nullable', 'string', 'max:255'],
-            'customer' => ['nullable', 'integer', 'exists:customers,id'],
-            'queueEntry' => ['nullable', 'integer', 'exists:queue_entries,id'],
-        ];
+        return array_merge(
+            ['customer_id' => ['required', 'integer', 'exists:customers,id']],
+            $this->jobOrdersRules(),
+        );
     }
 }
