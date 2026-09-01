@@ -37,6 +37,14 @@ class SystemConfiguration extends Model
     }
 
     /**
+     * Get the route key for the model.
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'key';
+    }
+
+    /**
      * Get an integer-typed configuration value, cached forever until invalidated.
      */
     public static function getInt(string $key, int $default): int
