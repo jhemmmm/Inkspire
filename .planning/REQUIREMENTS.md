@@ -20,9 +20,9 @@
 
 - [x] **QUEUE-01**: Frontline Staff can search for a returning customer by name or contact info
 - [x] **QUEUE-02**: Frontline Staff can register a new customer
-- [ ] **QUEUE-03**: Frontline Staff can generate a queue number for a customer visit
-- [ ] **QUEUE-04**: A single queue visit can produce more than one job order (e.g. two different products in one visit)
-- [ ] **QUEUE-05**: Frontline Staff marks each job order as Type A (print-ready file) or Type B (needs consultation) at intake
+- [x] **QUEUE-03**: Frontline Staff can generate a queue number for a customer visit
+- [x] **QUEUE-04**: A single queue visit can produce more than one job order (e.g. two different products in one visit)
+- [x] **QUEUE-05**: Frontline Staff marks each job order as Type A (print-ready file) or Type B (needs consultation) at intake
 - [ ] **QUEUE-06**: A public, unauthenticated shared display shows each queue entry's number and status (Waiting/Serving/Done), refreshed via client-side polling — number and status only, no customer name or other PII
 
 ### Job Order & Design

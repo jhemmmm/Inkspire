@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-09-01T15:41:23.156Z"
+last_updated: "2026-09-01T15:58:50.066Z"
 last_activity: 2026-09-01
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 17
-  completed_plans: 13
+  completed_plans: 14
   percent: 13
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 02 (customer-queue-management) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-01
 
-Progress: [████████░░] 76%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [████████░░] 76%
 | Phase 01 P11 | 15min | 2 tasks | 7 files |
 | Phase 01 P12 | 20min | 2 tasks | 12 files |
 | Phase 02 P01 | 123min | 3 tasks | 15 files |
+| Phase 02 P02 | 6min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,8 @@ Recent decisions affecting current work:
 - [Phase 01-12]: No Policy/authorize() override added for SystemConfiguration routes; role:owner,admin route-group middleware is the sole authorization gate, per the threat model's stated disposition
 - [Phase 02-01]: customers.contact_number is unique at the DB level with no ->ignore() in the app-level Rule::unique(), since Phase 2 has no customer-edit flow — Every StoreCustomerRequest validation is always a create; revisit if a future phase adds customer editing
 - [Phase 02-01]: hasSearched is computed from 'q' in props.filters (key presence), not customers.length === 0 — Matches D-04's actual gate condition and avoids a false-positive 'no results' state on first page load
+- [Phase 02]: 02-02: nextForBusinessDay() uses whereDate('queue_date', ...) not where() — the date cast reformats stored values with a time component on write, which SQLite doesn't truncate back to a bare date (plain where() silently never matches)
+- [Phase 02]: 02-02: added explicit BelongsTo<T,$this>/HasMany<T,$this> generic PHPDoc on all new relation methods for Larastan level 7 compliance
 
 ### Pending Todos
 
@@ -121,6 +124,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-01T15:41:23.151Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-09-01T15:58:50.062Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
