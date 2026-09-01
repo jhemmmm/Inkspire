@@ -125,6 +125,8 @@ class SystemConfigurationSeeder extends Seeder
                 ['key' => $configuration['key']],
                 $configuration,
             );
+
+            SystemConfiguration::invalidate($configuration['key']);
         }
     }
 }

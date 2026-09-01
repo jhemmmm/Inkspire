@@ -42,6 +42,26 @@ test('seeder seeds all 12 CONFIG-01 business rules idempotently', function () {
     expect(SystemConfiguration::query()->count())->toBe(12);
 });
 
+test('re-running the seeder invalidates the cache so a changed default takes effect immediately', function () {
+    // Simulate a pre-existing row whose value was already read (and cached)
+    // before the seeder rolls out its current default for the same key.
+    SystemConfiguration::create([
+        'key' => 'account_lockout_max_attempts',
+        'group' => 'security',
+        'value' => 1,
+        'type' => 'integer',
+        'label' => 'Account lockout: max failed attempts',
+    ]);
+
+    expect(SystemConfiguration::getInt('account_lockout_max_attempts', 0))->toBe(1);
+
+    $this->seed(SystemConfigurationSeeder::class);
+
+    // Without invalidation in the seeder, this would still return the stale
+    // cached value (1) instead of the freshly seeded default (5).
+    expect(SystemConfiguration::getInt('account_lockout_max_attempts', 0))->toBe(5);
+});
+
 test('saving a system configuration writes an audit trail row', function () {
     SystemConfiguration::create([
         'key' => 'audited_key',
