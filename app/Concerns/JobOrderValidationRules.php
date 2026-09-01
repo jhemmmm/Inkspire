@@ -25,7 +25,7 @@ trait JobOrderValidationRules
             'job_orders' => ['required', 'array', 'min:1'],
             'job_orders.*.description' => ['required', 'string', 'max:255'],
             'job_orders.*.type' => ['required', Rule::enum(JobOrderType::class)],
-            'job_orders.*.file' => ['nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,ai,psd,eps', 'required_if:job_orders.*.type,'.JobOrderType::TypeA->value],
+            'job_orders.*.file' => ['nullable', 'file', 'required_if:job_orders.*.type,'.JobOrderType::TypeA->value],
         ];
     }
 
@@ -40,7 +40,7 @@ trait JobOrderValidationRules
         return [
             'description' => ['required', 'string', 'max:255'],
             'type' => ['required', Rule::enum(JobOrderType::class)],
-            'file' => ['nullable', 'file', 'max:20480', 'mimes:pdf,jpg,jpeg,png,ai,psd,eps', 'required_if:type,'.JobOrderType::TypeA->value],
+            'file' => ['nullable', 'file', 'required_if:type,'.JobOrderType::TypeA->value],
         ];
     }
 }
