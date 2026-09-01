@@ -27,7 +27,7 @@ class QueueEntryController extends Controller
         return Inertia::render('frontline-staff/QueueList', [
             'queueEntries' => QueueEntry::query()
                 ->with('customer:id,name')
-                ->where('queue_date', QueueEntry::currentBusinessDate())
+                ->whereDate('queue_date', QueueEntry::currentBusinessDate())
                 ->orderBy('queue_number')
                 ->get(['id', 'customer_id', 'queue_number', 'status']),
         ]);

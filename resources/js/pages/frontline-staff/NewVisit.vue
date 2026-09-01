@@ -36,6 +36,7 @@ interface JobOrderRow {
     description: string;
     type: 'type_a' | 'type_b';
     file: File | null;
+    _key: string;
 }
 
 interface ConfirmedJobOrder {
@@ -82,9 +83,7 @@ const showEmptyQueryError = ref(false);
 watch(
     () => props.selectedCustomer,
     (value) => {
-        if (value) {
-            selected.value = value;
-        }
+        selected.value = value;
     },
 );
 
@@ -109,7 +108,12 @@ function selectCustomer(customer: CustomerRecord): void {
 }
 
 function emptyJobOrderRow(): JobOrderRow {
-    return { description: '', type: 'type_a', file: null };
+    return {
+        description: '',
+        type: 'type_a',
+        file: null,
+        _key: crypto.randomUUID(),
+    };
 }
 
 const intakeForm = useForm({
@@ -139,6 +143,13 @@ function removeRow(index: number): void {
 
 function onFileChange(row: JobOrderRow, event: Event): void {
     row.file = (event.target as HTMLInputElement).files?.[0] ?? null;
+}
+
+function selectJobOrderType(row: JobOrderRow, value: unknown): void {
+    row.type = value === 'type_b' ? 'type_b' : 'type_a';
+    if (row.type !== 'type_a') {
+        row.file = null;
+    }
 }
 
 function submitIntake(): void {
@@ -354,7 +365,10 @@ function jobOrderTypeLabel(type: string): string {
         </Card>
 
         <template v-if="selected && !confirmedQueueEntry">
-            <Card v-for="(row, index) in intakeForm.job_orders" :key="index">
+            <Card
+                v-for="(row, index) in intakeForm.job_orders"
+                :key="row._key"
+            >
                 <CardHeader class="flex flex-row items-center justify-between">
                     <CardTitle>Job Order {{ index + 1 }}</CardTitle>
                     <Button
@@ -390,7 +404,12 @@ function jobOrderTypeLabel(type: string): string {
 
                     <div class="grid gap-2">
                         <Label>Job Order Type</Label>
-                        <RadioGroup v-model="row.type">
+                        <RadioGroup
+                            :model-value="row.type"
+                            @update:model-value="
+                                (value) => selectJobOrderType(row, value)
+                            "
+                        >
                             <div class="flex items-center gap-2">
                                 <RadioGroupItem
                                     :id="`job-order-type-a-${index}`"
