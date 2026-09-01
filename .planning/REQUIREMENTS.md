@@ -27,8 +27,8 @@
 
 ### Job Order & Design
 
-- [ ] **JOB-01**: Frontline Staff can upload a print-ready file for a Type A job order, auto-validated against configured DPI/format/max-size thresholds before being queued for production
-- [ ] **JOB-02**: A Type B job order auto-assigns to an available Artist via round-robin among artists who are clocked in and not on break
+- [x] **JOB-01**: Frontline Staff can upload a print-ready file for a Type A job order, auto-validated against configured DPI/format/max-size thresholds before being queued for production
+- [x] **JOB-02**: A Type B job order auto-assigns to an available Artist via round-robin among artists who are clocked in and not on break
 - [ ] **JOB-03**: Artist can record consultation notes and generate a job order for a Type B customer
 - [ ] **JOB-04**: Artist can create and edit a design using the built-in TOAST UI-based image editor
 - [ ] **JOB-05**: Artist can log a design revision and submit it for review ("Send for Review")
