@@ -75,3 +75,21 @@ test('owner can deactivate an admin', function () {
 
     expect($target->fresh()->is_active)->toBeFalse();
 });
+
+test('owner can reactivate a previously deactivated user', function () {
+    $owner = User::factory()->owner()->create();
+    $target = User::factory()->deactivated()->create();
+
+    $this->actingAs($owner)->patch(route('owner.users.reactivate', $target));
+
+    expect($target->fresh()->is_active)->toBeTrue();
+
+    expect(
+        DB::table('audit_trail')
+            ->where('auditable_type', User::class)
+            ->where('auditable_id', $target->id)
+            ->where('action', 'updated')
+            ->where('new_values', 'like', '%"is_active":true%')
+            ->exists()
+    )->toBeTrue();
+});
