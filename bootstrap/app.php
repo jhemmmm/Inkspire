@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnforceIdleSessionTimeout;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             VerifySingleSession::class,
+            EnforceIdleSessionTimeout::class,
         ]);
 
         $middleware->alias([
