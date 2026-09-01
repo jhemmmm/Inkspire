@@ -17,10 +17,13 @@ A job order flows correctly end-to-end — a customer queues in, gets a job orde
 - ✓ Security settings page (password change, two-factor auth scaffold present but not fully wired) — existing starter-kit scaffold
 - ✓ Appearance/theme settings — existing starter-kit scaffold
 - ✓ Inertia + Vue 3 request/response plumbing, Wayfinder-generated route helpers, Tailwind v4 + reka-ui component base — existing starter-kit scaffold
+- ✓ 7-role RBAC (Owner, Admin, Frontline Staff, Artist, Cashier, Production Staff, Accounting Staff), single `role` column, each role with its own dedicated portal layout/sidebar — Validated in Phase 1: foundation-rbac-auth-hardening-audit-trail
+- ✓ Read-only, append-only audit trail covering every mutating action and all auth events (login/logout/failed attempts/lockouts) — structurally undeletable/uneditable by anyone including Owner — Validated in Phase 1: foundation-rbac-auth-hardening-audit-trail
+- ✓ Login hardening: lockout after 5 failed attempts, one active session per user, configurable session timeout, password complexity rules — Validated in Phase 1: foundation-rbac-auth-hardening-audit-trail
+- ✓ System configuration panel (Owner/Admin): rush fee %, DPI thresholds, accepted file formats/max size, per-product SLA, max artist break duration, file retention settings, expense categories, session timeout — Validated in Phase 1: foundation-rbac-auth-hardening-audit-trail
 
 ### Active
 
-- [ ] 7-role RBAC (Owner, Admin, Frontline Staff, Artist, Cashier, Production Staff, Accounting Staff), single `role` column, each role with its own dedicated portal layout/sidebar
 - [ ] Public unauthenticated QR-based job order tracking portal (enter JO number, see status only)
 - [ ] Customer registration and queue management (search returning customers, register new, generate queue numbers)
 - [ ] Job Order intake: Type A (print-ready file, auto-validated by DPI/format/size against configurable thresholds) and Type B (needs consultation)
@@ -92,4 +95,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-31 after initialization*
+*Last updated: 2026-09-01 after Phase 1 (foundation-rbac-auth-hardening-audit-trail) completion*
