@@ -161,6 +161,7 @@ No third-party registries declared for this phase. If a future phase needs a thi
 
 **Frontline Staff internal queue list (supports D-05, D-08):**
 - A `Table` of today's queue entries: Queue Number, Customer Name, Status (`Badge`, color-mapped per the Color section above), and action buttons ("Call Next" / "Mark Done") shown contextually based on current status (Waiting shows "Call Next"; Serving shows "Mark Done"; Done shows no action). This is the internal, authenticated counterpart to the public display — it may show customer names (PII is fine here since it's role-gated), unlike the public display.
+- Every row (including Done rows — D-15/D-18) also shows an "Add Job Order" icon button, independent of the status action button. It opens a small `Dialog` reusing the same job-order-row `Card` fields as the combined intake form (description `Input`, Type A/B `RadioGroup`, conditional file attach) for exactly one new row, submitted on its own ("Add Job Order" button in the dialog footer) without touching the visit's existing job orders or queue status.
 
 **Public Queue Display (D-09, D-10):**
 - No customer names or any PII — number and status only (D-09), enforced by what the controller sends to the page, not just by hiding it client-side.
