@@ -45,6 +45,8 @@ class QueueEntry extends Model
 
     /**
      * The customer this visit belongs to.
+     *
+     * @return BelongsTo<Customer, $this>
      */
     public function customer(): BelongsTo
     {
@@ -53,6 +55,8 @@ class QueueEntry extends Model
 
     /**
      * The job orders created during this visit.
+     *
+     * @return HasMany<JobOrder, $this>
      */
     public function jobOrders(): HasMany
     {

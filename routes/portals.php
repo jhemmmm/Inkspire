@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\FrontlineStaff\CustomerController;
+use App\Http\Controllers\FrontlineStaff\QueueEntryController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:frontline_staff'])->prefix('frontline-staff')->name('frontline-staff.')->group(function () {
     Route::inertia('dashboard', 'frontline-staff/Dashboard')->name('dashboard');
     Route::get('new-visit', [CustomerController::class, 'index'])->name('new-visit');
     Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
+    Route::post('queue-entries', [QueueEntryController::class, 'store'])->name('queue-entries.store');
 });
 
 Route::middleware(['auth', 'role:artist'])->prefix('artist')->name('artist.')->group(function () {

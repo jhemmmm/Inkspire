@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\FrontlineStaff\SearchCustomersRequest;
 use App\Http\Requests\FrontlineStaff\StoreCustomerRequest;
 use App\Models\Customer;
+use App\Models\QueueEntry;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -33,6 +34,9 @@ class CustomerController extends Controller
             'filters' => $request->only(['q']),
             'selectedCustomer' => $request->filled('customer')
                 ? Customer::find($request->integer('customer'))
+                : null,
+            'confirmedQueueEntry' => $request->filled('queueEntry')
+                ? QueueEntry::with('jobOrders:id,queue_entry_id,description,type')->find($request->integer('queueEntry'))
                 : null,
         ]);
     }

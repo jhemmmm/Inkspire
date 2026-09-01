@@ -29,6 +29,8 @@ class Customer extends Model
 
     /**
      * The queue visits this customer has generated.
+     *
+     * @return HasMany<QueueEntry, $this>
      */
     public function queueEntries(): HasMany
     {

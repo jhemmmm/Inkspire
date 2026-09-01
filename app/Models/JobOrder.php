@@ -45,6 +45,8 @@ class JobOrder extends Model
 
     /**
      * The visit this job order was created during.
+     *
+     * @return BelongsTo<QueueEntry, $this>
      */
     public function queueEntry(): BelongsTo
     {
