@@ -114,7 +114,16 @@ Plans:
   1. Frontline Staff can upload a print-ready file for a Type A job order, and the system auto-validates it against configured DPI/format/max-size thresholds before it's queued for production
   2. A Type B job order auto-assigns to an available Artist via round-robin among artists who are clocked in and not on break, with no manual assignment step required
 
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Job Order Validation & Assignment — Backend (JOB-01, JOB-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — Job Order Validation & Assignment — Frontend Wiring (JOB-01, JOB-02 completion)
+
 **UI hint**: yes
 
 ### Phase 4: Artist Workflow & Design Editor
