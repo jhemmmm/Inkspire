@@ -495,22 +495,25 @@ Storage::disk('local')->assertExists(JobOrder::first()->file_path);
 | A2 | `job_orders.*.file` supports a wildcard-to-wildcard `required_if` reference (`required_if:job_orders.*.type,type_a`) exactly as written | Common Pitfalls #3, Code Examples | If the exact syntax doesn't resolve per-row as expected, either all-or-nothing validation triggers incorrectly (Type B rows wrongly required to have a file, or Type A rows wrongly allowed to skip it). Low risk (Laravel does document wildcard rule support generally) but the specific wildcard-to-wildcard sibling reference was not directly tool-verified this session — confirm via `search-docs`/official docs during planning. |
 | A3 | Adding a `throttle:60,1` middleware to the new public route is desirable and won't conflict with the UI-SPEC's suggested ~5s poll cadence | Architecture Patterns, Pattern 5 | Low risk — 60 req/min comfortably covers one client polling every 5s (12 req/min); flagged only because it's a security addition not present in CONTEXT.md/UI-SPEC, so the planner should treat it as a suggestion, not a locked requirement. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the daily queue counter live on `queue_entries` itself (no new table) or in a dedicated `queue_counters` table?**
    - What we know: Both are technically sound (Pattern 1 vs. the Alternatives Considered entry). The no-new-table approach relies on MySQL-specific InnoDB gap-locking behavior that the SQLite-based Pest suite cannot fully exercise; the counter-table approach is simpler and portable but adds a table beyond the approved 12-table ERD.
    - What's unclear: Whether an additional table needs the same kind of explicit approval `system_configurations` got in Phase 1, per CONTEXT.md's "follow the ERD; no deviation was discussed or approved here."
    - Recommendation: Default to the no-new-table approach (Pattern 1) unless the planner/user prefers to explicitly approve a 13th/14th table for simplicity — either is defensible, this just shouldn't be decided silently.
+   - **RESOLVED (D-17):** CONTEXT.md locks the no-new-table approach — the queue number is generated via `DB::transaction()` + `lockForUpdate()` over an indexed `queue_date` column on `queue_entries` itself (Plan 02-02), staying within the approved 12-table ERD with no `queue_counters` table added.
 
 2. **Does D-15 ("job orders can still be added to a visit even after it's marked Done") require a second, separate UI/route in Phase 2 for adding job orders to an *existing* queue entry, beyond the initial combined-create form (D-14)?**
    - What we know: D-14 describes the *initial* intake (queue number + first batch of job orders in one save). D-15 explicitly contemplates adding *more* job orders later, including after Done — which implies a distinct "append job order(s) to an existing visit" action.
    - What's unclear: The UI-SPEC's Phase-Specific UI Notes describe the combined intake form and the internal queue list (with Call Next/Mark Done actions) but do not describe an "add another job order to an existing visit" affordance anywhere.
    - Recommendation: Confirm with the user/UI-SPEC-checker whether D-15 is (a) a Phase-2 feature requiring its own UI now, or (b) a data-model/business-rule statement only ("don't build any locking mechanism that would block this in the future") with the actual UI for it deferred to a later phase. Do not silently build or silently omit this — it changes the task list either way.
+   - **RESOLVED (D-18):** CONTEXT.md locks option (a) — Phase 2 builds a dedicated "add job order to an existing visit" action (`QueueEntryController::addJobOrder`, Plan 02-04), with no status precondition, making D-15's guarantee actually usable now rather than deferred to a later phase.
 
 3. **Exact wildcard-to-wildcard Laravel validation syntax for `required_if` inside a nested array (`job_orders.*.file` required when `job_orders.*.type` is `type_a` for the *same* row index)**
    - What we know: Laravel supports wildcard rules (`job_orders.*.field`) and `required_if:other_field,value` generally.
    - What's unclear: Whether `required_if:job_orders.*.type,type_a` resolves per-index correctly, or whether it needs to be expressed differently (e.g., via a custom `Rule` closure per row, or `sometimes`+manual `Validator::after()` check).
    - Recommendation: Verify via `search-docs`/official Laravel validation docs during planning, before writing the Form Request — flagged here so it isn't discovered as a bug during implementation instead.
+   - **RESOLVED:** Verified during planning by reading the installed `Illuminate\Validation\Validator` source directly (`dependentRules`/`replaceAsterisksInParameters`, confirming `RequiredIf` is in the `$dependentRules` list) — `required_if:job_orders.*.type,type_a` resolves the wildcard to the matching row index automatically. No custom `Rule` closure or `Validator::after()` workaround is needed (see 02-02-PLAN.md Task 2's `read_first`).
 
 ## Environment Availability
 
