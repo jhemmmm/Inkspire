@@ -76,7 +76,7 @@
 
 ### Audit Trail
 
-- [ ] **AUDIT-01**: Owner/Admin can view a read-only audit trail of every mutating action and auth event, filterable by user/action/date
+- [x] **AUDIT-01**: Owner/Admin can view a read-only audit trail of every mutating action and auth event, filterable by user/action/date
 - [x] **AUDIT-02**: No user, including Owner, can edit or delete an audit trail entry — enforced structurally (no update/delete code path exists), not just by permission check
 
 ### Public Tracking

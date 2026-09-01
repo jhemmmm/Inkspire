@@ -60,7 +60,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-10-PLAN.md — Audit Trail Viewer (AUDIT-01, AUDIT-02 UI compliance)
+- [x] 01-10-PLAN.md — Audit Trail Viewer (AUDIT-01, AUDIT-02 UI compliance)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -187,7 +187,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — RBAC, Auth Hardening & Audit Trail | 9/12 | In Progress|  |
+| 1. Foundation — RBAC, Auth Hardening & Audit Trail | 10/12 | In Progress|  |
 | 2. Customer & Queue Management | 0/TBD | Not started | - |
 | 3. Job Order Intake & Auto-Assignment | 0/TBD | Not started | - |
 | 4. Artist Workflow & Design Editor | 0/TBD | Not started | - |
