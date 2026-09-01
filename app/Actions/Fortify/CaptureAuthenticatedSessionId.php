@@ -24,9 +24,12 @@ class CaptureAuthenticatedSessionId
     public function __invoke(Request $request, callable $next): mixed
     {
         if ($request->user() instanceof User) {
+            // saveQuietly() avoids a redundant `updated` audit_trail row for
+            // this routine session bookkeeping write — see WR-05 and the note
+            // in App\Listeners\Auth\HandleSuccessfulLogin.
             $request->user()->forceFill([
                 'current_session_id' => session()->getId(),
-            ])->save();
+            ])->saveQuietly();
         }
 
         return $next($request);

@@ -22,11 +22,17 @@ class HandleSuccessfulLogin
         // pipeline step regenerates the session id, so capturing it here would
         // store a stale id. See App\Actions\Fortify\CaptureAuthenticatedSessionId,
         // which runs later in the pipeline once the final session id is known.
+        //
+        // saveQuietly() is used deliberately: this is routine session
+        // bookkeeping, not a business-data mutation, and the explicit `login`
+        // audit row below already captures the meaningful signal. Without it,
+        // AuditObserver::updated() would add a redundant `updated` row to the
+        // audit trail for every single login (see WR-05).
         $event->user->forceFill([
             'last_activity_at' => now(),
             'failed_login_attempts' => 0,
             'locked_until' => null,
-        ])->save();
+        ])->saveQuietly();
 
         AuditLogger::recordAuthEvent($event->user, 'login', request());
     }
