@@ -47,3 +47,31 @@ test('owner cannot deactivate their own account', function () {
 
     expect($owner->fresh()->is_active)->toBeTrue();
 });
+
+test('admin cannot deactivate the owner or another admin', function () {
+    $admin = User::factory()->admin()->create();
+
+    $owner = User::factory()->owner()->create();
+    $this->actingAs($admin)->patch(route('owner.users.deactivate', $owner))->assertForbidden();
+
+    $anotherAdmin = User::factory()->admin()->create();
+    $this->actingAs($admin)->patch(route('owner.users.deactivate', $anotherAdmin))->assertForbidden();
+});
+
+test('admin can deactivate a staff role user', function () {
+    $admin = User::factory()->admin()->create();
+    $target = User::factory()->cashier()->create();
+
+    $this->actingAs($admin)->patch(route('owner.users.deactivate', $target));
+
+    expect($target->fresh()->is_active)->toBeFalse();
+});
+
+test('owner can deactivate an admin', function () {
+    $owner = User::factory()->owner()->create();
+    $target = User::factory()->admin()->create();
+
+    $this->actingAs($owner)->patch(route('owner.users.deactivate', $target));
+
+    expect($target->fresh()->is_active)->toBeFalse();
+});
