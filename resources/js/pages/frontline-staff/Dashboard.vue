@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { dashboard } from '@/routes/frontline-staff';
 
 defineOptions({
     layout: {
-        navItems: [],
+        navItems: frontlineStaffNavItems,
         breadcrumbs: [
             {
                 title: 'Dashboard',
@@ -25,8 +26,7 @@ defineOptions({
             Frontline Staff Dashboard
         </h1>
         <p class="text-muted-foreground">
-            There's nothing here yet — your tools will appear in a later
-            phase.
+            There's nothing here yet — your tools will appear in a later phase.
         </p>
     </div>
 </template>
