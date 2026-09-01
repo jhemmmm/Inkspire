@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Form, Head, router, useForm } from '@inertiajs/vue3';
+import { Form, Head, Link, router, useForm } from '@inertiajs/vue3';
 import { X } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import CustomerController from '@/actions/App/Http/Controllers/FrontlineStaff/CustomerController';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
 import InputError from '@/components/InputError.vue';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -144,7 +145,12 @@ function submitIntake(): void {
     intakeForm.post(QueueEntryController.store().url, {
         forceFormData: true,
         preserveScroll: true,
+        onSuccess: () => intakeForm.reset(),
     });
+}
+
+function jobOrderTypeLabel(type: string): string {
+    return type === 'type_a' ? 'Type A' : 'Type B';
 }
 </script>
 
@@ -301,6 +307,49 @@ function submitIntake(): void {
                     {{ selected.contact_number }}
                 </p>
                 <p class="text-muted-foreground">{{ selected.email }}</p>
+            </CardContent>
+        </Card>
+
+        <Card
+            v-if="selected && confirmedQueueEntry"
+            data-test="queue-confirmation-card"
+        >
+            <CardHeader>
+                <CardTitle>Queue Number</CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+                <div>
+                    <p
+                        class="text-primary text-[28px] leading-[1.2] font-semibold"
+                    >
+                        {{ confirmedQueueEntry.queue_number }}
+                    </p>
+                    <p class="text-muted-foreground text-sm">
+                        Job orders queued for {{ selected.name }}
+                    </p>
+                </div>
+
+                <ul class="flex flex-col gap-2">
+                    <li
+                        v-for="jobOrder in confirmedQueueEntry.job_orders"
+                        :key="jobOrder.id"
+                        class="flex items-center justify-between gap-4"
+                    >
+                        <span>{{ jobOrder.description }}</span>
+                        <Badge variant="outline">
+                            {{ jobOrderTypeLabel(jobOrder.type) }}
+                        </Badge>
+                    </li>
+                </ul>
+
+                <Link
+                    :href="newVisit()"
+                    :class="buttonVariants({ variant: 'secondary' })"
+                    class="self-start"
+                    data-test="start-new-visit-link"
+                >
+                    Start New Visit
+                </Link>
             </CardContent>
         </Card>
 
