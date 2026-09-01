@@ -138,6 +138,8 @@ No third-party registries declared for this phase.
 
 **Two surfaces only — do not build anything beyond these:**
 
+**Visual hierarchy:** within any job order row, the `validation_failed` Alert + "Replace File" button pairing is the primary visual anchor — it sits ahead of the neutral status badges in scan order, since it's the one state that demands Frontline Staff action.
+
 **1. `NewVisit.vue` confirmation card (`confirmedQueueEntry.job_orders` list) — the primary surface, since D-03 makes validation/assignment outcomes available in the very same response that renders this card:**
 - Each `<li>` job order row (already showing description + Type A/B `Badge`) gets a new status `Badge` appended, per the mapping above.
 - When status is `assigned`: add the "Assigned to {artist_name}" secondary text line (`text-muted-foreground text-sm`, same treatment already used for the customer contact/email lines in the "Customer" card above it) — requires the backend prop to include the assigned artist's name on the job order payload.
