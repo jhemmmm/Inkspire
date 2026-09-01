@@ -28,4 +28,19 @@ trait JobOrderValidationRules
             'job_orders.*.file' => ['nullable', 'file', 'required_if:job_orders.*.type,'.JobOrderType::TypeA->value],
         ];
     }
+
+    /**
+     * Get the validation rules for a single job order being added to an
+     * existing visit (D-15/D-18), outside the combined intake form.
+     *
+     * @return array<string, ValidationRule|array<mixed>|string>
+     */
+    protected function jobOrderRules(): array
+    {
+        return [
+            'description' => ['required', 'string', 'max:255'],
+            'type' => ['required', Rule::enum(JobOrderType::class)],
+            'file' => ['nullable', 'file', 'required_if:type,'.JobOrderType::TypeA->value],
+        ];
+    }
 }
