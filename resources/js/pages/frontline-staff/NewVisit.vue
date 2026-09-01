@@ -4,7 +4,9 @@ import { X } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import CustomerController from '@/actions/App/Http/Controllers/FrontlineStaff/CustomerController';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
+import AlertError from '@/components/AlertError.vue';
 import InputError from '@/components/InputError.vue';
+import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +45,9 @@ interface ConfirmedJobOrder {
     id: number;
     description: string;
     type: string;
+    status: string;
+    validation_failure_reason: string | null;
+    assigned_artist: { id: number; name: string } | null;
 }
 
 interface ConfirmedQueueEntry {
@@ -162,6 +167,19 @@ function submitIntake(): void {
 
 function jobOrderTypeLabel(type: string): string {
     return type === 'type_a' ? 'Type A' : 'Type B';
+}
+
+function jobOrderStatusLabel(status: string): string {
+    switch (status) {
+        case 'ready_for_production':
+            return 'Ready for Production';
+        case 'assigned':
+            return 'Assigned';
+        case 'validation_failed':
+            return 'Validation Failed';
+        default:
+            return 'Awaiting Assignment';
+    }
 }
 </script>
 
@@ -341,16 +359,76 @@ function jobOrderTypeLabel(type: string): string {
                 </div>
 
                 <ul class="flex flex-col gap-2">
-                    <li
+                    <template
                         v-for="jobOrder in confirmedQueueEntry.job_orders"
                         :key="jobOrder.id"
-                        class="flex items-center justify-between gap-4"
                     >
-                        <span>{{ jobOrder.description }}</span>
-                        <Badge variant="outline">
-                            {{ jobOrderTypeLabel(jobOrder.type) }}
-                        </Badge>
-                    </li>
+                        <li class="flex items-center justify-between gap-4">
+                            <span>{{ jobOrder.description }}</span>
+                            <div class="flex items-center gap-2">
+                                <Badge variant="outline">
+                                    {{ jobOrderTypeLabel(jobOrder.type) }}
+                                </Badge>
+                                <Badge
+                                    v-if="jobOrder.status === 'intake'"
+                                    variant="outline"
+                                >
+                                    {{ jobOrderStatusLabel(jobOrder.status) }}
+                                </Badge>
+                                <Badge
+                                    v-else-if="
+                                        jobOrder.status ===
+                                        'ready_for_production'
+                                    "
+                                    class="text-green-600 dark:text-green-400"
+                                >
+                                    {{ jobOrderStatusLabel(jobOrder.status) }}
+                                </Badge>
+                                <Badge
+                                    v-else-if="jobOrder.status === 'assigned'"
+                                    variant="default"
+                                >
+                                    {{ jobOrderStatusLabel(jobOrder.status) }}
+                                </Badge>
+                                <Badge
+                                    v-else-if="
+                                        jobOrder.status === 'validation_failed'
+                                    "
+                                    variant="destructive"
+                                >
+                                    {{ jobOrderStatusLabel(jobOrder.status) }}
+                                </Badge>
+                            </div>
+                        </li>
+                        <p
+                            v-if="jobOrder.status === 'assigned'"
+                            class="text-muted-foreground text-sm"
+                        >
+                            Assigned to
+                            {{ jobOrder.assigned_artist?.name }}
+                        </p>
+                        <template
+                            v-if="jobOrder.status === 'validation_failed'"
+                        >
+                            <AlertError
+                                :errors="[
+                                    jobOrder.validation_failure_reason ?? '',
+                                ]"
+                                title="Validation Failed"
+                            />
+                            <ReplaceJobOrderFileDialog
+                                :job-order-id="jobOrder.id"
+                            >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    data-test="replace-file-button"
+                                >
+                                    Replace File
+                                </Button>
+                            </ReplaceJobOrderFileDialog>
+                        </template>
+                    </template>
                 </ul>
 
                 <Link
@@ -365,10 +443,7 @@ function jobOrderTypeLabel(type: string): string {
         </Card>
 
         <template v-if="selected && !confirmedQueueEntry">
-            <Card
-                v-for="(row, index) in intakeForm.job_orders"
-                :key="row._key"
-            >
+            <Card v-for="(row, index) in intakeForm.job_orders" :key="row._key">
                 <CardHeader class="flex flex-row items-center justify-between">
                     <CardTitle>Job Order {{ index + 1 }}</CardTitle>
                     <Button
