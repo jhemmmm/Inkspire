@@ -85,7 +85,22 @@ Plans:
   3. A single queue visit can produce more than one job order (e.g. two different products), with each job order marked Type A (print-ready) or Type B (needs consultation) at intake
   4. A public, unauthenticated shared display shows each queue entry's number and status (Waiting/Serving/Done), refreshed via polling, with no customer PII
 
-**Plans**: TBD
+**Plans**: 5 plans in 3 waves
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Customer Search & Registration (QUEUE-01, QUEUE-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — Queue Number Generation & Job Order Intake — Backend (QUEUE-03, QUEUE-04, QUEUE-05)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-03-PLAN.md — Job Order Intake — Frontend Wiring (QUEUE-03, QUEUE-04, QUEUE-05 completion)
+- [ ] 02-04-PLAN.md — Internal Queue List: Status Transitions & Add Job Order (QUEUE-03, QUEUE-04 continuation)
+- [ ] 02-05-PLAN.md — Public Queue Display (QUEUE-06)
+
 **UI hint**: yes
 
 ### Phase 3: Job Order Intake & Auto-Assignment
@@ -189,7 +204,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — RBAC, Auth Hardening & Audit Trail | 12/12 | Complete    | 2026-09-01 |
-| 2. Customer & Queue Management | 0/TBD | Not started | - |
+| 2. Customer & Queue Management | 0/5 | Not started | - |
 | 3. Job Order Intake & Auto-Assignment | 0/TBD | Not started | - |
 | 4. Artist Workflow & Design Editor | 0/TBD | Not started | - |
 | 5. POS & Payments | 0/TBD | Not started | - |
