@@ -42,9 +42,13 @@ Frontline Staff can search for or register a customer, generate a queue number f
 
 ### Claude's Discretion
 - Exact wording/enum values for the queue-entry status column (`waiting`/`serving`/`done` vs similar) and the job order placeholder status (`intake`/`pending` vs similar) — pick during planning, following the project's existing enum conventions (see `app/Enums/UserRole.php` for the TitleCase-case/string-value pattern).
-- Whether `queue_entries` and `job_orders` are separate tables with a foreign key (matches the approved 12-table ERD) or any denormalization — follow the ERD; no deviation was discussed or approved here.
 - Exact shape of the "Add another job order" repeatable-row UI (inline table vs stacked cards) — a UI/UX call, not a business-rule call.
 - Audit trail coverage for the new `Customer`, `QueueEntry`, and `JobOrder` models — apply the existing `AuditObserver` registration pattern from Phase 1 (see Code Context below); no new discussion needed, it's an established pattern.
+
+### Resolved During Planning (Research Follow-ups)
+- **D-16 (timezone):** The shop's business day for the daily queue-reset boundary is `Asia/Manila`, scoped narrowly to the queue-number generation logic only (e.g. `now()->timezone('Asia/Manila')->toDateString()`). `config('app.timezone')` stays `UTC` project-wide — do not change it globally.
+- **D-17 (queue counter schema):** No new table. Generate the queue number via `DB::transaction()` + `lockForUpdate()` over an indexed `queue_date` column on `queue_entries` itself (Research Pattern 1), staying within the approved 12-table ERD.
+- **D-18 (D-15 UI scope):** Phase 2 builds a dedicated "add job order to this visit" action for an *existing* queue entry (beyond the initial combined intake form), so D-15's "can still add job orders after Done" guarantee is actually usable, not just a data-model statement.
 
 </decisions>
 
