@@ -46,11 +46,6 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the model has two-factor authentication configured.
-     */
-    public function withTwoFactor(): static {}
-
-    /**
      * Indicate that the user is an Owner.
      */
     public function owner(): static
