@@ -23,6 +23,7 @@
 - [ ] **QUEUE-03**: Frontline Staff can generate a queue number for a customer visit
 - [ ] **QUEUE-04**: A single queue visit can produce more than one job order (e.g. two different products in one visit)
 - [ ] **QUEUE-05**: Frontline Staff marks each job order as Type A (print-ready file) or Type B (needs consultation) at intake
+- [ ] **QUEUE-06**: A public, unauthenticated shared display shows each queue entry's number and status (Waiting/Serving/Done), refreshed via client-side polling — number and status only, no customer name or other PII
 
 ### Job Order & Design
 
@@ -110,7 +111,6 @@ Explicitly excluded. Documented to prevent scope creep.
 | Multi-role-per-user | Approved ERD has a single `role` column on `users`; one role per account |
 | Laravel Echo / Reverb / websocket real-time updates | Client-side polling is sufficient at this shop's scale and concurrency |
 | Multi-tenant / multi-branch support | Single-location system for SquareFoot Graphics & Ads |
-| Separate lobby/TV queue-display board | Seen in a client UI demo but not part of the manuscript scope and not confirmed as wanted; revisit if explicitly requested |
 | Materials/inventory management (paper, ink, stock) | Standard in larger print-MIS platforms but absent from the approved 12-table ERD; correct scope decision for a small single-location shop |
 | Quote-to-order workflow, customer self-service ordering | Conflicts with the consultation-driven Type B model; not in the approved scope |
 | Full offset-print preflight (bleed, CMYK, font embedding) | DPI/format/size validation is sufficient for this shop's process; full preflight is a superset not needed here |
@@ -123,7 +123,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | RBAC-01 through RBAC-08 | Phase 1 - Foundation | Pending |
 | AUDIT-01, AUDIT-02 | Phase 1 - Foundation | Pending |
 | CONFIG-01 | Phase 1 - Foundation | Complete |
-| QUEUE-01 through QUEUE-05 | Phase 2 - Customer & Queue Management | Pending |
+| QUEUE-01 through QUEUE-06 | Phase 2 - Customer & Queue Management | Pending |
 | JOB-01, JOB-02 | Phase 3 - Job Order Intake & Auto-Assignment | Pending |
 | JOB-03 through JOB-10 | Phase 4 - Artist Workflow & Design Editor | Pending |
 | POS-01 through POS-09 | Phase 5 - POS & Payments | Pending |
@@ -134,10 +134,10 @@ Explicitly excluded. Documented to prevent scope creep.
 | RPT-01 through RPT-05 | Phase 8 - Expenses & Reporting | Pending |
 
 **Coverage:**
-- v1 requirements: 50 total (corrected from initial 45-count summary — see full per-category listing above: RBAC 8, QUEUE 5, JOB 10, POS 9, PROD 3, AR 4, EXP 1, RPT 5, AUDIT 2, TRACK 2, CONFIG 1)
-- Mapped to phases: 50/50 ✓
+- v1 requirements: 51 total (RBAC 8, QUEUE 6, JOB 10, POS 9, PROD 3, AR 4, EXP 1, RPT 5, AUDIT 2, TRACK 2, CONFIG 1)
+- Mapped to phases: 51/51 ✓
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-31*
-*Last updated: 2026-08-31 after roadmap creation (8 phases, 100% coverage)*
+*Last updated: 2026-09-01 during Phase 2 discussion — added QUEUE-06 (shared queue display), user-requested expansion of Phase 2 scope, reversing the prior Out of Scope call on a lobby/TV board*

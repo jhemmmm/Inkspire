@@ -77,12 +77,13 @@ Plans:
 **Goal**: Frontline Staff can register or find customers and turn a visit into one or more queued job orders, exercising the full RBAC + audit stack on real business data for the first time.
 **Mode:** mvp
 **Depends on**: Phase 1
-**Requirements**: QUEUE-01, QUEUE-02, QUEUE-03, QUEUE-04, QUEUE-05
+**Requirements**: QUEUE-01, QUEUE-02, QUEUE-03, QUEUE-04, QUEUE-05, QUEUE-06
 **Success Criteria** (what must be TRUE):
 
   1. Frontline Staff can search for a returning customer by name or contact info, and register a new customer when none is found
   2. Frontline Staff can generate a queue number for a customer visit
   3. A single queue visit can produce more than one job order (e.g. two different products), with each job order marked Type A (print-ready) or Type B (needs consultation) at intake
+  4. A public, unauthenticated shared display shows each queue entry's number and status (Waiting/Serving/Done), refreshed via polling, with no customer PII
 
 **Plans**: TBD
 **UI hint**: yes

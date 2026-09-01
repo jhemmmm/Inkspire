@@ -26,6 +26,7 @@ A job order flows correctly end-to-end — a customer queues in, gets a job orde
 
 - [ ] Public unauthenticated QR-based job order tracking portal (enter JO number, see status only)
 - [ ] Customer registration and queue management (search returning customers, register new, generate queue numbers)
+- [ ] Public, unauthenticated shared queue display (queue number + status only, no PII) for lobby/TV use, polling-refreshed
 - [ ] Job Order intake: Type A (print-ready file, auto-validated by DPI/format/size against configurable thresholds) and Type B (needs consultation)
 - [ ] Artist workflow: auto-assignment of job orders (both Type A and Type B), consultation notes, TOAST UI Image Editor-based design tool, revision logging, design lock on final approval with Owner-only override
 - [ ] POS module: pricing computation from a pricing database, payment processing (Cash, GCash, Maya via PayMongo, Bank Transfer), down payments/balance tracking, digital receipts, cancellation fee collection — every POS transaction requires a linked job order, no standalone sales
@@ -46,7 +47,6 @@ A job order flows correctly end-to-end — a customer queues in, gets a job orde
 - Multi-role-per-user (a staff account holding more than one role simultaneously) — the approved ERD has a single `role` column on `users`; keep it 1:1
 - Laravel Echo / Reverb / websocket-based real-time updates — client-side polling is sufficient for this shop's scale and concurrency; revisit only if polling proves inadequate in production
 - Multi-tenant / multi-branch support — this is a single-location system for SquareFoot Graphics & Ads
-- A separate lobby/TV queue-display board beyond the QR tracking portal — a client UI demo showed one, but it wasn't part of the original manuscript scope and wasn't confirmed as wanted; revisit if requested explicitly
 
 ## Context
 
@@ -76,6 +76,7 @@ A job order flows correctly end-to-end — a customer queues in, gets a job orde
 | Keep the manuscript's On-Credit approval gate and automated AR reminder pipeline, even though the client's UI demo shows simpler behavior (no on-credit concept, manual-only AR follow-up) | Explicit user decision: the demo is a UI reference, not a business-rules source; the manuscript's rules stand where they conflict | ✓ Good |
 | Real-time-ish updates via client-side polling (Inertia partial reloads + a lightweight polling endpoint), not Laravel Echo/Reverb | Small shop, low concurrency, soft-real-time freshness (a few seconds' staleness) is acceptable; avoids running a websocket server | — Pending |
 | PayMongo payment confirmation is webhook-driven, with a manual reconciliation action as fallback | Webhook signature verification is the reliable source of truth for GCash/Maya; a fallback covers delayed/lost webhooks without blocking the Cashier | — Pending |
+| Reversed the "lobby/TV queue display Out of Scope" call from requirements definition — added QUEUE-06, a public status-only shared display, into Phase 2 | During Phase 2 discussion the user explicitly requested it, matching the manuscript-era demo's queue-display.html; status-only (no PII) keeps it consistent with the TRACK-01/02 public-tracking pattern, and polling-refresh keeps it consistent with the no-websockets constraint | — Pending |
 
 ## Evolution
 
