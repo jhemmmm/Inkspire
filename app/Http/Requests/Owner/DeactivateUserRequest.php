@@ -9,12 +9,10 @@ class DeactivateUserRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
-     *
-     * An Owner/Admin may not deactivate their own account (self-lockout guard).
      */
     public function authorize(): bool
     {
-        return $this->user()->isNot($this->route('user'));
+        return $this->user()->can('deactivate', $this->route('user'));
     }
 
     /**
