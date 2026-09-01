@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Owner\FilterAuditTrailRequest;
 use App\Models\AuditLog;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -14,7 +14,7 @@ class AuditTrailController extends Controller
     /**
      * Show the read-only, filterable audit trail for Owner/Admin.
      */
-    public function index(Request $request): Response
+    public function index(FilterAuditTrailRequest $request): Response
     {
         $entries = AuditLog::query()
             ->with('user:id,name,email,role')

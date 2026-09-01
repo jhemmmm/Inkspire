@@ -22,6 +22,22 @@ test('owner can view the audit trail', function () {
     $response->assertInertia(fn (Assert $page) => $page->component('owner/AuditTrail'));
 });
 
+test('audit trail returns a validation error instead of a 500 for a malformed from date', function () {
+    $owner = User::factory()->owner()->create();
+
+    $response = $this->actingAs($owner)->get(route('owner.audit-trail.index', ['from' => 'not-a-date']));
+
+    $response->assertSessionHasErrors('from');
+});
+
+test('audit trail returns a validation error instead of a 500 for a malformed to date', function () {
+    $owner = User::factory()->owner()->create();
+
+    $response = $this->actingAs($owner)->get(route('owner.audit-trail.index', ['to' => 'not-a-date']));
+
+    $response->assertSessionHasErrors('to');
+});
+
 test('audit trail can be filtered by action', function () {
     $owner = User::factory()->owner()->create();
 
