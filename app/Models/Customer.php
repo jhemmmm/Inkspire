@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -25,4 +26,12 @@ class Customer extends Model
 {
     /** @use HasFactory<CustomerFactory> */
     use HasFactory;
+
+    /**
+     * The queue visits this customer has generated.
+     */
+    public function queueEntries(): HasMany
+    {
+        return $this->hasMany(QueueEntry::class);
+    }
 }
