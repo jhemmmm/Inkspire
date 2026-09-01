@@ -38,7 +38,10 @@ class CustomerController extends Controller
                 ? Customer::find($request->integer('customer'))
                 : null,
             'confirmedQueueEntry' => $request->filled('queueEntry')
-                ? QueueEntry::with('jobOrders:id,queue_entry_id,description,type')->find($request->integer('queueEntry'))
+                ? QueueEntry::with([
+                    'jobOrders:id,queue_entry_id,description,type,status,validation_failure_reason,assigned_artist_id',
+                    'jobOrders.assignedArtist:id,name',
+                ])->find($request->integer('queueEntry'))
                 : null,
         ]);
     }

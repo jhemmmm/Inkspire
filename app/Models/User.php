@@ -30,6 +30,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $locked_until
  * @property string|null $current_session_id
  * @property Carbon|null $last_activity_at
+ * @property bool $is_available
+ * @property Carbon|null $last_assigned_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -55,6 +57,8 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'locked_until' => 'datetime',
             'last_activity_at' => 'datetime',
+            'is_available' => 'boolean',
+            'last_assigned_at' => 'datetime',
         ];
     }
 }
