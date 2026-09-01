@@ -143,4 +143,18 @@ class UserFactory extends Factory
             'is_active' => false,
         ])->save());
     }
+
+    /**
+     * Indicate that the user is currently unavailable for job assignment.
+     *
+     * Uses afterCreating() rather than state() because is_available is
+     * outside User's #[Fillable] list and would be silently dropped by a
+     * state()-merged create() call.
+     */
+    public function unavailable(): static
+    {
+        return $this->afterCreating(fn (User $user) => $user->forceFill([
+            'is_available' => false,
+        ])->save());
+    }
 }

@@ -6,6 +6,7 @@ use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
 use App\Models\JobOrder;
 use App\Models\QueueEntry;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -41,5 +42,54 @@ class JobOrderFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'type' => JobOrderType::TypeA->value,
         ]);
+    }
+
+    /**
+     * Indicate that this job order's file failed validation.
+     *
+     * Uses afterCreating() rather than state() because
+     * validation_failure_reason is outside JobOrder's #[Fillable] list and
+     * would be silently dropped by a state()-merged create() call.
+     */
+    public function validationFailed(): static
+    {
+        return $this->afterCreating(fn (JobOrder $jobOrder) => $jobOrder->forceFill([
+            'status' => JobOrderStatus::ValidationFailed->value,
+            'validation_failure_reason' => 'Image resolution is 150 DPI. Minimum required is 300 DPI. Replace the file with a higher-resolution version.',
+        ])->save());
+    }
+
+    /**
+     * Indicate that this job order's file passed validation.
+     *
+     * Uses afterCreating() for consistency with the other post-processing
+     * states here, even though status alone is already fillable.
+     */
+    public function readyForProduction(): static
+    {
+        return $this->afterCreating(fn (JobOrder $jobOrder) => $jobOrder->forceFill([
+            'status' => JobOrderStatus::ReadyForProduction->value,
+        ])->save());
+    }
+
+    /**
+     * Indicate that this job order has been auto-assigned to an artist.
+     *
+     * Uses afterCreating() rather than state() because assigned_artist_id is
+     * outside JobOrder's #[Fillable] list and would be silently dropped by a
+     * state()-merged create() call. The artist is created here, not inline
+     * inside forceFill(), since factory relation expansion only happens
+     * inside definition()/state(), not inside a raw forceFill() call.
+     */
+    public function assigned(): static
+    {
+        return $this->afterCreating(function (JobOrder $jobOrder) {
+            $artist = User::factory()->artist()->create();
+
+            $jobOrder->forceFill([
+                'status' => JobOrderStatus::Assigned->value,
+                'assigned_artist_id' => $artist->id,
+            ])->save();
+        });
     }
 }

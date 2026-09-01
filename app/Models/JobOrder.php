@@ -20,6 +20,8 @@ use Illuminate\Support\Carbon;
  * @property JobOrderType $type
  * @property JobOrderStatus $status
  * @property string|null $file_path
+ * @property int|null $assigned_artist_id
+ * @property string|null $validation_failure_reason
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -51,5 +53,15 @@ class JobOrder extends Model
     public function queueEntry(): BelongsTo
     {
         return $this->belongsTo(QueueEntry::class);
+    }
+
+    /**
+     * The artist auto-assigned to this job order (Type B only).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function assignedArtist(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_artist_id');
     }
 }
