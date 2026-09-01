@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import TextLink from '@/components/TextLink.vue';
-import { dashboard } from '@/routes';
 
 defineOptions({
     layout: {
@@ -12,6 +11,7 @@ defineOptions({
 
 const props = defineProps<{
     role?: string;
+    dashboardHref: string;
 }>();
 </script>
 
@@ -25,7 +25,7 @@ const props = defineProps<{
         </p>
 
         <div class="text-center text-sm">
-            <TextLink :href="dashboard()">Return to your dashboard</TextLink>
+            <TextLink :href="props.dashboardHref">Return to your dashboard</TextLink>
         </div>
     </div>
 </template>

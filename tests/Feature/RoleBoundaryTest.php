@@ -39,6 +39,18 @@ test('a non owner/admin role is blocked from the owner portal with a 403', funct
     $response->assertInertia(fn (Assert $page) => $page->component('errors/Forbidden'));
 });
 
+test('the 403 forbidden page links to the signed-in user\'s own portal, not the generic dashboard', function () {
+    $user = User::factory()->create(['role' => 'cashier']);
+
+    $response = $this->actingAs($user)->get(route('owner.dashboard'));
+
+    $response->assertForbidden();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('errors/Forbidden')
+        ->where('dashboardHref', route('cashier.dashboard'))
+    );
+});
+
 test('each role can access its own portal dashboard', function (string $state, string $routeName) {
     $user = User::factory()->{$state}()->create();
 

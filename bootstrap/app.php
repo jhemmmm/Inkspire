@@ -43,6 +43,9 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($response->getStatusCode() === 403 && ! $request->expectsJson()) {
                 return Inertia::render('errors/Forbidden', [
                     'role' => $request->user()?->role?->value,
+                    'dashboardHref' => $request->user()
+                        ? route($request->user()->role->portalRoute())
+                        : route('login'),
                 ])->toResponse($request)->setStatusCode(403);
             }
 
