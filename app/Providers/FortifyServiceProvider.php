@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Actions\Fortify\CaptureAuthenticatedSessionId;
 use App\Actions\Fortify\EnsureAccountIsNotLocked;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
@@ -100,6 +101,7 @@ class FortifyServiceProvider extends ServiceProvider
                 Features::enabled(Features::twoFactorAuthentication()) ? RedirectIfTwoFactorAuthenticatable::class : null,
                 AttemptToAuthenticate::class,
                 PrepareAuthenticatedSession::class,
+                CaptureAuthenticatedSessionId::class,
             ]);
         });
     }

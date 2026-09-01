@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 test('a new login invalidates the previous session on its next request', function () {
     $user = User::factory()->owner()->create();
@@ -10,13 +11,24 @@ test('a new login invalidates the previous session on its next request', functio
         'password' => 'password',
     ]);
 
-    expect($user->fresh()->current_session_id)->not->toBeNull();
+    $sessionId = $user->fresh()->current_session_id;
+    expect($sessionId)->not->toBeNull();
 
     // Simulate a second login elsewhere winning the row, while this test
-    // client still holds the first session's cookie.
+    // client still sends the first session's cookie (forwarded explicitly
+    // below, since the test HTTP client does not carry cookies between
+    // requests automatically the way a real browser does).
     $user->forceFill(['current_session_id' => 'a-different-session-id'])->save();
 
-    $response = $this->get(route('owner.dashboard'));
+    // Force the next request to resolve a fresh guard/user from the database
+    // instead of reusing the in-memory guard cached during login above. A
+    // real second HTTP request in production always boots a fresh guard;
+    // only the shared test process would otherwise mask this with a stale,
+    // pre-update user instance.
+    Auth::forgetGuards();
+
+    $response = $this->withCookie(config('session.cookie'), $sessionId)
+        ->get(route('owner.dashboard'));
 
     $response->assertRedirect(route('login'));
     $response->assertSessionHas('sessionMessage');
@@ -31,7 +43,15 @@ test('a normal authenticated request with a matching session id is unaffected', 
         'password' => 'password',
     ]);
 
-    $response = $this->get(route('owner.dashboard'));
+    $sessionId = $user->fresh()->current_session_id;
+    expect($sessionId)->not->toBeNull();
+
+    Auth::forgetGuards();
+
+    // Forward the same session id as a cookie to simulate the same browser
+    // making the next request (see note above).
+    $response = $this->withCookie(config('session.cookie'), $sessionId)
+        ->get(route('owner.dashboard'));
 
     $response->assertOk();
 });
