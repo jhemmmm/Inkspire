@@ -8,5 +8,6 @@ Route::middleware(['auth', 'role:owner,admin'])->prefix('owner')->name('owner.')
     Route::inertia('dashboard', 'owner/Dashboard')->name('dashboard');
     Route::get('users', [UserManagementController::class, 'index'])->name('users.index');
     Route::patch('users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
+    Route::patch('users/{user}/reactivate', [UserManagementController::class, 'reactivate'])->name('users.reactivate');
     Route::get('audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');
 });

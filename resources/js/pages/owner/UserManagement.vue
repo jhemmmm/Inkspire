@@ -130,6 +130,27 @@ defineOptions({
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
+                            <Form
+                                v-else
+                                v-bind="
+                                    UserManagementController.reactivate.form(
+                                        user.id,
+                                    )
+                                "
+                                :options="{
+                                    preserveScroll: true,
+                                }"
+                                v-slot="{ processing }"
+                            >
+                                <Button
+                                    type="submit"
+                                    variant="secondary"
+                                    :disabled="processing"
+                                    :data-test="`reactivate-user-${user.id}-button`"
+                                >
+                                    Reactivate Account
+                                </Button>
+                            </Form>
                         </td>
                     </tr>
                 </tbody>
