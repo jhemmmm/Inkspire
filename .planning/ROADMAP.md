@@ -14,7 +14,7 @@ Inkspire replaces SquareFoot Graphics & Ads' paper-based print-shop workflow wit
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation — RBAC, Auth Hardening & Audit Trail** - Every user logs in through a role-scoped, secured account and every mutating action is permanently recorded (completed 2026-09-01)
-- [ ] **Phase 2: Customer & Queue Management** - Frontline Staff can register/find customers and generate queue numbers that produce job orders
+- [x] **Phase 2: Customer & Queue Management** - Frontline Staff can register/find customers and generate queue numbers that produce job orders (completed 2026-09-01)
 - [ ] **Phase 3: Job Order Intake & Auto-Assignment** - A job order becomes a validated, production-ready record, routed automatically when it needs an artist
 - [ ] **Phase 4: Artist Workflow & Design Editor** - An Artist takes a Type B job from consultation through a locked, approved design
 - [ ] **Phase 5: POS & Payments** - A job order gets priced, paid (cash, bank transfer, GCash/Maya, or on-credit), and receipted
@@ -99,7 +99,7 @@ Plans:
 
 - [x] 02-03-PLAN.md — Job Order Intake — Frontend Wiring (QUEUE-03, QUEUE-04, QUEUE-05 completion)
 - [x] 02-04-PLAN.md — Internal Queue List: Status Transitions & Add Job Order (QUEUE-03, QUEUE-04 continuation)
-- [ ] 02-05-PLAN.md — Public Queue Display (QUEUE-06)
+- [x] 02-05-PLAN.md — Public Queue Display (QUEUE-06)
 
 **UI hint**: yes
 
@@ -204,7 +204,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — RBAC, Auth Hardening & Audit Trail | 12/12 | Complete    | 2026-09-01 |
-| 2. Customer & Queue Management | 4/5 | In Progress|  |
+| 2. Customer & Queue Management | 5/5 | Complete   | 2026-09-01 |
 | 3. Job Order Intake & Auto-Assignment | 0/TBD | Not started | - |
 | 4. Artist Workflow & Design Editor | 0/TBD | Not started | - |
 | 5. POS & Payments | 0/TBD | Not started | - |
