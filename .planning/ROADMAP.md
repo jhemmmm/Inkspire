@@ -89,7 +89,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Customer Search & Registration (QUEUE-01, QUEUE-02)
+- [x] 02-01-PLAN.md — Customer Search & Registration (QUEUE-01, QUEUE-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -204,7 +204,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — RBAC, Auth Hardening & Audit Trail | 12/12 | Complete    | 2026-09-01 |
-| 2. Customer & Queue Management | 0/5 | Not started | - |
+| 2. Customer & Queue Management | 1/5 | In Progress|  |
 | 3. Job Order Intake & Auto-Assignment | 0/TBD | Not started | - |
 | 4. Artist Workflow & Design Editor | 0/TBD | Not started | - |
 | 5. POS & Payments | 0/TBD | Not started | - |
