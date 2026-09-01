@@ -98,7 +98,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 02-03-PLAN.md — Job Order Intake — Frontend Wiring (QUEUE-03, QUEUE-04, QUEUE-05 completion)
-- [ ] 02-04-PLAN.md — Internal Queue List: Status Transitions & Add Job Order (QUEUE-03, QUEUE-04 continuation)
+- [x] 02-04-PLAN.md — Internal Queue List: Status Transitions & Add Job Order (QUEUE-03, QUEUE-04 continuation)
 - [ ] 02-05-PLAN.md — Public Queue Display (QUEUE-06)
 
 **UI hint**: yes
@@ -204,7 +204,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation — RBAC, Auth Hardening & Audit Trail | 12/12 | Complete    | 2026-09-01 |
-| 2. Customer & Queue Management | 3/5 | In Progress|  |
+| 2. Customer & Queue Management | 4/5 | In Progress|  |
 | 3. Job Order Intake & Auto-Assignment | 0/TBD | Not started | - |
 | 4. Artist Workflow & Design Editor | 0/TBD | Not started | - |
 | 5. POS & Payments | 0/TBD | Not started | - |
