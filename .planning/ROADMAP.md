@@ -13,7 +13,7 @@ Inkspire replaces SquareFoot Graphics & Ads' paper-based print-shop workflow wit
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation — RBAC, Auth Hardening & Audit Trail** - Every user logs in through a role-scoped, secured account and every mutating action is permanently recorded
+- [x] **Phase 1: Foundation — RBAC, Auth Hardening & Audit Trail** - Every user logs in through a role-scoped, secured account and every mutating action is permanently recorded (completed 2026-09-01)
 - [ ] **Phase 2: Customer & Queue Management** - Frontline Staff can register/find customers and generate queue numbers that produce job orders
 - [ ] **Phase 3: Job Order Intake & Auto-Assignment** - A job order becomes a validated, production-ready record, routed automatically when it needs an artist
 - [ ] **Phase 4: Artist Workflow & Design Editor** - An Artist takes a Type B job from consultation through a locked, approved design
@@ -68,7 +68,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 01-12-PLAN.md — System Configuration UI (CONFIG-01 completion)
+- [x] 01-12-PLAN.md — System Configuration UI (CONFIG-01 completion)
 
 **UI hint**: yes
 
@@ -187,7 +187,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation — RBAC, Auth Hardening & Audit Trail | 11/12 | In Progress|  |
+| 1. Foundation — RBAC, Auth Hardening & Audit Trail | 12/12 | Complete   | 2026-09-01 |
 | 2. Customer & Queue Management | 0/TBD | Not started | - |
 | 3. Job Order Intake & Auto-Assignment | 0/TBD | Not started | - |
 | 4. Artist Workflow & Design Editor | 0/TBD | Not started | - |

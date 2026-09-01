@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-09-01T02:07:41.680Z"
+status: verifying
+last_updated: "2026-09-01T02:22:36.222Z"
 last_activity: 2026-09-01
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 12
-  completed_plans: 11
-  percent: 0
+  completed_plans: 12
+  percent: 13
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 
 Phase: 01 (foundation-rbac-auth-hardening-audit-trail) — EXECUTING
 Plan: 12 of 12
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-01
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [█████████░] 92%
 | Phase 01 P09 | 8min | 2 tasks | 8 files |
 | Phase 01 P10 | 15min | 2 tasks | 23 files |
 | Phase 01 P11 | 15min | 2 tasks | 7 files |
+| Phase 01 P12 | 20min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -93,6 +94,8 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-11: UserPolicy only implements deactivate()/reactivate() (not full CRUD boilerplate) since no other User ability exists yet
 - [Phase 01]: 01-11: reactivate() delegates to deactivate() rather than duplicating the Owner/Admin matrix, since the rule is identical in both directions
 - [Phase 01]: 01-11: Reactivate button has no AlertDialog confirmation (non-destructive, corrective action) per UI-SPEC framing
+- [Phase 01-12]: SystemConfigValidationRules::valueRules() returns the full field-keyed rules map directly (matching ProfileValidationRules), rather than being double-wrapped by the FormRequest
+- [Phase 01-12]: No Policy/authorize() override added for SystemConfiguration routes; role:owner,admin route-group middleware is the sole authorization gate, per the threat model's stated disposition
 
 ### Pending Todos
 
@@ -115,6 +118,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-01T02:07:41.675Z
-Stopped at: Completed 01-11-PLAN.md
+Last session: 2026-09-01T02:22:36.217Z
+Stopped at: Completed 01-12-PLAN.md
 Resume file: None
