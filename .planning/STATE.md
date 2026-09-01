@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-08-31T18:19:27.988Z"
-last_activity: 2026-08-31
+last_updated: "2026-09-01T01:28:13.578Z"
+last_activity: 2026-09-01
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 12
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 01 (foundation-rbac-auth-hardening-audit-trail) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
-Last activity: 2026-08-31
+Last activity: 2026-09-01
 
-Progress: [██████░░░░] 58%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [██████░░░░] 58%
 | Phase 01 P05 | 8min | 2 tasks | 3 files |
 | Phase 01 P06 | 15min | 1 tasks | 18 files |
 | Phase 01 P07 | 15min | 2 tasks | 6 files |
+| Phase 01 P08 | 25min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-06: used forceFill(['is_active' => false])->save() instead of update() for deactivate, since is_active is intentionally outside User's #[Fillable] list
 - [Phase 01]: 01-06: DeactivateUserRequest::authorize() blocks self-deactivation; finer Owner-vs-Admin authorization split deferred to Plan 01-11
 - [Phase 01]: 01-07: EnsureAccountIsNotLocked passes through on unknown emails (defers to AttemptToAuthenticate + existing IP+email rate limiter), only rejects resolved users that are locked or deactivated
+- [Phase 01]: 01-08: current_session_id must be captured in a Fortify pipeline step registered after PrepareAuthenticatedSession (CaptureAuthenticatedSessionId), never in a Login event listener, since the Login event fires before session id regeneration
+- [Phase 01]: 01-08: Carbon 3's diffInMinutes() defaults to a signed (non-absolute) difference; pass absolute: true when comparing a past timestamp against a positive threshold
+- [Phase 01]: 01-08: feature tests comparing session ids across sequential HTTP calls must forward the session cookie explicitly and call Auth::forgetGuards() before the follow-up request, since Laravel's test client does not carry cookies between calls and AuthManager caches guard/user state across the test process
 
 ### Pending Todos
 
@@ -102,6 +106,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-31T18:19:27.984Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-09-01T01:28:13.574Z
+Stopped at: Completed 01-08-PLAN.md
 Resume file: None

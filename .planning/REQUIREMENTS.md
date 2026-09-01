@@ -11,7 +11,7 @@
 - [x] **RBAC-02**: User is blocked (403) from accessing any route outside their assigned role, enforced server-side on every request — not just hidden navigation
 - [x] **RBAC-03**: User account locks out after 5 consecutive failed login attempts for a configurable duration
 - [x] **RBAC-04**: User can only have one active session at a time; a new login invalidates the prior session
-- [ ] **RBAC-05**: User is logged out automatically after a configurable idle session timeout
+- [x] **RBAC-05**: User is logged out automatically after a configurable idle session timeout
 - [x] **RBAC-06**: User's password must meet complexity rules (minimum length, mixed case, numbers, symbols)
 - [x] **RBAC-07**: Owner/Admin can deactivate a user account; deactivated accounts cannot log in; accounts are never hard-deleted
 - [x] **RBAC-08**: Every authentication event (login, logout, failed attempt, lockout) is written to the audit trail
