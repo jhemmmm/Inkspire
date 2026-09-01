@@ -101,3 +101,7 @@ None - no external service configuration required.
 ---
 *Phase: 03-job-order-intake-auto-assignment*
 *Completed: 2026-09-01*
+
+## Self-Check: PASSED
+
+All 3 created/modified source files (`ReplaceJobOrderFileDialog.vue`, `NewVisit.vue`, `QueueList.vue`) plus this SUMMARY.md verified present on disk. All 3 commit hashes (`86142ae`, `578cfdb`, `c856748`) verified present in `git log --oneline --all`.
