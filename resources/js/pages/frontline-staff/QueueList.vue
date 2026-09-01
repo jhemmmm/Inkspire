@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import { Plus } from '@lucide/vue';
+import { Plus, RefreshCw } from '@lucide/vue';
 import { reactive } from 'vue';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
 import InputError from '@/components/InputError.vue';
+import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,12 +36,22 @@ interface QueueEntryCustomer {
     name: string;
 }
 
+interface JobOrderRecord {
+    id: number;
+    description: string;
+    type: string;
+    status: string;
+    validation_failure_reason: string | null;
+    assigned_artist: { id: number; name: string } | null;
+}
+
 interface QueueEntryRecord {
     id: number;
     customer_id: number;
     queue_number: number;
     status: 'waiting' | 'serving' | 'done';
     customer: QueueEntryCustomer;
+    job_orders: JobOrderRecord[];
 }
 
 defineProps<{
@@ -72,6 +83,10 @@ function jobOrderType(entryId: number): 'type_a' | 'type_b' {
 function setJobOrderType(entryId: number, value: unknown): void {
     jobOrderTypeByEntry[entryId] = value === 'type_b' ? 'type_b' : 'type_a';
 }
+
+function jobOrderTypeLabel(type: string): string {
+    return type === 'type_a' ? 'Type A' : 'Type B';
+}
 </script>
 
 <template>
@@ -90,12 +105,13 @@ function setJobOrderType(entryId: number, value: unknown): void {
                     <TableRow>
                         <TableHead>Queue Number</TableHead>
                         <TableHead>Customer</TableHead>
+                        <TableHead>Job Orders</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead class="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <TableEmpty v-if="queueEntries.length === 0" :colspan="4">
+                    <TableEmpty v-if="queueEntries.length === 0" :colspan="5">
                         No queue entries yet today.
                     </TableEmpty>
                     <TableRow
@@ -105,6 +121,70 @@ function setJobOrderType(entryId: number, value: unknown): void {
                     >
                         <TableCell>{{ entry.queue_number }}</TableCell>
                         <TableCell>{{ entry.customer.name }}</TableCell>
+                        <TableCell>
+                            <div class="flex flex-col gap-1">
+                                <div
+                                    v-for="jobOrder in entry.job_orders"
+                                    :key="jobOrder.id"
+                                    class="flex flex-wrap items-center gap-2"
+                                >
+                                    <span>{{ jobOrder.description }}</span>
+                                    <Badge variant="outline">
+                                        {{ jobOrderTypeLabel(jobOrder.type) }}
+                                    </Badge>
+                                    <Badge
+                                        v-if="jobOrder.status === 'intake'"
+                                        variant="outline"
+                                    >
+                                        Awaiting Assignment
+                                    </Badge>
+                                    <Badge
+                                        v-else-if="
+                                            jobOrder.status ===
+                                            'ready_for_production'
+                                        "
+                                        class="text-green-600 dark:text-green-400"
+                                    >
+                                        Ready for Production
+                                    </Badge>
+                                    <Badge
+                                        v-else-if="
+                                            jobOrder.status === 'assigned'
+                                        "
+                                        variant="default"
+                                    >
+                                        Assigned
+                                    </Badge>
+                                    <Badge
+                                        v-else-if="
+                                            jobOrder.status ===
+                                            'validation_failed'
+                                        "
+                                        variant="destructive"
+                                    >
+                                        Validation Failed
+                                    </Badge>
+                                    <ReplaceJobOrderFileDialog
+                                        v-if="
+                                            jobOrder.status ===
+                                            'validation_failed'
+                                        "
+                                        :job-order-id="jobOrder.id"
+                                    >
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            data-test="replace-file-button"
+                                        >
+                                            <RefreshCw class="size-4" />
+                                            <span class="sr-only">
+                                                Replace File
+                                            </span>
+                                        </Button>
+                                    </ReplaceJobOrderFileDialog>
+                                </div>
+                            </div>
+                        </TableCell>
                         <TableCell>
                             <Badge
                                 v-if="entry.status === 'waiting'"
