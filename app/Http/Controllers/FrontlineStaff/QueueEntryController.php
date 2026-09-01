@@ -2,21 +2,31 @@
 
 namespace App\Http\Controllers\FrontlineStaff;
 
+use App\Actions\JobOrder\AssignArtistToJobOrder;
+use App\Actions\JobOrder\ValidateJobOrderFile;
 use App\Enums\JobOrderStatus;
+use App\Enums\JobOrderType;
 use App\Enums\QueueStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FrontlineStaff\AddJobOrderRequest;
 use App\Http\Requests\FrontlineStaff\StoreQueueEntryRequest;
 use App\Http\Requests\FrontlineStaff\UpdateQueueEntryStatusRequest;
+use App\Models\JobOrder;
 use App\Models\QueueEntry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class QueueEntryController extends Controller
 {
+    public function __construct(
+        public ValidateJobOrderFile $validateJobOrderFile,
+        public AssignArtistToJobOrder $assignArtistToJobOrder,
+    ) {}
+
     /**
      * Show today's queue with each entry's number, customer, and status
      * (D-05) — the authenticated, PII-permitted counterpart to the public
@@ -26,7 +36,11 @@ class QueueEntryController extends Controller
     {
         return Inertia::render('frontline-staff/QueueList', [
             'queueEntries' => QueueEntry::query()
-                ->with('customer:id,name')
+                ->with([
+                    'customer:id,name',
+                    'jobOrders:id,queue_entry_id,description,type,status,validation_failure_reason,assigned_artist_id',
+                    'jobOrders.assignedArtist:id,name',
+                ])
                 ->whereDate('queue_date', QueueEntry::currentBusinessDate())
                 ->orderBy('queue_number')
                 ->get(['id', 'customer_id', 'queue_number', 'status']),
@@ -75,16 +89,18 @@ class QueueEntryController extends Controller
      */
     public function addJobOrder(AddJobOrderRequest $request, QueueEntry $queueEntry): RedirectResponse
     {
-        $queueEntry->jobOrders()->create([
+        $jobOrder = $queueEntry->jobOrders()->create([
             'description' => $request->validated('description'),
             'type' => $request->validated('type'),
             'status' => JobOrderStatus::Intake,
             'file_path' => $request->file('file')?->store('job-orders', 'local'),
         ]);
 
+        $this->applyIntakeOutcome($jobOrder, $request->file('file'));
+
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => __('Job order added to queue number :number.', ['number' => $queueEntry->queue_number]),
+            'message' => $this->jobOrderOutcomeToastMessage($jobOrder->fresh()),
         ]);
 
         return back();
@@ -108,12 +124,14 @@ class QueueEntryController extends Controller
             ]);
 
             foreach ($request->validated('job_orders') as $index => $row) {
-                $entry->jobOrders()->create([
+                $jobOrder = $entry->jobOrders()->create([
                     'description' => $row['description'],
                     'type' => $row['type'],
                     'status' => JobOrderStatus::Intake,
                     'file_path' => $request->file("job_orders.{$index}.file")?->store('job-orders', 'local'),
                 ]);
+
+                $this->applyIntakeOutcome($jobOrder, $request->file("job_orders.{$index}.file"));
             }
 
             return $entry;
@@ -131,5 +149,40 @@ class QueueEntryController extends Controller
             'customer' => $queueEntry->customer_id,
             'queueEntry' => $queueEntry->id,
         ]);
+    }
+
+    /**
+     * Apply the correct auto-outcome for a freshly created job order
+     * (JOB-01/JOB-02) — Type A gets its file validated, Type B gets
+     * auto-assigned to an available artist.
+     */
+    private function applyIntakeOutcome(JobOrder $jobOrder, ?UploadedFile $file): void
+    {
+        if ($jobOrder->type === JobOrderType::TypeA) {
+            $outcome = ($this->validateJobOrderFile)($file);
+
+            $jobOrder->forceFill([
+                'status' => $outcome['passed'] ? JobOrderStatus::ReadyForProduction : JobOrderStatus::ValidationFailed,
+                'validation_failure_reason' => $outcome['reason'],
+            ])->save();
+
+            return;
+        }
+
+        ($this->assignArtistToJobOrder)($jobOrder);
+    }
+
+    /**
+     * Build the outcome-specific toast message for a job order, per the
+     * 03-UI-SPEC.md Copywriting Contract.
+     */
+    private function jobOrderOutcomeToastMessage(JobOrder $jobOrder): string
+    {
+        return match ($jobOrder->status) {
+            JobOrderStatus::ReadyForProduction => __('Job order added — ready for production.'),
+            JobOrderStatus::ValidationFailed => __('Job order added — file needs replacement. See details in the queue list.'),
+            JobOrderStatus::Assigned => __('Job order added — assigned to :artist.', ['artist' => $jobOrder->assignedArtist->name]),
+            JobOrderStatus::Intake => __('Job order added — awaiting an available artist.'),
+        };
     }
 }
