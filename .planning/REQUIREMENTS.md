@@ -32,8 +32,8 @@
 - [x] **JOB-03**: Artist can record consultation notes and generate a job order for a Type B customer
 - [ ] **JOB-04**: Artist can create and edit a design using the built-in TOAST UI-based image editor
 - [ ] **JOB-05**: Artist can log a design revision and submit it for review ("Send for Review")
-- [ ] **JOB-06**: A design file becomes read-only (locked) once its job order reaches final approval
-- [ ] **JOB-07**: Owner can authorize an override to unlock a locked design file; the override is written to the audit trail
+- [x] **JOB-06**: A design file becomes read-only (locked) once its job order reaches final approval
+- [x] **JOB-07**: Owner can authorize an override to unlock a locked design file; the override is written to the audit trail
 - [ ] **JOB-08**: Artist can set session status (On Break, End Shift), which affects eligibility for auto-assignment
 - [x] **JOB-09**: Artist can view their own assigned job orders and use Next/Forward/Not-Appear queue controls
 - [ ] **JOB-10**: Artist can view their own performance metrics report
