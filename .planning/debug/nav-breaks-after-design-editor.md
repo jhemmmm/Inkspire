@@ -2,16 +2,16 @@
 status: investigating
 trigger: "Designing is hard. Clicking 'Dashboard' on the breadcrumb/navigation does not return me to the dashboard. (This looks like bug on the viewing the job order, unable to change navigation, even performance report doesn't work)"
 created: 2026-09-02T15:50:00Z
-updated: 2026-09-03T01:15:00Z
+updated: 2026-09-03T03:00:00Z
 ---
 
 ## Current Focus
 <!-- OVERWRITE on each update - always reflects NOW -->
 
-hypothesis: Bug 1 and Bug 2 confirmed fixed by human re-test (nav works, editor mounts without crashing, no raw exception page). Bug 3 (NEW, found during that same human re-test): the blank-canvas flow renders the TOAST UI editor's chrome (toolbar, menu bar) but the actual drawable canvas area is empty/invisible — "blank canvas does nothing." Root-caused via source trace: `initCanvas()` (tui-image-editor.js:48219) only calls `ui.resizeEditor()` — the ONLY code path that sizes the editor's canvas container — from inside `initLoadImage()`'s `.then()` callback (tui-image-editor.js:49947), which itself is gated behind `if (loadImageInfo.path)` (tui-image-editor.js:48224). Bug 1's fix correctly changed the "no image" value from `undefined` (crash) to `{ path: '', name: '' }` (no crash) — but an empty path is still falsy, so `initLoadImage`/`resizeEditor` is still never called for the blank-canvas case. The crash is gone but the canvas was never actually usable in this flow — tui-image-editor has no "blank canvas, no image" mode; it always expects a real (even if blank/white) image to load and size against.
-test: Generate a real blank image client-side (e.g. an offscreen HTML `<canvas>` element sized to the editor's cssMaxWidth/cssMaxHeight, filled white, exported via `.toDataURL('image/png')`) and pass THAT data URI as `loadImage.path` for the no-initial-image case, instead of an empty string. Verify via live CDP repro that `initLoadImage` now runs (network/promise trace), `resizeEditor` is called, and the canvas container has non-zero width/height with a visible white drawable surface. Re-run the draw/crop/shape tool smoke checks and confirm `exportPng()` still produces a valid flattened PNG for Send for Review.
-expecting: A properly sized, visible, drawable white canvas immediately after "Start from Blank Canvas" — matching what "Import Reference Image" already gets for free (since a real image always has a real path, so it was never affected by this gap).
-next_action: Implement the blank-image-data-URI fix in ToastImageEditor.vue, verify live, then request human re-confirmation again (do not mark resolved without a second explicit "confirmed" from the human — the first attempt was not sufficient for this exact reason).
+hypothesis: Bug 3's fix (real white 900x600 blank image as loadImage.path) DID solve the original problem — the canvas is now visible and white, confirmed by human screenshot. But a NEW/related issue (Bug 4) is now visible in that same screenshot: the actual drawable canvas renders as a thin horizontal sliver (visually roughly full-width but only ~20-30px tall) instead of a proper ~900x600 landscape rectangle, even though the underlying PNG bitmap really is 900x600 (confirmed by createBlankImageDataUrl's own code) and the debugger's own CDP self-check claimed the container/canvas elements measured 900x600 via getBoundingClientRect(). This is a real discrepancy between the debugger's automated self-check and the actual rendered page a human sees — the self-check likely measured something that doesn't reflect real on-page layout (e.g. checked inline style/backstore canvas.width/height attributes rather than actual visual CSS-rendered box size, or was run in a different DOM/CSS context than the live /artist/job-orders/1 route). Leading suspects: (a) adjustCanvasDimensionBase() (tui-image-editor.js:58065-58091) sets the fabric canvas's CSS to `width:'100%', height:'100%', max-width:900px, max-height:600px` — if the ACTUAL parent container's rendered CSS height (from our Vue Card/CardContent/Tailwind layout, not from tui-image-editor's own inline styles) is small, `height:100%` resolves to that small value regardless of the 600px max-height cap; (b) a CSS specificity/ordering conflict between Tailwind's preflight/reset and tui-image-editor.css's own layout rules, causing the editor's own explicitly-set inline `height: 600px` on `_editorElement` (from resizeEditor(), confirmed at tui-image-editor.js:47546-47569) to be overridden or never actually take visual effect.
+test: Reproduce on the REAL live page (not an isolated harness) at http://localhost:8000/artist/job-orders/1 exactly as the human did — log in as artist@inkspire.test, click "Start from Blank Canvas" — and this time use getComputedStyle() (not just getBoundingClientRect()/attribute reads) on every ancestor from the fabric canvas element up through .tui-image-editor-wrapper, the Card/CardContent Vue components, and the page body, to find exactly which element's computed height is constraining the visual result. Take an actual screenshot and visually compare proportions to the human's report before declaring this fixed again.
+expecting: One specific ancestor (or a specific tui-image-editor.css rule being overridden by Tailwind, or vice versa) will show a computed height far smaller than expected, pinpointing exactly where the 600px intent is being lost between resizeEditor()'s inline style and what the browser actually paints.
+next_action: Continue debug session with this new evidence — do NOT re-declare "fixed" without an actual screenshot comparison this round, since the previous DOM-measurement-only self-check passed while the real rendered result was visibly wrong.
 reasoning_checkpoint:
   hypothesis: "Bug 1: the explicit `loadImage: undefined` in ToastImageEditor.vue's includeUI options overwrites tui-image-editor's internal default via a hasOwnProperty-based shallow extend(), causing initCanvas() to read `.path` off `undefined` and throw synchronously inside Vue's mounted() hook; because Vue 3.5's flushJobs() calls the uncaught-throw-prone flushPostFlushCbs() before resetting currentFlushPromise in its finally block, this single throw permanently disables Vue's scheduler for the rest of the page's life, which is why unrelated sidebar/breadcrumb nav clicks stop having any visible effect afterward. Bug 2: bootstrap/app.php's $exceptions->respond() only special-cases 403, not 422, so all 22 abort_unless/abort_if(...,422,...) call sites app-wide fall through to a raw debug-page response that Inertia's client then displays via its own non-Inertia-response overlay handling — independent of bug 1."
   confirming_evidence:
@@ -23,6 +23,15 @@ reasoning_checkpoint:
   fix_rationale: "Bug 1's fix supplies the exact value tui-image-editor's own code already treats as 'no image' ({path:'',name:''}) instead of an invalid undefined, addressing the actual malformed-input root cause rather than adding a try/catch around the mount call (which would suppress the symptom without fixing the underlying invalid API usage, and wouldn't be needed at all once the crash itself is prevented). Bug 2's fix extends the exact existing precedent already established for 403 in the same respond() callback, reusing the project's own established flash-toast + redirect-back error convention rather than inventing a new pattern."
   blind_spots: "Have not verified every other tui-image-editor internal code path that might read options.loadImage beyond initCanvas — only that one confirmed crash site was fixed at its source (an always-valid options.loadImage object), which should cover all of them structurally. Have not exhaustively re-tested all 22 abort_unless/abort_if 422 call sites individually after the bootstrap/app.php fix — verified the general mechanism (403 precedent + status-code branch) applies uniformly, and confirmed the reported one (design/start) directly."
 tdd_checkpoint: null
+reasoning_checkpoint_bug3:
+  hypothesis: "tui-image-editor's initCanvas() only calls ui.resizeEditor() — the sole method that sizes the `.tui-image-editor-canvas-container` element — from inside initLoadImage()'s promise .then() callback, which is itself gated behind `if (loadImageInfo.path)`. Passing an empty-string path (bug 1's fix) keeps this falsy, so the container is never sized for the blank-canvas flow. Passing a real (client-generated, white, correctly-dimensioned) data-URI image instead makes `loadImageInfo.path` truthy, driving the exact same initLoadImage -> resizeEditor path the 'Import Reference Image' flow already exercises successfully."
+  confirming_evidence:
+    - "Direct source trace (Evidence 2026-09-03T01:15:00Z): resizeEditor() is called exactly once in the whole library, only from initLoadImage()'s .then(), only reached when loadImageInfo.path is truthy."
+    - "Live CDP reproduction post-fix: `.tui-image-editor-canvas-container` and its `lower-canvas`/`upper-canvas` children all report width=900, height=600 (matching cssMaxWidth/cssMaxHeight) via getBoundingClientRect()/canvas.width/canvas.height, versus the pre-fix state where the container existed but was never sized."
+    - "getImageData() on the lower-canvas center pixel returns [255,255,255,255] (pure white) immediately after mount — a real drawable surface, not empty/transparent/black."
+  falsification_test: "If the container's getBoundingClientRect() still reported 0x0 (or the canvas elements' width/height attributes were still 0) after clicking 'Start from Blank Canvas' with the fix applied, the hypothesis would be wrong. If getImageData() returned all-zero/transparent pixels instead of white, the hypothesis would be wrong (would indicate a sized-but-uninitialized canvas, a different failure mode)."
+  fix_rationale: "Synthesizes a real image (matching the library's own expectation that loadImage.path always points to actual image data) instead of adding a manual resizeEditor()/manual container-sizing workaround that would fight the library's internal state machine (this.options.originalCanvasSize, previous initialImage bookkeeping used by other library methods like undo/redo baseline) and risk diverging from the already-working, already-tested 'Import Reference Image' code path."
+  blind_spots: "Have not verified behavior across every browser engine (only tested in headless Chromium) — canvas.toDataURL('image/png') is broadly supported and used elsewhere in this same codebase's Import Reference Image flow (URL.createObjectURL) so this is a low-risk assumption. Have not tested extremely small viewport / mobile widths where cssMaxWidth/cssMaxHeight scaling behavior might differ, though this mirrors the exact dimensions already used successfully by the non-blank flow."
 
 ## Symptoms
 <!-- Written during gathering, then immutable -->
@@ -92,6 +101,25 @@ started: First occurrence — this is new code from Phase 4 (Artist Workflow & D
   checked: node_modules/tui-image-editor/dist/tui-image-editor.js — initCanvas() (48219-48229), the ImageLoader.load() early-return branch for falsy imageName+img (~50955-50965, calls setCanvasImage('', null) then returns WITHOUT calling adjustCanvasDimension()), and initLoadImage()'s definition (49947-49957, the only call site of ui.resizeEditor()).
   found: resizeEditor() — the method that actually sizes the `.tui-image-editor-canvas-container` element — is called exactly once in the entire library, from inside initLoadImage()'s promise .then(). initCanvas() only invokes initLoadImage() `if (loadImageInfo.path)`. With an empty-string path (bug 1's fix), this condition is false, so initLoadImage/resizeEditor never run. The container element exists in the DOM (confirms the toolbar/chrome renders) but is never given dimensions, so the canvas beneath the toolbar is present but effectively invisible/unusable.
   implication: Confirms bug 3's root cause precisely. tui-image-editor was designed around "always load some image" (even for a blank start) — there is no library-native "just give me an empty, correctly-sized canvas" mode. The standard workaround for this exact library (documented in multiple upstream GitHub issues for the same "blank canvas" use case) is to synthesize a real blank/white image client-side and pass it as loadImage.path, which correctly drives initLoadImage → resizeEditor and gives the user a properly sized, visible, drawable canvas.
+- timestamp: 2026-09-03T02:00:00Z
+  checked: Implemented the fix in resources/js/components/ToastImageEditor.vue — added a `createBlankImageDataUrl(width, height)` helper (offscreen `<canvas>`, filled `#ffffff`, `.toDataURL('image/png')`) and changed the no-initial-image `loadImage` branch to `{ path: createBlankImageDataUrl(CSS_MAX_WIDTH, CSS_MAX_HEIGHT), name: 'blank' }` instead of `{ path: '', name: '' }`. Extracted `cssMaxWidth`/`cssMaxHeight` (900/600) into named `CSS_MAX_WIDTH`/`CSS_MAX_HEIGHT` constants shared by both the data-URI generation and the `includeUI` options so they can never drift out of sync. `npm run types:check` (vue-tsc --noEmit) passed clean; `npx vp check resources/js/components/ToastImageEditor.vue` (format+lint) passed clean.
+  implication: Fix applied per the plan already recorded in Current Focus; ready for live verification.
+- timestamp: 2026-09-03T02:30:00Z
+  checked: Live CDP reproduction against the running dev server (chrome-devtools MCP remote endpoint still unreachable this session — used a locally launched headless Chrome, `google-chrome --headless=new --remote-debugging-port=9333`, driven directly over the DevTools Protocol from a scratch Node script using the platform's native `WebSocket`/`fetch`, same technique as the prior round). Reset job order #1 to `in_consultation` with its `designFile`/`revisionLogs` relations cleared, logged in as artist@inkspire.test, did a fresh full-page load of the Job Order Workspace, clicked "Start from Blank Canvas".
+  found: Zero `Runtime.exceptionThrown` events on mount (same as bug 1's fix). `.tui-image-editor-canvas-container`'s `getBoundingClientRect()` returned `{ width: 900, height: 600 }` (previously would have been 0x0 pre-fix, matching the root-cause trace). Both the `lower-canvas` and `upper-canvas` child `<canvas>` elements report `width=900 height=600` (real bitmap resolution) with `cssWidth/cssHeight: 100%/100%`, confirming `resizeEditor()` ran. `getImageData()` sampled at the canvas center returned `[255, 255, 255, 255]` — genuine opaque white, not black/empty/transparent.
+  implication: The core bug-3 symptom ("blank canva does nothing" / invisible canvas) is fixed — the container and both canvas layers are now correctly sized and the surface is visibly white and ready to draw on, exactly matching the fix's prediction.
+- timestamp: 2026-09-03T02:32:00Z
+  checked: Menu-tool smoke test in the same live session — clicked `.tie-btn-crop` (Crop) and confirmed `.tui-image-editor-submenu` appeared with `.tie-crop-preset-button` elements present; clicked `.tie-btn-draw` (Draw) and confirmed the submenu appeared with Free/Straight/Color/Range controls, already in active "Free" draw mode (tui-image-editor's own `Draw.changeStartMode()` auto-activates free-draw the moment the submenu opens — confirmed via source read after an initial false negative where clicking ".free" a second time was toggling draw mode back OFF, not on). Dispatched a real `mousedown`-on-canvas / `mousemove`+`mouseup`-on-`document` sequence (matching fabric.js's own internal listener re-binding behavior traced in `node_modules/fabric/dist/fabric.js`'s `Canvas._onMouseDown`) to simulate an actual drag-stroke.
+  found: Crop submenu with preset buttons rendered correctly. Draw submenu rendered correctly and was already in active draw mode. After the simulated drag, a full-canvas pixel scan found 1172 non-white pixels forming a stroke (first non-white pixel at (408,293), color `[223,244,255,255]`, a light-blue antialiased edge matching the submenu's default blue color swatch), and the exact drag-endpoint center pixel read `[76,195,255,255]` (solid stroke color) — confirming a real stroke was drawn onto the canvas bitmap, not just a UI-only interaction.
+  implication: Existing menu tools (crop, draw) still function correctly against the newly-fixed, properly-sized canvas — no regression from the blank-image-data-URI change. (The one investigative wrong turn — redundantly re-clicking "Free" and toggling draw mode off — was self-corrected via source trace before drawing the final conclusion; documented here per the eliminated-hypothesis discipline even though it wasn't a formal Eliminated-section hypothesis about the bug itself, just about test methodology.)
+- timestamp: 2026-09-03T02:33:00Z
+  checked: Full "Send for Review" flow in the same live session — clicked `[data-test="send-for-review-button"]`, which calls `editorRef.value.exportPng()` (returns a base64 PNG data URI), converts it to a `Blob`/`File`, and POSTs it via Inertia's form helper to `artist/job-orders/1/design/send-for-review`.
+  found: Network trace captured a `POST http://localhost:8000/artist/job-orders/1/design/send-for-review` request with `hasPostData: true` (the multipart file upload). Post-submit page state showed the flashed toast "Sent for review. Waiting on the client's verdict.", the Design card switched to "Waiting on the client's verdict.", and a new revision log row appeared ("9/3/2026, 2:32:49 AM — Pending") in the Review card's history — all consistent with a genuinely successful, server-accepted upload (a corrupt/invalid PNG or empty canvas export would not have passed the controller's file validation and produced this response).
+  implication: `exportPng()` still produces a valid flattened PNG accepted by the send-for-review endpoint — no regression in the export path from the blank-canvas fix. All four items from the task's live-verification checklist are confirmed.
+- timestamp: 2026-09-03T03:00:00Z
+  checked: Human re-verification in the real dev environment (screenshot) of the bug-3 fix on the live /artist/job-orders/1 page.
+  found: The canvas IS now visible and white (bug 3's core symptom is genuinely fixed — confirms the loadImage-data-URI approach was directionally correct). But the drawable canvas area renders as a thin horizontal sliver — visually near-full-width but only roughly 20-30px tall — not a proper ~900x600 (or even reasonably-proportioned) landscape rectangle. The outer editor chrome box (toolbar top to bottom menu icons) also looks visually shorter than the configured 600px. Human quote: "the design height is little. How are we supposed to edit on it?"
+  implication: A real, new discrepancy between the prior round's self-verification (which claimed `.tui-image-editor-canvas-container`/`lower-canvas`/`upper-canvas` all measured 900x600 via getBoundingClientRect()) and what a human actually sees on the same route. Either that check measured the wrong thing (e.g. inline style/backstore pixel attributes rather than true rendered CSS box size), ran against a different DOM/CSS context than the real page, or there's viewport/timing sensitivity the scripted repro didn't hit. This needs a fresh live check on the exact real route with getComputedStyle() on the full ancestor chain plus an actual screenshot — not just element measurements — before declaring fixed again.
 
 ## Resolution
 <!-- OVERWRITE as understanding evolves -->
@@ -142,6 +170,21 @@ root_cause: |
   Blank Canvas" click (confirmed live: `php artisan tinker` showed job order #1 at
   status=in_design with empty file_path before this session reset it back to
   in_consultation for a clean repro).
+
+  BUG 3 (confirmed independent, exposed by bug 1's fix but not caused by a
+  mistake in it): tui-image-editor's `initCanvas()` (tui-image-editor.js:48219)
+  only calls `ui.resizeEditor()` — the sole method in the library that sizes
+  the `.tui-image-editor-canvas-container` element — from inside
+  `initLoadImage()`'s promise `.then()` callback (tui-image-editor.js:49947),
+  itself gated behind `if (loadImageInfo.path)` (tui-image-editor.js:48224).
+  Bug 1's fix correctly changed the "no image" value from `undefined` (crash)
+  to `{ path: '', name: '' }` (no crash), but an empty string `path` is still
+  falsy, so `initLoadImage`/`resizeEditor` never ran for the blank-canvas
+  case — the editor's toolbar/menu chrome rendered but the canvas container
+  itself was never sized, leaving it present in the DOM but invisible/unusable
+  ("Blank canva does nothing"). tui-image-editor has no library-native
+  "blank canvas, no image" mode; it always expects a real image (even if
+  blank/white) to load and size against.
 fix: |
   BUG 1: resources/js/components/ToastImageEditor.vue — changed the `loadImage`
   option's "no initial image" branch from `undefined` to `{ path: '', name: '' }`,
@@ -157,6 +200,18 @@ fix: |
   page the user was on, instead of falling through to the raw debug-page response.
   Kept scoped to 422 (not broadening to 500/other codes) so real unexpected server
   errors still surface their full trace via Inertia's dev-mode error overlay.
+
+  BUG 3: resources/js/components/ToastImageEditor.vue — added a
+  `createBlankImageDataUrl(width, height)` helper that draws a filled-white
+  offscreen `<canvas>` and exports it via `.toDataURL('image/png')`. The
+  no-initial-image `loadImage` branch now passes
+  `{ path: createBlankImageDataUrl(CSS_MAX_WIDTH, CSS_MAX_HEIGHT), name: 'blank' }`
+  instead of `{ path: '', name: '' }`. `CSS_MAX_WIDTH`/`CSS_MAX_HEIGHT` (900/600)
+  were extracted into named constants shared by both the data-URI generation
+  and the `includeUI.cssMaxWidth`/`cssMaxHeight` options so the synthesized
+  blank image always matches the editor's configured display size. This makes
+  `loadImageInfo.path` truthy, driving `initLoadImage()` -> `resizeEditor()`
+  exactly like the already-working "Import Reference Image" path.
 verification: |
   Self-verified via live CDP reproduction against the running dev server (no
   chrome-devtools MCP tools were available in this session; used a locally
@@ -190,7 +245,35 @@ verification: |
   the same and other controllers still pass unaffected, since the new
   bootstrap/app.php branch is scoped to requests carrying the X-Inertia header).
 
-  Pending: human confirmation in the real dev environment before archiving.
+  BUG 3: reset job order #1 to in_consultation with its designFile/revisionLogs
+  relations cleared, live CDP repro against the running dev server (local
+  headless Chrome driven directly over CDP, no MCP tools available this
+  session either). Clicked "Start from Blank Canvas" — zero
+  Runtime.exceptionThrown events; `.tui-image-editor-canvas-container`
+  and both its `lower-canvas`/`upper-canvas` children reported
+  `width=900 height=600` (matching cssMaxWidth/cssMaxHeight, previously
+  0x0); `getImageData()` at the canvas center returned `[255,255,255,255]`
+  (genuine opaque white). Exercised Crop (submenu + presets render) and
+  Draw (submenu renders, active free-draw mode by default, a real
+  simulated pointer drag-stroke dispatched via native `mousedown`
+  on-canvas/`mousemove`+`mouseup`-on-`document` — matching fabric.js's own
+  internal listener rebinding — produced 1172 non-white pixels on the
+  canvas bitmap, confirming an actual stroke was drawn, not just a UI
+  state change). Ran the full "Send for Review" flow — `exportPng()` ->
+  file upload POST to `design/send-for-review` succeeded (200, flashed
+  "Sent for review" toast, new revision log row appeared) — confirming
+  the export path still produces a valid, server-accepted flattened PNG.
+
+  `npm run types:check` (vue-tsc) passed. `npx vp check` (format+lint)
+  passed clean on the modified file (a pre-existing, unrelated failure in
+  the repo-wide `npm run check` comes from an untracked `demo/index.html`
+  file, not from this change). `php artisan test --compact --filter=Artist`
+  passed 57/57 both before and after the bug 3 fix — no regressions.
+
+  Pending: human confirmation in the real dev environment before archiving
+  (this is the second such pending confirmation in this session — bugs 1/2
+  were already confirmed once by the human; bug 3 has not yet been shown
+  to the human at all).
 files_changed:
   - resources/js/components/ToastImageEditor.vue
   - bootstrap/app.php
