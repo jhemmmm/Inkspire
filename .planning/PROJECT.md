@@ -21,14 +21,14 @@ A job order flows correctly end-to-end — a customer queues in, gets a job orde
 - ✓ Read-only, append-only audit trail covering every mutating action and all auth events (login/logout/failed attempts/lockouts) — structurally undeletable/uneditable by anyone including Owner — Validated in Phase 1: foundation-rbac-auth-hardening-audit-trail
 - ✓ Login hardening: lockout after 5 failed attempts, one active session per user, configurable session timeout, password complexity rules — Validated in Phase 1: foundation-rbac-auth-hardening-audit-trail
 - ✓ System configuration panel (Owner/Admin): rush fee %, DPI thresholds, accepted file formats/max size, per-product SLA, max artist break duration, file retention settings, expense categories, session timeout — Validated in Phase 1: foundation-rbac-auth-hardening-audit-trail
+- ✓ Job Order intake: Type A auto-validated by DPI/format/size against configurable `SystemConfiguration` thresholds; Type B auto-assigns to an available Artist via locked oldest-or-null round-robin, no manual assignment step — Validated in Phase 3: job-order-intake-auto-assignment
 
 ### Active
 
 - [ ] Public unauthenticated QR-based job order tracking portal (enter JO number, see status only)
 - [ ] Customer registration and queue management (search returning customers, register new, generate queue numbers)
 - [ ] Public, unauthenticated shared queue display (queue number + status only, no PII) for lobby/TV use, polling-refreshed
-- [ ] Job Order intake: Type A (print-ready file, auto-validated by DPI/format/size against configurable thresholds) and Type B (needs consultation)
-- [ ] Artist workflow: auto-assignment of job orders (both Type A and Type B), consultation notes, TOAST UI Image Editor-based design tool, revision logging, design lock on final approval with Owner-only override
+- [ ] Artist workflow: consultation notes, TOAST UI Image Editor-based design tool, revision logging, design lock on final approval with Owner-only override
 - [ ] POS module: pricing computation from a pricing database, payment processing (Cash, GCash, Maya via PayMongo, Bank Transfer), down payments/balance tracking, digital receipts, cancellation fee collection — every POS transaction requires a linked job order, no standalone sales
 - [ ] PayMongo webhook-confirmed payment flow for GCash/Maya (Payment Intent/Source creation, signature-verified webhook as source of truth, manual reconciliation fallback for delayed/lost webhooks)
 - [ ] On-Credit payment path requiring Owner approval before activation, posting to accounts receivable
@@ -96,4 +96,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-01 after Phase 1 (foundation-rbac-auth-hardening-audit-trail) completion*
+*Last updated: 2026-09-02 after Phase 3 (job-order-intake-auto-assignment) completion*
