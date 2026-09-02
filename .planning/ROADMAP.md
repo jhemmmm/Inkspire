@@ -143,7 +143,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — Consultation Notes & Artist Queue Controls — Backend (JOB-03, JOB-09)
+- [x] 04-01-PLAN.md — Consultation Notes & Artist Queue Controls — Backend (JOB-03, JOB-09)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -244,7 +244,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Foundation — RBAC, Auth Hardening & Audit Trail | 12/12 | Complete    | 2026-09-01 |
 | 2. Customer & Queue Management | 5/5 | Complete   | 2026-09-01 |
 | 3. Job Order Intake & Auto-Assignment | 2/2 | Complete    | 2026-09-02 |
-| 4. Artist Workflow & Design Editor | 0/10 | Not started | - |
+| 4. Artist Workflow & Design Editor | 1/10 | In Progress|  |
 | 5. POS & Payments | 0/TBD | Not started | - |
 | 6. Production Monitoring & Public Tracking | 0/TBD | Not started | - |
 | 7. Accounts Receivable | 0/TBD | Not started | - |
