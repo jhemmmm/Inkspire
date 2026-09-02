@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Artist\JobOrderQueueController;
 use App\Http\Controllers\Artist\JobOrderWorkspaceController;
 use App\Http\Controllers\FrontlineStaff\CustomerController;
 use App\Http\Controllers\FrontlineStaff\JobOrderController;
@@ -19,9 +20,12 @@ Route::middleware(['auth', 'role:frontline_staff'])->prefix('frontline-staff')->
 });
 
 Route::middleware(['auth', 'role:artist'])->prefix('artist')->name('artist.')->group(function () {
-    Route::inertia('dashboard', 'artist/Dashboard')->name('dashboard');
+    Route::get('dashboard', [JobOrderQueueController::class, 'index'])->name('dashboard');
     Route::get('job-orders/{jobOrder}', [JobOrderWorkspaceController::class, 'show'])->name('job-orders.show');
     Route::patch('job-orders/{jobOrder}/consultation', [JobOrderWorkspaceController::class, 'updateConsultation'])->name('job-orders.consultation.update');
+    Route::patch('job-orders/{jobOrder}/next', [JobOrderQueueController::class, 'next'])->name('job-orders.next');
+    Route::patch('job-orders/{jobOrder}/forward', [JobOrderQueueController::class, 'forward'])->name('job-orders.forward');
+    Route::patch('job-orders/{jobOrder}/not-appear', [JobOrderQueueController::class, 'notAppear'])->name('job-orders.not-appear');
 });
 
 Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')->group(function () {
