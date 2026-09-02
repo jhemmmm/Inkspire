@@ -22,10 +22,13 @@ use Illuminate\Support\Carbon;
  * @property string|null $file_path
  * @property int|null $assigned_artist_id
  * @property string|null $validation_failure_reason
+ * @property string|null $consultation_notes
+ * @property Carbon|null $queue_deprioritized_at
+ * @property bool $not_appeared
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['queue_entry_id', 'description', 'type', 'status', 'file_path'])]
+#[Fillable(['queue_entry_id', 'description', 'type', 'status', 'file_path', 'consultation_notes'])]
 #[ObservedBy(AuditObserver::class)]
 class JobOrder extends Model
 {
@@ -42,6 +45,8 @@ class JobOrder extends Model
         return [
             'type' => JobOrderType::class,
             'status' => JobOrderStatus::class,
+            'queue_deprioritized_at' => 'datetime',
+            'not_appeared' => 'boolean',
         ];
     }
 
