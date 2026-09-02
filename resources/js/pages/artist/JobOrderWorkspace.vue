@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, setLayoutProps } from '@inertiajs/vue3';
 import JobOrderWorkspaceController from '@/actions/App/Http/Controllers/Artist/JobOrderWorkspaceController';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -22,17 +22,20 @@ const props = defineProps<{
 defineOptions({
     layout: {
         navItems: artistNavItems,
-        breadcrumbs: [
-            {
-                title: 'Dashboard',
-                href: dashboard(),
-            },
-            {
-                title: props.jobOrder.description,
-                href: show(props.jobOrder.id),
-            },
-        ],
     },
+});
+
+setLayoutProps({
+    breadcrumbs: [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+        },
+        {
+            title: props.jobOrder.description,
+            href: show(props.jobOrder.id),
+        },
+    ],
 });
 </script>
 
