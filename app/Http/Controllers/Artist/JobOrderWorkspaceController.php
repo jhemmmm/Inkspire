@@ -22,7 +22,7 @@ class JobOrderWorkspaceController extends Controller
     {
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
 
-        $jobOrder->loadMissing('designFile');
+        $jobOrder->loadMissing(['designFile', 'revisionLogs' => fn ($query) => $query->latest('submitted_at')]);
 
         return Inertia::render('artist/JobOrderWorkspace', [
             'jobOrder' => [
@@ -37,6 +37,15 @@ class JobOrderWorkspaceController extends Controller
                     ? Storage::disk('local')->temporaryUrl($jobOrder->designFile->file_path, now()->addMinutes(10))
                     : null,
                 'canEdit' => $jobOrder->status !== JobOrderStatus::Assigned && optional($jobOrder->designFile)->locked_at === null,
+            ],
+            'review' => [
+                'canRecordVerdict' => $jobOrder->status === JobOrderStatus::PendingReview,
+                'revisionLogs' => $jobOrder->revisionLogs->map(fn ($log) => [
+                    'id' => $log->id,
+                    'submitted_at' => $log->submitted_at,
+                    'outcome' => $log->outcome,
+                    'reviewed_at' => $log->reviewed_at,
+                ])->values(),
             ],
         ]);
     }
