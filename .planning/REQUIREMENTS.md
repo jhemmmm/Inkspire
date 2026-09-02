@@ -36,7 +36,7 @@
 - [x] **JOB-07**: Owner can authorize an override to unlock a locked design file; the override is written to the audit trail
 - [x] **JOB-08**: Artist can set session status (On Break, End Shift), which affects eligibility for auto-assignment
 - [x] **JOB-09**: Artist can view their own assigned job orders and use Next/Forward/Not-Appear queue controls
-- [ ] **JOB-10**: Artist can view their own performance metrics report
+- [x] **JOB-10**: Artist can view their own performance metrics report
 
 ### POS & Payments
 
