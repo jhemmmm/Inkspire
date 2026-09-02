@@ -139,7 +139,33 @@ Plans:
   3. A design file becomes read-only once its job order reaches final approval, and only Owner can authorize an audited override to unlock it
   4. Artist can set session status (On Break, End Shift) which affects auto-assignment eligibility, view their own assigned job orders with Next/Forward/Not-Appear queue controls, and view their own performance metrics report
 
-**Plans**: TBD
+**Plans**: 10 plans in 5 waves
+Plans:
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Consultation Notes & Artist Queue Controls — Backend (JOB-03, JOB-09)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-02-PLAN.md — Consultation Notes & Artist Queue Controls — Frontend Wiring (JOB-03, JOB-09 completion)
+- [ ] 04-03-PLAN.md — Design Editor & Send for Review — Backend (JOB-04, JOB-05)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04-04-PLAN.md — Design Editor & Send for Review — Frontend Wiring (JOB-04, JOB-05 completion)
+- [ ] 04-05-PLAN.md — Design Review, Lock & Owner Override — Backend (JOB-06, JOB-07)
+- [ ] 04-07-PLAN.md — Artist Session Status — Backend (JOB-08)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 04-06-PLAN.md — Design Review, Lock & Owner Override — Frontend Wiring (JOB-06, JOB-07 completion)
+- [ ] 04-09-PLAN.md — Artist Performance Report — Backend (JOB-10)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 04-08-PLAN.md — Artist Session Status — Frontend Wiring (JOB-08 completion)
+- [ ] 04-10-PLAN.md — Artist Performance Report — Frontend Wiring (JOB-10 completion)
+
 **UI hint**: yes
 
 ### Phase 5: POS & Payments
@@ -215,7 +241,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Foundation — RBAC, Auth Hardening & Audit Trail | 12/12 | Complete    | 2026-09-01 |
 | 2. Customer & Queue Management | 5/5 | Complete   | 2026-09-01 |
 | 3. Job Order Intake & Auto-Assignment | 2/2 | Complete    | 2026-09-02 |
-| 4. Artist Workflow & Design Editor | 0/TBD | Not started | - |
+| 4. Artist Workflow & Design Editor | 0/10 | Not started | - |
 | 5. POS & Payments | 0/TBD | Not started | - |
 | 6. Production Monitoring & Public Tracking | 0/TBD | Not started | - |
 | 7. Accounts Receivable | 0/TBD | Not started | - |
