@@ -31,6 +31,13 @@ export default defineConfig({
             formVariants: true,
         }),
     ]),
+    css: {
+        // tui-color-picker's CSS uses old IE star-property hacks (*zoom, *display)
+        // that LightningCSS can't parse; strip them instead of failing the build.
+        lightningcss: {
+            errorRecovery: true,
+        },
+    },
     server: {
         watch: {
             ignored: [
