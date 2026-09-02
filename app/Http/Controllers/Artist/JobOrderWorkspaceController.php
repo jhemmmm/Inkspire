@@ -8,6 +8,7 @@ use App\Http\Requests\Artist\UpdateConsultationNotesRequest;
 use App\Models\JobOrder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,6 +22,8 @@ class JobOrderWorkspaceController extends Controller
     {
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
 
+        $jobOrder->loadMissing('designFile');
+
         return Inertia::render('artist/JobOrderWorkspace', [
             'jobOrder' => [
                 'id' => $jobOrder->id,
@@ -28,6 +31,12 @@ class JobOrderWorkspaceController extends Controller
                 'status' => $jobOrder->status->value,
                 'consultation_notes' => $jobOrder->consultation_notes,
                 'canEditConsultation' => $jobOrder->status === JobOrderStatus::InConsultation,
+            ],
+            'design' => [
+                'initialImageUrl' => $jobOrder->designFile?->file_path
+                    ? Storage::disk('local')->temporaryUrl($jobOrder->designFile->file_path, now()->addMinutes(10))
+                    : null,
+                'canEdit' => $jobOrder->status !== JobOrderStatus::Assigned && optional($jobOrder->designFile)->locked_at === null,
             ],
         ]);
     }

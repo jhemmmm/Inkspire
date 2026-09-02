@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -68,5 +70,25 @@ class JobOrder extends Model
     public function assignedArtist(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_artist_id');
+    }
+
+    /**
+     * This job order's single current design file, if any (D-08).
+     *
+     * @return HasOne<DesignFile, $this>
+     */
+    public function designFile(): HasOne
+    {
+        return $this->hasOne(DesignFile::class);
+    }
+
+    /**
+     * This job order's full Send for Review history (D-07/D-08).
+     *
+     * @return HasMany<RevisionLog, $this>
+     */
+    public function revisionLogs(): HasMany
+    {
+        return $this->hasMany(RevisionLog::class);
     }
 }
