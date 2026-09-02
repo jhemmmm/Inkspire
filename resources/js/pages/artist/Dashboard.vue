@@ -125,9 +125,7 @@ function statusLabel(status: string): string {
                                     :variant="
                                         statusBadgeVariant(jobOrder.status)
                                     "
-                                    :class="
-                                        statusBadgeClass(jobOrder.status)
-                                    "
+                                    :class="statusBadgeClass(jobOrder.status)"
                                 >
                                     {{ statusLabel(jobOrder.status) }}
                                 </Badge>

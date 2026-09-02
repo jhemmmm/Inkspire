@@ -254,9 +254,9 @@ function outcomeLabel(outcome: string | null): string {
                                         Approve this design?
                                     </AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        Once approved, this design file
-                                        becomes read-only. Only an Owner can
-                                        unlock it for further edits.
+                                        Once approved, this design file becomes
+                                        read-only. Only an Owner can unlock it
+                                        for further edits.
                                     </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -308,7 +308,7 @@ function outcomeLabel(outcome: string | null): string {
                         <p
                             v-for="log in review.revisionLogs"
                             :key="log.id"
-                            class="text-sm text-muted-foreground"
+                            class="text-muted-foreground text-sm"
                         >
                             {{ new Date(log.submitted_at).toLocaleString() }}
                             — {{ outcomeLabel(log.outcome) }}
