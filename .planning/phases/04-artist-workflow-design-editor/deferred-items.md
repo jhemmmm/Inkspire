@@ -29,3 +29,36 @@ auto-fixed per the Scope Boundary rule (out-of-scope, environment-level).
 **Suggested follow-up:** Verify this same command on a real dev machine / CI runner (outside this
 sandboxed worktree) before treating it as a real blocker. If it reproduces there too, investigate
 downgrading/reinstalling `phpstan/phpstan` without the turbo-ext, or pin a compatible version.
+
+## 04-07: Pre-existing Larastan errors in unrelated files (Phase 3 origin)
+
+**Discovered during:** Plan 04-07, full-repo `phpstan analyse` verification pass (not required by
+this plan's own `<verification>` block, run as an extra precaution).
+
+**Symptom:**
+```
+app/Http/Controllers/FrontlineStaff/QueueEntryController.php:181
+  Match expression does not handle remaining values: App\Enums\JobOrderStatus::DesignApproved|
+  InConsultation|InDesign|PendingReview
+
+app/Http/Requests/Owner/UpdateSystemConfigurationRequest.php:20
+  Access to an undefined property (object|string)::$type.
+```
+
+**Analysis:** Both files were last modified by Phase 2/3 commits (`0f658f8`, `a0c5e8d`, `57ac8fb`)
+— none of which are touched by this plan's `files_modified` list (`ArtistStatus.php`, the
+`artist_status`/`break_started_at` migration, `User.php`, `SetArtistSessionStatus.php`,
+`SessionStatusController.php`, `UpdateSessionStatusRequest.php`, `portals.php`,
+`JobOrderQueueController.php`, `UserManagementController.php`). The `QueueEntryController.php`
+match-expression gap predates this plan (it never handled the `InConsultation`/`InDesign`/
+`PendingReview`/`DesignApproved` cases Phase 4's earlier plans (04-01 through 04-06) already added
+to `JobOrderStatus`), and `UpdateSystemConfigurationRequest.php`'s property-access issue is
+unrelated to artist session status entirely.
+
+**Scope:** Out of scope per the Scope Boundary rule — pre-existing, in files this plan does not
+modify. Plan 04-07's own `<verification>` block (`Artist`, `UserManagementTest`,
+`AssignArtistToJobOrderTest` filters) passes cleanly with zero regressions. Not auto-fixed.
+
+**Suggested follow-up:** A future Phase 4 plan (or a dedicated cleanup pass) should add the missing
+`match` arms in `QueueEntryController.php` and investigate the `UpdateSystemConfigurationRequest.php`
+property-access type gap.
