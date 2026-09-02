@@ -40,7 +40,7 @@ defineOptions({
 });
 
 function statusBadgeVariant(status: string): 'default' | 'secondary' {
-    if (status === 'in_consultation') {
+    if (status === 'in_consultation' || status === 'in_design') {
         return 'secondary';
     }
 
@@ -50,6 +50,14 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' {
 function statusLabel(status: string): string {
     if (status === 'in_consultation') {
         return 'In Consultation';
+    }
+
+    if (status === 'in_design') {
+        return 'In Design';
+    }
+
+    if (status === 'pending_review') {
+        return 'Pending Review';
     }
 
     return 'Assigned';
@@ -133,7 +141,8 @@ function statusLabel(status: string): string {
                                 </Form>
                                 <template
                                     v-else-if="
-                                        jobOrder.status === 'in_consultation'
+                                        jobOrder.status === 'in_consultation' ||
+                                        jobOrder.status === 'in_design'
                                     "
                                 >
                                     <Form
@@ -181,6 +190,17 @@ function statusLabel(status: string): string {
                                         </Button>
                                     </Link>
                                 </template>
+                                <Link
+                                    v-else-if="
+                                        jobOrder.status === 'pending_review'
+                                    "
+                                    :href="show(jobOrder.id).url"
+                                    :data-test="`continue-${jobOrder.id}-link`"
+                                >
+                                    <Button type="button" variant="ghost">
+                                        Continue
+                                    </Button>
+                                </Link>
                             </div>
                         </TableCell>
                     </TableRow>
