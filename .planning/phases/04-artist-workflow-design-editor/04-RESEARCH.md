@@ -563,22 +563,25 @@ public function __invoke(JobOrder $jobOrder, UploadedFile $file): void
 
 **If this table is empty:** N/A — see A1 above for the one assumption that genuinely needs user/planner confirmation before locking into a plan.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact mechanism for Forward/Not-Appear ordering (ties to Assumption A2)**
    - What we know: D-04 locks the *behavior* (no reassignment, "Next" = oldest `Assigned`, Not-Appear deprioritizes but stays resumable). CONTEXT.md explicitly leaves the *data shape* to Claude's discretion.
    - What's unclear: Whether to model this as a new `JobOrderStatus::NotAppeared` case (D-03's literal "extends the enum" framing) or as a boolean/timestamp flag alongside the existing status (simpler, avoids treating "not appeared" as a lifecycle stage it isn't).
    - Recommendation: Lean toward the flag/timestamp approach (Pitfall 6) — a `JobOrderStatus::NotAppeared` case would need its own transition rules back into `InConsultation`/`Assigned`, effectively duplicating state that the flag approach handles with one extra `WHERE` clause. Either way, this should be an explicit planner decision, not silently picked during implementation.
+   - **(RESOLVED)** Planner adopted the flag/timestamp approach: 04-01-PLAN.md Task 1 adds `job_orders.queue_deprioritized_at` (nullable timestamp) and `job_orders.not_appeared` (boolean, default false); Task 3's `oldestEligibleId()`/`next()`/`forward()`/`notAppear()` implement the ordering and resumability behavior.
 
 2. **`design_files`/`revision_logs` exact column list**
    - What we know: `design_files` needs at minimum `job_order_id`, `file_path`, and (per JOB-06/07) a lock indicator (`locked_at` timestamp, or infer lock purely from `job_orders.status === DesignApproved` with no dedicated column). `revision_logs` needs at minimum `job_order_id`, a submission timestamp, and (per D-05/D-06) an outcome field (approved / changes-requested / pending) plus whatever "what changed" notes JOB-05's wording implies.
    - What's unclear: Whether `locked_at` should live on `design_files` (allowing a design to be locked independent of job-order status, e.g. for the Owner override to be reversible without also reverting the job order's status) or be purely derived from `job_orders.status`.
    - Recommendation: A dedicated `design_files.locked_at` (nullable timestamp) is safer — it lets JOB-07's unlock override clear *just* the lock without forcing a job-order status rollback, which better matches "Owner can authorize an override to unlock a locked design file" (the requirement talks about unlocking the *file*, not reopening the job order's review cycle). This is Claude's discretion per CONTEXT.md; flagging the reasoning for the planner to confirm or override.
+   - **(RESOLVED)** Planner adopted the dedicated-column recommendation: 04-03-PLAN.md Task 1 adds `design_files.locked_at` (nullable timestamp, set only via `forceFill()`), and Task 2's `sendForReview`/Plan 04-05's `unlock` guards key exclusively off it, never off `job_orders.status`.
 
 3. **CSS import order/scope for the TOAST UI wrapper**
    - What we know: Both `tui-color-picker.css` and `tui-image-editor.css` must be imported somewhere for the editor to render correctly (Pitfall 3).
    - What's unclear: Whether to import them globally (`resources/css/app.css`) or scoped to the `ToastImageEditor.vue` component's `<script setup>` (shown in Code Examples). Given this is the *only* page using the editor, component-scoped `import` statements (as shown) avoid shipping ~100KB of unused CSS to every other page — but this should be confirmed against the project's actual CSS-splitting behavior under Vite 8 during the Wave-0 spike.
    - Recommendation: Component-scoped imports (as shown in Pattern 4), verified during the spike task.
+   - **(RESOLVED)** Planner adopted component-scoped imports: 04-04-PLAN.md Task 1 imports `tui-color-picker/dist/tui-color-picker.css` then `tui-image-editor/dist/tui-image-editor.css` directly inside `ToastImageEditor.vue`'s `<script setup>`, verified by the Wave-0 spike's `npm run types:check` pass.
 
 ## Environment Availability
 
