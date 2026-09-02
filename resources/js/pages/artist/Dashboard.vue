@@ -39,12 +39,26 @@ defineOptions({
     },
 });
 
-function statusBadgeVariant(status: string): 'default' | 'secondary' {
+function statusBadgeVariant(
+    status: string,
+): 'default' | 'secondary' | undefined {
     if (status === 'in_consultation' || status === 'in_design') {
         return 'secondary';
     }
 
+    if (status === 'design_approved') {
+        return undefined;
+    }
+
     return 'default';
+}
+
+function statusBadgeClass(status: string): string {
+    if (status === 'design_approved') {
+        return 'text-green-600 dark:text-green-400';
+    }
+
+    return '';
 }
 
 function statusLabel(status: string): string {
@@ -58,6 +72,10 @@ function statusLabel(status: string): string {
 
     if (status === 'pending_review') {
         return 'Pending Review';
+    }
+
+    if (status === 'design_approved') {
+        return 'Design Approved';
     }
 
     return 'Assigned';
@@ -107,6 +125,7 @@ function statusLabel(status: string): string {
                                     :variant="
                                         statusBadgeVariant(jobOrder.status)
                                     "
+                                    :class="statusBadgeClass(jobOrder.status)"
                                 >
                                     {{ statusLabel(jobOrder.status) }}
                                 </Badge>
@@ -199,6 +218,17 @@ function statusLabel(status: string): string {
                                 >
                                     <Button type="button" variant="ghost">
                                         Continue
+                                    </Button>
+                                </Link>
+                                <Link
+                                    v-else-if="
+                                        jobOrder.status === 'design_approved'
+                                    "
+                                    :href="show(jobOrder.id).url"
+                                    :data-test="`view-${jobOrder.id}-link`"
+                                >
+                                    <Button type="button" variant="ghost">
+                                        View
                                     </Button>
                                 </Link>
                             </div>

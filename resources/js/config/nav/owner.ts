@@ -1,6 +1,7 @@
-import { LayoutGrid, ScrollText, Settings, Users } from '@lucide/vue';
+import { LayoutGrid, ScrollText, Settings, Unlock, Users } from '@lucide/vue';
 import { dashboard } from '@/routes/owner';
 import { index as auditTrailIndex } from '@/routes/owner/audit-trail';
+import { index as designOverridesIndex } from '@/routes/owner/design-overrides';
 import { edit as systemConfigurationEditRoute } from '@/routes/owner/system-configuration';
 import { index as usersIndex } from '@/routes/owner/users';
 import type { NavItem } from '@/types';
@@ -25,5 +26,10 @@ export const ownerNavItems: NavItem[] = [
         title: 'System Configuration',
         href: systemConfigurationEditRoute(),
         icon: Settings,
+    },
+    {
+        title: 'Design Overrides',
+        href: designOverridesIndex(),
+        icon: Unlock,
     },
 ];
