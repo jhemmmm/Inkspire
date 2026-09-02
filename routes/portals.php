@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Artist\JobOrderWorkspaceController;
 use App\Http\Controllers\FrontlineStaff\CustomerController;
 use App\Http\Controllers\FrontlineStaff\JobOrderController;
 use App\Http\Controllers\FrontlineStaff\QueueEntryController;
@@ -19,6 +20,8 @@ Route::middleware(['auth', 'role:frontline_staff'])->prefix('frontline-staff')->
 
 Route::middleware(['auth', 'role:artist'])->prefix('artist')->name('artist.')->group(function () {
     Route::inertia('dashboard', 'artist/Dashboard')->name('dashboard');
+    Route::get('job-orders/{jobOrder}', [JobOrderWorkspaceController::class, 'show'])->name('job-orders.show');
+    Route::patch('job-orders/{jobOrder}/consultation', [JobOrderWorkspaceController::class, 'updateConsultation'])->name('job-orders.consultation.update');
 });
 
 Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')->group(function () {
