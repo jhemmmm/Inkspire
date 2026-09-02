@@ -92,4 +92,32 @@ class JobOrderFactory extends Factory
             ])->save();
         });
     }
+
+    /**
+     * Indicate that this job order has been auto-assigned to a specific,
+     * already-known artist.
+     *
+     * Distinct from assigned() (which creates its own random artist) —
+     * this state exists for tests that need to act as a specific artist.
+     * Uses afterCreating() rather than state() because assigned_artist_id is
+     * outside JobOrder's #[Fillable] list and would be silently dropped by a
+     * state()-merged create() call.
+     *
+     * Defaults status to Assigned only when the caller didn't already
+     * override it via a create(['status' => ...]) array — that array is
+     * applied to definition() before this afterCreating() hook runs, so a
+     * caller-supplied status (e.g. 'in_consultation') is respected instead
+     * of being clobbered.
+     */
+    public function assignedTo(User $artist): static
+    {
+        return $this->afterCreating(function (JobOrder $jobOrder) use ($artist) {
+            $jobOrder->forceFill([
+                'status' => $jobOrder->status === JobOrderStatus::Intake
+                    ? JobOrderStatus::Assigned->value
+                    : $jobOrder->status,
+                'assigned_artist_id' => $artist->id,
+            ])->save();
+        });
+    }
 }
