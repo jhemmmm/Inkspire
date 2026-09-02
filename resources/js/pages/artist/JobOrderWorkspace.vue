@@ -1,9 +1,20 @@
 <script setup lang="ts">
 import { Form, Head, router, setLayoutProps, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import DesignEditorController from '@/actions/App/Http/Controllers/Artist/DesignEditorController';
 import JobOrderWorkspaceController from '@/actions/App/Http/Controllers/Artist/JobOrderWorkspaceController';
 import InputError from '@/components/InputError.vue';
 import ToastImageEditor from '@/components/ToastImageEditor.vue';
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +37,15 @@ const props = defineProps<{
     design: {
         initialImageUrl: string | null;
         canEdit: boolean;
+    };
+    review: {
+        canRecordVerdict: boolean;
+        revisionLogs: {
+            id: number;
+            submitted_at: string;
+            outcome: string | null;
+            reviewed_at: string | null;
+        }[];
     };
 }>();
 
@@ -55,6 +75,10 @@ const started = ref(props.design.initialImageUrl !== null);
 const editorInitialUrl = computed(
     () => props.design.initialImageUrl ?? referenceImageUrl.value,
 );
+// Single source of truth for the "waiting on the client's verdict" note —
+// mirrors review.canRecordVerdict, the same server-computed flag that gates
+// the Review card below.
+const isPendingReview = computed(() => props.review.canRecordVerdict);
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const editorRef = ref<InstanceType<typeof ToastImageEditor> | null>(null);
@@ -89,6 +113,18 @@ async function sendForReview(): Promise<void> {
         forceFormData: true,
         preserveScroll: true,
     });
+}
+
+function outcomeLabel(outcome: string | null): string {
+    if (outcome === 'approved') {
+        return 'Approved';
+    }
+
+    if (outcome === 'changes_requested') {
+        return 'Changes Requested';
+    }
+
+    return 'Pending';
 }
 </script>
 
@@ -145,7 +181,7 @@ async function sendForReview(): Promise<void> {
                 </CardHeader>
                 <CardContent class="space-y-4">
                     <p
-                        v-if="jobOrder.status === 'pending_review'"
+                        v-if="isPendingReview"
                         class="text-muted-foreground text-sm"
                         data-test="design-pending-review-note"
                     >
@@ -193,6 +229,90 @@ async function sendForReview(): Promise<void> {
                         >
                             Send for Review
                         </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card v-if="review.canRecordVerdict">
+                <CardHeader>
+                    <CardTitle>Review</CardTitle>
+                </CardHeader>
+                <CardContent class="space-y-4">
+                    <div class="flex items-center gap-2">
+                        <AlertDialog>
+                            <AlertDialogTrigger as-child>
+                                <Button
+                                    type="button"
+                                    data-test="client-approved-button"
+                                >
+                                    Client Approved
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Approve this design?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Once approved, this design file
+                                        becomes read-only. Only an Owner can
+                                        unlock it for further edits.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                        Cancel
+                                    </AlertDialogCancel>
+                                    <Form
+                                        v-bind="
+                                            DesignEditorController.approve.form(
+                                                jobOrder.id,
+                                            )
+                                        "
+                                        :options="{ preserveScroll: true }"
+                                        v-slot="{ processing }"
+                                    >
+                                        <Button
+                                            type="submit"
+                                            :disabled="processing"
+                                            data-test="confirm-approve-button"
+                                        >
+                                            Confirm Approval
+                                        </Button>
+                                    </Form>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
+                        <Form
+                            v-bind="
+                                DesignEditorController.requestChanges.form(
+                                    jobOrder.id,
+                                )
+                            "
+                            :options="{ preserveScroll: true }"
+                            v-slot="{ processing }"
+                        >
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                :disabled="processing"
+                                data-test="request-changes-button"
+                            >
+                                Client Requested Changes
+                            </Button>
+                        </Form>
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <p
+                            v-for="log in review.revisionLogs"
+                            :key="log.id"
+                            class="text-sm text-muted-foreground"
+                        >
+                            {{ new Date(log.submitted_at).toLocaleString() }}
+                            — {{ outcomeLabel(log.outcome) }}
+                        </p>
                     </div>
                 </CardContent>
             </Card>
