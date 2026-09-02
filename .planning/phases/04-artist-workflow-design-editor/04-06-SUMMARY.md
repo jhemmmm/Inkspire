@@ -129,3 +129,13 @@ All five of 04-UI-SPEC.md's scoped surfaces now exist; no sixth page was introdu
 ---
 *Phase: 04-artist-workflow-design-editor*
 *Completed: 2026-09-02*
+
+## Self-Check: PASSED
+
+- FOUND: resources/js/pages/artist/JobOrderWorkspace.vue
+- FOUND: resources/js/pages/artist/Dashboard.vue
+- FOUND: resources/js/pages/owner/DesignOverrides.vue
+- FOUND: resources/js/config/nav/owner.ts
+- FOUND: commit 26cc894 (Task 1)
+- FOUND: commit b240ac4 (Task 2)
+- FOUND: commit ee85378 (SUMMARY.md)
