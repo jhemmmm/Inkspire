@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation — RBAC, Auth Hardening & Audit Trail** - Every user logs in through a role-scoped, secured account and every mutating action is permanently recorded (completed 2026-09-01)
 - [x] **Phase 2: Customer & Queue Management** - Frontline Staff can register/find customers and generate queue numbers that produce job orders (completed 2026-09-01)
 - [x] **Phase 3: Job Order Intake & Auto-Assignment** - A job order becomes a validated, production-ready record, routed automatically when it needs an artist (completed 2026-09-01)
-- [ ] **Phase 4: Artist Workflow & Design Editor** - An Artist takes a Type B job from consultation through a locked, approved design
+- [x] **Phase 4: Artist Workflow & Design Editor** - An Artist takes a Type B job from consultation through a locked, approved design (completed 2026-09-02)
 - [ ] **Phase 5: POS & Payments** - A job order gets priced, paid (cash, bank transfer, GCash/Maya, or on-credit), and receipted
 - [ ] **Phase 6: Production Monitoring & Public Tracking** - Staff and customers can see a job order's physical progress through to pickup
 - [ ] **Phase 7: Accounts Receivable** - An on-credit balance is tracked from creation through aging, reminders, collections, and write-off
@@ -167,7 +167,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 04-10-PLAN.md — Artist Performance Report — Frontend Wiring (JOB-10 completion)
+- [x] 04-10-PLAN.md — Artist Performance Report — Frontend Wiring (JOB-10 completion)
 
 **UI hint**: yes
 
@@ -244,7 +244,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Foundation — RBAC, Auth Hardening & Audit Trail | 12/12 | Complete    | 2026-09-01 |
 | 2. Customer & Queue Management | 5/5 | Complete   | 2026-09-01 |
 | 3. Job Order Intake & Auto-Assignment | 2/2 | Complete    | 2026-09-02 |
-| 4. Artist Workflow & Design Editor | 9/10 | In Progress|  |
+| 4. Artist Workflow & Design Editor | 10/10 | Complete   | 2026-09-02 |
 | 5. POS & Payments | 0/TBD | Not started | - |
 | 6. Production Monitoring & Public Tracking | 0/TBD | Not started | - |
 | 7. Accounts Receivable | 0/TBD | Not started | - |
