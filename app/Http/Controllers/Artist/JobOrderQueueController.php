@@ -31,6 +31,7 @@ class JobOrderQueueController extends Controller
                 ])
                 ->orderByRaw('COALESCE(queue_deprioritized_at, created_at) ASC')
                 ->get(['id', 'description', 'status', 'not_appeared', 'created_at']),
+            'artistStatus' => $request->user()->artist_status,
         ]);
     }
 

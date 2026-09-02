@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\ArtistStatus;
 use App\Enums\UserRole;
 use App\Observers\AuditObserver;
 use Database\Factories\UserFactory;
@@ -32,6 +33,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $last_activity_at
  * @property bool $is_available
  * @property Carbon|null $last_assigned_at
+ * @property ArtistStatus $artist_status
+ * @property Carbon|null $break_started_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -59,6 +62,8 @@ class User extends Authenticatable
             'last_activity_at' => 'datetime',
             'is_available' => 'boolean',
             'last_assigned_at' => 'datetime',
+            'artist_status' => ArtistStatus::class,
+            'break_started_at' => 'datetime',
         ];
     }
 }
