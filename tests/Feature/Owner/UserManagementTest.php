@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ArtistStatus;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -92,4 +93,51 @@ test('owner can reactivate a previously deactivated user', function () {
             ->where('new_values', 'like', '%"is_active":true%')
             ->exists()
     )->toBeTrue();
+});
+
+test('the user list exposes artist_status and exceeded_break_time only for artist-role users, null for everyone else', function () {
+    $owner = User::factory()->owner()->create();
+    $artist = User::factory()->artist()->create(['artist_status' => ArtistStatus::Available->value]);
+
+    $response = $this->actingAs($owner)->get(route('owner.users.index'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('owner/UserManagement')
+        ->where('users', function ($users) use ($owner, $artist) {
+            $ownerRow = collect($users)->firstWhere('id', $owner->id);
+            $artistRow = collect($users)->firstWhere('id', $artist->id);
+
+            expect($ownerRow['artist_status'])->toBeNull();
+            expect($ownerRow['exceeded_break_time'])->toBeFalse();
+            expect($artistRow['artist_status'])->toBe(ArtistStatus::Available->value);
+
+            return true;
+        })
+    );
+});
+
+test('exceeded_break_time is true once break_started_at exceeds max_artist_break_minutes and false otherwise', function () {
+    $owner = User::factory()->owner()->create();
+    $exceeded = User::factory()->artist()->create([
+        'artist_status' => ArtistStatus::OnBreak->value,
+        'break_started_at' => now()->subMinutes(30),
+    ]);
+    $withinLimit = User::factory()->artist()->create([
+        'artist_status' => ArtistStatus::OnBreak->value,
+        'break_started_at' => now()->subMinutes(5),
+    ]);
+
+    $response = $this->actingAs($owner)->get(route('owner.users.index'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('users', function ($users) use ($exceeded, $withinLimit) {
+            $exceededRow = collect($users)->firstWhere('id', $exceeded->id);
+            $withinLimitRow = collect($users)->firstWhere('id', $withinLimit->id);
+
+            expect($exceededRow['exceeded_break_time'])->toBeTrue();
+            expect($withinLimitRow['exceeded_break_time'])->toBeFalse();
+
+            return true;
+        })
+    );
 });
