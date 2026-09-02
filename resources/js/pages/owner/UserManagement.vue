@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { Clock } from '@lucide/vue';
 import UserManagementController from '@/actions/App/Http/Controllers/Owner/UserManagementController';
 import {
     AlertDialog,
@@ -22,6 +23,42 @@ interface OwnerUser {
     email: string;
     role: string;
     is_active: boolean;
+    artist_status: string | null;
+    exceeded_break_time: boolean;
+}
+
+function artistStatusBadgeVariant(
+    artistStatus: string,
+): 'secondary' | 'outline' | undefined {
+    if (artistStatus === 'on_break') {
+        return 'secondary';
+    }
+
+    if (artistStatus === 'off_shift') {
+        return 'outline';
+    }
+
+    return undefined;
+}
+
+function artistStatusBadgeClass(artistStatus: string): string {
+    if (artistStatus === 'available') {
+        return 'text-green-600 dark:text-green-400';
+    }
+
+    return '';
+}
+
+function artistStatusLabel(artistStatus: string): string {
+    if (artistStatus === 'available') {
+        return 'Available';
+    }
+
+    if (artistStatus === 'on_break') {
+        return 'On Break';
+    }
+
+    return 'Off Shift';
 }
 
 defineProps<{
@@ -47,9 +84,7 @@ defineOptions({
     <div
         class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
     >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            User Management
-        </h1>
+        <h1 class="text-[28px] leading-[1.2] font-semibold">User Management</h1>
 
         <div
             class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
@@ -74,10 +109,37 @@ defineOptions({
                         <td class="p-4">{{ user.email }}</td>
                         <td class="p-4">{{ user.role }}</td>
                         <td class="p-4">
-                            <Badge v-if="!user.is_active" variant="destructive"
-                                >Deactivated</Badge
-                            >
-                            <Badge v-else variant="secondary">Active</Badge>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <Badge
+                                    v-if="!user.is_active"
+                                    variant="destructive"
+                                    >Deactivated</Badge
+                                >
+                                <Badge v-else variant="secondary">Active</Badge>
+                                <Badge
+                                    v-if="user.artist_status"
+                                    :variant="
+                                        artistStatusBadgeVariant(
+                                            user.artist_status,
+                                        )
+                                    "
+                                    :class="
+                                        artistStatusBadgeClass(
+                                            user.artist_status,
+                                        )
+                                    "
+                                >
+                                    {{ artistStatusLabel(user.artist_status) }}
+                                </Badge>
+                                <Badge
+                                    v-if="user.exceeded_break_time"
+                                    variant="outline"
+                                    class="text-muted-foreground"
+                                >
+                                    <Clock class="mr-1 size-3" />
+                                    Exceeded break time
+                                </Badge>
+                            </div>
                         </td>
                         <td class="p-4 text-right">
                             <AlertDialog v-if="user.is_active">
