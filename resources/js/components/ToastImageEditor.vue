@@ -23,7 +23,16 @@ onMounted(() => {
                   }
                 : undefined,
             theme: {},
-            menu: ['crop', 'flip', 'rotate', 'draw', 'shape', 'icon', 'text', 'filter'],
+            menu: [
+                'crop',
+                'flip',
+                'rotate',
+                'draw',
+                'shape',
+                'icon',
+                'text',
+                'filter',
+            ],
             menuBarPosition: 'bottom',
         },
         cssMaxWidth: 900,

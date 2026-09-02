@@ -16,7 +16,10 @@ declare module 'tui-image-editor' {
     }
 
     export default class ImageEditor {
-        constructor(wrapper: string | HTMLElement, options?: ImageEditorOptions);
+        constructor(
+            wrapper: string | HTMLElement,
+            options?: ImageEditorOptions,
+        );
         toDataURL(options?: { format?: string }): string;
         destroy(): void;
     }
