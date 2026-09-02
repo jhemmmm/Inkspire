@@ -117,6 +117,10 @@ None - plan executed exactly as written, including the two checker-fix guards (p
 ## Issues Encountered
 - This worktree had no `vendor/`, `node_modules/`, `.env`, `database/database.sqlite`, or `public/build/` — none are tracked in git. Symlinking `vendor/` initially broke autoloading (composer's generated `autoload_psr4.php`/`autoload_static.php` resolve `__DIR__` through the symlink back to the main repo's `app/`, so worktree-local classes were invisible to the framework). Fixed by copying `vendor/` into the worktree and running `composer dump-autoload` locally, copying `.env` from the main repo, creating a fresh `database/database.sqlite`, and copying the main repo's built `public/build/` (Vite manifest) so 403/422 error-page rendering in feature tests doesn't hit a `ViteManifestNotFoundException`. All of this is gitignored dev/build infrastructure, not application code — no plan files were affected.
 
+## Requirements Note
+
+JOB-04/JOB-05 are declared in both this plan's and Plan 04-04's frontmatter — a deliberate split where this plan lays the backend contract and 04-04 builds the TOAST UI editor that actually makes them user-deliverable. Not marked complete in REQUIREMENTS.md here, matching the 04-01 precedent (only JOB-03/JOB-09 were marked there, since those were fully deliverable within that plan). Plan 04-04 should mark JOB-04/JOB-05 complete once the editor ships.
+
 ## Next Phase Readiness
 - Plan 04-04 (TOAST UI design editor) can mount directly against `design.initialImageUrl`/`design.canEdit`, POST to `artist.job-orders.design.send-for-review`, and PATCH `artist.job-orders.design.start`
 - Plan 04-05 (review/lock/override) can append a `review` key to `JobOrderWorkspaceController::show()`'s existing props array and only needs to flip `design_files.locked_at` for its unlock override — no other file in this plan needs revisiting
