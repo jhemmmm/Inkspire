@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
 import JobOrderQueueController from '@/actions/App/Http/Controllers/Artist/JobOrderQueueController';
+import SessionStatusController from '@/actions/App/Http/Controllers/Artist/SessionStatusController';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
     Table,
     TableBody,
@@ -25,6 +27,7 @@ interface ArtistJobOrder {
 
 defineProps<{
     jobOrders: ArtistJobOrder[];
+    artistStatus: string;
 }>();
 
 defineOptions({
@@ -80,6 +83,40 @@ function statusLabel(status: string): string {
 
     return 'Assigned';
 }
+
+function artistStatusBadgeVariant(
+    artistStatus: string,
+): 'secondary' | 'outline' | undefined {
+    if (artistStatus === 'on_break') {
+        return 'secondary';
+    }
+
+    if (artistStatus === 'off_shift') {
+        return 'outline';
+    }
+
+    return undefined;
+}
+
+function artistStatusBadgeClass(artistStatus: string): string {
+    if (artistStatus === 'available') {
+        return 'text-green-600 dark:text-green-400';
+    }
+
+    return '';
+}
+
+function artistStatusLabel(artistStatus: string): string {
+    if (artistStatus === 'available') {
+        return 'Available';
+    }
+
+    if (artistStatus === 'on_break') {
+        return 'On Break';
+    }
+
+    return 'Off Shift';
+}
 </script>
 
 <template>
@@ -91,6 +128,67 @@ function statusLabel(status: string): string {
         <h1 class="text-[28px] leading-[1.2] font-semibold">
             Artist Dashboard
         </h1>
+
+        <Card>
+            <CardContent
+                class="flex flex-wrap items-center justify-between gap-4"
+            >
+                <Badge
+                    :variant="artistStatusBadgeVariant(artistStatus)"
+                    :class="artistStatusBadgeClass(artistStatus)"
+                >
+                    {{ artistStatusLabel(artistStatus) }}
+                </Badge>
+                <div class="flex items-center gap-2">
+                    <Form
+                        v-if="artistStatus === 'available'"
+                        v-bind="SessionStatusController.startBreak.form()"
+                        :options="{ preserveScroll: true }"
+                        v-slot="{ processing }"
+                    >
+                        <Button
+                            type="submit"
+                            :disabled="processing"
+                            data-test="start-break-button"
+                        >
+                            Start Break
+                        </Button>
+                    </Form>
+                    <Form
+                        v-if="artistStatus === 'on_break'"
+                        v-bind="SessionStatusController.endBreak.form()"
+                        :options="{ preserveScroll: true }"
+                        v-slot="{ processing }"
+                    >
+                        <Button
+                            type="submit"
+                            :disabled="processing"
+                            data-test="end-break-button"
+                        >
+                            End Break
+                        </Button>
+                    </Form>
+                    <Form
+                        v-if="
+                            artistStatus === 'available' ||
+                            artistStatus === 'on_break'
+                        "
+                        v-bind="SessionStatusController.endShift.form()"
+                        :options="{ preserveScroll: true }"
+                        v-slot="{ processing }"
+                    >
+                        <Button
+                            type="submit"
+                            variant="outline"
+                            :disabled="processing"
+                            data-test="end-shift-button"
+                        >
+                            End Shift
+                        </Button>
+                    </Form>
+                </div>
+            </CardContent>
+        </Card>
 
         <div
             class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
