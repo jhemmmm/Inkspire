@@ -227,12 +227,17 @@ function outcomeLabel(outcome: string | null): string {
                     >
                         Waiting on the client's verdict.
                     </p>
-                    <p
-                        v-else-if="!design.canEdit"
-                        class="text-muted-foreground text-sm"
-                    >
-                        This design is locked.
-                    </p>
+                    <div v-else-if="!design.canEdit" class="space-y-2">
+                        <img
+                            v-if="design.initialImageUrl"
+                            :src="design.initialImageUrl"
+                            alt="Approved design"
+                            class="w-full rounded-lg border"
+                        />
+                        <p class="text-muted-foreground text-sm">
+                            This design is locked.
+                        </p>
+                    </div>
                     <div v-else-if="!started" class="flex items-center gap-2">
                         <Button
                             type="button"

@@ -30,14 +30,17 @@ test('the workspace exposes a signed initialImageUrl when a design file exists',
     );
 });
 
-test('canEdit is false when the design file is locked', function () {
+test('canEdit is false when the design file is locked, but initialImageUrl still exposes the locked design for viewing', function () {
     $artist = User::factory()->artist()->create();
     $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'pending_review']);
     DesignFile::factory()->for($jobOrder)->locked()->create();
 
     $response = $this->actingAs($artist)->get(route('artist.job-orders.show', $jobOrder));
 
-    $response->assertInertia(fn (Assert $page) => $page->where('design.canEdit', false));
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('design.canEdit', false)
+        ->has('design.initialImageUrl')
+    );
 });
 
 test('canEdit is false when the job order is still at assigned (not yet claimed)', function () {
