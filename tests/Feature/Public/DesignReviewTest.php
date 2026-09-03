@@ -1,9 +1,13 @@
 <?php
 
 use App\Enums\JobOrderStatus;
+use App\Mail\DesignReviewRequested;
 use App\Models\DesignFile;
 use App\Models\JobOrder;
 use App\Models\RevisionLog;
+use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -106,4 +110,17 @@ test('an older superseded revision renders the stale state', function () {
     $response->assertInertia(fn (Assert $page) => $page
         ->component('public/DesignReview')
         ->where('state', 'stale'));
+});
+
+test('sending a design for review via the existing authenticated artist endpoint dispatches a DesignReviewRequested mail', function () {
+    Mail::fake();
+    Storage::fake('local');
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'in_consultation']);
+
+    $this->actingAs($artist)->post(route('artist.job-orders.design.send-for-review', $jobOrder), [
+        'file' => UploadedFile::fake()->image('design.png'),
+    ]);
+
+    Mail::assertSent(DesignReviewRequested::class, fn ($mail) => $mail->hasTo($jobOrder->fresh()->queueEntry->customer->email));
 });
