@@ -139,7 +139,7 @@ Plans:
   3. A design file becomes read-only once its job order reaches final approval, and only Owner can authorize an audited override to unlock it
   4. Artist can set session status (On Break, End Shift) which affects auto-assignment eligibility, view their own assigned job orders with Next/Forward/Not-Appear queue controls, and view their own performance metrics report
 
-**Plans**: 10 plans in 6 waves
+**Plans**: 12 plans in 7 waves
 Plans:
 **Wave 1**
 
@@ -168,6 +168,11 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [x] 04-10-PLAN.md — Artist Performance Report — Frontend Wiring (JOB-10 completion)
+
+**Wave 7** *(2026-09-03 scope expansion — post-UAT, user-forced into Phase 4 rather than a new phase; see 04-CONTEXT.md D-17 through D-23)*
+
+- [ ] 04-11-PLAN.md — Client Remote Design Review (JOB-06 extension: D-17 through D-21)
+- [ ] 04-12-PLAN.md — PSD Import (JOB-04 extension: D-22, D-23)
 
 **UI hint**: yes
 
