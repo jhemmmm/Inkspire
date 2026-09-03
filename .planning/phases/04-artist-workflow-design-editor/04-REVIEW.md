@@ -1,8 +1,8 @@
 ---
 phase: 04-artist-workflow-design-editor
-reviewed: 2026-09-03T15:10:40Z
+reviewed: 2026-09-03T16:59:55Z
 depth: standard
-files_reviewed: 59
+files_reviewed: 58
 files_reviewed_list:
   - app/Actions/JobOrder/RecordDesignRevision.php
   - app/Actions/JobOrder/SetArtistSessionStatus.php
@@ -43,7 +43,6 @@ files_reviewed_list:
   - resources/js/config/nav/owner.ts
   - resources/js/pages/artist/Dashboard.vue
   - resources/js/pages/artist/JobOrderWorkspace.vue
-  - resources/js/pages/artist/PerformanceReport.vue
   - resources/js/pages/owner/DesignOverrides.vue
   - resources/js/pages/owner/UserManagement.vue
   - resources/js/pages/public/DesignReview.vue
@@ -64,133 +63,158 @@ files_reviewed_list:
   - tests/Feature/Owner/UserManagementTest.php
   - tests/Feature/Public/DesignReviewTest.php
 findings:
-  critical: 1
-  warning: 7
-  info: 3
-  total: 11
+  critical: 0
+  warning: 10
+  info: 4
+  total: 14
 status: issues_found
 ---
 
 # Phase 4: Code Review Report
 
-**Reviewed:** 2026-09-03T15:10:40Z
+**Reviewed:** 2026-09-03T16:59:55Z
 **Depth:** standard
-**Files Reviewed:** 59
+**Files Reviewed:** 58
 **Status:** issues_found
 
-## Summary
+## Narrative Findings (AI reviewer)
 
-This is the first combined review of the full Phase 4 scope (all 12 plans, including the 2026-09-03 scope-expansion plans 04-11 "client remote design review" and 04-12 "client-side PSD import"). The status-machine work (`JobOrderStatus`/`ArtistStatus` extensions, queue controls, session status, performance report) is solid and consistent with established codebase conventions — ownership/ status guards are applied uniformly, the audit trail is inherited "for free" via `AuditObserver` with no hand-rolled logging, and the `design_files.locked_at`-as-sole-lock-authority design holds up under inspection (verified against the Owner unlock override, the artist edit gate, and the public remote-review "first verdict wins" guard).
+### Summary
 
-The full local Pest suite for this phase's files (65 tests) passes as-is, and `npm run types:check` is clean. However, the review surfaced one production-relevant defect in the newest work (04-11's mail dispatch) that can crash the core "Send for Review" action once the app's real mail transport (Resend) is configured, plus a cluster of quality/consistency issues — several introduced by the TOAST UI type-shim now being dead code (the installed `tui-image-editor` package ships its own bundled `index.d.ts`, contrary to the phase's research), magic-string duplication of revision outcomes, and a couple of UI/UX gaps between the in-person and remote review paths.
+This is a re-review of the full Phase 4 scope after plan 04-13 closed the previous pass's sole Critical finding (CR-01: unguarded `Mail::send()` in `RecordDesignRevision`). That fix was independently re-verified this pass — see "Resolved Since Last Review" below — and is sound; it is not re-flagged.
 
-## Critical Issues
+Beyond that closure, none of the previous review's Warning/Info findings have been addressed in the current source (re-verified line-by-line against the current file contents, not assumed from the prior report): the `sendForReview` concurrency gap, the `revision_logs.outcome` magic-string duplication, the missing upload size cap, the global `InvalidSignatureException` handler, the unconfirmed public "Client Approved" click, the undifferentiated "Next" button, and the dead `tui-image-editor.d.ts` shim are all still present and are carried forward with re-verified file/line references. This pass also surfaces three findings not raised previously: a first-verdict-wins race between the in-person and remote review endpoints, a design-file upload that is stored on disk *inside* the DB transaction that can persist it (risking an orphaned file on rollback), and missing error handling around the canvas-export/PSD-import async flows on the Job Order Workspace page.
 
-### CR-01: Synchronous, unhandled `Mail::send()` after commit can crash "Send for Review" once Resend is configured
+The full local Pest suite for this phase's files (61 tests across the 11 listed test files) passes, and scoped `phpstan`/Larastan analysis on the reviewed `app/` files reports zero errors.
 
-**File:** `app/Actions/JobOrder/RecordDesignRevision.php:24-45`
-**Issue:** `RecordDesignRevision::__invoke()` commits the `DesignFile` upsert, `RevisionLog` insert, and `JobOrder` status advance inside `DB::transaction()`, then — correctly, per D-18/the mail.md skill's "dispatch after commit" guidance — calls `Mail::to($jobOrder->queueEntry->customer->email)->send(new DesignReviewRequested($revisionLog));` **outside** the transaction, synchronously, with no `try`/`catch`. `DesignReviewRequested` does not implement `ShouldQueue`.
+### Resolved Since Last Review
 
-This means any failure in the mail transport — a misconfigured/expired `RESEND_API_KEY`, a Resend API outage, a network timeout, or a customer email address Resend's API rejects — throws an uncaught exception that propagates all the way up through `DesignEditorController::sendForReview()`, past the point where the success toast would have been flashed, and results in an unhandled 500 for the Artist. Critically, **the database mutation already committed** (design file saved, revision logged, status advanced to `pending_review`) before the exception is thrown. The Artist sees a raw error page even though their action actually succeeded, and `sendForReview()`'s own guard (`abort_if($jobOrder->status === JobOrderStatus::PendingReview, 422, 'This design is already pending review.')`) then blocks any retry, leaving them stuck with no visible path forward short of contacting an Owner.
+**CR-01 (previously Critical) — unguarded `Mail::send()` in `RecordDesignRevision` — now closed.** `app/Actions/JobOrder/RecordDesignRevision.php:46-50` wraps the post-commit `Mail::to(...)->send(...)` call in `try { ... } catch (\Throwable $e) { report($e); }`. This is verified sound:
+- The transactional core (file store, `DesignFile` upsert, `RevisionLog` insert, status advance) still commits before the mail call, so the write is never rolled back by a mail failure.
+- `\Throwable` (not just `\Exception`) is caught, so a `TypeError`/`Error` from a misconfigured mailer or a null `queueEntry->customer->email` chain is also swallowed rather than surfacing a 500.
+- `report($e)` routes the failure to the configured exception handler/log, so a silent mail failure is still observable operationally instead of being lost entirely.
+- `tests/Feature/Artist/SendForReviewTest.php`'s `'sending for review still succeeds and commits the revision even when the mail transport throws'` test exercises this exact path with `Mail::shouldReceive('send')->andThrow(...)` + `Exceptions::fake()`/`assertReported()`, and passes.
 
-This is currently masked in every test in this phase (`tests/Feature/Artist/SendForReviewTest.php`, `tests/Feature/Public/DesignReviewTest.php`) because `phpunit.xml` sets `MAIL_MAILER=array`, which never touches the network and cannot fail — so there is no test coverage proving the app degrades gracefully when mail delivery fails. The `.env.example` change in this same plan (`MAIL_MAILER=resend`) is the intended production configuration, so this failure mode is not hypothetical — it is the default the app ships toward.
+No further action needed here.
 
-This directly threatens the project's stated core value ("a job order flows correctly end-to-end") for the single most central Artist action in this phase.
-**Fix:** Either queue the mailable so a transport failure never blocks the HTTP response, or catch and log the failure without letting it bubble into the response:
+### Warnings
+
+#### WR-01: No concurrency guard on `sendForReview` — duplicate near-simultaneous submissions can create an orphaned `revision_logs` row
+
+**File:** `app/Http/Controllers/Artist/DesignEditorController.php:55-67`, `app/Actions/JobOrder/RecordDesignRevision.php:26-51`
+**Issue:** `sendForReview()`'s guards (`abort_if($jobOrder->status === JobOrderStatus::Assigned, ...)`, the `PendingReview` check, the lock check) all read `$jobOrder`'s state with a plain, unlocked `SELECT` from route-model binding. There is no `lockForUpdate()` and no unique-constraint-backed idempotency key on `revision_logs`. Two near-simultaneous requests for the same job order (double submit before the button's `:disabled="processing"` state propagates, a client-side retry after a slow/dropped response, or two tabs) can both read the same pre-commit state, both pass the guards, and both execute `RecordDesignRevision`. `design_files` is protected by a real unique index on `job_order_id` so it just settles on whichever `updateOrCreate` commits last, but `revision_logs` has no such protection: two rows get created, `DesignEditorController::latestUnreviewedRevisionLog()` (which resolves the single newest-by-`submitted_at` row via `firstOrFail()`) only ever surfaces one of them, and the other is permanently stuck with `outcome = null` — invisible in the UI, and inflating `PerformanceReportController`'s `revision_logs_count`-based `avgRevisions` stat for that artist. Note this codebase already has the pattern for fixing this: `AssignArtistToJobOrder::__invoke()`/`claimOldestUnassigned()` (`app/Actions/JobOrder/AssignArtistToJobOrder.php`) both wrap their read-check-mutate sequence in `DB::transaction()` with `lockForUpdate()` specifically to prevent this class of race — `RecordDesignRevision` does not follow that established precedent.
+**Fix:** Re-fetch and lock the job order inside the transaction before checking/advancing status, e.g.:
 ```php
-// Option A (preferred): decouple delivery from the request/response cycle
-class DesignReviewRequested extends Mailable implements ShouldQueue
-{
-    use Queueable, SerializesModels;
-    // ...
-}
-// RecordDesignRevision.php — dispatch after commit, queued, and after_commit-aware:
-Mail::to($jobOrder->queueEntry->customer->email)
-    ->send((new DesignReviewRequested($revisionLog))); // queued dispatch is not blocking
-
-// Option B (if it must stay synchronous): don't let mail failure fail the write
-try {
-    Mail::to($jobOrder->queueEntry->customer->email)->send(new DesignReviewRequested($revisionLog));
-} catch (\Throwable $e) {
-    report($e); // log it — the design revision itself already succeeded
-}
+$revisionLog = DB::transaction(function () use ($jobOrder, $file): RevisionLog {
+    $jobOrder = JobOrder::whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
+    abort_if($jobOrder->status === JobOrderStatus::PendingReview, 422, 'This design is already pending review.');
+    // ... existing body ...
+});
 ```
-Add a test that fakes a mail transport failure (or `Mail::shouldReceive(...)->andThrow(...)`) and asserts `sendForReview()` still returns success to the Artist.
 
-## Warnings
+#### WR-02: Race between the in-person and remote review endpoints can violate "first verdict wins"
 
-### WR-01: No concurrency guard on `sendForReview` — duplicate near-simultaneous submissions can orphan a `revision_logs` row and double-email the client
+**File:** `app/Http/Controllers/Artist/DesignEditorController.php:73-119`, `app/Http/Controllers/Public/DesignReviewController.php:33-77,127-130`
+**Issue:** Both the artist's in-person `approve()`/`requestChanges()` and the public remote `approve()`/`requestChanges()` read `$jobOrder->status`/`$revisionLog->outcome` (via `isActionable()` on the public side, direct `abort_unless` on the artist side) *before* opening a `DB::transaction()`, with no row lock. These two entry points act on the exact same `RevisionLog`/`JobOrder` row and are designed to race against each other in the real workflow this app models: an artist confirming "Client Approved" in person at the counter at the same moment the client (who was also emailed the remote link) taps "Client Approved" or "Client Requested Changes" on their phone. If both requests read the pre-commit state before either commits, both guards pass and both mutations apply — e.g. the in-person `approve()` sets `designFile.locked_at` and `status = design_approved`, then the remote `requestChanges()` commits after it and resets `status = in_design` (while never touching `locked_at`, per its own docblock), leaving the job order `in_design` with a permanently-locked design file — a stuck state that isn't reachable through either single-actor code path and requires an Owner unlock override to recover from. This directly undermines the D-20 "first verdict wins" guarantee both docblocks claim.
+**Fix:** Lock the `RevisionLog` row for update inside the transaction and re-check `isActionable`/status after acquiring the lock, in both controllers, before mutating:
+```php
+DB::transaction(function () use ($revisionLog, $jobOrder): void {
+    $revisionLog = RevisionLog::whereKey($revisionLog->id)->lockForUpdate()->first();
+    if (! $this->isActionable($revisionLog, $jobOrder->fresh())) {
+        return;
+    }
+    // ... existing mutation ...
+});
+```
 
-**File:** `app/Http/Controllers/Artist/DesignEditorController.php:55-67`, `app/Actions/JobOrder/RecordDesignRevision.php:24-45`
-**Issue:** The `sendForReview` guards (`abort_if($jobOrder->status === JobOrderStatus::PendingReview, ...)`, lock check) all read `$jobOrder`'s current state without any row lock (`lockForUpdate()`) or unique-constraint-backed idempotency key. Two near-simultaneous requests for the same job order (double-click before the button's `:disabled="processing"` takes effect, a flaky network causing a client-side retry, or two browser tabs) can both pass the guards while reading the same pre-commit state, then both execute `RecordDesignRevision`. The result: two `revision_logs` rows are created, `design_files` (protected by a real DB unique constraint on `job_order_id`) settles on whichever `updateOrCreate` wins last, and `DesignEditorController::latestUnreviewedRevisionLog()` (which picks the single newest-by-`submitted_at` row) will only ever resolve one of the two — the other stays permanently `outcome = null`, silently invisible in the UI, forever "pending" in the database. The client also receives two separate review emails with two different signed links for what looks like the same design.
-**Fix:** Wrap the guard-and-mutate sequence in a row lock, e.g. `$jobOrder = JobOrder::whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();` inside the transaction before re-checking status, or add a short-lived cache/mutex keyed on the job order id around `sendForReview()`.
+#### WR-03: `SendForReviewRequest` has no upper bound on upload size
 
-### WR-02: Revision outcome is a duplicated magic string, not the enum convention this codebase otherwise uses everywhere else
+**File:** `app/Http/Requests/Artist/SendForReviewRequest.php:23`
+**Issue:** The validation rule is `['required', 'file', 'image', 'mimes:png']` — no `max:` constraint. `image`/`mimes` validate content type, not size, so any authenticated Artist session can POST an arbitrarily large PNG (bounded only by PHP's `upload_max_filesize`/`post_max_size` ini settings, which are typically far larger than any realistic canvas export) directly to this endpoint, which then gets written to local disk storage with no application-level ceiling.
+**Fix:** Add a `max:` rule sized to a realistic canvas export, e.g. `'file' => ['required', 'file', 'image', 'mimes:png', 'max:10240']` (10MB), and validate the number against `ToastImageEditor.vue`'s actual `cssMaxWidth`/`cssMaxHeight` output.
 
-**File:** `app/Http/Controllers/Artist/DesignEditorController.php:80,109`, `app/Http/Controllers/Public/DesignReviewController.php:41,68`, `app/Http/Controllers/Artist/PerformanceReportController.php:29`, `database/factories/RevisionLogFactory.php:37,50`
-**Issue:** `revision_logs.outcome` is written and read as raw strings (`'approved'`, `'changes_requested'`) independently in five different files, with no shared constant or enum. Every other status-like column this phase and prior phases introduced (`JobOrderStatus`, `ArtistStatus`, `UserRole`) uses the project's established string-backed PHP enum convention specifically so these values are typo-proof and centrally documented. A typo in any one of these five call sites (e.g. `'change_requested'`) would silently produce an unmatched outcome that every other file's string comparison fails to recognize, with no static-analysis or runtime error to catch it.
-**Fix:** Introduce `enum RevisionOutcome: string { case Approved = 'approved'; case ChangesRequested = 'changes_requested'; }`, cast `RevisionLog::outcome` to it, and replace every literal string with the enum case.
+#### WR-04: Global `InvalidSignatureException` handler hard-codes the Design Review page for every signed route in the app
 
-### WR-03: `SendForReviewRequest` has no upper bound on upload size
-
-**File:** `app/Http/Requests/Artist/SendForReviewRequest.php:20-25`
-**Issue:** The validation rule is `['required', 'file', 'image', 'mimes:png']` — no `max:` constraint. The docblock's rationale ("this endpoint's only legitimate producer is the app's own canvas export") only holds for traffic that actually goes through the Vue editor; the route itself is a plain authenticated POST endpoint reachable directly (e.g. via a scripted request from a valid but malicious/careless Artist session) with an arbitrarily large PNG, since `mimes`/`image` validate content type, not size. There is no size ceiling anywhere in the request pipeline before the file is written to local disk storage.
-**Fix:** Add a `max:` rule sized to a realistic maximum canvas export (e.g. `'file' => ['required', 'file', 'image', 'mimes:png', 'max:10240']` for 10MB), and confirm the number against the editor's actual `cssMaxWidth`/`cssMaxHeight` output.
-
-### WR-04: Global `InvalidSignatureException` handler hard-codes the Design Review page for every signed route in the app
-
-**File:** `bootstrap/app.php:44-46`
-**Issue:** The new exception branch —
+**File:** `bootstrap/app.php:43-46`
+**Issue:**
 ```php
 if ($e instanceof InvalidSignatureException) {
     return Inertia::render('public/DesignReview', ['state' => 'expired'])->toResponse($request)->setStatusCode(403);
 }
 ```
-— is registered in the application-wide `respond()` closure, so it intercepts `InvalidSignatureException` from **any** signed route, not just `public.design-review.*`. This is currently harmless only because no other route in the app uses the `signed` middleware today (Fortify's email-verification feature, which also uses a signed route, is disabled in `config/fortify.php`). The moment a future phase enables email verification, adds a QR-tracking signed link, or any other signed route, an expired/tampered signature on that unrelated route will incorrectly render the Design Review page instead of a message relevant to that feature.
-**Fix:** Scope the branch to the design-review routes specifically, e.g. check `$request->routeIs('public.design-review.*')` before rendering `public/DesignReview`, and fall through to a generic "link expired" response otherwise.
+is registered in the application-wide `respond()` closure with no route scoping, so it intercepts `InvalidSignatureException` from *any* signed route, not just `public.design-review.*`. Currently harmless only because `config/fortify.php` doesn't enable `Features::verifyEmail()` (confirmed: no other `signed`-middleware route exists in the app today). The moment a future phase enables email verification, adds a QR-tracking signed link, or any other signed route, an expired/tampered signature on that unrelated route will incorrectly render the Design Review "expired" page instead of a message relevant to that feature.
+**Fix:** Scope the branch, e.g. `if ($e instanceof InvalidSignatureException && $request->routeIs('public.design-review.*')) { ... }`, and fall through to a generic response otherwise.
 
-### WR-05: Public remote-review page lets a client irreversibly approve a design with a single click, no confirmation
+#### WR-05: Public remote-review page lets a client irreversibly approve a design with a single click, no confirmation
 
 **File:** `resources/js/pages/public/DesignReview.vue:50-63` (compare `resources/js/pages/artist/JobOrderWorkspace.vue:281-325`)
-**Issue:** On the Artist's in-person workspace, "Client Approved" is deliberately wrapped in an `AlertDialog` ("Approve this design? ... Once approved, this design file becomes read-only. Only an Owner can unlock it for further edits.") specifically because the action is irreversible without an Owner override. The public remote-review page (D-17's second entry point to the *exact same* irreversible outcome) submits the "Client Approved" `Form` directly on click, with no confirmation step at all. A stray tap/click on a phone (this page is the one surface in the app most likely to be opened on a mobile device) permanently locks the design with no way back except contacting the shop for an Owner override.
-**Fix:** Add the same confirm step used on the Artist page (a lightweight native `confirm()` or an inline two-step reveal is enough here, since this page intentionally carries no shared UI chrome/AlertDialog imports).
+**Issue:** The Artist's in-person workspace wraps "Client Approved" in an `AlertDialog` specifically because the action is irreversible without an Owner override ("Once approved, this design file becomes read-only. Only an Owner can unlock it for further edits."). The public remote-review page — D-17's second entry point to the exact same irreversible outcome — submits the `Form` directly on click with no confirmation step. This is the one page in the app most likely to be opened on a mobile device (it's reached via an emailed link), so a stray tap permanently locks the design with no recovery path short of contacting the shop for an Owner override.
+**Fix:** Add an equivalent confirm step (a native `confirm()` call before submitting is sufficient here, since this page intentionally carries no shared dialog chrome).
 
-### WR-06: Dashboard shows a "Next" action on every `assigned` row, not just the actually-claimable one
+#### WR-06: Dashboard shows a "Next" action on every `assigned` row, not just the actually-claimable one
 
 **File:** `resources/js/pages/artist/Dashboard.vue:241-258`
-**Issue:** `JobOrderQueueController::next()` only permits claiming the single oldest eligible `assigned` job order (`oldestEligibleId()`, `app/Http/Controllers/Artist/JobOrderQueueController.php:109-117`); every other `assigned` row returns a 422 ("Another job order is next in your queue."). The Dashboard template renders the "Next" button on **every** row where `jobOrder.status === 'assigned'` (line 242), with no client-side indication of which row is actually next. An Artist with more than one queued consultation (a normal scenario — several customers can be Assigned to the same Artist before any of them is called) will see a clickable "Next" button on rows that are guaranteed to fail, producing a confusing error toast for a button that looked identical to the working one. `QueueControlsTest.php`'s own "next on a non-oldest eligible job order returns a 422" test confirms the server-side behavior this UI doesn't visually distinguish.
-**Fix:** Only render "Next" on the row matching the server-computed oldest-eligible id (expose it as a prop from `JobOrderQueueController::index()`), and render a disabled/inert state (or no button) for the rest.
+**Issue:** `JobOrderQueueController::next()` only permits claiming the single oldest eligible `assigned` job order (`oldestEligibleId()`, `app/Http/Controllers/Artist/JobOrderQueueController.php:109-117`); every other `assigned` row 422s with "Another job order is next in your queue." The Dashboard template renders "Next" on every row where `jobOrder.status === 'assigned'`, with no indication of which row is actually next. `JobOrderQueueController::index()` doesn't expose which id is oldest-eligible to the frontend, so an Artist with more than one queued consultation (a normal scenario) sees an identical, clickable "Next" button on rows guaranteed to fail — confirmed by `QueueControlsTest.php`'s own "next on a non-oldest eligible job order returns a 422" test, which demonstrates the server-side behavior the UI gives no visual cue about.
+**Fix:** Expose the oldest-eligible id from `index()` and only render "Next" (or render it enabled) for that row; disable/hide it for the rest.
 
-### WR-07: Hand-written `tui-image-editor` type shim is dead code — the installed package ships its own, different bundled types
+#### WR-07: Hand-written `tui-image-editor` type shim is dead code — the installed package ships its own, different bundled types
 
 **File:** `resources/js/types/tui-image-editor.d.ts:1-26`
-**Issue:** This ambient module declaration was written (per 04-RESEARCH.md Pitfall 2 and the 04-04 plan/summary) on the premise that `tui-image-editor` ships no TypeScript types. That premise does not hold for the actually-installed version: `node_modules/tui-image-editor/index.d.ts` (334 lines, `export = tuiImageEditor.ImageEditor`) is bundled directly in the package and is auto-discovered by TypeScript's classic Node resolution (a package needs no explicit `"types"` field in `package.json` for a root-level `index.d.ts` to be picked up). Verified directly: introducing a deliberately-invalid property into `ToastImageEditor.vue`'s `includeUI` object and running `vue-tsc --noEmit` reports the error against `IIncludeUIOptions` — a type name that only exists in the real package's `index.d.ts`, not in this project's own shim (which uses inline anonymous object types). `npm run types:check` currently passes cleanly with or without this file's content being accurate, because it is never actually consulted by the compiler.
+**Issue:** Re-verified this pass: `node_modules/tui-image-editor/index.d.ts` (334 lines) ships with the installed package and declares `interface IIncludeUIOptions`, `uiSize`, and `export = tuiImageEditor.ImageEditor` — none of which appear in this project's own shim, which uses inline anonymous object types and `export default class ImageEditor`. `tsconfig.json` has no `paths` remap or `typeRoots` override for `tui-image-editor`, and `moduleResolution: "bundler"` resolves the real package's bundled `index.d.ts` through ordinary Node-style resolution. The project's own ambient `declare module 'tui-image-editor'` in this file is, per the prior review's direct reproduction (introducing a deliberately-invalid `includeUI` property and observing `vue-tsc --noEmit` report the error against the real package's `IIncludeUIOptions`, a type name that exists only in the real bundled types), never actually consulted by the compiler. Beyond being unused, it's also incomplete relative to the real API (missing `uiSize`, `loadImageFromFile`, etc.) and declares the constructor's `options` parameter as optional when the real signature requires it — a future contributor trusting this file as documentation will be misled.
+**Fix:** Delete `resources/js/types/tui-image-editor.d.ts` and confirm `npm run types:check` still passes (it will, since the real bundled types take over).
 
-Beyond being unused, the shim is also **incomplete relative to the real API it pretends to describe** — it's missing `uiSize` (a key `ToastImageEditor.vue` now sets, per the in-flight blank-canvas-sizing fix) and other real methods (`loadImageFromFile`, etc.), and it declares the constructor's `options` parameter optional when the real signature requires it. A future contributor trusting this file as the source of truth for the library's API surface will be misled.
-**Fix:** Delete `resources/js/types/tui-image-editor.d.ts` (confirm `npm run types:check` still passes, which it will — the real bundled types take over), or if a narrower/stricter surface is genuinely wanted, name it differently and consciously shadow the package types with a `paths` remap rather than an ambient `declare module` that silently loses the conflict.
+#### WR-08: Design file is written to disk *inside* the DB transaction that persists it — an orphaned file on rollback
 
-## Info
+**File:** `app/Actions/JobOrder/RecordDesignRevision.php:26-44`
+**Issue:** `$file->store('design-files', 'local')` runs as the first statement inside `DB::transaction(...)`. Local filesystem writes are not transactional — if any subsequent statement in the same closure throws (e.g. a DB constraint violation on `RevisionLog::create()` or `JobOrder::save()`, a connection drop mid-transaction), Laravel rolls back the `DesignFile`/`RevisionLog`/`JobOrder` writes, but the PNG file that was already written to `storage/app/private/design-files/` is never cleaned up. Over time this leaves orphaned files with no referencing database row and no cleanup path.
+**Fix:** Either store the file after the transaction commits (requires restructuring since `DesignFile::updateOrCreate` needs the path), or wrap the whole operation and explicitly delete the file on failure:
+```php
+$path = $file->store('design-files', 'local');
 
-### IN-01: `forward()`/`notAppear()` mix enum-case comparison with a raw string-value comparison for the same status check
+try {
+    $revisionLog = DB::transaction(function () use ($jobOrder, $path) { /* ... */ });
+} catch (\Throwable $e) {
+    Storage::disk('local')->delete($path);
+    throw $e;
+}
+```
+
+#### WR-09: Missing error handling around canvas export / PSD import / `start` transition on the Job Order Workspace page
+
+**File:** `resources/js/pages/artist/JobOrderWorkspace.vue:89-92,111-142,145-156`
+**Issue:** Three related gaps, all in the same file:
+- `sendForReview()` (145-156) calls `editorRef.value!.exportPng()` and `await (await fetch(dataUrl)).blob()` with no `try`/`catch`. If canvas export throws (e.g. the editor failed to initialize) or the `fetch()` of the in-memory `data:` URL rejects, the `async` function's promise rejects silently — no toast, no visible error state — and `sendForReviewForm.processing` never even becomes `true` (since `.post()` is never reached), so the button just appears to do nothing and the Artist has no feedback to act on.
+- `onStartBlankCanvas()` (89-92) and `onReferenceFileChosen()` (111-142) both call `router.patch(start.url(...), {}, { preserveScroll: true })` with no `onError` callback. `started.value = true` is set synchronously before the request resolves, so if the PATCH fails (network error, or a 422 if the job order's status already advanced), the client-side "started" state silently diverges from the server's actual status with no feedback to the Artist.
+**Fix:** Wrap `sendForReview()`'s export/fetch in `try`/`catch` and surface a `toast.error(...)` on failure (the file already imports `toast` from `vue-sonner` for the PSD-import failure path, so the pattern is established); add `onError` handlers to the two `router.patch()` calls that at minimum toast an error so the Artist knows to retry.
+
+### Info
+
+#### IN-01: `forward()`/`notAppear()` mix enum-case comparison with a raw string-value comparison for the same status check
 
 **File:** `app/Http/Controllers/Artist/JobOrderQueueController.php:71,91`
-**Issue:** Both guards read `$jobOrder->status === JobOrderStatus::InConsultation || $jobOrder->status->value === 'in_design'`. The first half compares the enum instance directly (idiomatic, matches every other guard in this phase); the second half unwraps `->value` and compares to a raw string literal, for no apparent reason — `JobOrderStatus::InDesign` exists and was added in the same phase (Plan 04-03), just after this code was originally written in Plan 04-01. The inconsistency is cosmetic today but is exactly the kind of drift that (per WR-02) becomes a real bug if the enum's underlying string values ever change.
-**Fix:** `$jobOrder->status === JobOrderStatus::InConsultation || $jobOrder->status === JobOrderStatus::InDesign`.
+**Issue:** Both guards read `$jobOrder->status === JobOrderStatus::InConsultation || $jobOrder->status->value === 'in_design'`. The first half compares the enum instance directly (idiomatic, matches every other guard in this file and phase); the second half unwraps `->value` and compares to a raw string literal, even though `JobOrderStatus::InDesign` exists in the same enum (`app/Enums/JobOrderStatus.php:12`) and is used correctly elsewhere in this exact file (e.g. implicitly via other status checks). Functionally correct today since the string matches, but it's an inconsistency that bypasses the enum's type safety and would silently stop matching if the enum's backing value ever changed without this literal being updated in lockstep.
+**Fix:** `$jobOrder->status === JobOrderStatus::InConsultation || $jobOrder->status === JobOrderStatus::InDesign` in both `forward()` and `notAppear()`.
 
-### IN-02: `PerformanceReportFilterRequest` doesn't validate `from <= to`
+#### IN-02: `PerformanceReportFilterRequest` doesn't validate `from <= to`
 
 **File:** `app/Http/Requests/Artist/PerformanceReportFilterRequest.php:15-21`
-**Issue:** `from`/`to` are independently validated as nullable dates with no cross-field check. An inverted range (`to` earlier than `from`) isn't rejected — it just silently produces an empty/zero report rather than a validation error explaining why. Low impact (no crash, no data risk), but a confusing dead end for the Artist using the date filter.
-**Fix:** Add an `after()` hook rejecting `to < from` when both are present, per the validation.md rule's guidance on cross-field checks.
+**Issue:** `from`/`to` are independently validated as nullable dates with no cross-field check. An inverted range (`to` earlier than `from`) isn't rejected — `PerformanceReportController`'s filter logic just silently produces a zeroed-out report instead of a validation error explaining why, which is a confusing dead end for the Artist using the date filter.
+**Fix:** Add a rule (e.g. `'to' => ['nullable', 'date', 'after_or_equal:from']`) rejecting an inverted range when both are present.
 
-### IN-03: Remote review image link expires in 10 minutes, shorter than a realistic customer review session
+#### IN-03: Remote review image link expires in 10 minutes, shorter than a realistic customer review session
 
 **File:** `app/Http/Controllers/Public/DesignReviewController.php:106`
-**Issue:** `Storage::disk('local')->temporaryUrl($jobOrder->designFile->file_path, now()->addMinutes(10))` mirrors the Artist workspace's own 10-minute image URL (reasonable there, since the Artist can just reload). On the public remote-review page, the *whole page* (not just the image) is meant to sit open in a customer's inbox/browser for however long it takes them to look at a design and decide — the 7-day link itself acknowledges this. If a customer opens the link, steps away, and comes back more than 10 minutes later, the design `<img>` silently breaks (no error state, no retry) while the Approve/Request Changes buttons remain fully live and clickable.
-**Fix:** Either lengthen the image URL's expiry to something closer to a realistic review session (e.g. 1 hour), or add a lightweight client-side "image failed to load — refresh the page" fallback state.
+**Issue:** `Storage::disk('local')->temporaryUrl($jobOrder->designFile->file_path, now()->addMinutes(10))` mirrors the Artist workspace's own 10-minute image URL (reasonable there, since the Artist can just reload the page). On the public remote-review page, the page itself is designed to sit open in a customer's inbox/browser for as long as it takes them to decide — the 7-day page-level signed link acknowledges this. If a customer opens the link, steps away, and returns more than 10 minutes later, the design `<img>` silently breaks (no error state, no retry affordance) while the Approve/Request Changes buttons remain fully live.
+**Fix:** Lengthen the image URL's expiry to something closer to a realistic review session (e.g. 1 hour), or add a lightweight client-side "image failed to load — refresh the page" fallback.
+
+#### IN-04: Leftover commented-out import in `User.php`
+
+**File:** `app/Models/User.php:5`
+**Issue:** `// use Illuminate\Contracts\Auth\MustVerifyEmail;` is dead, commented-out code left over from the Laravel starter kit scaffold. It doesn't affect behavior but is noise that a future reader has to mentally discard.
+**Fix:** Remove the line (or, if email verification is genuinely planned, implement `MustVerifyEmail` for real rather than leaving a commented placeholder).
 
 ---
 
-_Reviewed: 2026-09-03T15:10:40Z_
+_Reviewed: 2026-09-03T16:59:55Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
