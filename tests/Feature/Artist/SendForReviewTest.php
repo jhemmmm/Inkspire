@@ -30,6 +30,23 @@ test('starting a design on a job order that already has one (in_design or beyond
     expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::InDesign);
 });
 
+test('starting a design via an Inertia request on an already-started job order redirects back with a flashed error toast instead of a raw exception page', function () {
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'in_design']);
+
+    $response = $this->actingAs($artist)
+        ->withHeaders(['X-Inertia' => 'true'])
+        ->patch(route('artist.job-orders.design.start', $jobOrder));
+
+    $response->assertRedirect();
+    $response->assertSessionHas(
+        'inertia.flash_data',
+        fn (array $flash) => $flash['toast']['type'] === 'error'
+            && $flash['toast']['message'] === 'This job order is not ready to start a design.',
+    );
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::InDesign);
+});
+
 test('sending a design for review from in_consultation creates a design_files row and a revision_logs row, and advances status to pending_review', function () {
     Storage::fake('local');
     $artist = User::factory()->artist()->create();

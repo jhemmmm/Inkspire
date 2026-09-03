@@ -12,6 +12,7 @@ use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Inertia\Inertia;
+use Inertia\Support\Header;
 use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -52,6 +53,21 @@ return Application::configure(basePath: dirname(__DIR__))
                         ? route($request->user()->role->portalRoute())
                         : route('login'),
                 ])->toResponse($request)->setStatusCode(403);
+            }
+
+            // Business-rule-conflict aborts (abort_unless/abort_if(..., 422, ...))
+            // reach here as plain HttpExceptions. Inertia's client never sends
+            // Accept: application/json, so expectsJson() is always false for
+            // Inertia requests — without this branch, Laravel's default renderer
+            // would return a raw HTML/debug error page, which Inertia's client
+            // then displays as a full-viewport error overlay instead of handling
+            // it gracefully. Redirect back with a flashed error toast instead,
+            // matching the success-toast convention already used across the
+            // controllers that throw these aborts.
+            if ($response->getStatusCode() === 422 && $request->header(Header::INERTIA)) {
+                Inertia::flash('toast', ['type' => 'error', 'message' => $e->getMessage()]);
+
+                return back();
             }
 
             return $response;
