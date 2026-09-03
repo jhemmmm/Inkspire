@@ -20,6 +20,8 @@ class RecordDesignRevision
      * order to pending_review. Strictly after the transaction commits,
      * emails the client a signed remote-review link (D-18) so a rollback
      * can never be followed by an email pointing at a phantom revision.
+     * A mail transport failure is caught and reported, never allowed to
+     * fail the write, since the transactional core already committed.
      */
     public function __invoke(JobOrder $jobOrder, UploadedFile $file): void
     {
@@ -41,6 +43,10 @@ class RecordDesignRevision
             return $revisionLog;
         });
 
-        Mail::to($jobOrder->queueEntry->customer->email)->send(new DesignReviewRequested($revisionLog));
+        try {
+            Mail::to($jobOrder->queueEntry->customer->email)->send(new DesignReviewRequested($revisionLog));
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }
