@@ -6,6 +6,8 @@ use App\Models\JobOrder;
 use App\Models\RevisionLog;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 test('starting a design from in_consultation transitions the job order to in_design', function () {
@@ -41,6 +43,26 @@ test('sending a design for review from in_consultation creates a design_files ro
     expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::PendingReview);
     expect(DesignFile::where('job_order_id', $jobOrder->id)->count())->toBe(1);
     expect(RevisionLog::where('job_order_id', $jobOrder->id)->count())->toBe(1);
+});
+
+test('sending for review still succeeds and commits the revision even when the mail transport throws', function () {
+    Storage::fake('local');
+    Exceptions::fake();
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'in_consultation']);
+
+    Mail::shouldReceive('to')->once()->andReturnSelf();
+    Mail::shouldReceive('send')->once()->andThrow(new Exception('Resend is down.'));
+
+    $response = $this->actingAs($artist)->post(route('artist.job-orders.design.send-for-review', $jobOrder), [
+        'file' => UploadedFile::fake()->image('design.png'),
+    ]);
+
+    $response->assertRedirect();
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::PendingReview);
+    expect(DesignFile::where('job_order_id', $jobOrder->id)->count())->toBe(1);
+    expect(RevisionLog::where('job_order_id', $jobOrder->id)->count())->toBe(1);
+    Exceptions::assertReported(Exception::class);
 });
 
 test('sending for review twice creates two revision_logs rows while design_files stays a single row with the newest file_path', function () {
