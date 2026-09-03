@@ -1,12 +1,17 @@
 # Phase 4: Artist Workflow & Design Editor - Context
 
 **Gathered:** 2026-09-02
+**Updated:** 2026-09-03 — post-UAT scope expansion (client remote review, PSD import)
 **Status:** Ready for planning
 
 <domain>
 ## Phase Boundary
 
 An Artist takes a Type B job order (already created and auto-assigned to them by Phase 3's round-robin) from consultation through a locked, approved design. Covers JOB-03 through JOB-10: consultation notes, a TOAST UI-based design editor, revision logging with a "Send for Review" cycle, design lock on final approval (Owner-only audited override), Artist session status (On Break/End Shift) affecting auto-assignment eligibility, the Artist's own consultation queue (Next/Forward/Not-Appear), and an Artist performance report. Everything upstream (queue intake, Type A validation, Type B auto-assignment) is Phase 3's completed work — this phase never re-touches assignment logic. Everything downstream (pricing, payment, production stages) is Phase 5/6's job — this phase produces an approved, locked design and stops there.
+
+**2026-09-03 expansion (explicit scope override):** After Phase 4 shipped and went through human UAT, the user requested two additions that fall outside the phase's original ROADMAP.md goal (which is strictly artist-side, in-person). This is acknowledged scope creep — the standard move would be a separate phase — but the user explicitly chose to force both into Phase 4 rather than split them out. See D-17 through D-23.
+1. A client can remotely Approve / Request Changes on a pending design via an emailed link, alongside the existing in-person path (supersedes D-05's "no customer portal, ever" framing, not its in-person mechanism).
+2. An Artist can import a `.psd` file as a design's starting point (extends D-11's "blank canvas or reference image" starting points).
 
 </domain>
 
@@ -39,12 +44,26 @@ An Artist takes a Type B job order (already created and auto-assigned to them by
 - **D-15:** Ending shift is allowed at any time, including with job orders mid-consultation or mid-design. Those job orders simply wait for the Artist's next shift — no reassignment, no handoff mechanism (consistent with D-04's Not-Appear behavior; a handoff-to-another-artist concept doesn't exist anywhere else in the requirements).
 - **D-16:** JOB-10's performance report shows: jobs completed, average revisions per job, and SLA adherence, over a selectable date range. All derivable from data this phase already produces (`revision_logs` count, `job_orders` timestamps) plus Phase 1's existing `default_sla_days` system config.
 
+### Client Remote Design Review (2026-09-03 expansion)
+- **D-17:** D-05's "no separate reviewer role or customer portal" is deliberately superseded — the client can now also review remotely. This does NOT change the in-person mechanism: `DesignEditorController::approve()`/`requestChanges()` and their `assigned_artist_id`/`PendingReview` guards stay exactly as they are (D-05/D-06 unchanged for the Artist-side path). This adds a second, unauthenticated caller reaching the same two outcomes — not a rewrite of the review model.
+- **D-18:** Delivery channel is **email only** (not SMS) via **Resend**. `config/services.php` already stubs a `resend` key; this decision is the approval to add the `resend/resend-php` Composer package and set `MAIL_MAILER=resend` / `RESEND_API_KEY` for this feature specifically — not a blanket dependency exception. This is the first outbound email the app sends (no existing `app/Mail` classes to follow as precedent — greenfield).
+- **D-19:** The review link is a Laravel `URL::temporarySignedRoute()`, not a stored token column — no new schema for the link itself. Valid 7 days, minted per `revision_logs` row (the specific revision being reviewed). Sending a new revision (the D-06 bounce-back after "Client Requested Changes") naturally makes the old link stale — visiting it should read "This design has changed — check your latest email," not act on outdated content.
+- **D-20:** Race handling: first verdict wins. The existing `abort_unless($jobOrder->status === PendingReview, 422, ...)` guard already rejects a second attempt (whether in-person or remote comes second) — the remote page renders "Already reviewed" instead of surfacing a 422, mirroring this session's bug-2 fix (graceful 422 handling) applied to the new public page.
+- **D-21:** The client's remote page shows the flattened design image, the job order description, and two buttons — Approve / Request Changes. No free-text comment field (considered and explicitly declined — see Deferred Ideas). Writes the same `revision_logs.outcome` values (`approved` / `changes_requested`) the in-person path already writes; only the caller/controller differs.
+
+### PSD Import (2026-09-03 expansion)
+- **D-22:** `.psd` files are parsed and flattened entirely **client-side** via the `ag-psd` npm package (new dependency, approved here) inside `ToastImageEditor.vue`'s existing import flow. Explicitly chosen over a server-side Imagick path, even though Imagick's PSD delegate was confirmed working on this box (`php -r '(new Imagick())->queryFormats("PSD")'` → `[PSD]`) — user's call, not a technical constraint.
+- **D-23:** Extends the existing "Import Reference Image" file input (D-11) to also accept `.psd` — no separate button. If `ag-psd` fails to parse a file (corrupt, unsupported feature, oversized), fail loud with a specific message ("Couldn't read this PSD — try exporting a flattened PNG/JPG from Photoshop") rather than silently falling back to a blank/broken canvas — same failure-mode class as this session's bug 1/3, deliberately avoided this time.
+
 ### Claude's Discretion
 - Exact enum case naming/string values (`InConsultation`, `InDesign`, `PendingReview`, `DesignApproved`, `Available`/`OnBreak`/`OffShift`, etc.) — follow the existing TitleCase-key/string-value convention in `app/Enums/JobOrderStatus.php` and `app/Enums/UserRole.php`.
 - Exact schema/columns for `design_files` and `revision_logs` (both new tables from the approved 12-table ERD, not yet created) — follow the Eloquent model + `#[Fillable]`/`#[ObservedBy(AuditObserver::class)]` conventions Phase 2/3 established.
 - Whether the "not appeared" deprioritization is a boolean flag or its own status value — data-modeling detail, not a business-rule call.
 - UI layout of the Artist's own queue view, consultation-notes form, and performance report — a UI/UX call, not a business-rule call.
 - Where `artist_status` transition logic lives (model method vs. small action/service class) — implementation detail, follow whatever pattern Phase 3's assignment logic used.
+- Where the new public review route lives (a new `routes/public.php`-style group vs. inline in `routes/portals.php` outside any `role:*` group) — routing organization detail, not a business-rule call.
+- Exact Mailable class name/structure/subject line for the review-link email — follows whatever's idiomatic for Laravel 13, no existing precedent in this app to match.
+- Exact wording of "link expired," "already reviewed," and "PSD parse failed" user-facing messages.
 
 </decisions>
 
@@ -69,6 +88,12 @@ An Artist takes a Type B job order (already created and auto-assigned to them by
 
 ### UI Reference (non-authoritative)
 - `/home/user/inkspire/demo/main.js`, `/home/user/inkspire/demo/index.html` — client's original UI demo. Confirmed during this discussion as the source for the in-person/no-portal design-approval pattern (D-05) and the Next/Forward/Not-Appear queue-control naming (D-03/D-04). Per `PROJECT.md` §Context, this is a UI/interaction reference only — never a source for business rules or data model.
+
+### Remote Review / PSD Import (2026-09-03 expansion)
+- `.planning/REQUIREMENTS.md` line 98 — NOTF-01 ("Customer receives SMS/email notification... currently pull-based QR tracking only, no push") — the remote-review email overlaps this logged gap but is not the same requirement (NOTF-01 is pickup-ready notification; this is design-review notification).
+- `.planning/REQUIREMENTS.md` §Out of Scope, line 115 — "Quote-to-order workflow, customer self-service ordering" is locked Out of Scope; the client remote-review page is adjacent to but distinct from this (reviewing an existing design, not self-service ordering) — noted for downstream awareness, not a conflict requiring resolution.
+- `config/services.php` — already stubs a `resend` key (`env('RESEND_API_KEY')`); D-18 activates it.
+- `app/Models/Customer.php` — has `email` (fillable) — the Mailable's recipient.
 
 </canonical_refs>
 
@@ -96,6 +121,10 @@ An Artist takes a Type B job order (already created and auto-assigned to them by
 - No image-editor package is installed (`composer show --direct` / `package.json` confirmed clean) — D-09's `@toast-ui/vue-image-editor` + `tui-image-editor` addition is genuinely new.
 - `users` table needs two additive columns (`artist_status`, `break_started_at`) — no conflicts with Phase 1's RBAC/lockout columns or Phase 3's `is_available`/`last_assigned_at`.
 - `job_orders` table needs additive columns/relations for consultation notes and the new status values — no conflicts with Phase 3's `assigned_artist_id`/`validation_failure_reason`.
+- No `app/Mail` classes exist yet anywhere in the app — the review-link email is the first outbound mail this app sends.
+- All existing routes in `routes/portals.php` sit behind a `role:*` middleware group; the new public review route needs to live outside any of them (unauthenticated, signed-URL-protected instead).
+- `Imagick` (`ext-imagick`) is loaded and its PSD delegate works (confirmed live on this box) — available if a future phase wants server-side PSD handling, though D-22 chose client-side (`ag-psd`) for this pass.
+- No SMS gateway package/config exists anywhere in the project — SMS remains genuinely unbuilt, not just unconfigured.
 
 </code_context>
 
@@ -110,11 +139,15 @@ An Artist takes a Type B job order (already created and auto-assigned to them by
 <deferred>
 ## Deferred Ideas
 
-None — discussion stayed within Phase 4 scope (JOB-03 through JOB-10). No new-capability suggestions came up; every question was about how to implement what's already scoped.
+None from the original 2026-09-02 discussion — it stayed within Phase 4 scope (JOB-03 through JOB-10).
+
+**From the 2026-09-03 expansion discussion:**
+- **SMS delivery** for the remote review link — no SMS gateway exists in this project; email-only (D-18) ships first. Add SMS as a later enhancement if email-only proves insufficient — would need a provider decision (e.g. Semaphore for PH numbers) and a new integration, same weight as this session's Resend addition.
+- **Free-text comment field** on the client's "Request Changes" remote-review action — considered during discussion (D-21), explicitly declined for this pass to match the in-person path's existing behavior (which also carries no reason today). Worth revisiting for both paths together if artists report not knowing what to change.
 
 </deferred>
 
 ---
 
 *Phase: 4-artist-workflow-design-editor*
-*Context gathered: 2026-09-02*
+*Context gathered: 2026-09-02, updated 2026-09-03*

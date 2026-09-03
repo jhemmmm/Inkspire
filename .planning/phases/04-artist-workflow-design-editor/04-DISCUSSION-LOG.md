@@ -72,3 +72,82 @@
 ## Deferred Ideas
 
 None — discussion stayed within Phase 4 scope. No new-capability suggestions came up.
+
+---
+
+## 2026-09-03 Expansion Session
+
+> Post-UAT: user requested client remote design review and Photoshop file import. Both fall outside Phase 4's original ROADMAP.md goal (strictly artist-side, in-person) — flagged as scope creep per the discuss-phase scope guardrail; user explicitly chose "Force into Phase 4 anyway" over inserting a new phase or logging to backlog.
+
+**Date:** 2026-09-03
+**Phase:** 4-artist-workflow-design-editor
+**Areas discussed:** Notification channel & provider, Remote link security & lifecycle, What the client can do on that page, PSD import path
+
+---
+
+## Scope path (pre-discussion gate)
+
+| Option | Description | Selected |
+|---|---|---|
+| Insert as new phase now | Own phase via gsd-phase --insert, keeps Phase 4 traceable | |
+| Force into Phase 4 anyway | Fold directly into 04-CONTEXT.md, breaks phase-boundary traceability | ✓ |
+| Log to backlog only | Note in REQUIREMENTS.md, build later | |
+
+**User's choice:** Force into Phase 4 anyway.
+
+---
+
+## Notification channel & provider
+
+| Question | Options | Selected |
+|---|---|---|
+| Delivery channel | Email only / SMS only / Both | **Email only** |
+| Email provider | Resend / Postmark / AWS SES / log driver for now | **Resend** |
+
+**Notes:** No SMS gateway exists anywhere in the project (checked composer.json/package.json). `config/services.php` already stubs `resend`/`postmark`/`ses` keys but none are populated — Resend requires adding `resend/resend-php` and setting `RESEND_API_KEY`.
+
+---
+
+## Remote link security & lifecycle
+
+| Question | Options | Selected |
+|---|---|---|
+| Link mechanism | Laravel signed URL (temporarySignedRoute) / Stored random token column | **Signed URL** |
+| Expiry & staleness | 7 days, new revision invalidates old link / No expiry, always shows latest | **7 days, invalidated by new revision** |
+| Artist-vs-client race | First verdict wins, existing 422 guard rejects the second / New "review in progress" coordination state | **First verdict wins** |
+
+---
+
+## What the client can do on that page
+
+| Question | Options | Selected |
+|---|---|---|
+| Page scope | Design image + Approve/Request Changes only / Same + free-text comment on Request Changes | **Image + Approve/Request Changes only** |
+
+**Notes:** Comment field explicitly declined to match the in-person path, which also carries no reason today — logged as a deferred idea for both paths together.
+
+---
+
+## PSD import path
+
+| Question | Options | Selected |
+|---|---|---|
+| Where flattening happens | Server-side via Imagick (confirmed working: PSD delegate present) / Client-side via a JS PSD parser | **Client-side (JS parser)** |
+| Import entry point | Extend existing "Import Reference Image" button / Separate "Import Photoshop File" button | **Extend existing button** |
+| Library | ag-psd (browser-native, no fs/Buffer dependency) / psd.js (Node-oriented, needs polyfilling) | **ag-psd** |
+| Parse-failure behavior | Fail loud with a specific error message / Silently fall back to blank canvas | **Fail loud** |
+
+**Notes:** User chose client-side parsing over the server-side Imagick recommendation, despite Imagick's PSD delegate being confirmed working live on this box (`(new Imagick())->queryFormats("PSD")` → `[PSD]`) — explicit preference, not a technical constraint.
+
+---
+
+## Claude's Discretion (2026-09-03)
+
+- Where the new public review route lives (new route group vs. inline in `routes/portals.php` outside `role:*` groups).
+- Exact Mailable class name/structure/subject line — no existing precedent in this app.
+- Exact wording of "link expired," "already reviewed," and "PSD parse failed" messages.
+
+## Deferred Ideas (2026-09-03)
+
+- **SMS delivery** for the remote review link — build later if email-only proves insufficient; needs its own provider decision (e.g. Semaphore for PH numbers).
+- **Free-text comment field** on "Request Changes" (both in-person and remote paths) — revisit if artists report not knowing what to change.
