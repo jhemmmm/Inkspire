@@ -1,40 +1,52 @@
 ---
-status: diagnosed
+status: partial
 phase: 04-artist-workflow-design-editor
 source: [04-VERIFICATION.md]
 started: 2026-09-02T22:15:00Z
-updated: 2026-09-02T23:05:00Z
+updated: 2026-09-04T01:40:00Z
 ---
 
 ## Current Test
 
-[testing complete — 2 issues found]
+[awaiting human testing — 1 item remaining, see Test 2]
 
 ## Tests
 
 ### 1. TOAST UI Image Editor renders and functions in a real browser
 expected: Open an Artist's Job Order Workspace for a job order in `in_consultation` or `in_design` status. Click "Start from Blank Canvas" or "Import Reference Image". Menu bar renders (crop/flip/rotate/draw/shape/icon/text/filter), each tool is usable, the color picker is styled (not an unstyled `<div>`), and no NHN telemetry request appears in the browser's network tab.
-result: PARTIAL — editor mounted, menu/tools/color picker rendered and were usable. But after interacting with the editor, sidebar navigation ("Dashboard", "Performance Report") stopped responding to clicks anywhere on the Job Order Workspace page. See Gap #1.
+result: PASSED — human-confirmed 2026-09-04 after the crash fix (commit 8ca71ae): editor mounts correctly sized on "Start from Blank Canvas", tools are usable, and sidebar navigation continues to work after interacting with the editor. See Gap #1 (resolved).
 
 ### 2. Exported design PNG visually matches the canvas
-expected: After editing a design and clicking "Send for Review", retrieve the stored `design_files` PNG (via its signed URL) and compare it to what was drawn in the editor. The stored PNG is a faithful flattened export of the canvas content.
-result: BLOCKED — could not complete due to Gap #1 (see below); a stale "Start from Blank Canvas" control was clicked (the job order had already advanced past `in_consultation`) and produced a raw, unhandled 422 crash page instead of a graceful error. See Gap #2.
+expected: After editing a design and clicking "Send for Review", retrieve the stored `design_files` PNG (via its signed URL, or the now-inline locked-design view added in commit 204c9d0) and compare it to what was drawn in the editor. The stored PNG is a faithful flattened export of the canvas content.
+result: pending — unblocked now that Gap #1/#2 are resolved, but not yet performed. Draw something with the editor, Send for Review, then visually confirm the stored image matches.
 
 ## Summary
 
 total: 2
-passed: 0
-issues: 1
-pending: 0
+passed: 1
+issues: 0
+pending: 1
 skipped: 0
-blocked: 1
+blocked: 0
 
 ## Gaps
 
 ### Gap 1: Sidebar navigation stops responding on the Job Order Workspace page after using the design editor
-status: failed
+status: resolved
 severity: high
 reported: 2026-09-02T23:00:00Z
+resolved: 2026-09-04T01:40:00Z
+resolution: >
+  Fixed via /gsd-debug (.planning/debug/resolved/nav-breaks-after-design-editor.md)
+  and committed at 8ca71ae. Root cause: ToastImageEditor.vue passed an explicit
+  `loadImage: undefined` on the blank-canvas path, which tui-image-editor's
+  option-merge treated as a real override of its own safe default, crashing
+  initCanvas() synchronously in Vue's onMounted() and stalling the Vue
+  scheduler (hence the page-wide navigation freeze). Fixed by synthesizing a
+  real blank white image data URI instead of passing undefined, plus an
+  explicit includeUI.uiSize so the outer chrome box doesn't collapse to the
+  library's 300px min-height fallback. Human-confirmed working in a real
+  browser 2026-09-04.
 
 **Symptom:** After mounting the TOAST UI editor and interacting with it (loading/editing an image), clicking the "Dashboard" or "Performance Report" links in the sidebar nav (and/or the "Dashboard" breadcrumb) does nothing — the page does not navigate.
 
@@ -47,9 +59,16 @@ reported: 2026-09-02T23:00:00Z
 **Why this blocks phase completion:** JOB-04/JOB-05 (create/edit a design, send for review) are the phase's core new surface. If using the editor breaks the Artist's ability to navigate away from the page afterward, the feature is not usable end-to-end, regardless of what the automated test suite shows (Pest cannot exercise this — it's a client-side runtime interactivity issue, not a request/response contract issue).
 
 ### Gap 2: 422 on `design/start` crashes to a raw Laravel error page instead of a graceful message
-status: failed
+status: resolved
 severity: medium
 reported: 2026-09-02T23:00:00Z
+resolved: 2026-09-04T01:40:00Z
+resolution: >
+  Fixed alongside Gap #1, same commit (8ca71ae). bootstrap/app.php's
+  exception renderer now flashes a toast and redirects back for a 422 on
+  an Inertia request, extending the existing 403 precedent instead of
+  falling through to Laravel's raw debug page. Covered by a new regression
+  test in tests/Feature/Artist/SendForReviewTest.php.
 
 **Symptom:** `PATCH /artist/job-orders/{id}/design/start` on a job order no longer in `in_consultation` status (e.g. already advanced to `pending_review`) returns a 422 with `DesignEditorController.php:44`'s `abort_unless` message — but instead of a normal Inertia-handled error, the browser shows a raw, full-page Laravel/Ignition exception page.
 
