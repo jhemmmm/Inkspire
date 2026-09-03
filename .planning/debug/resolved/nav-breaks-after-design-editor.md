@@ -1,17 +1,25 @@
 ---
-status: investigating
+status: resolved
 trigger: "Designing is hard. Clicking 'Dashboard' on the breadcrumb/navigation does not return me to the dashboard. (This looks like bug on the viewing the job order, unable to change navigation, even performance report doesn't work)"
 created: 2026-09-02T15:50:00Z
-updated: 2026-09-03T03:00:00Z
+updated: 2026-09-04T01:35:00Z
 ---
+
+## Human Verification
+
+Confirmed working by the human in their own real browser on 2026-09-04:
+"Start from Blank Canvas" mounts a correctly-sized, interactive editor,
+and sidebar navigation continues to work afterward. Fix committed at
+8ca71ae. This closes the "do NOT move this file to resolved/ until the
+human confirms" condition from the prior round.
 
 ## Current Focus
 <!-- OVERWRITE on each update - always reflects NOW -->
 
-hypothesis: Bug 3's fix (real white 900x600 blank image as loadImage.path) DID solve the original problem — the canvas is now visible and white, confirmed by human screenshot. But a NEW/related issue (Bug 4) is now visible in that same screenshot: the actual drawable canvas renders as a thin horizontal sliver (visually roughly full-width but only ~20-30px tall) instead of a proper ~900x600 landscape rectangle, even though the underlying PNG bitmap really is 900x600 (confirmed by createBlankImageDataUrl's own code) and the debugger's own CDP self-check claimed the container/canvas elements measured 900x600 via getBoundingClientRect(). This is a real discrepancy between the debugger's automated self-check and the actual rendered page a human sees — the self-check likely measured something that doesn't reflect real on-page layout (e.g. checked inline style/backstore canvas.width/height attributes rather than actual visual CSS-rendered box size, or was run in a different DOM/CSS context than the live /artist/job-orders/1 route). Leading suspects: (a) adjustCanvasDimensionBase() (tui-image-editor.js:58065-58091) sets the fabric canvas's CSS to `width:'100%', height:'100%', max-width:900px, max-height:600px` — if the ACTUAL parent container's rendered CSS height (from our Vue Card/CardContent/Tailwind layout, not from tui-image-editor's own inline styles) is small, `height:100%` resolves to that small value regardless of the 600px max-height cap; (b) a CSS specificity/ordering conflict between Tailwind's preflight/reset and tui-image-editor.css's own layout rules, causing the editor's own explicitly-set inline `height: 600px` on `_editorElement` (from resizeEditor(), confirmed at tui-image-editor.js:47546-47569) to be overridden or never actually take visual effect.
-test: Reproduce on the REAL live page (not an isolated harness) at http://localhost:8000/artist/job-orders/1 exactly as the human did — log in as artist@inkspire.test, click "Start from Blank Canvas" — and this time use getComputedStyle() (not just getBoundingClientRect()/attribute reads) on every ancestor from the fabric canvas element up through .tui-image-editor-wrapper, the Card/CardContent Vue components, and the page body, to find exactly which element's computed height is constraining the visual result. Take an actual screenshot and visually compare proportions to the human's report before declaring this fixed again.
-expecting: One specific ancestor (or a specific tui-image-editor.css rule being overridden by Tailwind, or vice versa) will show a computed height far smaller than expected, pinpointing exactly where the 600px intent is being lost between resizeEditor()'s inline style and what the browser actually paints.
-next_action: Continue debug session with this new evidence — do NOT re-declare "fixed" without an actual screenshot comparison this round, since the previous DOM-measurement-only self-check passed while the real rendered result was visibly wrong.
+hypothesis: CONFIRMED via live getComputedStyle() ancestor walk (see Evidence 2026-09-03T04:00:00Z). Root cause is NOT a CSS specificity conflict with Tailwind, and NOT the adjustCanvasDimensionBase() cssMaxWidth/cssMaxHeight mechanism (that part works correctly). It's a THIRD, previously-unexamined tui-image-editor option: `includeUI.uiSize`. tui-image-editor's `Ui` class `_makeUiElement()` (tui-image-editor.js:47750-47786) reuses OUR OWN `editorContainer` div directly as `_selectedElement` (adding class `tui-image-editor-container` onto our existing `tui-image-editor-wrapper` div, then replacing its innerHTML) — it is NOT a nested child element. `_setUiSize()` (tui-image-editor.js:47674-47680) then sets `_selectedElement.style.width/height` directly from `options.uiSize`, which defaults to `{width:'100%', height:'100%'}` (tui-image-editor.js:47658-47661) when `includeUI.uiSize` is not passed — and ToastImageEditor.vue never passes it. Our own div's PARENT (CardContent's `.space-y-4` div) has `height:auto` (content-driven, no explicit height), so `height:100%` on our div resolves as CSS spec dictates for a percentage-height box whose containing block has indefinite height: as if 'auto' were specified — collapsing to the library's own hardcoded `min-height:300px` (tui-image-editor.css `.tui-image-editor-container{min-height:300px;height:100%}`) since all of that div's children are `position:absolute` (contribute 0 to auto-height). Meanwhile the CANVAS itself is still correctly, explicitly sized to 900x600 via inline pixel styles (cssMaxWidth/cssMaxHeight -> resizeEditor() -> `.tui-image-editor` element gets explicit `height:600px` inline, confirmed still correct). But that 600px-tall canvas UI lives inside `.tui-image-editor-wrap` (`_editorElementWrap`), which is `position:absolute; top:0; bottom:0` inside `.tui-image-editor-main` (top:64px reserved for header, bottom:0) inside `.tui-image-editor-main-container` (top:0, bottom:64px reserved for the bottom menu bar) inside the 300px-min-height outer container — so `.tui-image-editor-wrap`'s own computed height ends up only 300-64-64=172px, with `overflow:auto`. The 600px-tall canvas UI overflows that 172px box and only the top slice is visible without manually scrolling inside that specific inner div — this is the "sliver" the human sees. The prior round's self-check only measured `.tui-image-editor-canvas-container`/`lower-canvas`/`upper-canvas` (which genuinely ARE 900x600 in their own right, since their own inline `height:100%` resolves against `.tui-image-editor`'s DEFINITE 600px height, a different, closer ancestor) — it never walked further up to `.tui-image-editor-wrap`/`.tui-image-editor-container`, so it never saw the clipping happening one level further out. Not a Tailwind/tui-image-editor.css specificity conflict at all — both stylesheets are behaving exactly as authored; the app simply never told the library how tall to make the outer chrome box.
+test: Fix by passing `includeUI.uiSize: { width: '100%', height: '<CSS_MAX_HEIGHT + 128>px' }` explicitly in ToastImageEditor.vue's mount options (128 = tui-image-editor's own hardcoded 64px header + 64px bottom-menu-bar reserved chrome height for `menuBarPosition:'bottom'`, confirmed from tui-image-editor.css `.tui-image-editor-main{top:64px}` and `.tui-image-editor-controls{height:64px}`/`.tui-image-editor-main-container{bottom:64px}`). This gives `_selectedElement` (our own div) a DEFINITE inline pixel height instead of a `100%` that collapses to `min-height:300px`, which should flow a correct, non-clipped 600px down to `.tui-image-editor-wrap`.
+expecting: Post-fix getComputedStyle() walk shows `.tui-image-editor-wrapper.tui-image-editor-container` computed height = 728px (not 300px), `.tui-image-editor-wrap` computed height = 600px (not 172px), and a screenshot shows a full, proportioned ~900x600 landscape canvas, not a sliver.
+next_action: CONFIRMED — fix implemented and self-verified (see Evidence 2026-09-03T04:00:00Z and updated Resolution). Post-fix getComputedStyle() walk matches every "expecting" value exactly (728px/664px/600px/600px), a viewport screenshot and a full-page screenshot both show a correct, unclipped 900x600 canvas with the complete bottom menu bar visible, the crop/draw/send-for-review regression script passes identically to the bug 3 round, and `npm run types:check`/`npx vp check`/`php artisan test --compact --filter=Artist` all pass clean. Job order #1 has been reset to in_consultation (no designFile/revisionLogs) for the human's own re-test. Session is now awaiting_human_verify — do NOT move this file to resolved/ until the human confirms in their own real browser. If the human reports still-broken sizing, resume investigating (do not re-declare fixed a third time without fresh live evidence).
 reasoning_checkpoint:
   hypothesis: "Bug 1: the explicit `loadImage: undefined` in ToastImageEditor.vue's includeUI options overwrites tui-image-editor's internal default via a hasOwnProperty-based shallow extend(), causing initCanvas() to read `.path` off `undefined` and throw synchronously inside Vue's mounted() hook; because Vue 3.5's flushJobs() calls the uncaught-throw-prone flushPostFlushCbs() before resetting currentFlushPromise in its finally block, this single throw permanently disables Vue's scheduler for the rest of the page's life, which is why unrelated sidebar/breadcrumb nav clicks stop having any visible effect afterward. Bug 2: bootstrap/app.php's $exceptions->respond() only special-cases 403, not 422, so all 22 abort_unless/abort_if(...,422,...) call sites app-wide fall through to a raw debug-page response that Inertia's client then displays via its own non-Inertia-response overlay handling — independent of bug 1."
   confirming_evidence:
@@ -32,6 +40,16 @@ reasoning_checkpoint_bug3:
   falsification_test: "If the container's getBoundingClientRect() still reported 0x0 (or the canvas elements' width/height attributes were still 0) after clicking 'Start from Blank Canvas' with the fix applied, the hypothesis would be wrong. If getImageData() returned all-zero/transparent pixels instead of white, the hypothesis would be wrong (would indicate a sized-but-uninitialized canvas, a different failure mode)."
   fix_rationale: "Synthesizes a real image (matching the library's own expectation that loadImage.path always points to actual image data) instead of adding a manual resizeEditor()/manual container-sizing workaround that would fight the library's internal state machine (this.options.originalCanvasSize, previous initialImage bookkeeping used by other library methods like undo/redo baseline) and risk diverging from the already-working, already-tested 'Import Reference Image' code path."
   blind_spots: "Have not verified behavior across every browser engine (only tested in headless Chromium) — canvas.toDataURL('image/png') is broadly supported and used elsewhere in this same codebase's Import Reference Image flow (URL.createObjectURL) so this is a low-risk assumption. Have not tested extremely small viewport / mobile widths where cssMaxWidth/cssMaxHeight scaling behavior might differ, though this mirrors the exact dimensions already used successfully by the non-blank flow."
+reasoning_checkpoint_bug4:
+  hypothesis: "tui-image-editor's Ui class reuses our own editorContainer div directly as its top-level `.tui-image-editor-container` element (no nested wrapper is created) and sizes it via `_setUiSize()` from `options.uiSize`, which defaults to `{width:'100%',height:'100%'}` when `includeUI.uiSize` is not passed. Because our div's own parent (CardContent's space-y-4 div) has no explicit height (height:auto, content-driven), the 100% resolves to nothing and the library's own CSS fallback `min-height:300px` becomes the actual rendered height. The inner canvas UI (`.tui-image-editor`) is still correctly, explicitly sized to 900x600 via a completely separate mechanism (cssMaxWidth/cssMaxHeight -> resizeEditor()), so it overflows the ~172px-tall `.tui-image-editor-wrap` box that results from a 300px outer container minus 128px of hardcoded header+bottom-menu-bar chrome, and gets scroll-clipped (overflow:auto) to a thin visible top slice — the 'sliver' the human sees."
+  confirming_evidence:
+    - "Live getComputedStyle() ancestor walk on the real /artist/job-orders/1 route (Evidence 2026-09-03T04:00:00Z) shows `.tui-image-editor-wrapper.tui-image-editor-container` (our own div, confirmed by className) at computed height 300px with computed minHeight 300px and inline style height:100% — i.e. the percentage resolved to nothing and min-height is what's actually pinning it."
+    - "Direct source trace: tui-image-editor.js:47750-47764 (_makeUiElement) shows `selectedElement = element` (the element passed into `new ImageEditor(...)`, i.e. our own div) gets `.tui-image-editor-container` added to its existing classList and its innerHTML replaced — it is not a new nested element."
+    - "Direct source trace: tui-image-editor.js:47658-47661 (_initializeOption default) confirms `uiSize: {width:'100%',height:'100%'}` is the default when includeUI.uiSize is not supplied; tui-image-editor.js:47674-47680 (_setUiSize) confirms this is applied as `_selectedElement.style.width/height` directly."
+    - "Live evidence shows the canvas-container/canvas elements (a nearer ancestor pair with their own, different, definite 600px containing block from `.tui-image-editor`'s explicit inline height) are correctly 900x600 — explaining why the PRIOR round's narrower check (which stopped at that level) passed while a human still saw a visibly broken result one level further up the DOM."
+  falsification_test: "After passing includeUI.uiSize with an explicit pixel height, a live getComputedStyle() walk must show `.tui-image-editor-wrapper.tui-image-editor-container` computed height matching the new explicit value (not 300px/min-height), and `.tui-image-editor-wrap` computed height must equal 600px (not 172px) with no visual clipping in a screenshot. If the outer container's computed height still shows 300px/min-height after the fix, the hypothesis is wrong."
+  fix_rationale: "Passing includeUI.uiSize explicitly uses the exact configuration knob tui-image-editor's own code exposes for this exact purpose (sizing the outer chrome box, a distinct concern from cssMaxWidth/cssMaxHeight which only caps the inner canvas) — this is the root-cause fix, not a workaround. Only uiSize.height needs changing (uiSize.width stays '100%', since width already renders correctly at the full available card width and changing it would risk narrowing the editor unnecessarily on wide layouts or overflowing on narrow ones — that dimension isn't broken)."
+  blind_spots: "The 128px (64+64) header+bottom-menu chrome allowance is read directly from tui-image-editor's own pinned dist CSS for menuBarPosition:'bottom' (the only menu position this app uses) — if that library version's CSS changes in a future dependency bump, this constant would need re-deriving. Have not tested behavior at very narrow viewport widths (mobile) where cssMaxWidth's own width-vs-height scale-factor logic could interact with a fixed uiSize.height in ways not exercised by this specific 900x600 blank-canvas case."
 
 ## Symptoms
 <!-- Written during gathering, then immutable -->
@@ -120,6 +138,11 @@ started: First occurrence — this is new code from Phase 4 (Artist Workflow & D
   checked: Human re-verification in the real dev environment (screenshot) of the bug-3 fix on the live /artist/job-orders/1 page.
   found: The canvas IS now visible and white (bug 3's core symptom is genuinely fixed — confirms the loadImage-data-URI approach was directionally correct). But the drawable canvas area renders as a thin horizontal sliver — visually near-full-width but only roughly 20-30px tall — not a proper ~900x600 (or even reasonably-proportioned) landscape rectangle. The outer editor chrome box (toolbar top to bottom menu icons) also looks visually shorter than the configured 600px. Human quote: "the design height is little. How are we supposed to edit on it?"
   implication: A real, new discrepancy between the prior round's self-verification (which claimed `.tui-image-editor-canvas-container`/`lower-canvas`/`upper-canvas` all measured 900x600 via getBoundingClientRect()) and what a human actually sees on the same route. Either that check measured the wrong thing (e.g. inline style/backstore pixel attributes rather than true rendered CSS box size), ran against a different DOM/CSS context than the real page, or there's viewport/timing sensitivity the scripted repro didn't hit. This needs a fresh live check on the exact real route with getComputedStyle() on the full ancestor chain plus an actual screenshot — not just element measurements — before declaring fixed again.
+
+- timestamp: 2026-09-03T04:00:00Z
+  checked: Live CDP reproduction against the real running dev server (local headless Chrome, google-chrome --headless=new --remote-debugging-port=9333, driven via the same scratch Node/WebSocket CDP script technique as prior rounds — chrome-devtools MCP tools not available this session, remote endpoint 192.168.250.102:9222 unreachable). Reset job order #1 to in_consultation with designFile/revisionLogs cleared, fresh full-page load of http://localhost:8000/artist/job-orders/1, clicked "Start from Blank Canvas". Walked getComputedStyle() + getBoundingClientRect() on EVERY ancestor from the `lower-canvas` element up through `<body>` (not just the canvas/canvas-container measured last round), and captured a screenshot.
+  found: Zero Runtime.exceptionThrown events (bugs 1/3 hold). `lower-canvas`/`upper-canvas`/`.tui-image-editor-canvas-container` (depth 0-1) all correctly compute to 900x600 (matches prior round's check — that part was never wrong). `.tui-image-editor` (depth 2, `_editorElement`) correctly has inline `height:600px;width:900px` (resizeEditor() ran correctly). BUT walking further up: `.tui-image-editor-wrap` (depth 5, `_editorElementWrap`, position:absolute, overflow:auto) computed height = only 172px. `.tui-image-editor-main` (depth 6) = 172px. `.tui-image-editor-main-container` (depth 7) = 236px. `.tui-image-editor-wrapper.tui-image-editor-container` (depth 8 — OUR OWN Vue-rendered div, confirmed by className containing both `tui-image-editor-wrapper` AND `tui-image-editor-container` on the SAME element) computed height = exactly 300px, with computed minHeight = 300px and inline style `height:100%` — i.e. the 100% resolved to nothing and the library's own CSS `min-height:300px` (tui-image-editor.css) is what's actually pinning it. Its parent, our CardContent `.space-y-4` div (depth 9), has `height:auto` (336px, purely content-driven, no explicit height set anywhere in our Vue code or Tailwind classes on that element).
+  implication: Confirms the root cause precisely: with the outer container at 300px, minus 64px header minus 64px bottom-menu-bar (both hardcoded in tui-image-editor.css), only 172px remains for `.tui-image-editor-wrap`, into which the library still tries to fit its correctly-600px-tall `.tui-image-editor` box — overflowing and getting scroll-clipped (overflow:auto) to the top 172px. The mechanism is `includeUI.uiSize` (a THIRD, previously-unexamined config option distinct from `cssMaxWidth`/`cssMaxHeight`) defaulting to `{width:'100%',height:'100%'}` (tui-image-editor.js:47658-47661) when not passed by us — and our own wrapper div's parent has no explicit height, so that 100% collapses per CSS spec to the library's own `min-height:300px` fallback. Screenshot (bug4-before.png) visually confirms a squished/cropped canvas area consistent with a ~172px-tall visible window into a 600px-tall canvas. Not a Tailwind/tui-image-editor.css specificity conflict — both hypothesis (a) and (b) from the prior round's Current Focus are ELIMINATED; this is option (c), a third mechanism neither had considered.
 
 ## Resolution
 <!-- OVERWRITE as understanding evolves -->
@@ -212,6 +235,21 @@ fix: |
   blank image always matches the editor's configured display size. This makes
   `loadImageInfo.path` truthy, driving `initLoadImage()` -> `resizeEditor()`
   exactly like the already-working "Import Reference Image" path.
+
+  BUG 4: resources/js/components/ToastImageEditor.vue — added an explicit
+  `includeUI.uiSize: { width: '100%', height: '\${CSS_MAX_HEIGHT + EDITOR_CHROME_HEIGHT}px' }`
+  option (previously unset, silently defaulting to tui-image-editor's own
+  `{ width: '100%', height: '100%' }`, which collapsed to its `min-height:
+  300px` CSS fallback since our wrapper's parent has no explicit height).
+  `EDITOR_CHROME_HEIGHT` (128) is a new named constant documented with its
+  derivation: tui-image-editor's own hardcoded 64px header + 64px bottom
+  menu bar (confirmed from its own dist CSS, `.tui-image-editor-main {
+  top: 64px }` / `.tui-image-editor-controls { height: 64px }` /
+  `.tui-image-editor-main-container { bottom: 64px }`), which must be
+  reserved on top of the canvas's own `CSS_MAX_HEIGHT` so the outer chrome
+  box is tall enough to not clip the inner canvas. `uiSize.width` was left
+  at `'100%'` (unchanged/not part of the bug — width already rendered
+  correctly at the available card width).
 verification: |
   Self-verified via live CDP reproduction against the running dev server (no
   chrome-devtools MCP tools were available in this session; used a locally
@@ -270,10 +308,83 @@ verification: |
   file, not from this change). `php artisan test --compact --filter=Artist`
   passed 57/57 both before and after the bug 3 fix — no regressions.
 
+  BUG 4: reset job order #1 to in_consultation with designFile/revisionLogs
+  cleared, live CDP repro (local headless Chrome over CDP, same technique).
+  Clicked "Start from Blank Canvas" — zero Runtime.exceptionThrown events.
+  Walked getComputedStyle() on the FULL ancestor chain from `lower-canvas`
+  up through `<body>` (not just the canvas/canvas-container, per this
+  round's explicit instruction not to repeat the prior round's narrower
+  check): `.tui-image-editor-wrapper.tui-image-editor-container` (our own
+  div) now computes to height 728px (previously 300px, matching the new
+  explicit inline style); `.tui-image-editor-main-container` computes to
+  664px (previously 236px); `.tui-image-editor-main` computes to 600px
+  (previously 172px); `.tui-image-editor-wrap` computes to 600px
+  (previously 172px) — now exactly matching the canvas's own 600px height,
+  with no more overflow/clipping. Took both a viewport screenshot
+  (bug4-after.png) and a full-page screenshot capturing the complete
+  editor (bug4-full.png) — both show a correctly proportioned, full
+  900x600 white canvas with the toolbar above and the complete bottom
+  menu bar (crop/flip/rotate/draw/shape/icon/text/filter icons) fully
+  visible below it, visually distinct from the pre-fix screenshot
+  (bug4-before.png), which showed the same canvas area compressed into a
+  short strip with the bottom menu bar overlapping close beneath it.
+
+  Re-ran the full tool-interaction + Send for Review regression script
+  used in the bug 3 round (crop submenu + presets, draw submenu + a real
+  simulated pointer drag-stroke producing 1172 non-white pixels on the
+  canvas bitmap, `exportPng()` -> `design/send-for-review` POST succeeding
+  with a flashed "Sent for review" toast and new revision log row) — all
+  passed identically to the bug 3 round, confirming no regression from the
+  uiSize change. Zero exceptions throughout.
+
+  `npm run types:check` (vue-tsc) passed clean. `npx vp check` (format +
+  lint) passed clean on the modified file. `php artisan test --compact
+  --filter=Artist` passed 57/57 (same as bug 3 round — this fix is
+  frontend-only, no PHP changed).
+
   Pending: human confirmation in the real dev environment before archiving
-  (this is the second such pending confirmation in this session — bugs 1/2
-  were already confirmed once by the human; bug 3 has not yet been shown
-  to the human at all).
+  (this is the third such pending confirmation in this session — bugs 1/2
+  were already confirmed once by the human; bugs 3 and 4 have not yet been
+  shown to the human).
+
+  BUG 4 (confirmed independent, exposed by bug 3's fix but not caused by a
+  mistake in it): tui-image-editor's `Ui` class reuses the element passed
+  into `new ImageEditor()` directly as its own top-level
+  `.tui-image-editor-container` chrome box (tui-image-editor.js:47750-47786,
+  `_makeUiElement()` — `selectedElement = element`, our own
+  `editorContainer` div, gets `.tui-image-editor-container` added to its
+  existing classList and its innerHTML replaced; it is not a new nested
+  element). That box's own size comes from a THIRD, previously-unexamined
+  config option, `includeUI.uiSize` (distinct from `cssMaxWidth`/
+  `cssMaxHeight`, which only cap the inner canvas), applied via
+  `_setUiSize()` (tui-image-editor.js:47674-47680,
+  `_selectedElement.style.width/height = uiSize.width/height`) and
+  defaulting to `{ width: '100%', height: '100%' }`
+  (tui-image-editor.js:47658-47661) when not supplied. ToastImageEditor.vue
+  never passed `uiSize`. Our own wrapper div's parent (CardContent's
+  `space-y-4` div) has no explicit height (`height:auto`, content-driven),
+  so the unset `height:100%` resolves per CSS spec as if `auto` were
+  specified — collapsing to tui-image-editor's own CSS fallback
+  `min-height:300px` (all of that box's children are `position:absolute`
+  and contribute nothing to auto-height). The canvas itself was still
+  correctly, explicitly sized to 900x600 via the separate cssMaxWidth/
+  cssMaxHeight -> resizeEditor() mechanism (bug 3's fix), but that 600px
+  UI now lives inside a chain of `position:absolute` ancestors
+  (`.tui-image-editor-main-container`, `.tui-image-editor-main`,
+  `.tui-image-editor-wrap`) whose heights are all derived by subtracting
+  tui-image-editor's own hardcoded 64px header + 64px bottom-menu-bar
+  chrome from that undersized 300px outer box — leaving only ~172px for
+  `.tui-image-editor-wrap` (which has `overflow:auto`), so the 600px
+  canvas UI overflowed and was scroll-clipped to a thin top slice — the
+  reported "sliver". The prior round's self-check only measured
+  `.tui-image-editor-canvas-container`/`lower-canvas`/`upper-canvas`
+  (correctly 900x600 via their own, nearer, definite-height ancestor,
+  `.tui-image-editor`, which is unaffected by this bug) and never walked
+  further up to `.tui-image-editor-wrap`/`.tui-image-editor-container`,
+  so it never observed the clipping happening one level further out. Not
+  a Tailwind/tui-image-editor.css specificity conflict — both of the
+  prior round's leading suspects (a and b) are eliminated; this is a
+  third, previously un-considered mechanism.
 files_changed:
   - resources/js/components/ToastImageEditor.vue
   - bootstrap/app.php
