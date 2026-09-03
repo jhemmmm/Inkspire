@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Form, Head, router, setLayoutProps, useForm } from '@inertiajs/vue3';
+import { readPsd } from 'ag-psd';
 import { computed, ref } from 'vue';
+import { toast } from 'vue-sonner';
 import DesignEditorController from '@/actions/App/Http/Controllers/Artist/DesignEditorController';
 import JobOrderWorkspaceController from '@/actions/App/Http/Controllers/Artist/JobOrderWorkspaceController';
 import InputError from '@/components/InputError.vue';
@@ -89,10 +91,48 @@ function onStartBlankCanvas(): void {
     router.patch(start.url(props.jobOrder.id), {}, { preserveScroll: true });
 }
 
-function onReferenceFileChosen(event: Event): void {
+/**
+ * Returns null on BOTH a thrown parse exception (corrupt/unsupported PSD)
+ * AND a successfully-parsed PSD with no composite image data (`psd.canvas`
+ * undefined, e.g. a file saved without "Maximize Compatibility") — both
+ * failure modes fail loud identically per D-23.
+ */
+async function readPsdAsFlattenedDataUrl(file: File): Promise<string | null> {
+    try {
+        const buffer = await file.arrayBuffer();
+        const psd = readPsd(buffer);
+
+        return psd.canvas ? psd.canvas.toDataURL('image/png') : null;
+    } catch {
+        return null;
+    }
+}
+
+async function onReferenceFileChosen(event: Event): Promise<void> {
     const file = (event.target as HTMLInputElement).files?.[0];
 
     if (!file) {
+        return;
+    }
+
+    if (file.name.toLowerCase().endsWith('.psd')) {
+        const dataUrl = await readPsdAsFlattenedDataUrl(file);
+
+        if (!dataUrl) {
+            toast.error(
+                "Couldn't read this PSD — try exporting a flattened PNG/JPG from Photoshop.",
+            );
+            (event.target as HTMLInputElement).value = '';
+            return;
+        }
+
+        referenceImageUrl.value = dataUrl;
+        started.value = true;
+        router.patch(
+            start.url(props.jobOrder.id),
+            {},
+            { preserveScroll: true },
+        );
         return;
     }
 
@@ -211,7 +251,7 @@ function outcomeLabel(outcome: string | null): string {
                         <input
                             ref="fileInputRef"
                             type="file"
-                            accept="image/*"
+                            accept="image/*,.psd"
                             class="hidden"
                             @change="onReferenceFileChosen"
                         />
