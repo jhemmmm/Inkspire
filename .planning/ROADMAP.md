@@ -171,8 +171,8 @@ Plans:
 
 **Wave 7** *(2026-09-03 scope expansion — post-UAT, user-forced into Phase 4 rather than a new phase; see 04-CONTEXT.md D-17 through D-23)*
 
-- [ ] 04-11-PLAN.md — Client Remote Design Review (JOB-06 extension: D-17 through D-21)
-- [ ] 04-12-PLAN.md — PSD Import (JOB-04 extension: D-22, D-23)
+- [x] 04-11-PLAN.md — Client Remote Design Review (JOB-06 extension: D-17 through D-21)
+- [x] 04-12-PLAN.md — PSD Import (JOB-04 extension: D-22, D-23)
 
 **UI hint**: yes
 
@@ -249,7 +249,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Foundation — RBAC, Auth Hardening & Audit Trail | 12/12 | Complete    | 2026-09-01 |
 | 2. Customer & Queue Management | 5/5 | Complete   | 2026-09-01 |
 | 3. Job Order Intake & Auto-Assignment | 2/2 | Complete    | 2026-09-02 |
-| 4. Artist Workflow & Design Editor | 10/10 | Complete   | 2026-09-02 |
+| 4. Artist Workflow & Design Editor | 12/12 | Complete   | 2026-09-03 |
 | 5. POS & Payments | 0/TBD | Not started | - |
 | 6. Production Monitoring & Public Tracking | 0/TBD | Not started | - |
 | 7. Accounts Receivable | 0/TBD | Not started | - |
