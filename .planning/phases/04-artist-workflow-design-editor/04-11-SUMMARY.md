@@ -125,3 +125,18 @@ Until this is configured, the developer's local `.env` should stay on `MAIL_MAIL
 ---
 *Phase: 04-artist-workflow-design-editor*
 *Completed: 2026-09-03*
+
+## Self-Check: PASSED
+
+All created files verified present on disk:
+- FOUND: app/Http/Controllers/Public/DesignReviewController.php
+- FOUND: resources/js/pages/public/DesignReview.vue
+- FOUND: tests/Feature/Public/DesignReviewTest.php
+- FOUND: app/Mail/DesignReviewRequested.php
+- FOUND: resources/views/mail/design-review-requested.blade.php
+- FOUND: .planning/phases/04-artist-workflow-design-editor/04-11-SUMMARY.md
+
+All task commits verified present in `git log`:
+- FOUND: 4a58b4e (Task 2)
+- FOUND: 0a95e8a (Task 3)
+- FOUND: e052a6e (this summary)
