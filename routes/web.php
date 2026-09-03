@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Public\DesignReviewController;
 use App\Http\Controllers\Public\QueueDisplayController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -11,6 +12,15 @@ Route::inertia('/', 'Welcome')->name('home');
 Route::get('queue-display', [QueueDisplayController::class, 'index'])
     ->middleware('throttle:60,1')
     ->name('queue-display');
+
+// Public, unauthenticated, signed-URL-protected (D-17 through D-21) — the
+// client's remote design-review path, reached only via an emailed
+// temporarySignedRoute() link. Deliberately outside every role:* group.
+Route::middleware(['signed', 'throttle:60,1'])->prefix('design-review')->group(function () {
+    Route::get('{revisionLog}', [DesignReviewController::class, 'show'])->name('public.design-review.show');
+    Route::post('{revisionLog}/approve', [DesignReviewController::class, 'approve'])->name('public.design-review.approve');
+    Route::post('{revisionLog}/request-changes', [DesignReviewController::class, 'requestChanges'])->name('public.design-review.request-changes');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Every role has its own dedicated portal (see UserRole::portalRoute()).

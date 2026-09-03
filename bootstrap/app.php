@@ -10,6 +10,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -40,6 +41,10 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
+            if ($e instanceof InvalidSignatureException) {
+                return Inertia::render('public/DesignReview', ['state' => 'expired'])->toResponse($request)->setStatusCode(403);
+            }
+
             if ($response->getStatusCode() === 403 && ! $request->expectsJson()) {
                 return Inertia::render('errors/Forbidden', [
                     'role' => $request->user()?->role?->value,
