@@ -56,6 +56,6 @@ Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')
 });
 
 Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')->name('accounting-staff.')->group(function () {
-    Route::inertia('dashboard', 'accounting-staff/Dashboard')->name('dashboard');
+    Route::get('dashboard', [ReconciliationController::class, 'index'])->name('dashboard');
     Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
 });

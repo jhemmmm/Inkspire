@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Cashier;
 use App\Actions\POS\ConfirmPaymentIntent;
 use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\JobOrder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 use Luigel\Paymongo\Facades\Paymongo;
 use Luigel\Paymongo\Models\PaymentIntent;
 use RuntimeException;
@@ -17,6 +19,26 @@ use RuntimeException;
 class ReconciliationController extends Controller
 {
     public function __construct(public ConfirmPaymentIntent $confirmPaymentIntent) {}
+
+    /**
+     * List job orders awaiting GCash/Maya payment confirmation (POS-04) —
+     * Accounting Staff's dashboard, D-12's "filtered list view".
+     */
+    public function index(Request $request): Response
+    {
+        return Inertia::render('accounting-staff/Dashboard', [
+            'jobOrders' => JobOrder::query()
+                ->where('payment_status', PaymentStatus::PendingConfirmation)
+                ->with([
+                    'queueEntry.customer:id,name',
+                    'transactions' => fn ($query) => $query
+                        ->where('status', TransactionStatus::PendingConfirmation)
+                        ->latest(),
+                ])
+                ->orderBy('created_at')
+                ->get(['id', 'description', 'payment_status', 'total_amount', 'queue_entry_id', 'created_at']),
+        ]);
+    }
 
     /**
      * Manually check a stalled GCash/Maya payment against PayMongo when the
@@ -62,7 +84,15 @@ class ReconciliationController extends Controller
 
             Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment confirmed.')]);
 
-            return back();
+            // Only the Cashier's own "Scan to Pay" sub-view expects a
+            // receipt redirect on success (UI-SPEC §1); Accounting Staff
+            // has no route access to cashier.job-orders.receipt.show
+            // (role:cashier middleware only, T-05-12) — sending them there
+            // would 403, so their dashboard action just returns to the
+            // Accounting Staff Dashboard list instead.
+            return $request->user()?->role === UserRole::Cashier
+                ? to_route('cashier.job-orders.receipt.show', $jobOrder)
+                : back();
         }
 
         if ($status === 'cancelled') {
