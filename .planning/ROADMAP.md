@@ -209,7 +209,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 05-04-PLAN.md — Manual Reconciliation (Cashier + Accounting Staff) (POS-04)
+- [x] 05-04-PLAN.md — Manual Reconciliation (Cashier + Accounting Staff) (POS-04)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -283,7 +283,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Customer & Queue Management | 5/5 | Complete   | 2026-09-01 |
 | 3. Job Order Intake & Auto-Assignment | 2/2 | Complete    | 2026-09-02 |
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
-| 5. POS & Payments | 3/7 | In Progress|  |
+| 5. POS & Payments | 4/7 | In Progress|  |
 | 6. Production Monitoring & Public Tracking | 0/TBD | Not started | - |
 | 7. Accounts Receivable | 0/TBD | Not started | - |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
