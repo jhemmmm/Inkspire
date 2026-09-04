@@ -137,3 +137,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ---
 *Phase: 05-pos-payments*
 *Completed: 2026-09-04*
+
+## Self-Check: PASSED
+
+All files claimed as created (ReceiptController.php, Receipt.vue, ReceiptTest.php, SUMMARY.md) were verified present via `test -f`. All 3 task/docs commit hashes (`952cb3b`, `e29dff6`, `7dd8ef6`) were verified present in `git log`.
