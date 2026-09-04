@@ -193,7 +193,36 @@ Plans:
   3. Cashier can record a down payment and track the remaining balance, generate a digital receipt for a completed payment, and collect a cancellation fee when a job order is cancelled
   4. A job order can be placed On Credit, requiring Owner approval before the credit activates and posts to accounts receivable; a job order cannot be released to the customer until fully paid or on active credit, otherwise the customer is redirected to Cashier
 
-**Plans**: TBD
+**Plans**: 7 plans in 7 waves
+Plans:
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — Pricing & Cash/Bank Transfer Payment (POS-01, POS-02, POS-05)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 05-02-PLAN.md — Digital Receipt (POS-06)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 05-03-PLAN.md — GCash/Maya via PayMongo, Signed Webhook Confirmation (POS-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 05-04-PLAN.md — Manual Reconciliation (Cashier + Accounting Staff) (POS-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 05-05-PLAN.md — Cancellation Fee & Down-Payment Netting (POS-07)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 05-06-PLAN.md — On-Credit Request & Owner Approval (POS-08)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 05-07-PLAN.md — Release/Hand-over Payment Gate (POS-09)
+
 **UI hint**: yes
 
 ### Phase 6: Production Monitoring & Public Tracking
@@ -254,7 +283,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Customer & Queue Management | 5/5 | Complete   | 2026-09-01 |
 | 3. Job Order Intake & Auto-Assignment | 2/2 | Complete    | 2026-09-02 |
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
-| 5. POS & Payments | 0/TBD | Not started | - |
+| 5. POS & Payments | 0/7 | Not started | - |
 | 6. Production Monitoring & Public Tracking | 0/TBD | Not started | - |
 | 7. Accounts Receivable | 0/TBD | Not started | - |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
