@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
+import ReceiptController from '@/actions/App/Http/Controllers/Cashier/ReceiptController';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import {
@@ -219,6 +220,14 @@ function paymentStatusLabel(status: string): string {
                                 :data-test="`process-payment-${jobOrder.id}-link`"
                             >
                                 Process Payment
+                            </Link>
+                            <Link
+                                v-else-if="jobOrder.payment_status === 'paid'"
+                                :href="ReceiptController.show(jobOrder.id).url"
+                                :class="buttonVariants({ variant: 'outline' })"
+                                :data-test="`view-receipt-${jobOrder.id}-link`"
+                            >
+                                View Receipt
                             </Link>
                         </TableCell>
                     </TableRow>
