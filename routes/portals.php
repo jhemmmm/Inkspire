@@ -5,6 +5,8 @@ use App\Http\Controllers\Artist\JobOrderQueueController;
 use App\Http\Controllers\Artist\JobOrderWorkspaceController;
 use App\Http\Controllers\Artist\PerformanceReportController;
 use App\Http\Controllers\Artist\SessionStatusController;
+use App\Http\Controllers\Cashier\DashboardController as CashierDashboardController;
+use App\Http\Controllers\Cashier\PaymentController;
 use App\Http\Controllers\FrontlineStaff\CustomerController;
 use App\Http\Controllers\FrontlineStaff\JobOrderController;
 use App\Http\Controllers\FrontlineStaff\QueueEntryController;
@@ -40,7 +42,9 @@ Route::middleware(['auth', 'role:artist'])->prefix('artist')->name('artist.')->g
 });
 
 Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')->group(function () {
-    Route::inertia('dashboard', 'cashier/Dashboard')->name('dashboard');
+    Route::get('dashboard', [CashierDashboardController::class, 'index'])->name('dashboard');
+    Route::get('job-orders/{jobOrder}/payment', [PaymentController::class, 'edit'])->name('job-orders.payment.edit');
+    Route::post('job-orders/{jobOrder}/payment', [PaymentController::class, 'store'])->name('job-orders.payment.store');
 });
 
 Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')->name('production-staff.')->group(function () {

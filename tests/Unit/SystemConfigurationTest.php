@@ -29,17 +29,17 @@ test('getInt returns the seeded value and caches it', function () {
     DB::disableQueryLog();
 });
 
-test('seeder seeds all 12 CONFIG-01 business rules idempotently', function () {
+test('seeder seeds all 14 CONFIG-01 business rules idempotently', function () {
     $this->seed(SystemConfigurationSeeder::class);
 
     expect(SystemConfiguration::getInt('account_lockout_max_attempts', 0))->toBe(5);
     expect(SystemConfiguration::getArray('expense_categories', []))->toBe(['Utilities', 'Supplies', 'Rent']);
-    expect(SystemConfiguration::query()->count())->toBe(12);
+    expect(SystemConfiguration::query()->count())->toBe(14);
 
     // Re-run to prove idempotency (updateOrCreate, no duplicates).
     $this->seed(SystemConfigurationSeeder::class);
 
-    expect(SystemConfiguration::query()->count())->toBe(12);
+    expect(SystemConfiguration::query()->count())->toBe(14);
 });
 
 test('re-running the seeder invalidates the cache so a changed default takes effect immediately', function () {
