@@ -108,6 +108,14 @@ class SystemConfigurationSeeder extends Seeder
                 'label' => 'Discount cap (flat ₱)',
                 'description' => null,
             ],
+            [
+                'key' => 'cancellation_fee_amount',
+                'group' => 'business_rules',
+                'value' => 500,
+                'type' => 'decimal',
+                'label' => 'Cancellation fee (flat ₱)',
+                'description' => null,
+            ],
 
             // File Handling
             [
