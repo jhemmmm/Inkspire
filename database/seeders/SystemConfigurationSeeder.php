@@ -92,6 +92,22 @@ class SystemConfigurationSeeder extends Seeder
                 'label' => 'Expense categories',
                 'description' => null,
             ],
+            [
+                'key' => 'discount_cap_percentage',
+                'group' => 'business_rules',
+                'value' => 20,
+                'type' => 'decimal',
+                'label' => 'Discount cap (%)',
+                'description' => null,
+            ],
+            [
+                'key' => 'discount_cap_flat_amount',
+                'group' => 'business_rules',
+                'value' => 500,
+                'type' => 'decimal',
+                'label' => 'Discount cap (flat ₱)',
+                'description' => null,
+            ],
 
             // File Handling
             [

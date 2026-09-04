@@ -55,6 +55,16 @@ class SystemConfiguration extends Model
     }
 
     /**
+     * Get a float-typed configuration value, cached forever until invalidated.
+     */
+    public static function getFloat(string $key, float $default): float
+    {
+        $value = self::resolve($key);
+
+        return $value === null ? $default : (float) $value;
+    }
+
+    /**
      * Get a boolean-typed configuration value, cached forever until invalidated.
      */
     public static function getBool(string $key, bool $default): bool
