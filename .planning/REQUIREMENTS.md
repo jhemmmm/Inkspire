@@ -46,7 +46,7 @@
 - [x] **POS-04**: Cashier or Accounting can manually trigger a reconciliation check against PayMongo when a webhook hasn't arrived
 - [x] **POS-05**: Cashier can record a down payment and track the remaining balance on a job order
 - [x] **POS-06**: Cashier can generate a digital receipt for a completed payment
-- [ ] **POS-07**: Cashier can collect a cancellation fee when a job order is cancelled
+- [x] **POS-07**: Cashier can collect a cancellation fee when a job order is cancelled
 - [ ] **POS-08**: A job order can be placed On Credit, requiring Owner approval before the credit activates and posts to accounts receivable
 - [ ] **POS-09**: A job order cannot be released to the customer until fully paid (or on active credit); otherwise the customer is redirected to Cashier
 
