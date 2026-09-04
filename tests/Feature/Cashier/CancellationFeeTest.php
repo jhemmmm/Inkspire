@@ -126,3 +126,19 @@ test('a fully paid job order cannot be cancelled from here', function () {
 
     $response->assertStatus(422);
 });
+
+test('a cancelled job order no longer appears on the cashier dashboard', function () {
+    seedCancellationFee(500.0);
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+
+    $this->actingAs($cashier)->post(route('cashier.job-orders.cancel', $jobOrder));
+
+    $response = $this->actingAs($cashier)->get(route('cashier.dashboard'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('cashier/Dashboard')
+        ->has('jobOrders', 0)
+        ->where('cancellationFeeAmount', 500)
+    );
+});
