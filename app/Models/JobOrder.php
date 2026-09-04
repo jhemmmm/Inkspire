@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
+use App\Enums\PaymentStatus;
 use App\Observers\AuditObserver;
 use Database\Factories\JobOrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -27,6 +28,16 @@ use Illuminate\Support\Carbon;
  * @property string|null $consultation_notes
  * @property Carbon|null $queue_deprioritized_at
  * @property bool $not_appeared
+ * @property PaymentStatus $payment_status
+ * @property int|null $pricing_entry_id
+ * @property float|null $base_price_snapshot
+ * @property bool $rush_fee_applied
+ * @property float|null $rush_fee_amount
+ * @property string|null $discount_type
+ * @property float|null $discount_value
+ * @property float|null $discount_amount
+ * @property float|null $total_amount
+ * @property Carbon|null $cancelled_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -49,6 +60,14 @@ class JobOrder extends Model
             'status' => JobOrderStatus::class,
             'queue_deprioritized_at' => 'datetime',
             'not_appeared' => 'boolean',
+            'payment_status' => PaymentStatus::class,
+            'base_price_snapshot' => 'decimal:2',
+            'rush_fee_applied' => 'boolean',
+            'rush_fee_amount' => 'decimal:2',
+            'discount_value' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
+            'total_amount' => 'decimal:2',
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -90,5 +109,26 @@ class JobOrder extends Model
     public function revisionLogs(): HasMany
     {
         return $this->hasMany(RevisionLog::class);
+    }
+
+    /**
+     * The catalog entry this job order was priced against (D-01).
+     *
+     * @return BelongsTo<PricingEntry, $this>
+     */
+    public function pricingEntry(): BelongsTo
+    {
+        return $this->belongsTo(PricingEntry::class, 'pricing_entry_id');
+    }
+
+    /**
+     * This job order's full payment ledger (down payments, balance
+     * payments, full payments, cancellation fees).
+     *
+     * @return HasMany<Transaction, $this>
+     */
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
     }
 }
