@@ -42,7 +42,7 @@
 
 - [x] **POS-01**: Cashier can compute a job order's price from the pricing database (base price, rush fee, discounts)
 - [x] **POS-02**: Cashier can record a payment against a job order via Cash, Bank Transfer, GCash, or Maya — every payment links to exactly one job order, no standalone sales
-- [ ] **POS-03**: For GCash/Maya, the system creates a PayMongo Payment Intent/Source; the job order shows "Pending Confirmation" until a signature-verified webhook confirms payment
+- [x] **POS-03**: For GCash/Maya, the system creates a PayMongo Payment Intent/Source; the job order shows "Pending Confirmation" until a signature-verified webhook confirms payment
 - [ ] **POS-04**: Cashier or Accounting can manually trigger a reconciliation check against PayMongo when a webhook hasn't arrived
 - [x] **POS-05**: Cashier can record a down payment and track the remaining balance on a job order
 - [x] **POS-06**: Cashier can generate a digital receipt for a completed payment
