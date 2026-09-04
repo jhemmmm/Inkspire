@@ -173,3 +173,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ---
 *Phase: 05-pos-payments*
 *Completed: 2026-09-04*
+
+## Self-Check: PASSED
+
+All 16 files claimed as created/modified in this summary were verified present via `git ls-files`. All 3 task commit hashes (`7634ce7`, `c433a94`, `7b478a1`) were verified present in `git log`.
