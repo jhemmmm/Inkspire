@@ -1,10 +1,36 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
+import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { cashierNavItems } from '@/config/nav/cashier';
 import { dashboard } from '@/routes/cashier';
+
+interface CashierJobOrder {
+    id: number;
+    description: string;
+    status: string;
+    payment_status: string;
+    total_amount: number | null;
+    queue_entry: { customer: { name: string } };
+}
+
+defineProps<{
+    jobOrders: CashierJobOrder[];
+}>();
 
 defineOptions({
     layout: {
-        navItems: [],
+        navItems: cashierNavItems,
         breadcrumbs: [
             {
                 title: 'Dashboard',
@@ -13,6 +39,38 @@ defineOptions({
         ],
     },
 });
+
+function jobOrderStatusLabel(status: string): string {
+    switch (status) {
+        case 'ready_for_production':
+            return 'Ready for Production';
+        case 'design_approved':
+            return 'Design Approved';
+        default:
+            return status;
+    }
+}
+
+function paymentStatusLabel(status: string): string {
+    switch (status) {
+        case 'unpaid':
+            return 'Unpaid';
+        case 'partially_paid':
+            return 'Partially Paid';
+        case 'pending_confirmation':
+            return 'Pending Confirmation';
+        case 'paid':
+            return 'Paid';
+        case 'credit_pending_approval':
+            return 'Credit Pending Approval';
+        case 'on_credit':
+            return 'On Credit';
+        case 'credit_rejected':
+            return 'Credit Rejected';
+        default:
+            return status;
+    }
+}
 </script>
 
 <template>
@@ -24,9 +82,148 @@ defineOptions({
         <h1 class="text-[28px] leading-[1.2] font-semibold">
             Cashier Dashboard
         </h1>
-        <p class="text-muted-foreground">
-            There's nothing here yet — your tools will appear in a later
-            phase.
-        </p>
+
+        <div
+            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
+        >
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Job Order</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Job Order Status</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                        <TableHead class="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <TableEmpty v-if="jobOrders.length === 0" :colspan="5">
+                        <div
+                            class="flex flex-col items-center gap-1 text-center"
+                        >
+                            <p class="font-semibold">
+                                No job orders ready for payment
+                            </p>
+                            <p class="text-muted-foreground">
+                                Job orders will appear here once they're
+                                validated or design-approved.
+                            </p>
+                        </div>
+                    </TableEmpty>
+                    <TableRow
+                        v-for="jobOrder in jobOrders"
+                        v-else
+                        :key="jobOrder.id"
+                    >
+                        <TableCell>{{ jobOrder.description }}</TableCell>
+                        <TableCell>
+                            {{ jobOrder.queue_entry.customer.name }}
+                        </TableCell>
+                        <TableCell>
+                            <Badge
+                                v-if="
+                                    jobOrder.status === 'ready_for_production'
+                                "
+                                class="text-green-600 dark:text-green-400"
+                            >
+                                {{ jobOrderStatusLabel(jobOrder.status) }}
+                            </Badge>
+                            <Badge
+                                v-else-if="
+                                    jobOrder.status === 'design_approved'
+                                "
+                                variant="default"
+                            >
+                                {{ jobOrderStatusLabel(jobOrder.status) }}
+                            </Badge>
+                        </TableCell>
+                        <TableCell>
+                            <Badge
+                                v-if="jobOrder.payment_status === 'unpaid'"
+                                variant="outline"
+                            >
+                                {{
+                                    paymentStatusLabel(jobOrder.payment_status)
+                                }}
+                            </Badge>
+                            <Badge
+                                v-else-if="
+                                    jobOrder.payment_status === 'partially_paid'
+                                "
+                                variant="default"
+                            >
+                                {{
+                                    paymentStatusLabel(jobOrder.payment_status)
+                                }}
+                            </Badge>
+                            <Badge
+                                v-else-if="
+                                    jobOrder.payment_status ===
+                                    'pending_confirmation'
+                                "
+                                variant="secondary"
+                            >
+                                {{
+                                    paymentStatusLabel(jobOrder.payment_status)
+                                }}
+                            </Badge>
+                            <Badge
+                                v-else-if="jobOrder.payment_status === 'paid'"
+                                class="text-green-600 dark:text-green-400"
+                            >
+                                {{
+                                    paymentStatusLabel(jobOrder.payment_status)
+                                }}
+                            </Badge>
+                            <Badge
+                                v-else-if="
+                                    jobOrder.payment_status ===
+                                    'credit_pending_approval'
+                                "
+                                variant="default"
+                            >
+                                {{
+                                    paymentStatusLabel(jobOrder.payment_status)
+                                }}
+                            </Badge>
+                            <Badge
+                                v-else-if="
+                                    jobOrder.payment_status === 'on_credit'
+                                "
+                                class="text-green-600 dark:text-green-400"
+                            >
+                                {{
+                                    paymentStatusLabel(jobOrder.payment_status)
+                                }}
+                            </Badge>
+                            <Badge
+                                v-else-if="
+                                    jobOrder.payment_status ===
+                                    'credit_rejected'
+                                "
+                                variant="destructive"
+                            >
+                                {{
+                                    paymentStatusLabel(jobOrder.payment_status)
+                                }}
+                            </Badge>
+                        </TableCell>
+                        <TableCell class="text-right">
+                            <Link
+                                v-if="
+                                    jobOrder.payment_status === 'unpaid' ||
+                                    jobOrder.payment_status === 'partially_paid'
+                                "
+                                :href="PaymentController.edit(jobOrder.id).url"
+                                :class="buttonVariants({ variant: 'default' })"
+                                :data-test="`process-payment-${jobOrder.id}-link`"
+                            >
+                                Process Payment
+                            </Link>
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+        </div>
     </div>
 </template>
