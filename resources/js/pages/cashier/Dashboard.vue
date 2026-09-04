@@ -1,9 +1,20 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Form, Head, Link, router } from '@inertiajs/vue3';
 import { MoreHorizontal } from '@lucide/vue';
 import { ref } from 'vue';
+import CancellationController from '@/actions/App/Http/Controllers/Cashier/CancellationController';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
 import ReceiptController from '@/actions/App/Http/Controllers/Cashier/ReceiptController';
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,12 +42,48 @@ interface CashierJobOrder {
     status: string;
     payment_status: string;
     total_amount: number | null;
+    amount_paid: number | null;
     queue_entry: { customer: { name: string } };
 }
 
-defineProps<{
+const props = defineProps<{
     jobOrders: CashierJobOrder[];
+    cancellationFeeAmount: number;
 }>();
+
+/**
+ * Mirrors CancellationController@store's exact design-started set (D-04) so
+ * the pre-confirmation dialog body always matches what the server will
+ * actually charge.
+ */
+const DESIGN_STARTED_STATUSES = [
+    'in_design',
+    'pending_review',
+    'design_approved',
+];
+
+function cancellationDialogBody(jobOrder: CashierJobOrder): string {
+    if (!DESIGN_STARTED_STATUSES.includes(jobOrder.status)) {
+        return "No cancellation fee applies — design work hasn't started yet.";
+    }
+
+    const fee = props.cancellationFeeAmount;
+    const downPayment = jobOrder.amount_paid ?? 0;
+
+    if (downPayment <= 0) {
+        return `A cancellation fee of ₱${fee.toFixed(2)} applies since design work has started. Collect this amount from the customer.`;
+    }
+
+    if (downPayment >= fee) {
+        const excess = (downPayment - fee).toFixed(2);
+
+        return `A cancellation fee of ₱${fee.toFixed(2)} applies. The existing down payment of ₱${downPayment.toFixed(2)} covers it — ₱${excess} is refundable to the customer.`;
+    }
+
+    const shortfall = (fee - downPayment).toFixed(2);
+
+    return `A cancellation fee of ₱${fee.toFixed(2)} applies. The existing down payment of ₱${downPayment.toFixed(2)} covers part of it — collect the remaining ₱${shortfall} from the customer.`;
+}
 
 defineOptions({
     layout: {
@@ -304,6 +351,60 @@ function paymentStatusLabel(status: string): string {
                                             View Receipt
                                         </Link>
                                     </DropdownMenuItem>
+                                    <AlertDialog
+                                        v-if="
+                                            jobOrder.payment_status !== 'paid'
+                                        "
+                                    >
+                                        <AlertDialogTrigger as-child>
+                                            <DropdownMenuItem
+                                                variant="destructive"
+                                                :data-test="`cancel-job-order-${jobOrder.id}-item`"
+                                                @select.prevent
+                                            >
+                                                Cancel Job Order
+                                            </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>
+                                                    Cancel this job order?
+                                                </AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    {{
+                                                        cancellationDialogBody(
+                                                            jobOrder,
+                                                        )
+                                                    }}
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>
+                                                    Cancel
+                                                </AlertDialogCancel>
+                                                <Form
+                                                    v-bind="
+                                                        CancellationController.store.form(
+                                                            jobOrder.id,
+                                                        )
+                                                    "
+                                                    :options="{
+                                                        preserveScroll: true,
+                                                    }"
+                                                    v-slot="{ processing }"
+                                                >
+                                                    <Button
+                                                        type="submit"
+                                                        variant="destructive"
+                                                        :disabled="processing"
+                                                        :data-test="`confirm-cancel-${jobOrder.id}-button`"
+                                                    >
+                                                        Confirm Cancellation
+                                                    </Button>
+                                                </Form>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </TableCell>
