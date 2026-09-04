@@ -45,7 +45,7 @@
 - [ ] **POS-03**: For GCash/Maya, the system creates a PayMongo Payment Intent/Source; the job order shows "Pending Confirmation" until a signature-verified webhook confirms payment
 - [ ] **POS-04**: Cashier or Accounting can manually trigger a reconciliation check against PayMongo when a webhook hasn't arrived
 - [x] **POS-05**: Cashier can record a down payment and track the remaining balance on a job order
-- [ ] **POS-06**: Cashier can generate a digital receipt for a completed payment
+- [x] **POS-06**: Cashier can generate a digital receipt for a completed payment
 - [ ] **POS-07**: Cashier can collect a cancellation fee when a job order is cancelled
 - [ ] **POS-08**: A job order can be placed On Credit, requiring Owner approval before the credit activates and posts to accounts receivable
 - [ ] **POS-09**: A job order cannot be released to the customer until fully paid (or on active credit); otherwise the customer is redirected to Cashier
