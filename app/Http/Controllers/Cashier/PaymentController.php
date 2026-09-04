@@ -129,6 +129,11 @@ class PaymentController extends Controller
             : __('Payment recorded. Job order is fully paid.'),
         ]);
 
-        return back();
+        // A full-payment submission lands on the Receipt page (POS-06); a
+        // down payment keeps returning to this page to show the updated
+        // remaining balance.
+        return $result['is_down_payment']
+            ? back()
+            : to_route('cashier.job-orders.receipt.show', $jobOrder);
     }
 }
