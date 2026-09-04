@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, router } from '@inertiajs/vue3';
 import { Banknote, Landmark, Smartphone, Wallet } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
@@ -17,9 +17,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { cashierNavItems } from '@/config/nav/cashier';
 import { dashboard } from '@/routes/cashier';
+import { reconcile } from '@/routes/cashier/job-orders';
 
 interface PricingEntryOption {
     id: number;
@@ -105,6 +107,28 @@ const paymongoMethodLabel = computed(() =>
 function switchPaymentMethod(): void {
     subView.value = 'form';
     paymentMethod.value = 'cash';
+}
+
+const checkingPaymentStatus = ref(false);
+
+/**
+ * A plain router.post() rather than a nested <Form> — this button lives
+ * inside the page's single outer <Form> (Pricing + Payment submission),
+ * and HTML forbids a <form> nested inside another <form>.
+ */
+function checkPaymentStatus(): void {
+    checkingPaymentStatus.value = true;
+
+    router.post(
+        reconcile.url(props.jobOrder.id),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                checkingPaymentStatus.value = false;
+            },
+        },
+    );
 }
 
 function round2(value: number): number {
@@ -418,7 +442,15 @@ const discountCapHelper = computed(() =>
                         payment.
                     </p>
 
-                    <!-- Plan 05-04 wires the Check Payment Status click handler here -->
+                    <Button
+                        type="button"
+                        :disabled="checkingPaymentStatus"
+                        data-test="check-payment-status-button"
+                        @click="checkPaymentStatus"
+                    >
+                        <Spinner v-if="checkingPaymentStatus" />
+                        Check Payment Status
+                    </Button>
 
                     <Button
                         type="button"

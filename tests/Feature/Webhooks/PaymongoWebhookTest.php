@@ -4,6 +4,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Models\JobOrder;
 use App\Models\Transaction;
+use Illuminate\Testing\TestResponse;
 
 function paymongoWebhookPayload(string $type, string $paymentIntentId): array
 {
@@ -21,7 +22,7 @@ function paymongoWebhookPayload(string $type, string $paymentIntentId): array
     ];
 }
 
-function postSignedPaymongoWebhook(array $payload, string $secret): \Illuminate\Testing\TestResponse
+function postSignedPaymongoWebhook(array $payload, string $secret): TestResponse
 {
     $rawBody = json_encode($payload);
     $timestamp = time();
@@ -84,7 +85,7 @@ test('a signature-verified webhook confirms the matching pending transaction', f
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Paid);
 });
 
-test('a signature-verified failed-payment webhook fails the transaction without crediting the job order', function () {
+test('a signature-verified failed-payment webhook fails the transaction and falls the job order back to unpaid', function () {
     config(['paymongo.webhook_signatures.payment_paid' => 'whsec_test']);
 
     $jobOrder = JobOrder::factory()->readyForProduction()->create();
@@ -102,7 +103,11 @@ test('a signature-verified failed-payment webhook fails the transaction without 
 
     $response->assertStatus(204);
     expect($transaction->fresh()->status)->toBe(TransactionStatus::Failed);
-    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PendingConfirmation);
+    // ConfirmPaymentIntent's failure branch (Plan 05-04) recomputes
+    // payment_status instead of leaving the job order permanently stuck on
+    // PendingConfirmation — no other completed transaction exists here, so
+    // it falls back to Unpaid.
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Unpaid);
 });
 
 test('an unrecognized payment intent id is acknowledged without mutating any data', function () {

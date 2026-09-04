@@ -8,6 +8,7 @@ use App\Http\Controllers\Artist\SessionStatusController;
 use App\Http\Controllers\Cashier\DashboardController as CashierDashboardController;
 use App\Http\Controllers\Cashier\PaymentController;
 use App\Http\Controllers\Cashier\ReceiptController;
+use App\Http\Controllers\Cashier\ReconciliationController;
 use App\Http\Controllers\FrontlineStaff\CustomerController;
 use App\Http\Controllers\FrontlineStaff\JobOrderController;
 use App\Http\Controllers\FrontlineStaff\QueueEntryController;
@@ -47,6 +48,7 @@ Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')
     Route::get('job-orders/{jobOrder}/payment', [PaymentController::class, 'edit'])->name('job-orders.payment.edit');
     Route::post('job-orders/{jobOrder}/payment', [PaymentController::class, 'store'])->name('job-orders.payment.store');
     Route::get('job-orders/{jobOrder}/receipt', [ReceiptController::class, 'show'])->name('job-orders.receipt.show');
+    Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
 });
 
 Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')->name('production-staff.')->group(function () {
@@ -54,5 +56,6 @@ Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')
 });
 
 Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')->name('accounting-staff.')->group(function () {
-    Route::inertia('dashboard', 'accounting-staff/Dashboard')->name('dashboard');
+    Route::get('dashboard', [ReconciliationController::class, 'index'])->name('dashboard');
+    Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
 });

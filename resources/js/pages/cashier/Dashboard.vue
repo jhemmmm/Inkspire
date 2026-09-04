@@ -1,9 +1,17 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { MoreHorizontal } from '@lucide/vue';
+import { ref } from 'vue';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
 import ReceiptController from '@/actions/App/Http/Controllers/Cashier/ReceiptController';
 import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
     Table,
     TableBody,
@@ -15,6 +23,7 @@ import {
 } from '@/components/ui/table';
 import { cashierNavItems } from '@/config/nav/cashier';
 import { dashboard } from '@/routes/cashier';
+import { reconcile } from '@/routes/cashier/job-orders';
 
 interface CashierJobOrder {
     id: number;
@@ -50,6 +59,27 @@ function jobOrderStatusLabel(status: string): string {
         default:
             return status;
     }
+}
+
+const reconcilingId = ref<number | null>(null);
+
+/**
+ * A plain router.post() — this is a no-body action fired from a
+ * DropdownMenuItem, not a page-level form submission.
+ */
+function checkPaymentStatus(jobOrderId: number): void {
+    reconcilingId.value = jobOrderId;
+
+    router.post(
+        reconcile.url(jobOrderId),
+        {},
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                reconcilingId.value = null;
+            },
+        },
+    );
 }
 
 function paymentStatusLabel(status: string): string {
@@ -210,25 +240,72 @@ function paymentStatusLabel(status: string): string {
                             </Badge>
                         </TableCell>
                         <TableCell class="text-right">
-                            <Link
-                                v-if="
-                                    jobOrder.payment_status === 'unpaid' ||
-                                    jobOrder.payment_status === 'partially_paid'
-                                "
-                                :href="PaymentController.edit(jobOrder.id).url"
-                                :class="buttonVariants({ variant: 'default' })"
-                                :data-test="`process-payment-${jobOrder.id}-link`"
-                            >
-                                Process Payment
-                            </Link>
-                            <Link
-                                v-else-if="jobOrder.payment_status === 'paid'"
-                                :href="ReceiptController.show(jobOrder.id).url"
-                                :class="buttonVariants({ variant: 'outline' })"
-                                :data-test="`view-receipt-${jobOrder.id}-link`"
-                            >
-                                View Receipt
-                            </Link>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger as-child>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        :data-test="`job-order-actions-${jobOrder.id}-trigger`"
+                                    >
+                                        <MoreHorizontal class="size-4" />
+                                        <span class="sr-only">Actions</span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                        v-if="
+                                            jobOrder.payment_status ===
+                                                'unpaid' ||
+                                            jobOrder.payment_status ===
+                                                'partially_paid'
+                                        "
+                                        as-child
+                                    >
+                                        <Link
+                                            :href="
+                                                PaymentController.edit(
+                                                    jobOrder.id,
+                                                ).url
+                                            "
+                                            :data-test="`process-payment-${jobOrder.id}-link`"
+                                        >
+                                            Process Payment
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        v-else-if="
+                                            jobOrder.payment_status ===
+                                            'pending_confirmation'
+                                        "
+                                        :disabled="
+                                            reconcilingId === jobOrder.id
+                                        "
+                                        :data-test="`check-payment-status-${jobOrder.id}-button`"
+                                        @select="
+                                            checkPaymentStatus(jobOrder.id)
+                                        "
+                                    >
+                                        Check Payment Status
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        v-else-if="
+                                            jobOrder.payment_status === 'paid'
+                                        "
+                                        as-child
+                                    >
+                                        <Link
+                                            :href="
+                                                ReceiptController.show(
+                                                    jobOrder.id,
+                                                ).url
+                                            "
+                                            :data-test="`view-receipt-${jobOrder.id}-link`"
+                                        >
+                                            View Receipt
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </TableCell>
                     </TableRow>
                 </TableBody>

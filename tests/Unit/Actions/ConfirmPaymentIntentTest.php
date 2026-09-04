@@ -38,7 +38,7 @@ test('confirming a successful pending down payment marks the job order partially
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PartiallyPaid);
 });
 
-test('confirming a failed pending payment marks the transaction failed and leaves the job order pending', function () {
+test('confirming a failed pending payment marks the transaction failed and falls back the job order to unpaid', function () {
     $jobOrder = JobOrder::factory()->readyForProduction()->create();
     $jobOrder->forceFill(['total_amount' => 1000, 'payment_status' => PaymentStatus::PendingConfirmation])->save();
     $transaction = Transaction::factory()->pendingConfirmation()->create([
@@ -49,7 +49,26 @@ test('confirming a failed pending payment marks the transaction failed and leave
     $confirmed = (new ConfirmPaymentIntent)($transaction, false);
 
     expect($confirmed->status)->toBe(TransactionStatus::Failed);
-    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PendingConfirmation);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Unpaid);
+});
+
+test('confirming a failed pending payment falls back the job order to partially paid when a prior completed transaction exists', function () {
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+    $jobOrder->forceFill(['total_amount' => 1000, 'payment_status' => PaymentStatus::PendingConfirmation])->save();
+    Transaction::factory()->create([
+        'job_order_id' => $jobOrder->id,
+        'amount' => 400,
+        'status' => TransactionStatus::Completed,
+    ]);
+    $transaction = Transaction::factory()->pendingConfirmation()->create([
+        'job_order_id' => $jobOrder->id,
+        'amount' => 600,
+    ]);
+
+    $confirmed = (new ConfirmPaymentIntent)($transaction, false);
+
+    expect($confirmed->status)->toBe(TransactionStatus::Failed);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PartiallyPaid);
 });
 
 test('calling ConfirmPaymentIntent twice on the same transaction only applies the state transition once', function () {

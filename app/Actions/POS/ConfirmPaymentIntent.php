@@ -45,6 +45,21 @@ class ConfirmPaymentIntent
                         ? PaymentStatus::Paid
                         : PaymentStatus::PartiallyPaid,
                 ])->save();
+            } else {
+                // Failed/expired confirmation (D-13, Plan 05-04) — recompute
+                // payment_status from any OTHER completed transactions for
+                // this job order rather than leaving it stuck on
+                // PendingConfirmation forever, so the Cashier/Accounting
+                // Staff sees an actionable Unpaid/PartiallyPaid state and
+                // can choose a different payment method.
+                $jobOrder = JobOrder::query()->whereKey($locked->job_order_id)->lockForUpdate()->first();
+                $amountPaid = $jobOrder->transactions()->where('status', TransactionStatus::Completed)->sum('amount');
+
+                $jobOrder->forceFill([
+                    'payment_status' => $amountPaid > 0
+                        ? PaymentStatus::PartiallyPaid
+                        : PaymentStatus::Unpaid,
+                ])->save();
             }
 
             return $locked;
