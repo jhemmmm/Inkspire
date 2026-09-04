@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Actions\POS\ComputeJobOrderPrice;
 use App\Enums\JobOrderStatus;
+use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
@@ -18,6 +19,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Luigel\Paymongo\Facades\Paymongo;
+use Luigel\Paymongo\Models\PaymentIntent;
+use RuntimeException;
+use Throwable;
 
 class PaymentController extends Controller
 {
@@ -42,6 +47,15 @@ class PaymentController extends Controller
             ? round((float) $jobOrder->total_amount - $amountPaid, 2)
             : null;
 
+        // The most recent still-pending GCash/Maya transaction — sourced
+        // from the actual persisted Transaction row rather than the QR
+        // sub-view's local form state, since a full Inertia redirect resets
+        // every local ref (payment method/type/amount) back to its default.
+        $pendingPaymongoTransaction = $jobOrder->transactions
+            ->where('status', TransactionStatus::PendingConfirmation)
+            ->sortByDesc('id')
+            ->first();
+
         return Inertia::render('cashier/JobOrderPayment', [
             'jobOrder' => $jobOrder,
             'pricingEntries' => PricingEntry::query()->where('is_active', true)->get(['id', 'name', 'base_price']),
@@ -51,6 +65,12 @@ class PaymentController extends Controller
             'hasExistingTransactions' => $jobOrder->transactions->isNotEmpty(),
             'amountPaid' => $amountPaid,
             'remainingBalance' => $remainingBalance,
+            // Flashed after a GCash/Maya "Generate QR Code" submission
+            // (POS-03) — read once, then gone on the next request, matching
+            // this app's existing session-flash-to-prop convention.
+            'paymongoRedirectUrl' => session('redirectUrl'),
+            'pendingPaymongoAmount' => $pendingPaymongoTransaction !== null ? (float) $pendingPaymongoTransaction->amount : null,
+            'pendingPaymongoMethod' => $pendingPaymongoTransaction?->payment_method?->value,
         ]);
     }
 
@@ -69,6 +89,12 @@ class PaymentController extends Controller
             'This job order is not ready for pricing.',
         );
         abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
+
+        $paymentMethod = $request->validated('payment_method');
+
+        if (in_array($paymentMethod, [PaymentMethod::Gcash->value, PaymentMethod::Maya->value], true)) {
+            return $this->storePaymongoIntent($request, $jobOrder, $paymentMethod);
+        }
 
         $result = DB::transaction(function () use ($request, $jobOrder): array {
             $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
@@ -135,5 +161,112 @@ class PaymentController extends Controller
         return $result['is_down_payment']
             ? back()
             : to_route('cashier.job-orders.receipt.show', $jobOrder);
+    }
+
+    /**
+     * Create a PayMongo Payment Intent for a GCash/Maya payment (POS-03),
+     * pricing the job order first if this is the first pricing/payment
+     * visit — the same server-authoritative snapshot logic the Cash/Bank
+     * Transfer branch above uses. Unlike Cash/Bank Transfer, this never
+     * creates a Completed Transaction directly: the transaction starts
+     * pending_confirmation and is only ever resolved by
+     * ConfirmPaymentIntent (Pattern 1), called from the signature-verified
+     * webhook (this plan) or Plan 05-04's manual reconciliation.
+     *
+     * All three PayMongo API calls go through the Paymongo facade — never
+     * the model's own attach()/cancel() convenience methods, which
+     * instantiate a fresh `new Paymongo` internally and bypass the facade,
+     * making them unmockable in tests (verified by reading
+     * vendor/luigel/laravel-paymongo/src/Models/PaymentIntent.php).
+     */
+    private function storePaymongoIntent(SavePricingAndPaymentRequest $request, JobOrder $jobOrder, string $paymentMethod): RedirectResponse
+    {
+        $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
+
+        if ($jobOrder->total_amount === null) {
+            $computed = ($this->computeJobOrderPrice)(
+                (float) $request->validated('line_amount'),
+                (bool) $request->validated('rush_fee_applied'),
+                $request->validated('discount_type'),
+                $request->validated('discount_value') !== null ? (float) $request->validated('discount_value') : null,
+            );
+
+            $jobOrder->forceFill([
+                'pricing_entry_id' => $request->validated('pricing_entry_id'),
+                'base_price_snapshot' => $computed['base_price_snapshot'],
+                'rush_fee_applied' => $request->validated('rush_fee_applied'),
+                'rush_fee_amount' => $computed['rush_fee_amount'],
+                'discount_type' => $request->validated('discount_type'),
+                'discount_value' => $request->validated('discount_value'),
+                'discount_amount' => $computed['discount_amount'],
+                'total_amount' => $computed['total_amount'],
+            ])->save();
+        }
+
+        $isDownPayment = $request->validated('payment_type') === 'down';
+        $remainingBalance = round((float) $jobOrder->total_amount - $amountPaid, 2);
+        $transactionAmount = $isDownPayment
+            ? (float) $request->validated('down_payment_amount')
+            : $remainingBalance;
+
+        $methodLabel = $paymentMethod === PaymentMethod::Gcash->value ? 'GCash' : 'Maya';
+
+        try {
+            $intent = Paymongo::paymentIntent()->create([
+                'amount' => $transactionAmount,
+                'currency' => 'PHP',
+                'payment_method_allowed' => ['gcash', 'paymaya'],
+                'capture_type' => 'automatic',
+                'description' => "Job Order #{$jobOrder->id}",
+            ]);
+
+            // The trait's create() is typed to return the generic BaseModel
+            // — paymentIntent() only sets returnModel = PaymentIntent::class
+            // at runtime, so PHPStan can't narrow this by static flow alone
+            // (Pitfall 4). Verifying it here, rather than casting, converts
+            // an unchecked assumption into an actual runtime guard.
+            if (! $intent instanceof PaymentIntent) {
+                throw new RuntimeException('PayMongo did not return a payment intent.');
+            }
+
+            $paymongoPaymentMethod = Paymongo::paymentMethod()->create([
+                'type' => $paymentMethod === PaymentMethod::Gcash->value ? 'gcash' : 'paymaya',
+            ]);
+            $paymongoPaymentMethodId = (string) $paymongoPaymentMethod->getData()['id'];
+
+            // route('home') is a placeholder return destination — this is a
+            // Cashier-counter flow, not a customer self-checkout, so the
+            // webhook (not this redirect) is the source of truth; PayMongo
+            // still requires a return_url for e-wallet payment methods.
+            $attached = Paymongo::paymentIntent()->attach($intent, $paymongoPaymentMethodId, route('home'));
+        } catch (Throwable $e) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __("Couldn't start the :method payment. Try again, or choose Cash or Bank Transfer instead.", ['method' => $methodLabel]),
+            ]);
+
+            return back();
+        }
+
+        $paymongoPaymentIntentId = (string) $intent->getData()['id'];
+
+        DB::transaction(function () use ($jobOrder, $paymentMethod, $transactionAmount, $isDownPayment, $paymongoPaymentIntentId, $request): void {
+            Transaction::create([
+                'job_order_id' => $jobOrder->id,
+                'type' => $isDownPayment ? TransactionType::DownPayment->value : TransactionType::FullPayment->value,
+                'payment_method' => $paymentMethod,
+                'amount' => $transactionAmount,
+                'status' => TransactionStatus::PendingConfirmation->value,
+                'reference_number' => null,
+                'paymongo_payment_intent_id' => $paymongoPaymentIntentId,
+                'recorded_by' => $request->user()->id,
+            ]);
+
+            $jobOrder->forceFill(['payment_status' => PaymentStatus::PendingConfirmation])->save();
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('QR code ready. Waiting for the customer to complete payment.')]);
+
+        return back()->with(['redirectUrl' => $attached->getData()['next_action']['redirect']['url'] ?? null]);
     }
 }

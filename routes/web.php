@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Public\DesignReviewController;
 use App\Http\Controllers\Public\QueueDisplayController;
+use App\Http\Controllers\Webhooks\PaymongoWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +22,15 @@ Route::middleware(['signed', 'throttle:60,1'])->prefix('design-review')->group(f
     Route::post('{revisionLog}/approve', [DesignReviewController::class, 'approve'])->name('public.design-review.approve');
     Route::post('{revisionLog}/request-changes', [DesignReviewController::class, 'requestChanges'])->name('public.design-review.request-changes');
 });
+
+// Public, unauthenticated, HMAC-signature-verified (POS-03) — PayMongo's
+// servers call this with no session/CSRF token available. Deliberately
+// outside every auth/role:* group, matching the design-review precedent,
+// but CSRF-excluded (see bootstrap/app.php) instead of signed-URL-protected,
+// since PayMongo signs the *body*, not a temporarySignedRoute() URL.
+Route::post('webhooks/paymongo', PaymongoWebhookController::class)
+    ->middleware('paymongo.signature:payment_paid')
+    ->name('public.webhooks.paymongo');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Every role has its own dedicated portal (see UserRole::portalRoute()).
