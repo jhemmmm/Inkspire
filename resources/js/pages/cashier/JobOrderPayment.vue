@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import { Banknote, Landmark } from '@lucide/vue';
+import { Banknote, Landmark, Smartphone, Wallet } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
 import InputError from '@/components/InputError.vue';
+import PaymentQrCode from '@/components/PaymentQrCode.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -46,6 +47,9 @@ const props = defineProps<{
     hasExistingTransactions: boolean;
     amountPaid: number;
     remainingBalance: number | null;
+    paymongoRedirectUrl: string | null;
+    pendingPaymongoAmount: number | null;
+    pendingPaymongoMethod: 'gcash' | 'maya' | null;
 }>();
 
 defineOptions({
@@ -66,11 +70,42 @@ const rushFeeApplied = ref<boolean>(Boolean(props.jobOrder.rush_fee_amount));
 const discountType = ref<'' | 'percentage' | 'flat'>('');
 const discountValue = ref<number | undefined>(undefined);
 
-const paymentMethod = ref<'cash' | 'bank_transfer'>('cash');
+const paymentMethod = ref<'cash' | 'bank_transfer' | 'gcash' | 'maya'>('cash');
 const paymentType = ref<'full' | 'down'>('full');
 const amountTendered = ref<number | undefined>(undefined);
 const referenceNumber = ref('');
 const downPaymentAmount = ref<number | undefined>(undefined);
+
+/**
+ * Flips to 'qr' once the server flashes back a PayMongo redirect URL after
+ * a "Generate QR Code" submission (POS-03) — re-derived on every fresh
+ * visit to this page, since a full Inertia redirect remounts the
+ * component with new props.
+ */
+const subView = ref<'form' | 'qr'>(props.paymongoRedirectUrl ? 'qr' : 'form');
+
+const isPaymongoMethod = computed(
+    () => paymentMethod.value === 'gcash' || paymentMethod.value === 'maya',
+);
+
+/**
+ * Sourced from the persisted pending Transaction (via props), not the
+ * local paymentMethod ref, since a full Inertia redirect resets local
+ * form state back to its default before this label is needed.
+ */
+const paymongoMethodLabel = computed(() =>
+    props.pendingPaymongoMethod === 'gcash' ? 'GCash' : 'Maya',
+);
+
+/**
+ * Discards the pending PayMongo intent client-side only (D-13) — the
+ * intent itself simply expires unused on PayMongo's side, no server call
+ * needed to "cancel" it.
+ */
+function switchPaymentMethod(): void {
+    subView.value = 'form';
+    paymentMethod.value = 'cash';
+}
 
 function round2(value: number): number {
     return Math.round(value * 100) / 100;
@@ -134,9 +169,13 @@ const downPaymentRemainingBalance = computed<number>(() =>
     round2(targetAmount.value - (Number(downPaymentAmount.value) || 0)),
 );
 
-const submitLabel = computed(() =>
-    paymentType.value === 'down' ? 'Record Down Payment' : 'Record Payment',
-);
+const submitLabel = computed(() => {
+    if (paymentType.value === 'down') {
+        return 'Record Down Payment';
+    }
+
+    return isPaymongoMethod.value ? 'Generate QR Code' : 'Record Payment';
+});
 
 const discountCapHelper = computed(() =>
     discountType.value === 'percentage'
@@ -363,7 +402,35 @@ const discountCapHelper = computed(() =>
                 <CardHeader>
                     <CardTitle>Payment</CardTitle>
                 </CardHeader>
-                <CardContent class="grid gap-4">
+                <CardContent v-if="subView === 'qr'" class="grid gap-4">
+                    <h2 class="text-lg font-semibold">Scan to Pay</h2>
+
+                    <PaymentQrCode
+                        v-if="paymongoRedirectUrl"
+                        :redirect-url="paymongoRedirectUrl"
+                    />
+
+                    <p class="text-muted-foreground text-sm">
+                        Ask the customer to scan this code with their
+                        {{ paymongoMethodLabel }} app to complete the ₱{{
+                            (pendingPaymongoAmount ?? 0).toFixed(2)
+                        }}
+                        payment.
+                    </p>
+
+                    <!-- Plan 05-04 wires the Check Payment Status click handler here -->
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        data-test="switch-payment-method-button"
+                        @click="switchPaymentMethod"
+                    >
+                        Switch Payment Method
+                    </Button>
+                </CardContent>
+
+                <CardContent v-else class="grid gap-4">
                     <p
                         v-if="hasExistingTransactions"
                         class="text-muted-foreground text-sm"
@@ -401,6 +468,24 @@ const discountCapHelper = computed(() =>
                                 <Label for="payment-method-bank-transfer">
                                     Bank Transfer
                                 </Label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <RadioGroupItem
+                                    id="payment-method-gcash"
+                                    value="gcash"
+                                />
+                                <Wallet class="size-4" />
+                                <Label for="payment-method-gcash">
+                                    GCash
+                                </Label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <RadioGroupItem
+                                    id="payment-method-maya"
+                                    value="maya"
+                                />
+                                <Smartphone class="size-4" />
+                                <Label for="payment-method-maya"> Maya </Label>
                             </div>
                         </RadioGroup>
                         <InputError :message="errors.payment_method" />
@@ -461,7 +546,7 @@ const discountCapHelper = computed(() =>
                         </div>
                     </template>
 
-                    <template v-else>
+                    <template v-else-if="paymentMethod === 'bank_transfer'">
                         <div class="grid gap-2">
                             <Label for="reference-number-input">
                                 Bank Reference Number

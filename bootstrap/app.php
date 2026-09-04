@@ -35,6 +35,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
         ]);
+
+        // PayMongo's servers POST here with no session/CSRF token available
+        // (POS-03) — signature-verified instead, see routes/web.php.
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/paymongo',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
