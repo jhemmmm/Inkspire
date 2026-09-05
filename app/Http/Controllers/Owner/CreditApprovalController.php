@@ -41,6 +41,18 @@ class CreditApprovalController extends Controller
     public function approve(ApproveCreditRequest $request, AccountsReceivable $accountsReceivable): RedirectResponse
     {
         DB::transaction(function () use ($request, $accountsReceivable): void {
+            // Locked re-read (CR-05) — mirrors ConfirmPaymentIntent's own
+            // idempotency boundary so a double-submitted/replayed approve
+            // (slow network retry, double click, stale browser tab) can
+            // never re-execute against an already-resolved receivable.
+            $accountsReceivable = AccountsReceivable::query()->whereKey($accountsReceivable->id)->lockForUpdate()->firstOrFail();
+
+            abort_unless(
+                $accountsReceivable->status === AccountsReceivableStatus::PendingApproval,
+                422,
+                __('This credit request has already been resolved.'),
+            );
+
             $accountsReceivable->forceFill([
                 'status' => AccountsReceivableStatus::Active,
                 'approved_by' => $request->user()->id,
@@ -63,6 +75,17 @@ class CreditApprovalController extends Controller
     public function reject(RejectCreditRequest $request, AccountsReceivable $accountsReceivable): RedirectResponse
     {
         DB::transaction(function () use ($request, $accountsReceivable): void {
+            // Locked re-read (CR-05) — same idempotency boundary as
+            // approve(), so rejecting an already-approved/already-rejected
+            // receivable can never silently reverse a prior Owner decision.
+            $accountsReceivable = AccountsReceivable::query()->whereKey($accountsReceivable->id)->lockForUpdate()->firstOrFail();
+
+            abort_unless(
+                $accountsReceivable->status === AccountsReceivableStatus::PendingApproval,
+                422,
+                __('This credit request has already been resolved.'),
+            );
+
             $accountsReceivable->forceFill([
                 'status' => AccountsReceivableStatus::Rejected,
                 'approved_by' => $request->user()->id,

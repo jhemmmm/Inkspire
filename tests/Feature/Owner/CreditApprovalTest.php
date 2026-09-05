@@ -55,6 +55,56 @@ test('an owner rejecting an OnCredit request flips both to their rejected states
     expect($freshJobOrder->description)->toBe('Tarpaulin, 3x5ft');
 });
 
+test('approving an already-resolved credit request is rejected and does not re-approve it (CR-05)', function () {
+    $owner = User::factory()->owner()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::OnCredit->value]);
+    $accountsReceivable = AccountsReceivable::factory()->for($jobOrder)->create([
+        'balance' => 1000,
+        'status' => AccountsReceivableStatus::Active,
+        'approved_by' => $owner->id,
+        'approved_at' => now()->subDay(),
+    ]);
+
+    $response = $this->actingAs($owner)->patch(route('owner.credit-requests.approve', $accountsReceivable));
+
+    $response->assertStatus(422);
+    expect($accountsReceivable->fresh()->status)->toBe(AccountsReceivableStatus::Active);
+});
+
+test('rejecting an already-approved credit request is rejected and does not flip the job order back (CR-05)', function () {
+    $owner = User::factory()->owner()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::OnCredit->value]);
+    $accountsReceivable = AccountsReceivable::factory()->for($jobOrder)->create([
+        'balance' => 1000,
+        'status' => AccountsReceivableStatus::Active,
+        'approved_by' => $owner->id,
+        'approved_at' => now()->subDay(),
+    ]);
+
+    $response = $this->actingAs($owner)->patch(route('owner.credit-requests.reject', $accountsReceivable));
+
+    $response->assertStatus(422);
+    expect($accountsReceivable->fresh()->status)->toBe(AccountsReceivableStatus::Active);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::OnCredit);
+});
+
+test('approving an already-rejected credit request is rejected and does not reverse the prior decision (CR-05)', function () {
+    $owner = User::factory()->owner()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::CreditRejected->value]);
+    $accountsReceivable = AccountsReceivable::factory()->for($jobOrder)->create([
+        'balance' => 1000,
+        'status' => AccountsReceivableStatus::Rejected,
+        'approved_by' => $owner->id,
+        'approved_at' => now()->subDay(),
+    ]);
+
+    $response = $this->actingAs($owner)->patch(route('owner.credit-requests.approve', $accountsReceivable));
+
+    $response->assertStatus(422);
+    expect($accountsReceivable->fresh()->status)->toBe(AccountsReceivableStatus::Rejected);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::CreditRejected);
+});
+
 test('a cashier can request OnCredit for an eligible job order, posting the remaining outstanding balance', function () {
     $cashier = User::factory()->cashier()->create();
     $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000]);
