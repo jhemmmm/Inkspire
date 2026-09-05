@@ -131,4 +131,15 @@ class JobOrder extends Model
     {
         return $this->hasMany(Transaction::class);
     }
+
+    /**
+     * This job order's On-Credit request, if any (D-08 — at most one
+     * open credit request/receivable per job order).
+     *
+     * @return HasOne<AccountsReceivable, $this>
+     */
+    public function accountsReceivable(): HasOne
+    {
+        return $this->hasOne(AccountsReceivable::class);
+    }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Artist\JobOrderWorkspaceController;
 use App\Http\Controllers\Artist\PerformanceReportController;
 use App\Http\Controllers\Artist\SessionStatusController;
 use App\Http\Controllers\Cashier\CancellationController;
+use App\Http\Controllers\Cashier\CreditRequestController;
 use App\Http\Controllers\Cashier\DashboardController as CashierDashboardController;
 use App\Http\Controllers\Cashier\PaymentController;
 use App\Http\Controllers\Cashier\ReceiptController;
@@ -51,6 +52,7 @@ Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')
     Route::get('job-orders/{jobOrder}/receipt', [ReceiptController::class, 'show'])->name('job-orders.receipt.show');
     Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
     Route::post('job-orders/{jobOrder}/cancel', [CancellationController::class, 'store'])->name('job-orders.cancel');
+    Route::post('job-orders/{jobOrder}/credit-request', [CreditRequestController::class, 'store'])->name('job-orders.credit-request.store');
 });
 
 Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')->name('production-staff.')->group(function () {
