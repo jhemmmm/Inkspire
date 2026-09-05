@@ -2,6 +2,7 @@
 import { Form, Head } from '@inertiajs/vue3';
 import { Plus, RefreshCw } from '@lucide/vue';
 import { reactive } from 'vue';
+import JobOrderReleaseController from '@/actions/App/Http/Controllers/FrontlineStaff/JobOrderReleaseController';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
 import InputError from '@/components/InputError.vue';
 import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
@@ -43,6 +44,8 @@ interface JobOrderRecord {
     status: string;
     validation_failure_reason: string | null;
     assigned_artist: { id: number; name: string } | null;
+    payment_status: string;
+    released_at: string | null;
 }
 
 interface QueueEntryRecord {
@@ -86,6 +89,18 @@ function setJobOrderType(entryId: number, value: unknown): void {
 
 function jobOrderTypeLabel(type: string): string {
     return type === 'type_a' ? 'Type A' : 'Type B';
+}
+
+// Mirrors JobOrderReleaseController::store's own server-side gate (POS-09) —
+// this only decides whether to render the button; the controller re-checks
+// payment_status independently and rejects a direct request regardless of
+// what this predicate returns.
+function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
+    return (
+        (jobOrder.payment_status === 'paid' ||
+            jobOrder.payment_status === 'on_credit') &&
+        jobOrder.released_at === null
+    );
 }
 </script>
 
@@ -182,6 +197,27 @@ function jobOrderTypeLabel(type: string): string {
                                             </span>
                                         </Button>
                                     </ReplaceJobOrderFileDialog>
+                                    <Form
+                                        v-if="
+                                            isReleaseEligible(jobOrder)
+                                        "
+                                        v-bind="
+                                            JobOrderReleaseController.store.form(
+                                                jobOrder.id,
+                                            )
+                                        "
+                                        :options="{ preserveScroll: true }"
+                                        v-slot="{ processing }"
+                                    >
+                                        <Button
+                                            type="submit"
+                                            variant="outline"
+                                            :disabled="processing"
+                                            :data-test="`release-job-order-${jobOrder.id}-button`"
+                                        >
+                                            Release to Customer
+                                        </Button>
+                                    </Form>
                                 </div>
                             </div>
                         </TableCell>
