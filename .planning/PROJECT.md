@@ -23,15 +23,16 @@ A job order flows correctly end-to-end — a customer queues in, gets a job orde
 - ✓ System configuration panel (Owner/Admin): rush fee %, DPI thresholds, accepted file formats/max size, per-product SLA, max artist break duration, file retention settings, expense categories, session timeout — Validated in Phase 1: foundation-rbac-auth-hardening-audit-trail
 - ✓ Job Order intake: Type A auto-validated by DPI/format/size against configurable `SystemConfiguration` thresholds; Type B auto-assigns to an available Artist via locked oldest-or-null round-robin, no manual assignment step — Validated in Phase 3: job-order-intake-auto-assignment
 - ✓ Artist workflow: consultation notes, TOAST UI Image Editor-based design tool, revision logging, design lock on final approval with Owner-only override — Validated in Phase 4: artist-workflow-design-editor
+- ✓ POS module: server-authoritative pricing computation, payment processing (Cash, Bank Transfer, GCash, Maya via PayMongo), down payments/balance tracking, digital receipts, cancellation fee collection with down-payment netting — every transaction requires a linked job order, no standalone sales — Validated in Phase 5: pos-payments
+- ✓ PayMongo webhook-confirmed payment flow for GCash/Maya (Payment Intent creation, signature-verified webhook as source of truth, manual reconciliation fallback for delayed/lost webhooks) — Validated in Phase 5: pos-payments (live PayMongo sandbox QR/webhook run pending human verification — no test-mode credentials provisioned yet, see 05-HUMAN-UAT.md)
+- ✓ On-Credit payment path requiring Owner-exclusive approval before activation, posting a balance-only entry to accounts receivable — Validated in Phase 5: pos-payments
+- ✓ Server-enforced release gate: a job order cannot be released to the customer unless fully paid or actively on credit, checked on every mutation endpoint (not just hidden UI) — Validated in Phase 5: pos-payments
 
 ### Active
 
 - [ ] Public unauthenticated QR-based job order tracking portal (enter JO number, see status only)
 - [ ] Customer registration and queue management (search returning customers, register new, generate queue numbers)
 - [ ] Public, unauthenticated shared queue display (queue number + status only, no PII) for lobby/TV use, polling-refreshed
-- [ ] POS module: pricing computation from a pricing database, payment processing (Cash, GCash, Maya via PayMongo, Bank Transfer), down payments/balance tracking, digital receipts, cancellation fee collection — every POS transaction requires a linked job order, no standalone sales
-- [ ] PayMongo webhook-confirmed payment flow for GCash/Maya (Payment Intent/Source creation, signature-verified webhook as source of truth, manual reconciliation fallback for delayed/lost webhooks)
-- [ ] On-Credit payment path requiring Owner approval before activation, posting to accounts receivable
 - [ ] Production Monitoring board (color-coded by urgency), sequential status updates (For Production → Printing → Quality Check → Ready for Pickup)
 - [ ] Accounts Receivable: aging brackets (Current, 15/30/60/90+ days) with automated escalating reminder notifications, collection status tracking, printable collection letters, Owner-approved write-offs
 - [ ] Expense encoding by category (Accounting role)
@@ -75,7 +76,7 @@ A job order flows correctly end-to-end — a customer queues in, gets a job orde
 | Add a 13th table, `system_configurations`, beyond the approved 12-table ERD | No existing table can hold Owner-editable business rules (rush fee %, DPI thresholds, SLA, etc.) without distorting its meaning | — Pending |
 | Keep the manuscript's On-Credit approval gate and automated AR reminder pipeline, even though the client's UI demo shows simpler behavior (no on-credit concept, manual-only AR follow-up) | Explicit user decision: the demo is a UI reference, not a business-rules source; the manuscript's rules stand where they conflict | ✓ Good |
 | Real-time-ish updates via client-side polling (Inertia partial reloads + a lightweight polling endpoint), not Laravel Echo/Reverb | Small shop, low concurrency, soft-real-time freshness (a few seconds' staleness) is acceptable; avoids running a websocket server | — Pending |
-| PayMongo payment confirmation is webhook-driven, with a manual reconciliation action as fallback | Webhook signature verification is the reliable source of truth for GCash/Maya; a fallback covers delayed/lost webhooks without blocking the Cashier | — Pending |
+| PayMongo payment confirmation is webhook-driven, with a manual reconciliation action as fallback | Webhook signature verification is the reliable source of truth for GCash/Maya; a fallback covers delayed/lost webhooks without blocking the Cashier | ✓ Good — both paths share one idempotent `ConfirmPaymentIntent` action; live sandbox run still pending (no PayMongo credentials provisioned) |
 | Reversed the "lobby/TV queue display Out of Scope" call from requirements definition — added QUEUE-06, a public status-only shared display, into Phase 2 | During Phase 2 discussion the user explicitly requested it, matching the manuscript-era demo's queue-display.html; status-only (no PII) keeps it consistent with the TRACK-01/02 public-tracking pattern, and polling-refresh keeps it consistent with the no-websockets constraint | — Pending |
 
 ## Evolution
@@ -96,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-04 after Phase 4 (artist-workflow-design-editor) completion*
+*Last updated: 2026-09-05 after Phase 5 (pos-payments) completion*
