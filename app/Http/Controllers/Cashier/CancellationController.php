@@ -31,6 +31,11 @@ class CancellationController extends Controller
     {
         abort_if($jobOrder->cancelled_at !== null, 422, 'This job order is already cancelled.');
         abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid and cannot be cancelled from here.');
+        abort_if(
+            $jobOrder->payment_status === PaymentStatus::PendingConfirmation,
+            422,
+            __('This job order has a payment awaiting confirmation. Resolve it before cancelling.'),
+        );
 
         $designStarted = in_array($jobOrder->status, [
             JobOrderStatus::InDesign,
