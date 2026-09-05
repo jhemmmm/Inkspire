@@ -26,6 +26,7 @@ class CreditRequestController extends Controller
      */
     public function store(CreateCreditRequestRequest $request, JobOrder $jobOrder): RedirectResponse
     {
+        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
         abort_unless(
             in_array($jobOrder->status, [JobOrderStatus::ReadyForProduction, JobOrderStatus::DesignApproved], true),
             422,

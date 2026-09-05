@@ -86,6 +86,16 @@ test('a job order that already has a pending OnCredit request cannot be requeste
     $response->assertStatus(422);
 });
 
+test('a cancelled job order cannot have OnCredit requested against it (CR-03)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'cancelled_at' => now()]);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.credit-request.store', $jobOrder));
+
+    $response->assertStatus(422);
+    expect(AccountsReceivable::count())->toBe(0);
+});
+
 test('requesting OnCredit as the very first pricing action validates and snapshots pricing input (CR-01)', function () {
     $cashier = User::factory()->cashier()->create();
     $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);

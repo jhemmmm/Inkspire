@@ -200,6 +200,28 @@ test('a gcash payment creates a pending confirmation transaction with a paymongo
     $follow->assertInertia(fn ($page) => $page->where('paymongoRedirectUrl', 'https://paymongo.test/checkout/pi_test123'));
 });
 
+test('a cancelled job order cannot be paid (CR-03)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 500]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['cancelled_at' => now()]);
+
+    $editResponse = $this->actingAs($cashier)->get(route('cashier.job-orders.payment.edit', $jobOrder));
+    $editResponse->assertStatus(422);
+
+    $storeResponse = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 500,
+        'rush_fee_applied' => false,
+        'payment_method' => 'cash',
+        'payment_type' => 'full',
+        'amount_tendered' => 500,
+    ]);
+
+    $storeResponse->assertStatus(422);
+    expect(Transaction::count())->toBe(0);
+    expect($jobOrder->fresh()->total_amount)->toBeNull();
+});
+
 test('a maya payment failing to create a paymongo intent flashes an error and creates no transaction', function () {
     Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
     Paymongo::shouldReceive('create')->once()->andThrow(new Exception('PayMongo unavailable'));

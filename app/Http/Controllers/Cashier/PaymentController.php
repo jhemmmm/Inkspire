@@ -34,6 +34,7 @@ class PaymentController extends Controller
      */
     public function edit(Request $request, JobOrder $jobOrder): Response
     {
+        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
         abort_unless(
             in_array($jobOrder->status, [JobOrderStatus::ReadyForProduction, JobOrderStatus::DesignApproved], true),
             422,
@@ -83,6 +84,7 @@ class PaymentController extends Controller
      */
     public function store(SavePricingAndPaymentRequest $request, JobOrder $jobOrder): RedirectResponse
     {
+        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
         abort_unless(
             in_array($jobOrder->status, [JobOrderStatus::ReadyForProduction, JobOrderStatus::DesignApproved], true),
             422,

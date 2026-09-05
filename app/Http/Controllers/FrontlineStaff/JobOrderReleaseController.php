@@ -21,6 +21,7 @@ class JobOrderReleaseController extends Controller
      */
     public function store(ReleaseJobOrderRequest $request, JobOrder $jobOrder): RedirectResponse
     {
+        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
         abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
 
         abort_unless(

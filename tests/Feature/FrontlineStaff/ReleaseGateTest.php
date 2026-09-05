@@ -74,3 +74,17 @@ test('a job order that has already been released cannot be released again', func
 
     $response->assertStatus(422);
 });
+
+test('a cancelled job order cannot be released even if it was somehow marked paid (CR-03)', function () {
+    $frontlineStaff = User::factory()->frontlineStaff()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create([
+        'total_amount' => 1000,
+        'payment_status' => PaymentStatus::Paid->value,
+        'cancelled_at' => now(),
+    ]);
+
+    $response = $this->actingAs($frontlineStaff)->post(route('frontline-staff.job-orders.release', $jobOrder));
+
+    $response->assertStatus(422);
+    expect($jobOrder->fresh()->released_at)->toBeNull();
+});

@@ -29,6 +29,7 @@ class ReconciliationController extends Controller
         return Inertia::render('accounting-staff/Dashboard', [
             'jobOrders' => JobOrder::query()
                 ->where('payment_status', PaymentStatus::PendingConfirmation)
+                ->whereNull('cancelled_at')
                 ->with([
                     'queueEntry.customer:id,name',
                     'transactions' => fn ($query) => $query
@@ -52,6 +53,7 @@ class ReconciliationController extends Controller
      */
     public function store(Request $request, JobOrder $jobOrder): RedirectResponse
     {
+        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
         abort_unless($jobOrder->payment_status === PaymentStatus::PendingConfirmation, 422, 'This job order is not awaiting payment confirmation.');
 
         $transaction = $jobOrder->transactions()

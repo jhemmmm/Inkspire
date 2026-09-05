@@ -141,6 +141,26 @@ test('reconciling a job order that is not awaiting payment confirmation is rejec
     $response->assertStatus(422);
 });
 
+test('a cancelled job order no longer appears in the reconciliation queue and cannot be manually reconciled (CR-03)', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+    $jobOrder->forceFill(['total_amount' => 1000, 'payment_status' => PaymentStatus::PendingConfirmation, 'cancelled_at' => now()])->save();
+    Transaction::factory()->pendingConfirmation()->create([
+        'job_order_id' => $jobOrder->id,
+        'amount' => 1000,
+        'paymongo_payment_intent_id' => 'pi_test_reconcile',
+    ]);
+
+    $indexResponse = $this->actingAs($accountingStaff)->get(route('accounting-staff.dashboard'));
+    $indexResponse->assertInertia(fn ($page) => $page->has('jobOrders', 0));
+
+    $storeResponse = $this->actingAs($accountingStaff)
+        ->post(route('accounting-staff.job-orders.reconcile', $jobOrder));
+
+    $storeResponse->assertStatus(422);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PendingConfirmation);
+});
+
 test('a frontline staff user cannot reach the accounting staff reconcile route', function () {
     $frontlineStaff = User::factory()->frontlineStaff()->create();
     $jobOrder = JobOrder::factory()->readyForProduction()->create();
