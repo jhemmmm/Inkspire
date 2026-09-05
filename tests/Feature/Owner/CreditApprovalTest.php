@@ -6,6 +6,7 @@ use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
 use App\Models\PricingEntry;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 
 test('an admin can view the OnCredit requests queue but is forbidden from approving a request', function () {
     $admin = User::factory()->admin()->create();
@@ -121,6 +122,14 @@ test('a cashier can request OnCredit for an eligible job order, posting the rema
     expect($accountsReceivable->status)->toBe(AccountsReceivableStatus::PendingApproval);
     expect((float) $accountsReceivable->balance)->toBe(1000.0);
     expect($accountsReceivable->requested_by)->toBe($cashier->id);
+});
+
+test('the accounts_receivable table enforces at most one row per job order at the database level (WR-04)', function () {
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000]);
+    AccountsReceivable::factory()->for($jobOrder)->create(['balance' => 1000]);
+
+    expect(fn () => AccountsReceivable::factory()->for($jobOrder)->create(['balance' => 500]))
+        ->toThrow(QueryException::class);
 });
 
 test('a job order that already has a pending OnCredit request cannot be requested again', function () {

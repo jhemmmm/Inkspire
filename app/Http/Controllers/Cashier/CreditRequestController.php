@@ -40,6 +40,21 @@ class CreditRequestController extends Controller
         );
 
         DB::transaction(function () use ($request, $jobOrder): void {
+            // Locked re-read + re-checked preconditions (WR-04) — the
+            // abort_if() calls above ran on an unlocked read, so a
+            // double-submitted/replayed request could otherwise race past
+            // them both and create two AccountsReceivable rows for the same
+            // job order before either transaction commits.
+            $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
+
+            abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
+            abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
+            abort_if(
+                in_array($jobOrder->payment_status, [PaymentStatus::PendingConfirmation, PaymentStatus::CreditPendingApproval], true),
+                422,
+                'This job order already has a payment action pending.',
+            );
+
             $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
 
             if ($jobOrder->total_amount === null) {
