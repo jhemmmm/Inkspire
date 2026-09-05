@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cashier;
 
+use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
@@ -28,7 +29,17 @@ class DashboardController extends Controller
                 ->whereIn('status', [JobOrderStatus::ReadyForProduction->value, JobOrderStatus::DesignApproved->value])
                 ->whereNull('cancelled_at')
                 ->withSum(['transactions as amount_paid' => fn ($query) => $query->where('status', TransactionStatus::Completed->value)], 'amount')
-                ->with(['queueEntry.customer:id,name'])
+                ->with([
+                    'queueEntry.customer:id,name',
+                    // Surfaced so the cancellation dialog can warn the
+                    // Cashier when an On-Credit balance still exists
+                    // (WR-05) — cancelling never writes it off, since the
+                    // fee-netting logic only ever looks at completed
+                    // Transactions.
+                    'accountsReceivable' => fn ($query) => $query
+                        ->where('status', AccountsReceivableStatus::Active->value)
+                        ->select(['id', 'job_order_id', 'balance', 'status']),
+                ])
                 ->orderBy('created_at')
                 ->get(['id', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount'])
                 // withSum's raw SQL aggregate arrives from PDO as a numeric

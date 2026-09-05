@@ -44,6 +44,11 @@ interface CashierJobOrder {
     total_amount: number | null;
     amount_paid: number | null;
     queue_entry: { customer: { name: string } };
+    // Present only when an Active On-Credit receivable exists for this job
+    // order (WR-05) — cancelling never writes this balance off, so the
+    // dialog surfaces it explicitly rather than leaving it as a silent
+    // byproduct of two independent code paths.
+    accounts_receivable: { balance: number } | null;
 }
 
 const props = defineProps<{
@@ -63,31 +68,47 @@ const DESIGN_STARTED_STATUSES = [
 ];
 
 function cancellationDialogBody(jobOrder: CashierJobOrder): string {
+    let body: string;
+
     if (!DESIGN_STARTED_STATUSES.includes(jobOrder.status)) {
-        return "No cancellation fee applies — design work hasn't started yet.";
+        body = "No cancellation fee applies — design work hasn't started yet.";
+    } else {
+        const fee = props.cancellationFeeAmount;
+        // Coerced defensively (CR-04) — a decimal-cast/raw-SQL-aggregate
+        // money value from the backend can arrive as a numeric string
+        // depending on the DB driver (confirmed for MySQL's SUM() in
+        // production), and String.prototype has no .toFixed(), matching
+        // every other money value in this phase's Vue code (Receipt.vue's
+        // money(), etc.).
+        const downPayment = Number(jobOrder.amount_paid ?? 0);
+
+        if (downPayment <= 0) {
+            body = `A cancellation fee of ₱${fee.toFixed(2)} applies since design work has started. Collect this amount from the customer.`;
+        } else if (downPayment >= fee) {
+            const excess = (downPayment - fee).toFixed(2);
+
+            body = `A cancellation fee of ₱${fee.toFixed(2)} applies. The existing down payment of ₱${downPayment.toFixed(2)} covers it — ₱${excess} is refundable to the customer.`;
+        } else {
+            const shortfall = (fee - downPayment).toFixed(2);
+
+            body = `A cancellation fee of ₱${fee.toFixed(2)} applies. The existing down payment of ₱${downPayment.toFixed(2)} covers part of it — collect the remaining ₱${shortfall} from the customer.`;
+        }
     }
 
-    const fee = props.cancellationFeeAmount;
-    // Coerced defensively (CR-04) — a decimal-cast/raw-SQL-aggregate money
-    // value from the backend can arrive as a numeric string depending on
-    // the DB driver (confirmed for MySQL's SUM() in production), and
-    // String.prototype has no .toFixed(), matching every other money value
-    // in this phase's Vue code (Receipt.vue's money(), etc.).
-    const downPayment = Number(jobOrder.amount_paid ?? 0);
+    // WR-05: cancelling never writes off an existing On-Credit balance —
+    // the fee-netting logic above only ever looks at completed
+    // Transactions, so an Active AccountsReceivable is untouched by this
+    // action. Surface it explicitly rather than leaving the customer's
+    // outstanding balance as a silent byproduct.
+    if (jobOrder.accounts_receivable) {
+        const outstanding = Number(
+            jobOrder.accounts_receivable.balance,
+        ).toFixed(2);
 
-    if (downPayment <= 0) {
-        return `A cancellation fee of ₱${fee.toFixed(2)} applies since design work has started. Collect this amount from the customer.`;
+        body += ` This job order also has an outstanding On-Credit balance of ₱${outstanding} that will NOT be written off by cancelling — follow up on collection separately.`;
     }
 
-    if (downPayment >= fee) {
-        const excess = (downPayment - fee).toFixed(2);
-
-        return `A cancellation fee of ₱${fee.toFixed(2)} applies. The existing down payment of ₱${downPayment.toFixed(2)} covers it — ₱${excess} is refundable to the customer.`;
-    }
-
-    const shortfall = (fee - downPayment).toFixed(2);
-
-    return `A cancellation fee of ₱${fee.toFixed(2)} applies. The existing down payment of ₱${downPayment.toFixed(2)} covers part of it — collect the remaining ₱${shortfall} from the customer.`;
+    return body;
 }
 
 defineOptions({

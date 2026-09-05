@@ -1,7 +1,10 @@
 <?php
 
+use App\Enums\AccountsReceivableStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
+use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
 use App\Models\SystemConfiguration;
 use App\Models\Transaction;
@@ -160,6 +163,37 @@ test('the cashier dashboard casts amount_paid to a float, not a numeric string (
         ->component('cashier/Dashboard')
         ->whereType('jobOrders.0.amount_paid', 'double')
         ->where('jobOrders.0.amount_paid', 700.5)
+    );
+});
+
+test('the cashier dashboard surfaces an outstanding On-Credit balance for the cancellation dialog (WR-05)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create([
+        'total_amount' => 1000,
+        'payment_status' => PaymentStatus::OnCredit->value,
+    ]);
+    AccountsReceivable::factory()->for($jobOrder)->create([
+        'balance' => 1000,
+        'status' => AccountsReceivableStatus::Active,
+    ]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.dashboard'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('cashier/Dashboard')
+        ->where('jobOrders.0.accounts_receivable.balance', '1000.00')
+    );
+});
+
+test('the cashier dashboard omits accounts_receivable when no Active receivable exists', function () {
+    $cashier = User::factory()->cashier()->create();
+    JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.dashboard'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('cashier/Dashboard')
+        ->where('jobOrders.0.accounts_receivable', null)
     );
 });
 
