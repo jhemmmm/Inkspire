@@ -13,6 +13,7 @@ use App\Http\Controllers\Cashier\ReceiptController;
 use App\Http\Controllers\Cashier\ReconciliationController;
 use App\Http\Controllers\FrontlineStaff\CustomerController;
 use App\Http\Controllers\FrontlineStaff\JobOrderController;
+use App\Http\Controllers\FrontlineStaff\JobOrderReleaseController;
 use App\Http\Controllers\FrontlineStaff\QueueEntryController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,7 @@ Route::middleware(['auth', 'role:frontline_staff'])->prefix('frontline-staff')->
     Route::patch('queue-entries/{queueEntry}/mark-done', [QueueEntryController::class, 'markDone'])->name('queue-entries.mark-done');
     Route::post('queue-entries/{queueEntry}/job-orders', [QueueEntryController::class, 'addJobOrder'])->name('queue-entries.job-orders.store');
     Route::post('job-orders/{jobOrder}/replace-file', [JobOrderController::class, 'replaceFile'])->name('job-orders.replace-file');
+    Route::post('job-orders/{jobOrder}/release', [JobOrderReleaseController::class, 'store'])->name('job-orders.release');
 });
 
 Route::middleware(['auth', 'role:artist'])->prefix('artist')->name('artist.')->group(function () {
