@@ -238,7 +238,29 @@ Plans:
   3. Frontline Staff receives a "Ready for Pickup" alert when a job order reaches that stage
   4. A customer can enter a job order number on a public, unauthenticated page and see only its current status — no pricing, payment, customer PII, or design files
 
-**Plans**: TBD
+**Plans**: 6 plans in 5 waves
+Plans:
+**Wave 1**
+
+- [ ] 06-01-PLAN.md — Foundation: Schema, Enums, Models & Job Order Number Generator (substrate for PROD-01, PROD-02, TRACK-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 06-02-PLAN.md — Job Order Number Generation & Display (TRACK-01)
+- [ ] 06-03-PLAN.md — Public Tracking & Receipt QR (TRACK-01, TRACK-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 06-04-PLAN.md — Automatic Production Entry & Payment Compatibility (PROD-01, PROD-02)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 06-05-PLAN.md — Frontline Ready-for-Pickup Alert (PROD-03)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 06-06-PLAN.md — Production Board: View & Stage Advancement (PROD-01, PROD-02 completion)
+
 **UI hint**: yes
 
 ### Phase 7: Accounts Receivable
