@@ -38,7 +38,7 @@ class QueueEntryController extends Controller
             'queueEntries' => QueueEntry::query()
                 ->with([
                     'customer:id,name',
-                    'jobOrders:id,queue_entry_id,description,type,status,validation_failure_reason,assigned_artist_id',
+                    'jobOrders:id,queue_entry_id,description,type,status,validation_failure_reason,assigned_artist_id,payment_status,released_at',
                     'jobOrders.assignedArtist:id,name',
                 ])
                 ->whereDate('queue_date', QueueEntry::currentBusinessDate())

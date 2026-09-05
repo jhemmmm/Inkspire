@@ -38,6 +38,7 @@ use Illuminate\Support\Carbon;
  * @property float|null $discount_amount
  * @property float|null $total_amount
  * @property Carbon|null $cancelled_at
+ * @property Carbon|null $released_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -68,6 +69,7 @@ class JobOrder extends Model
             'discount_amount' => 'decimal:2',
             'total_amount' => 'decimal:2',
             'cancelled_at' => 'datetime',
+            'released_at' => 'datetime',
         ];
     }
 

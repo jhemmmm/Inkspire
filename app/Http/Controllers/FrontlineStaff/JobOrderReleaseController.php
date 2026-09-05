@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Http\Controllers\FrontlineStaff;
+
+use App\Enums\PaymentStatus;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\FrontlineStaff\ReleaseJobOrderRequest;
+use App\Models\JobOrder;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Carbon;
+use Inertia\Inertia;
+
+class JobOrderReleaseController extends Controller
+{
+    /**
+     * Release a job order to the customer (POS-09) — the single,
+     * server-enforced gate that decides whether a job order can be
+     * handed over. Re-checks payment_status itself on every request,
+     * independent of whatever the UI happened to render (RBAC-02
+     * precedent: never trust a client-side-only decision).
+     */
+    public function store(ReleaseJobOrderRequest $request, JobOrder $jobOrder): RedirectResponse
+    {
+        abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
+
+        abort_unless(
+            in_array($jobOrder->payment_status, [PaymentStatus::Paid, PaymentStatus::OnCredit], true),
+            422,
+            match ($jobOrder->payment_status) {
+                PaymentStatus::CreditPendingApproval => __("This job order's On-Credit request is still pending Owner approval. Send the customer to Cashier."),
+                default => __("This job order isn't fully paid yet. Send the customer to Cashier before releasing it."),
+            },
+        );
+
+        $jobOrder->forceFill(['released_at' => Carbon::now()])->save();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Released to customer.'),
+        ]);
+
+        return back();
+    }
+}
