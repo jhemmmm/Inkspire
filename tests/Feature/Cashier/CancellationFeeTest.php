@@ -127,6 +127,31 @@ test('a fully paid job order cannot be cancelled from here', function () {
     $response->assertStatus(422);
 });
 
+test('the cashier dashboard casts amount_paid to a float, not a numeric string (CR-04)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000]);
+    Transaction::factory()->create([
+        'job_order_id' => $jobOrder->id,
+        'type' => TransactionType::DownPayment,
+        'status' => TransactionStatus::Completed,
+        'amount' => 700.50,
+    ]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.dashboard'));
+
+    // A whole-number float (e.g. 700.0) round-trips through json_encode as
+    // "700", indistinguishable from an int once re-decoded — using a
+    // fractional amount here keeps this assertion meaningful: the bug this
+    // guards against (CR-04) is amount_paid arriving as the JSON STRING
+    // "700.50" (which has no .toFixed() in JS), not merely an int/float
+    // distinction.
+    $response->assertInertia(fn ($page) => $page
+        ->component('cashier/Dashboard')
+        ->whereType('jobOrders.0.amount_paid', 'double')
+        ->where('jobOrders.0.amount_paid', 700.5)
+    );
+});
+
 test('a cancelled job order no longer appears on the cashier dashboard', function () {
     seedCancellationFee(500.0);
     $cashier = User::factory()->cashier()->create();

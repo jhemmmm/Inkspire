@@ -30,7 +30,15 @@ class DashboardController extends Controller
                 ->withSum(['transactions as amount_paid' => fn ($query) => $query->where('status', TransactionStatus::Completed->value)], 'amount')
                 ->with(['queueEntry.customer:id,name'])
                 ->orderBy('created_at')
-                ->get(['id', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount']),
+                ->get(['id', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount'])
+                // withSum's raw SQL aggregate arrives from PDO as a numeric
+                // string (or null with no completed transactions), unlike
+                // every other money value this phase passes to Inertia
+                // (CR-04) — cast it here to match that convention so the
+                // frontend never has to guess the runtime type.
+                ->each(fn (JobOrder $jobOrder) => $jobOrder->amount_paid = $jobOrder->amount_paid !== null
+                    ? (float) $jobOrder->amount_paid
+                    : null),
             // Mirrors the exact server-authoritative value CancellationController
             // reads, so the pre-confirmation dialog body (D-04/D-05) matches
             // what actually gets charged (informational display only).

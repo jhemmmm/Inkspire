@@ -68,7 +68,12 @@ function cancellationDialogBody(jobOrder: CashierJobOrder): string {
     }
 
     const fee = props.cancellationFeeAmount;
-    const downPayment = jobOrder.amount_paid ?? 0;
+    // Coerced defensively (CR-04) — a decimal-cast/raw-SQL-aggregate money
+    // value from the backend can arrive as a numeric string depending on
+    // the DB driver (confirmed for MySQL's SUM() in production), and
+    // String.prototype has no .toFixed(), matching every other money value
+    // in this phase's Vue code (Receipt.vue's money(), etc.).
+    const downPayment = Number(jobOrder.amount_paid ?? 0);
 
     if (downPayment <= 0) {
         return `A cancellation fee of ₱${fee.toFixed(2)} applies since design work has started. Collect this amount from the customer.`;
