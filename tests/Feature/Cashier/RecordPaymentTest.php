@@ -97,6 +97,26 @@ test('a down payment cannot exceed the remaining balance', function () {
     $response->assertSessionHasErrors('down_payment_amount');
 });
 
+test('a down payment cannot exceed the computed total on the very first pricing/payment visit (WR-01)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 1000,
+        'rush_fee_applied' => false,
+        'payment_method' => 'cash',
+        'payment_type' => 'down',
+        'amount_tendered' => 5000,
+        'down_payment_amount' => 5000,
+    ]);
+
+    $response->assertSessionHasErrors('down_payment_amount');
+    expect($jobOrder->fresh()->total_amount)->toBeNull();
+    expect(Transaction::count())->toBe(0);
+});
+
 test('a bank transfer payment records the reference number', function () {
     $cashier = User::factory()->cashier()->create();
     $pricingEntry = PricingEntry::factory()->create(['base_price' => 750]);

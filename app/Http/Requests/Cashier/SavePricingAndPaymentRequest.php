@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Cashier;
 
+use App\Actions\POS\ComputeJobOrderPrice;
 use App\Concerns\PaymentValidationRules;
 use App\Concerns\PricingValidationRules;
 use App\Enums\TransactionStatus;
@@ -64,11 +65,30 @@ class SavePricingAndPaymentRequest extends FormRequest
                 ->where('status', TransactionStatus::Completed->value)
                 ->sum('amount');
 
-            $remainingBalance = $jobOrder->total_amount !== null
-                ? (float) $jobOrder->total_amount - $amountPaid
-                : null;
+            if ($jobOrder->total_amount !== null) {
+                $remainingBalance = (float) $jobOrder->total_amount - $amountPaid;
+            } else {
+                // First pricing/payment visit (WR-01) — no total_amount
+                // snapshot exists yet to check the down payment against.
+                // If the pricing fields themselves already failed their own
+                // rules, skip this check entirely rather than compute a
+                // meaningless total from invalid/missing input; those
+                // errors already block submission.
+                if ($validator->errors()->hasAny(['pricing_entry_id', 'line_amount', 'rush_fee_applied', 'discount_type', 'discount_value'])) {
+                    return;
+                }
 
-            if ($remainingBalance !== null && $downPaymentAmount > $remainingBalance) {
+                $computed = app(ComputeJobOrderPrice::class)(
+                    (float) $this->input('line_amount', 0),
+                    (bool) $this->input('rush_fee_applied', false),
+                    $this->input('discount_type'),
+                    $this->input('discount_value') !== null ? (float) $this->input('discount_value') : null,
+                );
+
+                $remainingBalance = $computed['total_amount'] - $amountPaid;
+            }
+
+            if ($downPaymentAmount > $remainingBalance) {
                 $validator->errors()->add('down_payment_amount', __('Down payment cannot exceed the remaining balance.'));
             }
         });
