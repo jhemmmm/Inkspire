@@ -24,6 +24,10 @@ trait PaymentValidationRules
                 PaymentMethod::Maya->value,
             ])],
             'payment_type' => ['required', Rule::in(['full', 'down'])],
+            // Display-only (WR-02) — used solely for the frontend's live
+            // "change" preview when paying with cash; there is no
+            // `amount_tendered` column on `transactions` and this value is
+            // never persisted or read back on the Receipt.
             'amount_tendered' => ['required_if:payment_method,'.PaymentMethod::Cash->value, 'nullable', 'numeric', 'min:0'],
             'reference_number' => ['required_if:payment_method,'.PaymentMethod::BankTransfer->value, 'nullable', 'string', 'max:255'],
             // D-14: no configured minimum down payment — min:0.01 only

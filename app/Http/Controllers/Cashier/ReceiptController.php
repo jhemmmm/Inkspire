@@ -39,7 +39,6 @@ class ReceiptController extends Controller
             'customerName' => $jobOrder->queueEntry?->customer?->name,
             'latestTransaction' => $latestTransaction ? [
                 'payment_method' => $latestTransaction->payment_method,
-                'amount_tendered' => null,
             ] : null,
             'amountPaid' => $amountPaid,
             'balance' => $balance,

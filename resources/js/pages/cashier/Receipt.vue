@@ -23,7 +23,6 @@ interface ReceiptJobOrder {
 
 interface ReceiptLatestTransaction {
     payment_method: string;
-    amount_tendered: number | null;
 }
 
 defineProps<{
@@ -135,22 +134,6 @@ function printReceipt(): void {
                                           latestTransaction.payment_method,
                                       )
                                     : '—'
-                            }}
-                        </span>
-                    </div>
-                    <div
-                        v-if="
-                            latestTransaction?.amount_tendered !== null &&
-                            latestTransaction?.amount_tendered !== undefined
-                        "
-                        class="flex items-center justify-between"
-                    >
-                        <span class="font-semibold">Amount Tendered</span>
-                        <span>
-                            {{
-                                money(
-                                    latestTransaction?.amount_tendered ?? null,
-                                )
                             }}
                         </span>
                     </div>
