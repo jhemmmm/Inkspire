@@ -1,10 +1,27 @@
 <script setup lang="ts">
 import { Form, Head, router } from '@inertiajs/vue3';
-import { Banknote, Landmark, Smartphone, Wallet } from '@lucide/vue';
+import {
+    Banknote,
+    CreditCard,
+    Landmark,
+    Smartphone,
+    Wallet,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
+import CreditRequestController from '@/actions/App/Http/Controllers/Cashier/CreditRequestController';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
 import InputError from '@/components/InputError.vue';
 import PaymentQrCode from '@/components/PaymentQrCode.vue';
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -72,7 +89,9 @@ const rushFeeApplied = ref<boolean>(Boolean(props.jobOrder.rush_fee_amount));
 const discountType = ref<'' | 'percentage' | 'flat'>('');
 const discountValue = ref<number | undefined>(undefined);
 
-const paymentMethod = ref<'cash' | 'bank_transfer' | 'gcash' | 'maya'>('cash');
+const paymentMethod = ref<
+    'cash' | 'bank_transfer' | 'gcash' | 'maya' | 'on_credit'
+>('cash');
 const paymentType = ref<'full' | 'down'>('full');
 const amountTendered = ref<number | undefined>(undefined);
 const referenceNumber = ref('');
@@ -89,6 +108,8 @@ const subView = ref<'form' | 'qr'>(props.paymongoRedirectUrl ? 'qr' : 'form');
 const isPaymongoMethod = computed(
     () => paymentMethod.value === 'gcash' || paymentMethod.value === 'maya',
 );
+
+const isOnCredit = computed(() => paymentMethod.value === 'on_credit');
 
 /**
  * Sourced from the persisted pending Transaction (via props), not the
@@ -194,12 +215,46 @@ const downPaymentRemainingBalance = computed<number>(() =>
 );
 
 const submitLabel = computed(() => {
+    if (isOnCredit.value) {
+        return 'Request On-Credit Approval';
+    }
+
     if (paymentType.value === 'down') {
         return 'Record Down Payment';
     }
 
     return isPaymongoMethod.value ? 'Generate QR Code' : 'Record Payment';
 });
+
+const creditRequestingProcessing = ref(false);
+
+/**
+ * A plain router.post() rather than a nested <Form> — the On Credit confirm
+ * button lives inside the page's single outer <Form> (Pricing + Payment
+ * submission), and HTML forbids a <form> nested inside another <form>. The
+ * Pricing card fields are always included; CreditRequestController only
+ * reads them when the job order hasn't been priced yet.
+ */
+function submitCreditRequest(): void {
+    creditRequestingProcessing.value = true;
+
+    router.post(
+        CreditRequestController.store.url(props.jobOrder.id),
+        {
+            pricing_entry_id: pricingEntryId.value,
+            line_amount: lineAmount.value,
+            rush_fee_applied: rushFeeApplied.value,
+            discount_type: discountType.value || null,
+            discount_value: discountValue.value ?? null,
+        },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                creditRequestingProcessing.value = false;
+            },
+        },
+    );
+}
 
 const discountCapHelper = computed(() =>
     discountType.value === 'percentage'
@@ -519,11 +574,21 @@ const discountCapHelper = computed(() =>
                                 <Smartphone class="size-4" />
                                 <Label for="payment-method-maya"> Maya </Label>
                             </div>
+                            <div class="flex items-center gap-2">
+                                <RadioGroupItem
+                                    id="payment-method-on-credit"
+                                    value="on_credit"
+                                />
+                                <CreditCard class="size-4" />
+                                <Label for="payment-method-on-credit">
+                                    On Credit
+                                </Label>
+                            </div>
                         </RadioGroup>
                         <InputError :message="errors.payment_method" />
                     </div>
 
-                    <div class="grid gap-2">
+                    <div v-if="!isOnCredit" class="grid gap-2">
                         <Label>Payment Type</Label>
                         <RadioGroup
                             name="payment_type"
@@ -608,7 +673,48 @@ const discountCapHelper = computed(() =>
                         <InputError :message="errors.down_payment_amount" />
                     </div>
 
+                    <AlertDialog v-if="isOnCredit">
+                        <AlertDialogTrigger as-child>
+                            <Button
+                                type="button"
+                                data-test="record-payment-button"
+                            >
+                                {{ submitLabel }}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                    Request On-Credit approval for ₱{{
+                                        targetAmount.toFixed(2)
+                                    }}?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This job order will be flagged "Credit
+                                    Pending Approval" until an Owner reviews it.
+                                    The customer cannot pick up the order until
+                                    it's approved or paid another way.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <Button
+                                    type="button"
+                                    :disabled="creditRequestingProcessing"
+                                    data-test="confirm-credit-request-button"
+                                    @click="submitCreditRequest"
+                                >
+                                    <Spinner
+                                        v-if="creditRequestingProcessing"
+                                    />
+                                    Send for Approval
+                                </Button>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
                     <Button
+                        v-else
                         type="submit"
                         :disabled="processing"
                         data-test="record-payment-button"

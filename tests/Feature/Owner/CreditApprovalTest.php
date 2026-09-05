@@ -60,7 +60,7 @@ test('a cashier can request OnCredit for an eligible job order, posting the rema
 
     $response = $this->actingAs($cashier)->post(route('cashier.job-orders.credit-request.store', $jobOrder));
 
-    $response->assertRedirect();
+    $response->assertRedirect(route('cashier.dashboard'));
 
     $freshJobOrder = $jobOrder->fresh();
     expect($freshJobOrder->payment_status)->toBe(PaymentStatus::CreditPendingApproval);

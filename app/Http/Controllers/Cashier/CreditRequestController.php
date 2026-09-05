@@ -83,6 +83,10 @@ class CreditRequestController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('On-Credit requested. Awaiting Owner approval.')]);
 
-        return back();
+        // Explicit route rather than back() — the submitting <Form> lives on
+        // this same Job Order Payment page, so back() would return here
+        // (now stale: the job order is no longer payment-eligible) instead
+        // of the Cashier Dashboard UI-SPEC §2 specifies.
+        return to_route('cashier.dashboard');
     }
 }

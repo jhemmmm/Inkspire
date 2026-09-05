@@ -1,6 +1,14 @@
-import { LayoutGrid, ScrollText, Settings, Unlock, Users } from '@lucide/vue';
+import {
+    CreditCard,
+    LayoutGrid,
+    ScrollText,
+    Settings,
+    Unlock,
+    Users,
+} from '@lucide/vue';
 import { dashboard } from '@/routes/owner';
 import { index as auditTrailIndex } from '@/routes/owner/audit-trail';
+import { index as creditRequestsIndex } from '@/routes/owner/credit-requests';
 import { index as designOverridesIndex } from '@/routes/owner/design-overrides';
 import { edit as systemConfigurationEditRoute } from '@/routes/owner/system-configuration';
 import { index as usersIndex } from '@/routes/owner/users';
@@ -31,5 +39,10 @@ export const ownerNavItems: NavItem[] = [
         title: 'Design Overrides',
         href: designOverridesIndex(),
         icon: Unlock,
+    },
+    {
+        title: 'Credit Requests',
+        href: creditRequestsIndex(),
+        icon: CreditCard,
     },
 ];
