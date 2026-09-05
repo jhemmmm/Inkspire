@@ -1,10 +1,11 @@
 ---
 phase: 6
 slug: production-monitoring-public-tracking
-status: draft
+status: approved
 shadcn_initialized: true
 preset: new-york-v4 / neutral / cssVariables
 created: 2026-09-05
+reviewed_at: 2026-09-05
 ---
 
 # Phase 6 — UI Design Contract
@@ -153,7 +154,7 @@ The public page inherits `QueueDisplay.vue` / `DesignReview.vue`'s forced-dark p
 | Rush banner body | "{JO-A} (due {time}), {JO-B} (due {time}) and {n} more. Work these first." (names the first two, matching the demo's rush-alert copy shape; drops the "and n more" clause when ≤ 2) |
 | Primary CTA — advance (label names the destination, never a generic "Advance") | "Advance to Printing" / "Advance to Quality Check" / "Advance to Ready for Pickup" |
 | Terminal-row text (at Ready for Pickup) | "Awaiting release" (Body, `text-muted-foreground`, in place of an advance button) |
-| Secondary action — rework | "Send Back" |
+| Secondary action — rework | "Send Back to {previous stage}" (e.g. "Send Back to Printing") — names its destination for symmetry with "Advance to {stage}", so both directions are legible from the row without opening the dialog |
 | Send Back dialog title | "Send back to {previous stage}?" |
 | Send Back dialog body | "This is recorded on the production log with your name and the reason below." |
 | Send Back reason field label | "Reason" |
@@ -256,7 +257,7 @@ Page structure, top to bottom, `lg` (24px) gaps:
 - **Board `Table`** — columns per the Copywriting Contract. Default sort: Rush first, then by `due_at` ascending, then by job order number. Rush rows carry the tint from the Color section.
   - **Actions cell** — up to two `size="sm"` buttons, `sm` (8px) gap:
     - Forward: one `--primary` button labelled with the destination stage. Absent at `ready_for_pickup`, replaced by the muted "Awaiting release" text.
-    - Backward: `variant="outline"` "Send Back", opening the reason `Dialog`. Absent at `for_production` (nothing precedes it).
+    - Backward: `variant="outline"` "Send Back to {previous stage}", opening the reason `Dialog`. Absent at `for_production` (nothing precedes it).
     - **No stage `<Select>`.** The demo's `pd-status-select` lets a user jump from For Production straight to Ready for Pickup; that directly violates PROD-02 and is explicitly not reused.
   - Empty states per the Copywriting Contract, rendered via `TableEmpty`.
 - **Polling** — `usePoll(5000, { only: [...] })` per D-14, mirroring `QueueDisplay.vue`'s exact pattern.
@@ -279,7 +280,7 @@ Page structure, top to bottom, `lg` (24px) gaps:
 
 Structure: H1 "Frontline Dashboard" (Display), then a "Ready for Pickup" section (Heading + sub-copy), then a `Table` with the columns from the Copywriting Contract, `TableEmpty` for the empty state, and `usePoll(5000, { only: [...] })` per D-14. The "Payment" column reuses the **existing** Phase 5 `payment_status` badge mapping verbatim — it is present here (unlike on the production board) precisely because this is the surface where the release gate applies.
 
-**"Release to Customer"** calls the existing `JobOrderReleaseController::store` action (`frontline-staff.job-orders.release`). It is never re-implemented and its client-side eligibility predicate never becomes the gate — the blocked-message `Alert` copy is quoted verbatim from 05-UI-SPEC. An order can legitimately reach Ready for Pickup unpaid (Phase 5 D-15), so the blocked path is a normal, expected outcome here, not an edge case.
+**"Release to Customer"** calls the existing `JobOrderReleaseController::store` action (`frontline-staff.job-orders.release`). **The `QueueList.vue` button from 05-UI-SPEC §6 is retained, not superseded** — this Dashboard button is a second entry point to the same gated action, not a replacement. Both are correct because both call the identical server action; the release gate lives in the controller, so there is no duplicated eligibility logic to keep in sync. It is never re-implemented and its client-side eligibility predicate never becomes the gate — the blocked-message `Alert` copy is quoted verbatim from 05-UI-SPEC. An order can legitimately reach Ready for Pickup unpaid (Phase 5 D-15), so the blocked path is a normal, expected outcome here, not an edge case.
 
 ### 3. Ready-for-pickup banner on the Queue page (`resources/js/pages/frontline-staff/QueueList.vue`, extension only)
 
@@ -350,11 +351,13 @@ Add a new thin wrapper `resources/js/components/TrackingQrCode.vue` (props: `tra
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: FLAG — row-action label omitted its destination. Resolved: "Send Back to {previous stage}".
+- [x] Dimension 2 Visuals: FLAG — "Release to Customer" had two homes. Resolved: §2 now states the `QueueList.vue` button is retained, not superseded.
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved (2026-09-05) — both FLAGs closed in this revision; no BLOCKers raised.
+
+**Carried to the planner:** §7 pins an SVG QR at 160px for print fidelity. If a server-side PHP generator is chosen instead (CONTEXT.md D-03's expected shape), that size/format/`print:hidden` contract must be carried across deliberately, not re-derived.
