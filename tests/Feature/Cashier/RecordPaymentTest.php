@@ -219,4 +219,8 @@ test('a maya payment failing to create a paymongo intent flashes an error and cr
     $response->assertRedirect();
     expect(Transaction::count())->toBe(0);
     expect($jobOrder->fresh()->payment_status)->not->toBe(PaymentStatus::PendingConfirmation);
+    // CR-02: pricing must never be persisted when the PayMongo call fails —
+    // otherwise the job order is left silently priced with no transaction
+    // to show for it, and a retry would skip pricing validation entirely.
+    expect($jobOrder->fresh()->total_amount)->toBeNull();
 });

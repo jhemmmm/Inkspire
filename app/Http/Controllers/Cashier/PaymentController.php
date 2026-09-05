@@ -183,6 +183,12 @@ class PaymentController extends Controller
     {
         $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
 
+        // Computed but NOT persisted yet (CR-02) — if the PayMongo calls
+        // below fail, the job order must stay unpriced so the Cashier can
+        // freely retry with different pricing or a different payment
+        // method, exactly like the Cash/Bank Transfer branch's atomicity.
+        $computed = null;
+
         if ($jobOrder->total_amount === null) {
             $computed = ($this->computeJobOrderPrice)(
                 (float) $request->validated('line_amount'),
@@ -190,21 +196,12 @@ class PaymentController extends Controller
                 $request->validated('discount_type'),
                 $request->validated('discount_value') !== null ? (float) $request->validated('discount_value') : null,
             );
-
-            $jobOrder->forceFill([
-                'pricing_entry_id' => $request->validated('pricing_entry_id'),
-                'base_price_snapshot' => $computed['base_price_snapshot'],
-                'rush_fee_applied' => $request->validated('rush_fee_applied'),
-                'rush_fee_amount' => $computed['rush_fee_amount'],
-                'discount_type' => $request->validated('discount_type'),
-                'discount_value' => $request->validated('discount_value'),
-                'discount_amount' => $computed['discount_amount'],
-                'total_amount' => $computed['total_amount'],
-            ])->save();
         }
 
+        $totalAmount = $computed['total_amount'] ?? (float) $jobOrder->total_amount;
+
         $isDownPayment = $request->validated('payment_type') === 'down';
-        $remainingBalance = round((float) $jobOrder->total_amount - $amountPaid, 2);
+        $remainingBalance = round($totalAmount - $amountPaid, 2);
         $transactionAmount = $isDownPayment
             ? (float) $request->validated('down_payment_amount')
             : $remainingBalance;
@@ -250,7 +247,26 @@ class PaymentController extends Controller
 
         $paymongoPaymentIntentId = (string) $intent->getData()['id'];
 
-        DB::transaction(function () use ($jobOrder, $paymentMethod, $transactionAmount, $isDownPayment, $paymongoPaymentIntentId, $request): void {
+        // The pricing snapshot (if this was the first pricing/payment visit)
+        // is only ever persisted here, alongside the Transaction and
+        // payment_status writes, in the SAME transaction as the successful
+        // PayMongo calls above (CR-02) — a failed PayMongo call above never
+        // reaches this point, so it can never leave a priced-but-untracked
+        // job order behind.
+        DB::transaction(function () use ($jobOrder, $computed, $request, $paymentMethod, $transactionAmount, $isDownPayment, $paymongoPaymentIntentId): void {
+            if ($computed !== null) {
+                $jobOrder->forceFill([
+                    'pricing_entry_id' => $request->validated('pricing_entry_id'),
+                    'base_price_snapshot' => $computed['base_price_snapshot'],
+                    'rush_fee_applied' => $request->validated('rush_fee_applied'),
+                    'rush_fee_amount' => $computed['rush_fee_amount'],
+                    'discount_type' => $request->validated('discount_type'),
+                    'discount_value' => $request->validated('discount_value'),
+                    'discount_amount' => $computed['discount_amount'],
+                    'total_amount' => $computed['total_amount'],
+                ]);
+            }
+
             Transaction::create([
                 'job_order_id' => $jobOrder->id,
                 'type' => $isDownPayment ? TransactionType::DownPayment->value : TransactionType::FullPayment->value,
