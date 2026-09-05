@@ -41,6 +41,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $released_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property float|null $amount_paid Not a persisted column — only present
+ *                                   when eager-loaded via withSum() (Cashier Dashboard listing, D-04/D-05).
  */
 #[Fillable(['queue_entry_id', 'description', 'type', 'status', 'file_path', 'consultation_notes'])]
 #[ObservedBy(AuditObserver::class)]
