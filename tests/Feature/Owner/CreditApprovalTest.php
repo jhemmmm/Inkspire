@@ -4,6 +4,7 @@ use App\Enums\AccountsReceivableStatus;
 use App\Enums\PaymentStatus;
 use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
+use App\Models\PricingEntry;
 use App\Models\User;
 
 test('an admin can view the OnCredit requests queue but is forbidden from approving a request', function () {
@@ -83,4 +84,60 @@ test('a job order that already has a pending OnCredit request cannot be requeste
     $response = $this->actingAs($cashier)->post(route('cashier.job-orders.credit-request.store', $jobOrder));
 
     $response->assertStatus(422);
+});
+
+test('requesting OnCredit as the very first pricing action validates and snapshots pricing input (CR-01)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.credit-request.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 1000,
+        'rush_fee_applied' => false,
+        'discount_type' => 'flat',
+        'discount_value' => 100,
+    ]);
+
+    $response->assertRedirect(route('cashier.dashboard'));
+
+    $freshJobOrder = $jobOrder->fresh();
+    expect((float) $freshJobOrder->total_amount)->toBe(900.0);
+    expect($freshJobOrder->payment_status)->toBe(PaymentStatus::CreditPendingApproval);
+
+    $accountsReceivable = AccountsReceivable::where('job_order_id', $jobOrder->id)->first();
+    expect((float) $accountsReceivable->balance)->toBe(900.0);
+});
+
+test('requesting OnCredit as the very first pricing action rejects a discount exceeding the configured cap (CR-01)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.credit-request.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 1000,
+        'rush_fee_applied' => false,
+        'discount_type' => 'percentage',
+        'discount_value' => 50,
+    ]);
+
+    $response->assertSessionHasErrors('discount_value');
+    expect($jobOrder->fresh()->total_amount)->toBeNull();
+    expect(AccountsReceivable::count())->toBe(0);
+});
+
+test('requesting OnCredit as the very first pricing action rejects a missing line amount instead of silently pricing at zero (CR-01)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.credit-request.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'rush_fee_applied' => false,
+    ]);
+
+    $response->assertSessionHasErrors('line_amount');
+    expect($jobOrder->fresh()->total_amount)->toBeNull();
+    expect(AccountsReceivable::count())->toBe(0);
 });

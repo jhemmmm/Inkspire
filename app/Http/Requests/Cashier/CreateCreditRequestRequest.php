@@ -2,11 +2,14 @@
 
 namespace App\Http\Requests\Cashier;
 
+use App\Concerns\PricingValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CreateCreditRequestRequest extends FormRequest
 {
+    use PricingValidationRules;
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -23,14 +26,19 @@ class CreateCreditRequestRequest extends FormRequest
      * Get the validation rules that apply to the request.
      *
      * No credit-limit/history input to validate per D-08's open-eligibility
-     * model — the balance itself is always server-computed.
+     * model — the balance itself is always server-computed. Pricing fields
+     * are only validated when On-Credit is the very first pricing/payment
+     * action taken on the job order, mirroring
+     * SavePricingAndPaymentRequest::rules()'s identical branch — once
+     * total_amount is already snapshotted, pricing input must never be
+     * accepted from this route again (CR-01).
      *
-     * @return array<string, ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string|\Closure>
      */
     public function rules(): array
     {
-        return [
-            //
-        ];
+        return $this->route('jobOrder')->total_amount !== null
+            ? []
+            : $this->pricingRules();
     }
 }

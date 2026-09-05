@@ -48,19 +48,19 @@ class CreditRequestController extends Controller
                 // UI-SPEC §2's single combined page — snapshot pricing the
                 // same way PaymentController::store() does.
                 $computed = ($this->computeJobOrderPrice)(
-                    (float) $request->input('line_amount'),
-                    (bool) $request->input('rush_fee_applied'),
-                    $request->input('discount_type'),
-                    $request->input('discount_value') !== null ? (float) $request->input('discount_value') : null,
+                    (float) $request->validated('line_amount'),
+                    (bool) $request->validated('rush_fee_applied'),
+                    $request->validated('discount_type'),
+                    $request->validated('discount_value') !== null ? (float) $request->validated('discount_value') : null,
                 );
 
                 $jobOrder->forceFill([
-                    'pricing_entry_id' => $request->input('pricing_entry_id'),
+                    'pricing_entry_id' => $request->validated('pricing_entry_id'),
                     'base_price_snapshot' => $computed['base_price_snapshot'],
-                    'rush_fee_applied' => $request->input('rush_fee_applied'),
+                    'rush_fee_applied' => $request->validated('rush_fee_applied'),
                     'rush_fee_amount' => $computed['rush_fee_amount'],
-                    'discount_type' => $request->input('discount_type'),
-                    'discount_value' => $request->input('discount_value'),
+                    'discount_type' => $request->validated('discount_type'),
+                    'discount_value' => $request->validated('discount_value'),
                     'discount_amount' => $computed['discount_amount'],
                     'total_amount' => $computed['total_amount'],
                 ]);
