@@ -238,7 +238,7 @@ Plans:
   3. Frontline Staff receives a "Ready for Pickup" alert when a job order reaches that stage
   4. A customer can enter a job order number on a public, unauthenticated page and see only its current status — no pricing, payment, customer PII, or design files
 
-**Plans**: 6 plans in 5 waves
+**Plans**: 7 plans in 5 waves
 Plans:
 **Wave 1**
 
@@ -260,6 +260,7 @@ Plans:
 **Wave 5** *(blocked on Wave 4 completion)*
 
 - [ ] 06-06-PLAN.md — Production Board: View & Stage Advancement (PROD-01, PROD-02 completion)
+- [ ] 06-07-PLAN.md — Fix: Production-Status Consumer Compatibility (POS-07, JOB-10 regression closure)
 
 **UI hint**: yes
 
