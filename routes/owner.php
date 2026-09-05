@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Owner\AuditTrailController;
+use App\Http\Controllers\Owner\CreditApprovalController;
 use App\Http\Controllers\Owner\DesignFileController;
 use App\Http\Controllers\Owner\SystemConfigurationController;
 use App\Http\Controllers\Owner\UserManagementController;
@@ -16,4 +17,7 @@ Route::middleware(['auth', 'role:owner,admin'])->prefix('owner')->name('owner.')
     Route::patch('system-configuration/{configuration}', [SystemConfigurationController::class, 'update'])->name('system-configuration.update');
     Route::get('design-overrides', [DesignFileController::class, 'index'])->name('design-overrides.index');
     Route::patch('design-files/{designFile}/unlock', [DesignFileController::class, 'unlock'])->name('design-files.unlock');
+    Route::get('credit-requests', [CreditApprovalController::class, 'index'])->name('credit-requests.index');
+    Route::patch('credit-requests/{accountsReceivable}/approve', [CreditApprovalController::class, 'approve'])->name('credit-requests.approve');
+    Route::patch('credit-requests/{accountsReceivable}/reject', [CreditApprovalController::class, 'reject'])->name('credit-requests.reject');
 });

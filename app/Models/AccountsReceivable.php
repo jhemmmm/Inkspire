@@ -31,6 +31,16 @@ class AccountsReceivable extends Model
     use HasFactory;
 
     /**
+     * The table associated with the model.
+     *
+     * Eloquent's default pluralization would guess `accounts_receivables`;
+     * the migration and ERD both use the singular `accounts_receivable`.
+     *
+     * @var string
+     */
+    protected $table = 'accounts_receivable';
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
