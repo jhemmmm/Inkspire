@@ -22,6 +22,7 @@ class JobOrderFactory extends Factory
     public function definition(): array
     {
         return [
+            'number' => 'JO-'.now()->year.'-'.fake()->unique()->numerify('####'),
             'queue_entry_id' => QueueEntry::factory(),
             'description' => fake()->randomElement([
                 'Tarpaulin, 3x5ft',
