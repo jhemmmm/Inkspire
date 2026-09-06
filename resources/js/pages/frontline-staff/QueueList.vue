@@ -231,6 +231,9 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                                     >
                                         Validation Failed
                                     </Badge>
+                                    <Badge v-else variant="secondary">
+                                        In Production
+                                    </Badge>
                                     <ReplaceJobOrderFileDialog
                                         v-if="
                                             jobOrder.status ===

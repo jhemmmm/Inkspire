@@ -24,7 +24,13 @@ class PerformanceReportController extends Controller
 
         $completed = JobOrder::query()
             ->where('assigned_artist_id', $request->user()->id)
-            ->where('status', JobOrderStatus::DesignApproved->value)
+            ->whereIn('status', [
+                JobOrderStatus::DesignApproved->value,
+                JobOrderStatus::ForProduction->value,
+                JobOrderStatus::Printing->value,
+                JobOrderStatus::QualityCheck->value,
+                JobOrderStatus::ReadyForPickup->value,
+            ])
             ->withCount('revisionLogs')
             ->with(['revisionLogs' => fn ($query) => $query->where('outcome', 'approved')->latest('reviewed_at')->limit(1)])
             ->get(['id', 'created_at', 'assigned_artist_id', 'status'])

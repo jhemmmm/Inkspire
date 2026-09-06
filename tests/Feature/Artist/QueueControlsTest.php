@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\JobOrderStatus;
+use App\Models\DesignFile;
 use App\Models\JobOrder;
+use App\Models\RevisionLog;
 use App\Models\User;
 
 test('the dashboard route still returns 200 for an artist with no assigned job orders', function () {
@@ -101,6 +103,41 @@ test('an artist cannot act on next, forward, or not-appear for a job order assig
     $this->actingAs($artist)->patch(route('artist.job-orders.next', $jobOrder))->assertForbidden();
     $this->actingAs($artist)->patch(route('artist.job-orders.forward', $jobOrder))->assertForbidden();
     $this->actingAs($artist)->patch(route('artist.job-orders.not-appear', $jobOrder))->assertForbidden();
+});
+
+test('the artist dashboard queue never lists a job order that has already advanced into production', function (JobOrderStatus $status) {
+    $artist = User::factory()->artist()->create();
+    JobOrder::factory()->assignedTo($artist)->create(['status' => $status->value]);
+
+    $response = $this->actingAs($artist)->get(route('artist.dashboard'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('artist/Dashboard')
+        ->has('jobOrders', 0));
+})->with([
+    JobOrderStatus::ForProduction,
+    JobOrderStatus::Printing,
+    JobOrderStatus::QualityCheck,
+    JobOrderStatus::ReadyForPickup,
+]);
+
+test('a job order that reached ForProduction through the real approve() flow no longer appears in the artist dashboard queue', function () {
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'pending_review']);
+    DesignFile::factory()->for($jobOrder)->create();
+    RevisionLog::factory()->for($jobOrder)->create();
+
+    $approveResponse = $this->actingAs($artist)->patch(route('artist.job-orders.design.approve', $jobOrder));
+    $approveResponse->assertRedirect();
+    // Sanity check that 06-04's automatic-advance wiring is actually active —
+    // if this assertion fails, the rest of this test is meaningless.
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ForProduction);
+
+    $response = $this->actingAs($artist)->get(route('artist.dashboard'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('artist/Dashboard')
+        ->has('jobOrders', 0));
 });
 
 test('a non-artist role is forbidden from every artist job-orders route', function () {

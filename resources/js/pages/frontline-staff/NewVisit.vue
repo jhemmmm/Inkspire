@@ -398,6 +398,9 @@ function jobOrderStatusLabel(status: string): string {
                                 >
                                     {{ jobOrderStatusLabel(jobOrder.status) }}
                                 </Badge>
+                                <Badge v-else variant="secondary">
+                                    In Production
+                                </Badge>
                             </div>
                         </li>
                         <p

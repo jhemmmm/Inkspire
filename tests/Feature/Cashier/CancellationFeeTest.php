@@ -1,11 +1,14 @@
 <?php
 
 use App\Enums\AccountsReceivableStatus;
+use App\Enums\JobOrderStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use App\Models\AccountsReceivable;
+use App\Models\DesignFile;
 use App\Models\JobOrder;
+use App\Models\RevisionLog;
 use App\Models\SystemConfiguration;
 use App\Models\Transaction;
 use App\Models\User;
@@ -195,6 +198,32 @@ test('the cashier dashboard omits accounts_receivable when no Active receivable 
         ->component('cashier/Dashboard')
         ->where('jobOrders.0.accounts_receivable', null)
     );
+});
+
+test('cancelling a job order that reached ForProduction through the real approve() flow still collects the cancellation fee', function () {
+    seedCancellationFee(500.0);
+    $artist = User::factory()->artist()->create();
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'pending_review', 'total_amount' => 1000]);
+    DesignFile::factory()->for($jobOrder)->create();
+    RevisionLog::factory()->for($jobOrder)->create();
+
+    $approveResponse = $this->actingAs($artist)->patch(route('artist.job-orders.design.approve', $jobOrder));
+    $approveResponse->assertRedirect();
+    // Sanity check that 06-04's automatic-advance wiring is actually active —
+    // if this assertion fails, the rest of this test is meaningless.
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ForProduction);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.cancel', $jobOrder));
+
+    $response->assertRedirect();
+    $jobOrder->refresh();
+    expect($jobOrder->cancelled_at)->not->toBeNull();
+    expect(Transaction::where('type', TransactionType::CancellationFee)->count())->toBe(1);
+
+    $fee = Transaction::where('type', TransactionType::CancellationFee)->first();
+    expect((float) $fee->amount)->toBe(500.0);
+    expect($fee->status)->toBe(TransactionStatus::Completed);
 });
 
 test('a cancelled job order no longer appears on the cashier dashboard', function () {

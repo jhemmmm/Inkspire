@@ -66,6 +66,10 @@ const DESIGN_STARTED_STATUSES = [
     'in_design',
     'pending_review',
     'design_approved',
+    'for_production',
+    'printing',
+    'quality_check',
+    'ready_for_pickup',
 ];
 
 function cancellationDialogBody(jobOrder: CashierJobOrder): string {
@@ -130,6 +134,14 @@ function jobOrderStatusLabel(status: string): string {
             return 'Ready for Production';
         case 'design_approved':
             return 'Design Approved';
+        case 'for_production':
+            return 'For Production';
+        case 'printing':
+            return 'Printing';
+        case 'quality_check':
+            return 'Quality Check';
+        case 'ready_for_pickup':
+            return 'Ready for Pickup';
         default:
             return status;
     }
@@ -247,6 +259,9 @@ function paymentStatusLabel(status: string): string {
                                 "
                                 variant="default"
                             >
+                                {{ jobOrderStatusLabel(jobOrder.status) }}
+                            </Badge>
+                            <Badge v-else variant="secondary">
                                 {{ jobOrderStatusLabel(jobOrder.status) }}
                             </Badge>
                         </TableCell>

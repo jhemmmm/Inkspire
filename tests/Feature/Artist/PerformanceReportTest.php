@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\JobOrderStatus;
+use App\Models\DesignFile;
 use App\Models\JobOrder;
 use App\Models\RevisionLog;
 use App\Models\User;
@@ -82,6 +84,26 @@ test('sla adherence reflects the percentage of completed job orders approved wit
     $response->assertInertia(fn (Assert $page) => $page
         ->where('stats.jobsCompleted', 2)
         ->where('stats.slaAdherence', 50));
+});
+
+test('keeps counting a job order that reached ForProduction through the real approve() flow as completed', function () {
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'pending_review']);
+    DesignFile::factory()->for($jobOrder)->create();
+    RevisionLog::factory()->for($jobOrder)->create();
+
+    $approveResponse = $this->actingAs($artist)->patch(route('artist.job-orders.design.approve', $jobOrder));
+    $approveResponse->assertRedirect();
+    // Sanity check that 06-04's automatic-advance wiring is actually active —
+    // if this assertion fails, the rest of this test is meaningless.
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ForProduction);
+
+    $response = $this->actingAs($artist)->get(route('artist.performance-report.index'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('stats.jobsCompleted', 1)
+        ->where('stats.avgRevisions', fn ($value) => $value !== null)
+        ->where('stats.slaAdherence', fn ($value) => $value !== null));
 });
 
 test("an artist's performance report never counts another artist's completed job orders", function () {
