@@ -41,6 +41,10 @@ class CancellationController extends Controller
             JobOrderStatus::InDesign,
             JobOrderStatus::PendingReview,
             JobOrderStatus::DesignApproved,
+            JobOrderStatus::ForProduction,
+            JobOrderStatus::Printing,
+            JobOrderStatus::QualityCheck,
+            JobOrderStatus::ReadyForPickup,
         ], true);
 
         DB::transaction(function () use ($jobOrder, $request, $designStarted): void {
