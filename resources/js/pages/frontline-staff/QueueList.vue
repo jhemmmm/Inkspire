@@ -39,6 +39,7 @@ interface QueueEntryCustomer {
 
 interface JobOrderRecord {
     id: number;
+    number: string | null;
     description: string;
     type: string;
     status: string;
@@ -143,6 +144,10 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                                     :key="jobOrder.id"
                                     class="flex flex-wrap items-center gap-2"
                                 >
+                                    <span
+                                        class="text-muted-foreground tabular-nums"
+                                        >{{ jobOrder.number ?? '—' }}</span
+                                    >
                                     <span>{{ jobOrder.description }}</span>
                                     <Badge variant="outline">
                                         {{ jobOrderTypeLabel(jobOrder.type) }}
@@ -198,9 +203,7 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                                         </Button>
                                     </ReplaceJobOrderFileDialog>
                                     <Form
-                                        v-if="
-                                            isReleaseEligible(jobOrder)
-                                        "
+                                        v-if="isReleaseEligible(jobOrder)"
                                         v-bind="
                                             JobOrderReleaseController.store.form(
                                                 jobOrder.id,

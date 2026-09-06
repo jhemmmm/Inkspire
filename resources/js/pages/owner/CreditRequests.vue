@@ -31,6 +31,7 @@ interface CreditRequest {
     created_at: string;
     job_order: {
         id: number;
+        number: string | null;
         description: string;
         queue_entry: { customer: { name: string } };
     };
@@ -93,7 +94,17 @@ defineOptions({
                         :key="creditRequest.id"
                     >
                         <TableCell>
-                            {{ creditRequest.job_order.description }}
+                            <div class="flex flex-col">
+                                <span
+                                    class="text-muted-foreground text-xs tabular-nums"
+                                    >{{
+                                        creditRequest.job_order.number ?? '—'
+                                    }}</span
+                                >
+                                <span>{{
+                                    creditRequest.job_order.description
+                                }}</span>
+                            </div>
                         </TableCell>
                         <TableCell>
                             {{

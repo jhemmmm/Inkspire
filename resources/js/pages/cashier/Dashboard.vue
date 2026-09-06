@@ -38,6 +38,7 @@ import { reconcile } from '@/routes/cashier/job-orders';
 
 interface CashierJobOrder {
     id: number;
+    number: string | null;
     description: string;
     status: string;
     payment_status: string;
@@ -219,7 +220,15 @@ function paymentStatusLabel(status: string): string {
                         v-else
                         :key="jobOrder.id"
                     >
-                        <TableCell>{{ jobOrder.description }}</TableCell>
+                        <TableCell>
+                            <div class="flex flex-col">
+                                <span
+                                    class="text-muted-foreground text-xs tabular-nums"
+                                    >{{ jobOrder.number ?? '—' }}</span
+                                >
+                                <span>{{ jobOrder.description }}</span>
+                            </div>
+                        </TableCell>
                         <TableCell>
                             {{ jobOrder.queue_entry.customer.name }}
                         </TableCell>
