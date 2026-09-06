@@ -161,10 +161,7 @@ function timeAgo(isoString: string): string {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <TableEmpty
-                        v-if="readyForPickup.length === 0"
-                        :colspan="6"
-                    >
+                    <TableEmpty v-if="readyForPickup.length === 0" :colspan="6">
                         <div
                             class="flex flex-col items-center gap-1 text-center"
                         >
