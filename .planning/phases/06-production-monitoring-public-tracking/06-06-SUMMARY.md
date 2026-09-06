@@ -142,3 +142,9 @@ None - no external service configuration required.
 ---
 *Phase: 06-production-monitoring-public-tracking*
 *Completed: 2026-09-07*
+
+## Self-Check: PASSED
+
+All 12 claimed files verified present on disk; all 6 claimed commit hashes
+(`2c4586c`, `4e6fdc7`, `7b6a3c2`, `3d33222`, `66b560f`, `77a86fb`) verified
+present in `git log --oneline --all`.
