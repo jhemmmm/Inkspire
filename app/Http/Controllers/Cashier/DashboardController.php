@@ -41,7 +41,7 @@ class DashboardController extends Controller
                         ->select(['id', 'job_order_id', 'balance', 'status']),
                 ])
                 ->orderBy('created_at')
-                ->get(['id', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount'])
+                ->get(['id', 'number', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount'])
                 // withSum's raw SQL aggregate arrives from PDO as a numeric
                 // string (or null with no completed transactions), unlike
                 // every other money value this phase passes to Inertia

@@ -26,7 +26,7 @@ class CreditApprovalController extends Controller
         return Inertia::render('owner/CreditRequests', [
             'creditRequests' => AccountsReceivable::query()
                 ->where('status', AccountsReceivableStatus::PendingApproval->value)
-                ->with(['jobOrder:id,description', 'jobOrder.queueEntry.customer:id,name', 'requestedBy:id,name'])
+                ->with(['jobOrder:id,number,description', 'jobOrder.queueEntry.customer:id,name', 'requestedBy:id,name'])
                 ->get(['id', 'job_order_id', 'balance', 'requested_by', 'created_at']),
         ]);
     }
