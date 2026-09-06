@@ -16,6 +16,7 @@ use App\Http\Controllers\FrontlineStaff\DashboardController;
 use App\Http\Controllers\FrontlineStaff\JobOrderController;
 use App\Http\Controllers\FrontlineStaff\JobOrderReleaseController;
 use App\Http\Controllers\FrontlineStaff\QueueEntryController;
+use App\Http\Controllers\ProductionStaff\ProductionBoardController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:frontline_staff'])->prefix('frontline-staff')->name('frontline-staff.')->group(function () {
@@ -59,7 +60,7 @@ Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')
 });
 
 Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')->name('production-staff.')->group(function () {
-    Route::inertia('dashboard', 'production-staff/Dashboard')->name('dashboard');
+    Route::get('dashboard', [ProductionBoardController::class, 'index'])->name('dashboard');
 });
 
 Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')->name('accounting-staff.')->group(function () {
