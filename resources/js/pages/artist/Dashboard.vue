@@ -42,6 +42,19 @@ defineOptions({
     },
 });
 
+// A job order the Artist might still observe at any of these statuses has
+// already been approved and has left (or is leaving) the Artist's hands —
+// 06-04's automatic EnterProduction wiring means design_approved itself is
+// now transient on the real approve() path, immediately followed by one of
+// the four production statuses in the same transaction.
+const POST_APPROVAL_STATUSES = [
+    'design_approved',
+    'for_production',
+    'printing',
+    'quality_check',
+    'ready_for_pickup',
+];
+
 function statusBadgeVariant(
     status: string,
 ): 'default' | 'secondary' | undefined {
@@ -49,7 +62,7 @@ function statusBadgeVariant(
         return 'secondary';
     }
 
-    if (status === 'design_approved') {
+    if (POST_APPROVAL_STATUSES.includes(status)) {
         return undefined;
     }
 
@@ -57,7 +70,7 @@ function statusBadgeVariant(
 }
 
 function statusBadgeClass(status: string): string {
-    if (status === 'design_approved') {
+    if (POST_APPROVAL_STATUSES.includes(status)) {
         return 'text-green-600 dark:text-green-400';
     }
 
@@ -79,6 +92,22 @@ function statusLabel(status: string): string {
 
     if (status === 'design_approved') {
         return 'Design Approved';
+    }
+
+    if (status === 'for_production') {
+        return 'For Production';
+    }
+
+    if (status === 'printing') {
+        return 'Printing';
+    }
+
+    if (status === 'quality_check') {
+        return 'Quality Check';
+    }
+
+    if (status === 'ready_for_pickup') {
+        return 'Ready for Pickup';
     }
 
     return 'Assigned';
@@ -320,7 +349,9 @@ function artistStatusLabel(artistStatus: string): string {
                                 </Link>
                                 <Link
                                     v-else-if="
-                                        jobOrder.status === 'design_approved'
+                                        POST_APPROVAL_STATUSES.includes(
+                                            jobOrder.status,
+                                        )
                                     "
                                     :href="show(jobOrder.id).url"
                                     :data-test="`view-${jobOrder.id}-link`"

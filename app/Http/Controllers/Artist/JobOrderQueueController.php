@@ -28,6 +28,10 @@ class JobOrderQueueController extends Controller
                     JobOrderStatus::Intake->value,
                     JobOrderStatus::ValidationFailed->value,
                     JobOrderStatus::ReadyForProduction->value,
+                    JobOrderStatus::ForProduction->value,
+                    JobOrderStatus::Printing->value,
+                    JobOrderStatus::QualityCheck->value,
+                    JobOrderStatus::ReadyForPickup->value,
                 ])
                 ->orderByRaw('COALESCE(queue_deprioritized_at, created_at) ASC')
                 ->get(['id', 'description', 'status', 'not_appeared', 'created_at']),
