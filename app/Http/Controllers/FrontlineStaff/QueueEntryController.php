@@ -38,7 +38,7 @@ class QueueEntryController extends Controller
             'queueEntries' => QueueEntry::query()
                 ->with([
                     'customer:id,name',
-                    'jobOrders:id,queue_entry_id,description,type,status,validation_failure_reason,assigned_artist_id,payment_status,released_at',
+                    'jobOrders:id,queue_entry_id,description,type,status,validation_failure_reason,assigned_artist_id,payment_status,released_at,number',
                     'jobOrders.assignedArtist:id,name',
                 ])
                 ->whereDate('queue_date', QueueEntry::currentBusinessDate())
@@ -90,6 +90,7 @@ class QueueEntryController extends Controller
     public function addJobOrder(AddJobOrderRequest $request, QueueEntry $queueEntry): RedirectResponse
     {
         $jobOrder = $queueEntry->jobOrders()->create([
+            'number' => JobOrder::nextNumberForYear(JobOrder::currentNumberingYear()),
             'description' => $request->validated('description'),
             'type' => $request->validated('type'),
             'status' => JobOrderStatus::Intake,
@@ -125,6 +126,7 @@ class QueueEntryController extends Controller
 
             foreach ($request->validated('job_orders') as $index => $row) {
                 $jobOrder = $entry->jobOrders()->create([
+                    'number' => JobOrder::nextNumberForYear(JobOrder::currentNumberingYear()),
                     'description' => $row['description'],
                     'type' => $row['type'],
                     'status' => JobOrderStatus::Intake,
