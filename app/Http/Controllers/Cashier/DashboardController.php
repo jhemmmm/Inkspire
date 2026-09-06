@@ -26,7 +26,14 @@ class DashboardController extends Controller
     {
         return Inertia::render('cashier/Dashboard', [
             'jobOrders' => JobOrder::query()
-                ->whereIn('status', [JobOrderStatus::ReadyForProduction->value, JobOrderStatus::DesignApproved->value])
+                ->whereIn('status', [
+                    JobOrderStatus::ReadyForProduction->value,
+                    JobOrderStatus::DesignApproved->value,
+                    JobOrderStatus::ForProduction->value,
+                    JobOrderStatus::Printing->value,
+                    JobOrderStatus::QualityCheck->value,
+                    JobOrderStatus::ReadyForPickup->value,
+                ])
                 ->whereNull('cancelled_at')
                 ->withSum(['transactions as amount_paid' => fn ($query) => $query->where('status', TransactionStatus::Completed->value)], 'amount')
                 ->with([

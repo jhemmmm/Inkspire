@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Actions\JobOrder\EnterProduction;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
 use App\Models\JobOrder;
@@ -14,6 +15,8 @@ use Inertia\Response;
 
 class DesignReviewController extends Controller
 {
+    public function __construct(public EnterProduction $enterProduction) {}
+
     /**
      * Show the client's remote design-review page for a signed link
      * (D-17/D-18). Entirely independent of DesignEditorController.
@@ -45,6 +48,8 @@ class DesignReviewController extends Controller
                 $jobOrder->designFile->forceFill(['locked_at' => now()])->save();
 
                 $jobOrder->forceFill(['status' => JobOrderStatus::DesignApproved])->save();
+
+                ($this->enterProduction)($jobOrder);
             });
         }
 

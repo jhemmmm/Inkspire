@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Artist;
 
+use App\Actions\JobOrder\EnterProduction;
 use App\Actions\JobOrder\RecordDesignRevision;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
@@ -16,7 +17,10 @@ use Inertia\Inertia;
 
 class DesignEditorController extends Controller
 {
-    public function __construct(public RecordDesignRevision $recordDesignRevision) {}
+    public function __construct(
+        public RecordDesignRevision $recordDesignRevision,
+        public EnterProduction $enterProduction,
+    ) {}
 
     /**
      * The latest unreviewed revision_logs row for this job order. There is
@@ -84,6 +88,8 @@ class DesignEditorController extends Controller
             $jobOrder->designFile->forceFill(['locked_at' => now()])->save();
 
             $jobOrder->forceFill(['status' => JobOrderStatus::DesignApproved])->save();
+
+            ($this->enterProduction)($jobOrder);
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Design approved. This job order is ready for pricing at the Cashier.')]);

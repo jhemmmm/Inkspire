@@ -36,7 +36,14 @@ class PaymentController extends Controller
     {
         abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
         abort_unless(
-            in_array($jobOrder->status, [JobOrderStatus::ReadyForProduction, JobOrderStatus::DesignApproved], true),
+            in_array($jobOrder->status, [
+                JobOrderStatus::ReadyForProduction,
+                JobOrderStatus::DesignApproved,
+                JobOrderStatus::ForProduction,
+                JobOrderStatus::Printing,
+                JobOrderStatus::QualityCheck,
+                JobOrderStatus::ReadyForPickup,
+            ], true),
             422,
             'This job order is not ready for pricing.',
         );
@@ -86,7 +93,14 @@ class PaymentController extends Controller
     {
         abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
         abort_unless(
-            in_array($jobOrder->status, [JobOrderStatus::ReadyForProduction, JobOrderStatus::DesignApproved], true),
+            in_array($jobOrder->status, [
+                JobOrderStatus::ReadyForProduction,
+                JobOrderStatus::DesignApproved,
+                JobOrderStatus::ForProduction,
+                JobOrderStatus::Printing,
+                JobOrderStatus::QualityCheck,
+                JobOrderStatus::ReadyForPickup,
+            ], true),
             422,
             'This job order is not ready for pricing.',
         );

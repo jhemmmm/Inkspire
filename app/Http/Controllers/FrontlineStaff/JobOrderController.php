@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\FrontlineStaff;
 
+use App\Actions\JobOrder\EnterProduction;
 use App\Actions\JobOrder\ValidateJobOrderFile;
 use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
@@ -13,7 +14,10 @@ use Inertia\Inertia;
 
 class JobOrderController extends Controller
 {
-    public function __construct(public ValidateJobOrderFile $validateJobOrderFile) {}
+    public function __construct(
+        public ValidateJobOrderFile $validateJobOrderFile,
+        public EnterProduction $enterProduction,
+    ) {}
 
     /**
      * Replace a Type A job order's file and re-run validation in one save
@@ -31,6 +35,10 @@ class JobOrderController extends Controller
             'status' => $outcome['passed'] ? JobOrderStatus::ReadyForProduction : JobOrderStatus::ValidationFailed,
             'validation_failure_reason' => $outcome['reason'],
         ])->save();
+
+        if ($outcome['passed']) {
+            ($this->enterProduction)($jobOrder);
+        }
 
         Inertia::flash('toast', [
             'type' => 'success',
