@@ -69,10 +69,12 @@ test('looking up a non-existent job order number returns a not-found result', fu
     $response = $this->get(route('public.tracking.show', ['number' => 'JO-2026-9999']));
 
     $response->assertOk();
+    // Omitting ->etc() inside the scope means AssertableJson's own
+    // interacted() check fails if `result` carries any key beyond `found`
+    // (e.g. a stray `number`/`stage`) — the "only these fields" assertion.
     $response->assertInertia(fn (Assert $page) => $page
         ->component('public/Tracking')
-        ->where('result.found', false)
-        ->has('result', fn (Assert $result) => $result->hasOnly(['found'])));
+        ->has('result', fn (Assert $result) => $result->where('found', false)));
 });
 
 test('a five-digit sequence number is accepted, not rejected, by validation', function () {
@@ -115,8 +117,13 @@ test('the tracking response never leaks pricing, payment, or file data for a fou
     $response = $this->get(route('public.tracking.show', ['number' => $jobOrder->number]));
 
     $response->assertOk();
+    // Omitting ->etc() means the scope's own interacted() check fails if
+    // `result` carries anything beyond these three fields.
     $response->assertInertia(fn (Assert $page) => $page
-        ->has('result', fn (Assert $result) => $result->hasOnly(['found', 'number', 'stage'])));
+        ->has('result', fn (Assert $result) => $result
+            ->where('found', true)
+            ->has('number')
+            ->has('stage')));
 
     $content = $response->getContent();
     expect($content)->not->toContain('total_amount');

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Public\DesignReviewController;
 use App\Http\Controllers\Public\QueueDisplayController;
+use App\Http\Controllers\Public\TrackingController;
 use App\Http\Controllers\Webhooks\PaymongoWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +14,14 @@ Route::inertia('/', 'Welcome')->name('home');
 Route::get('queue-display', [QueueDisplayController::class, 'index'])
     ->middleware('throttle:60,1')
     ->name('queue-display');
+
+// Public, unauthenticated (TRACK-01/02, D-01/D-02) — a customer looks up
+// their job order's current production stage by number. Deliberately
+// outside every auth/role:* group; see TrackingController for the PII
+// boundary.
+Route::get('track', [TrackingController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->name('public.tracking.show');
 
 // Public, unauthenticated, signed-URL-protected (D-17 through D-21) — the
 // client's remote design-review path, reached only via an emailed
