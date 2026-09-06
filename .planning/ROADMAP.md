@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Job Order Intake & Auto-Assignment** - A job order becomes a validated, production-ready record, routed automatically when it needs an artist (completed 2026-09-01)
 - [x] **Phase 4: Artist Workflow & Design Editor** - An Artist takes a Type B job from consultation through a locked, approved design (completed 2026-09-02)
 - [x] **Phase 5: POS & Payments** - A job order gets priced, paid (cash, bank transfer, GCash/Maya, or on-credit), and receipted (completed 2026-09-05)
-- [ ] **Phase 6: Production Monitoring & Public Tracking** - Staff and customers can see a job order's physical progress through to pickup
+- [x] **Phase 6: Production Monitoring & Public Tracking** - Staff and customers can see a job order's physical progress through to pickup (completed 2026-09-06)
 - [ ] **Phase 7: Accounts Receivable** - An on-credit balance is tracked from creation through aging, reminders, collections, and write-off
 - [ ] **Phase 8: Expenses & Reporting** - Expenses get logged and every module's data rolls up into exportable, role-scoped reports
 
@@ -259,8 +259,8 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 06-06-PLAN.md — Production Board: View & Stage Advancement (PROD-01, PROD-02 completion)
-- [ ] 06-07-PLAN.md — Fix: Production-Status Consumer Compatibility (POS-07, JOB-10 regression closure)
+- [x] 06-06-PLAN.md — Production Board: View & Stage Advancement (PROD-01, PROD-02 completion)
+- [x] 06-07-PLAN.md — Fix: Production-Status Consumer Compatibility (POS-07, JOB-10 regression closure)
 
 **UI hint**: yes
 
@@ -307,6 +307,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Job Order Intake & Auto-Assignment | 2/2 | Complete    | 2026-09-02 |
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
-| 6. Production Monitoring & Public Tracking | 5/7 | In Progress|  |
+| 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
 | 7. Accounts Receivable | 0/TBD | Not started | - |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
