@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
-import { Plus, RefreshCw } from '@lucide/vue';
+import { Form, Head, Link, usePoll } from '@inertiajs/vue3';
+import { PackageCheck, Plus, RefreshCw } from '@lucide/vue';
 import { reactive } from 'vue';
 import JobOrderReleaseController from '@/actions/App/Http/Controllers/FrontlineStaff/JobOrderReleaseController';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
 import InputError from '@/components/InputError.vue';
 import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +31,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
+import { dashboard } from '@/routes/frontline-staff';
 import { index as queueEntriesIndex } from '@/routes/frontline-staff/queue-entries';
 
 interface QueueEntryCustomer {
@@ -58,8 +60,14 @@ interface QueueEntryRecord {
     job_orders: JobOrderRecord[];
 }
 
-defineProps<{
+interface ReadyForPickupSummary {
+    count: number;
+    items: Array<{ number: string | null }>;
+}
+
+const props = defineProps<{
     queueEntries: QueueEntryRecord[];
+    readyForPickup: ReadyForPickupSummary;
 }>();
 
 defineOptions({
@@ -73,6 +81,31 @@ defineOptions({
         ],
     },
 });
+
+// D-13/D-14: the same derived, self-correcting ready-for-pickup alert as the
+// Frontline Dashboard, surfaced here so staff already on this page see it
+// without navigating away.
+usePoll(5000, { only: ['readyForPickup'] });
+
+function readyForPickupBannerHeading(): string {
+    const count = props.readyForPickup.count;
+
+    return `${count} job order${count === 1 ? '' : 's'} ready for pickup`;
+}
+
+function readyForPickupBannerBody(): string {
+    const { count, items } = props.readyForPickup;
+    const names = items.map((item) => item.number ?? '—');
+    const extra = count - names.length;
+
+    let subject = names.join(', ');
+
+    if (extra > 0) {
+        subject += ` and ${extra} more`;
+    }
+
+    return `${subject} ${count === 1 ? 'is' : 'are'} waiting on the shelf.`;
+}
 
 // The Add Job Order dialog's Type A/B selection is tracked locally per row
 // (keyed by queue entry id) purely to drive the conditional file field —
@@ -112,6 +145,20 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
         class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
     >
         <h1 class="text-[28px] leading-[1.2] font-semibold">Queue</h1>
+
+        <Alert v-if="readyForPickup.count > 0">
+            <PackageCheck class="size-4" />
+            <AlertTitle>{{ readyForPickupBannerHeading() }}</AlertTitle>
+            <AlertDescription class="flex flex-col gap-2">
+                <p>{{ readyForPickupBannerBody() }}</p>
+                <Link
+                    :href="dashboard()"
+                    class="font-medium underline underline-offset-4"
+                >
+                    View ready orders
+                </Link>
+            </AlertDescription>
+        </Alert>
 
         <div
             class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"

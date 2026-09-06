@@ -12,13 +12,14 @@ use App\Http\Controllers\Cashier\PaymentController;
 use App\Http\Controllers\Cashier\ReceiptController;
 use App\Http\Controllers\Cashier\ReconciliationController;
 use App\Http\Controllers\FrontlineStaff\CustomerController;
+use App\Http\Controllers\FrontlineStaff\DashboardController;
 use App\Http\Controllers\FrontlineStaff\JobOrderController;
 use App\Http\Controllers\FrontlineStaff\JobOrderReleaseController;
 use App\Http\Controllers\FrontlineStaff\QueueEntryController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:frontline_staff'])->prefix('frontline-staff')->name('frontline-staff.')->group(function () {
-    Route::inertia('dashboard', 'frontline-staff/Dashboard')->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('new-visit', [CustomerController::class, 'index'])->name('new-visit');
     Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
     Route::post('queue-entries', [QueueEntryController::class, 'store'])->name('queue-entries.store');

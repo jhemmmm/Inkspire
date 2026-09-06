@@ -33,9 +33,18 @@ class QueueEntryController extends Controller
      * Show today's queue with each entry's number, customer, and status
      * (D-05) — the authenticated, PII-permitted counterpart to the public
      * queue display.
+     *
+     * Also carries a `readyForPickup` summary (PROD-03/D-13) so staff
+     * already working this page see the same self-correcting alert as the
+     * Frontline Dashboard, without navigating away.
      */
     public function index(Request $request): Response
     {
+        $readyForPickupQuery = JobOrder::query()
+            ->where('status', JobOrderStatus::ReadyForPickup->value)
+            ->whereNull('released_at')
+            ->whereNull('cancelled_at');
+
         return Inertia::render('frontline-staff/QueueList', [
             'queueEntries' => QueueEntry::query()
                 ->with([
@@ -46,6 +55,10 @@ class QueueEntryController extends Controller
                 ->whereDate('queue_date', QueueEntry::currentBusinessDate())
                 ->orderBy('queue_number')
                 ->get(['id', 'customer_id', 'queue_number', 'status']),
+            'readyForPickup' => [
+                'count' => $readyForPickupQuery->clone()->count(),
+                'items' => $readyForPickupQuery->clone()->oldest('updated_at')->limit(2)->get(['number']),
+            ],
         ]);
     }
 

@@ -54,7 +54,7 @@
 
 - [ ] **PROD-01**: Production Staff can view a Production Monitoring board color-coded by urgency (Green = Normal, Amber = Rush)
 - [ ] **PROD-02**: Production Staff can advance a job order sequentially through For Production → Printing → Quality Check → Ready for Pickup, without skipping stages
-- [ ] **PROD-03**: Frontline Staff receives a "Ready for Pickup" alert when a job order reaches that stage
+- [x] **PROD-03**: Frontline Staff receives a "Ready for Pickup" alert when a job order reaches that stage
 
 ### Accounts Receivable
 
