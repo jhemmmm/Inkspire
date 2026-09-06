@@ -46,6 +46,8 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $updated_at
  * @property float|null $amount_paid Not a persisted column — only present
  *                                   when eager-loaded via withSum() (Cashier Dashboard listing, D-04/D-05).
+ * @property bool|null $is_rush Not a persisted column — only present when
+ *                              computed by ProductionBoardController::index() (PROD-01, D-05, D-07).
  */
 #[Fillable(['number', 'queue_entry_id', 'description', 'type', 'status', 'file_path', 'consultation_notes'])]
 #[ObservedBy(AuditObserver::class)]
