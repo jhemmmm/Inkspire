@@ -10,7 +10,7 @@ test('the frontline dashboard shows every job order ready for pickup', function 
     $jobOrder = JobOrder::factory()->create([
         'status' => JobOrderStatus::ReadyForPickup->value,
         'description' => 'Tarpaulin, 3x5ft',
-    ]);
+    ])->refresh();
 
     $response = $this->actingAs($staff)->get(route('frontline-staff.dashboard'));
 
