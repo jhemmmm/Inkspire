@@ -9,7 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
-test('a type a addJobOrder post with a valid pdf reaches ready_for_production', function () {
+test('a type a addJobOrder post with a valid pdf reaches for_production', function () {
     Storage::fake('local');
 
     $staff = User::factory()->frontlineStaff()->create();
@@ -22,7 +22,7 @@ test('a type a addJobOrder post with a valid pdf reaches ready_for_production', 
     ]);
 
     $jobOrder = $queueEntry->jobOrders()->firstOrFail();
-    expect($jobOrder->status)->toBe(JobOrderStatus::ReadyForProduction);
+    expect($jobOrder->status)->toBe(JobOrderStatus::ForProduction);
     expect($jobOrder->validation_failure_reason)->toBeNull();
 });
 
@@ -89,7 +89,7 @@ test('a type b addJobOrder post with zero available artists leaves the job order
     expect($jobOrder->assigned_artist_id)->toBeNull();
 });
 
-test('replacing the file on a validation-failed type a job order with a valid file updates it to ready_for_production', function () {
+test('replacing the file on a validation-failed type a job order with a valid file updates it to for_production', function () {
     Storage::fake('local');
 
     $staff = User::factory()->frontlineStaff()->create();
@@ -101,7 +101,7 @@ test('replacing the file on a validation-failed type a job order with a valid fi
 
     $response->assertRedirect();
     $jobOrder->refresh();
-    expect($jobOrder->status)->toBe(JobOrderStatus::ReadyForProduction);
+    expect($jobOrder->status)->toBe(JobOrderStatus::ForProduction);
     expect($jobOrder->validation_failure_reason)->toBeNull();
     Storage::disk('local')->assertExists($jobOrder->file_path);
 });
@@ -176,7 +176,7 @@ test('a store post with one type a row and one type b row applies both outcomes 
     $typeARow = JobOrder::where('type', 'type_a')->firstOrFail();
     $typeBRow = JobOrder::where('type', 'type_b')->firstOrFail();
 
-    expect($typeARow->status)->toBe(JobOrderStatus::ReadyForProduction);
+    expect($typeARow->status)->toBe(JobOrderStatus::ForProduction);
     expect($typeBRow->status)->toBe(JobOrderStatus::Assigned);
     expect($typeBRow->assigned_artist_id)->toBe($artist->id);
 });

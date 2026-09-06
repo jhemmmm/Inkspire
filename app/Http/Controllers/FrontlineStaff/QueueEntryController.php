@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\FrontlineStaff;
 
 use App\Actions\JobOrder\AssignArtistToJobOrder;
+use App\Actions\JobOrder\EnterProduction;
 use App\Actions\JobOrder\ValidateJobOrderFile;
 use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
@@ -25,6 +26,7 @@ class QueueEntryController extends Controller
     public function __construct(
         public ValidateJobOrderFile $validateJobOrderFile,
         public AssignArtistToJobOrder $assignArtistToJobOrder,
+        public EnterProduction $enterProduction,
     ) {}
 
     /**
@@ -168,6 +170,10 @@ class QueueEntryController extends Controller
                 'validation_failure_reason' => $outcome['reason'],
             ])->save();
 
+            if ($outcome['passed']) {
+                ($this->enterProduction)($jobOrder);
+            }
+
             return;
         }
 
@@ -177,14 +183,26 @@ class QueueEntryController extends Controller
     /**
      * Build the outcome-specific toast message for a job order, per the
      * 03-UI-SPEC.md Copywriting Contract.
+     *
+     * A freshly created job order's status here can only ever be one of
+     * the five named arms below — applyIntakeOutcome() only ever writes
+     * ReadyForProduction/ForProduction/ValidationFailed (Type A) or
+     * Assigned/Intake (Type B). The `default` arm exists solely to satisfy
+     * Larastan's match-exhaustiveness check against JobOrderStatus's
+     * remaining, structurally unreachable-here cases (DesignApproved and
+     * every later design/production stage) — this pre-existing gap (see
+     * `.planning/phases/06-production-monitoring-public-tracking/deferred-items.md`)
+     * is closed here since this plan's own wiring is what widened it.
      */
     private function jobOrderOutcomeToastMessage(JobOrder $jobOrder): string
     {
         return match ($jobOrder->status) {
             JobOrderStatus::ReadyForProduction => __('Job order added — ready for production.'),
+            JobOrderStatus::ForProduction => __('Job order added — ready for production.'),
             JobOrderStatus::ValidationFailed => __('Job order added — file needs replacement. See details in the queue list.'),
             JobOrderStatus::Assigned => __('Job order added — assigned to :artist.', ['artist' => $jobOrder->assignedArtist->name]),
             JobOrderStatus::Intake => __('Job order added — awaiting an available artist.'),
+            default => __('Job order added.'),
         };
     }
 }

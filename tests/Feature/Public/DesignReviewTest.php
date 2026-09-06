@@ -57,7 +57,7 @@ test('posting to a valid signed approve url locks the design file and advances t
     $response->assertOk();
     expect($revisionLog->fresh()->outcome)->toBe('approved');
     expect($designFile->fresh()->locked_at)->not->toBeNull();
-    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::DesignApproved);
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ForProduction);
 });
 
 test('posting to a valid signed request-changes url bounces the job order to in_design without touching the lock', function () {

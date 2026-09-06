@@ -15,7 +15,7 @@ test('approving a pending_review job order locks the design file, marks the late
     $response = $this->actingAs($artist)->patch(route('artist.job-orders.design.approve', $jobOrder));
 
     $response->assertRedirect();
-    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::DesignApproved);
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ForProduction);
     expect($jobOrder->fresh()->designFile->locked_at)->not->toBeNull();
 
     $revisionLog->refresh();
