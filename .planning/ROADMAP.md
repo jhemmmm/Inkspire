@@ -246,8 +246,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 06-02-PLAN.md — Job Order Number Generation & Display (TRACK-01)
-- [ ] 06-03-PLAN.md — Public Tracking & Receipt QR (TRACK-01, TRACK-02)
+- [x] 06-02-PLAN.md — Job Order Number Generation & Display (TRACK-01)
+- [x] 06-03-PLAN.md — Public Tracking & Receipt QR (TRACK-01, TRACK-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -307,6 +307,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Job Order Intake & Auto-Assignment | 2/2 | Complete    | 2026-09-02 |
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
-| 6. Production Monitoring & Public Tracking | 1/7 | In Progress|  |
+| 6. Production Monitoring & Public Tracking | 3/7 | In Progress|  |
 | 7. Accounts Receivable | 0/TBD | Not started | - |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
