@@ -33,7 +33,7 @@ class ReceiptController extends Controller
         $latestTransaction = $completedTransactions->sortByDesc('created_at')->first();
 
         return Inertia::render('cashier/Receipt', [
-            'jobOrder' => $jobOrder->only(['id', 'description', 'base_price_snapshot', 'rush_fee_amount', 'discount_amount', 'total_amount', 'created_at']) + [
+            'jobOrder' => $jobOrder->only(['id', 'number', 'description', 'base_price_snapshot', 'rush_fee_amount', 'discount_amount', 'total_amount', 'created_at']) + [
                 'pricing_entry' => $jobOrder->pricingEntry?->only(['id', 'name']),
             ],
             'customerName' => $jobOrder->queueEntry?->customer?->name,
@@ -43,6 +43,7 @@ class ReceiptController extends Controller
             'amountPaid' => $amountPaid,
             'balance' => $balance,
             'cashierName' => $latestTransaction?->recordedBy?->name,
+            'trackingUrl' => route('public.tracking.show', ['number' => $jobOrder->number]),
         ]);
     }
 }

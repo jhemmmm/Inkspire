@@ -43,3 +43,27 @@ test('a cashier viewing the receipt for a job order with zero transactions gets 
 
     $response->assertNotFound();
 });
+
+test('the receipt includes the job order number and a tracking URL deep-linking to it', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create([
+        'number' => 'JO-2026-0007',
+        'total_amount' => 500,
+        'payment_status' => 'paid',
+    ]);
+    Transaction::factory()->create([
+        'job_order_id' => $jobOrder->id,
+        'payment_method' => 'cash',
+        'amount' => 500,
+        'status' => 'completed',
+        'recorded_by' => $cashier->id,
+    ]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.job-orders.receipt.show', $jobOrder));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('cashier/Receipt')
+        ->where('jobOrder.number', 'JO-2026-0007')
+        ->where('trackingUrl', fn ($url) => str_contains($url, '/track') && str_contains($url, 'JO-2026-0007')));
+});

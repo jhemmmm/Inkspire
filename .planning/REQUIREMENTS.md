@@ -82,8 +82,8 @@
 
 ### Public Tracking
 
-- [ ] **TRACK-01**: A customer can enter a job order number on a public, unauthenticated page and see the order's current status
-- [ ] **TRACK-02**: The tracking page shows status only — no pricing, payment, customer PII, or design files
+- [x] **TRACK-01**: A customer can enter a job order number on a public, unauthenticated page and see the order's current status
+- [x] **TRACK-02**: The tracking page shows status only — no pricing, payment, customer PII, or design files
 
 ### System Configuration
 

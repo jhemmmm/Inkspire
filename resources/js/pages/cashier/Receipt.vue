@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import TrackingQrCode from '@/components/TrackingQrCode.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cashierNavItems } from '@/config/nav/cashier';
@@ -12,6 +14,7 @@ interface ReceiptPricingEntry {
 
 interface ReceiptJobOrder {
     id: number;
+    number: string | null;
     description: string;
     base_price_snapshot: number | null;
     rush_fee_amount: number | null;
@@ -25,14 +28,17 @@ interface ReceiptLatestTransaction {
     payment_method: string;
 }
 
-defineProps<{
+const props = defineProps<{
     jobOrder: ReceiptJobOrder;
     customerName: string | null;
     latestTransaction: ReceiptLatestTransaction | null;
     amountPaid: number;
     balance: number;
     cashierName: string | null;
+    trackingUrl: string;
 }>();
+
+const trackingOrigin = computed(() => new URL(props.trackingUrl).origin);
 
 defineOptions({
     layout: {
@@ -69,7 +75,7 @@ function printReceipt(): void {
 </script>
 
 <template>
-    <Head :title="`Receipt — ${jobOrder.id}`" />
+    <Head :title="`Receipt — ${jobOrder.number ?? jobOrder.id}`" />
 
     <div
         class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
@@ -84,6 +90,10 @@ function printReceipt(): void {
 
         <Card class="mx-auto w-full max-w-sm">
             <CardContent class="grid gap-4">
+                <div class="flex items-center justify-between">
+                    <span class="font-semibold">Job Order No.</span>
+                    <span class="tabular-nums">{{ jobOrder.number ?? '—' }}</span>
+                </div>
                 <div class="flex items-center justify-between">
                     <span class="font-semibold">Job Order</span>
                     <span>{{ jobOrder.description }}</span>
@@ -145,6 +155,17 @@ function printReceipt(): void {
                         <span class="font-semibold">Cashier</span>
                         <span>{{ cashierName ?? '—' }}</span>
                     </div>
+                </div>
+
+                <div class="flex flex-col items-center gap-2 border-t pt-4">
+                    <TrackingQrCode :tracking-url="trackingUrl" />
+                    <p class="text-muted-foreground text-sm">
+                        Scan to track your order
+                    </p>
+                    <p class="text-muted-foreground text-center text-sm">
+                        Or visit {{ trackingOrigin }}/track and enter
+                        {{ jobOrder.number }}
+                    </p>
                 </div>
             </CardContent>
         </Card>
