@@ -251,7 +251,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 06-04-PLAN.md — Automatic Production Entry & Payment Compatibility (PROD-01, PROD-02)
+- [x] 06-04-PLAN.md — Automatic Production Entry & Payment Compatibility (PROD-01, PROD-02)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -307,6 +307,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Job Order Intake & Auto-Assignment | 2/2 | Complete    | 2026-09-02 |
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
-| 6. Production Monitoring & Public Tracking | 3/7 | In Progress|  |
+| 6. Production Monitoring & Public Tracking | 4/7 | In Progress|  |
 | 7. Accounts Receivable | 0/TBD | Not started | - |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
