@@ -17,6 +17,7 @@ use App\Http\Controllers\FrontlineStaff\JobOrderController;
 use App\Http\Controllers\FrontlineStaff\JobOrderReleaseController;
 use App\Http\Controllers\FrontlineStaff\QueueEntryController;
 use App\Http\Controllers\ProductionStaff\ProductionBoardController;
+use App\Http\Controllers\ProductionStaff\ProductionStageController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:frontline_staff'])->prefix('frontline-staff')->name('frontline-staff.')->group(function () {
@@ -61,6 +62,8 @@ Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')
 
 Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')->name('production-staff.')->group(function () {
     Route::get('dashboard', [ProductionBoardController::class, 'index'])->name('dashboard');
+    Route::patch('job-orders/{jobOrder}/advance', [ProductionStageController::class, 'advance'])->name('job-orders.advance');
+    Route::patch('job-orders/{jobOrder}/send-back', [ProductionStageController::class, 'sendBack'])->name('job-orders.send-back');
 });
 
 Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')->name('accounting-staff.')->group(function () {

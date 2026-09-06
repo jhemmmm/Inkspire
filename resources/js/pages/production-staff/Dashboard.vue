@@ -1,10 +1,25 @@
 <script setup lang="ts">
-import { Head, usePoll } from '@inertiajs/vue3';
+import { Form, Head, router, usePoll } from '@inertiajs/vue3';
 import { Zap } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import ProductionStageController from '@/actions/App/Http/Controllers/ProductionStaff/ProductionStageController';
+import AlertError from '@/components/AlertError.vue';
+import InputError from '@/components/InputError.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Table,
     TableBody,
@@ -15,6 +30,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { productionStaffNavItems } from '@/config/nav/production-staff';
 import { dashboard } from '@/routes/production-staff';
 
@@ -191,6 +207,59 @@ function rushBannerBody(): string {
 
     return `${subject}. Work these first.`;
 }
+
+// Mirrors ProductionStageController::SEQUENCE (PROD-02, D-10) — used only to
+// compute the destination/previous stage label shown on each row's action
+// button, never to decide what the server does.
+const SEQUENCE = [
+    'for_production',
+    'printing',
+    'quality_check',
+    'ready_for_pickup',
+];
+const STAGE_LABELS: Record<string, string> = {
+    for_production: 'For Production',
+    printing: 'Printing',
+    quality_check: 'Quality Check',
+    ready_for_pickup: 'Ready for Pickup',
+};
+
+function nextStageLabel(status: string): string {
+    const next = SEQUENCE[SEQUENCE.indexOf(status) + 1];
+
+    return next ? STAGE_LABELS[next] : '';
+}
+
+function previousStageLabel(status: string): string {
+    const previous = SEQUENCE[SEQUENCE.indexOf(status) - 1];
+
+    return previous ? STAGE_LABELS[previous] : '';
+}
+
+/**
+ * A stale-move message ("This job order already moved on...") set from the
+ * server's flashed error toast (D-10/D-11 boundary rejection) — kept as a
+ * page-level Alert in addition to the global toast, since a toast can be
+ * dismissed or missed before it's read. Cleared on the next flash of any
+ * kind (including a subsequent successful move).
+ */
+const staleMoveMessage = ref<string | null>(null);
+let removeFlashListener: (() => void) | undefined;
+
+onMounted(() => {
+    removeFlashListener = router.on('flash', (event) => {
+        const flash = (event as CustomEvent).detail?.flash;
+        const data = flash?.toast as
+            | { type: string; message: string }
+            | undefined;
+
+        staleMoveMessage.value = data?.type === 'error' ? data.message : null;
+    });
+});
+
+onUnmounted(() => {
+    removeFlashListener?.();
+});
 </script>
 
 <template>
@@ -212,6 +281,12 @@ function rushBannerBody(): string {
                 {{ rushBannerBody() }}
             </AlertDescription>
         </Alert>
+
+        <AlertError
+            v-if="staleMoveMessage"
+            title="This move didn't go through"
+            :errors="[staleMoveMessage]"
+        />
 
         <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
             <Card v-for="stage in stages" :key="stage.value">
@@ -347,7 +422,123 @@ function rushBannerBody(): string {
                                 </span>
                             </div>
                         </TableCell>
-                        <TableCell class="text-right"></TableCell>
+                        <TableCell class="text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <Form
+                                    v-if="
+                                        jobOrder.status !== 'ready_for_pickup'
+                                    "
+                                    v-bind="
+                                        ProductionStageController.advance.form(
+                                            jobOrder.id,
+                                        )
+                                    "
+                                    :options="{ preserveScroll: true }"
+                                    v-slot="{ processing }"
+                                >
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        :disabled="processing"
+                                        :data-test="`advance-job-order-${jobOrder.id}-button`"
+                                    >
+                                        Advance to
+                                        {{ nextStageLabel(jobOrder.status) }}
+                                    </Button>
+                                </Form>
+                                <p v-else class="text-muted-foreground text-sm">
+                                    Awaiting release
+                                </p>
+
+                                <Dialog
+                                    v-if="jobOrder.status !== 'for_production'"
+                                >
+                                    <DialogTrigger as-child>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            :data-test="`send-back-job-order-${jobOrder.id}-button`"
+                                        >
+                                            Send Back to
+                                            {{
+                                                previousStageLabel(
+                                                    jobOrder.status,
+                                                )
+                                            }}
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <Form
+                                            v-bind="
+                                                ProductionStageController.sendBack.form(
+                                                    jobOrder.id,
+                                                )
+                                            "
+                                            :options="{ preserveScroll: true }"
+                                            class="space-y-4"
+                                            v-slot="{ errors, processing }"
+                                        >
+                                            <DialogHeader>
+                                                <DialogTitle>
+                                                    Send back to
+                                                    {{
+                                                        previousStageLabel(
+                                                            jobOrder.status,
+                                                        )
+                                                    }}?
+                                                </DialogTitle>
+                                            </DialogHeader>
+
+                                            <p
+                                                class="text-muted-foreground text-sm"
+                                            >
+                                                This is recorded on the
+                                                production log with your name
+                                                and the reason below.
+                                            </p>
+
+                                            <div class="grid gap-2">
+                                                <Label
+                                                    :for="`send-back-reason-${jobOrder.id}`"
+                                                >
+                                                    Reason
+                                                </Label>
+                                                <Textarea
+                                                    :id="`send-back-reason-${jobOrder.id}`"
+                                                    name="reason"
+                                                    placeholder="e.g. Colour banding on the second pass — needs a reprint"
+                                                />
+                                                <InputError
+                                                    :message="errors.reason"
+                                                />
+                                            </div>
+
+                                            <DialogFooter class="gap-2">
+                                                <DialogClose as-child>
+                                                    <Button
+                                                        type="button"
+                                                        variant="secondary"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </DialogClose>
+                                                <Button
+                                                    type="submit"
+                                                    :disabled="processing"
+                                                    :data-test="`confirm-send-back-${jobOrder.id}-button`"
+                                                >
+                                                    <Spinner
+                                                        v-if="processing"
+                                                    />
+                                                    Send Back
+                                                </Button>
+                                            </DialogFooter>
+                                        </Form>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+                        </TableCell>
                     </TableRow>
                 </TableBody>
             </Table>
