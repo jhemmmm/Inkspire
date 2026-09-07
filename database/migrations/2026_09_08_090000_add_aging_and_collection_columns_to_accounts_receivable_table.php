@@ -11,10 +11,6 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     *
-     * Backfill is guarded by `whereNull('due_at')`, making a second call to
-     * this `up()` a no-op for every row already backfilled or newly
-     * approved with `due_at` already set (WR-10's re-runnable shape).
      */
     public function up(): void
     {
@@ -28,21 +24,7 @@ return new class extends Migration
             $table->timestamp('write_off_requested_at')->nullable();
         });
 
-        $creditTermDays = SystemConfiguration::getInt('credit_term_days', 30);
-
-        DB::table('accounts_receivable')
-            ->where('status', 'active')
-            ->whereNull('due_at')
-            ->whereNotNull('approved_at')
-            ->orderBy('id')
-            ->select('id', 'approved_at')
-            ->chunkById(100, function ($rows) use ($creditTermDays) {
-                foreach ($rows as $row) {
-                    DB::table('accounts_receivable')
-                        ->where('id', $row->id)
-                        ->update(['due_at' => Carbon::parse($row->approved_at)->addDays($creditTermDays)]);
-                }
-            });
+        $this->backfillDueDates();
     }
 
     /**
@@ -63,6 +45,40 @@ return new class extends Migration
                 'write_off_reason',
                 'write_off_requested_at',
             ]);
+        });
+    }
+
+    /**
+     * Stamp `due_at` on every Active row Phase 5 already approved before
+     * this migration existed, computed as `approved_at` + `credit_term_days`
+     * (D-02).
+     *
+     * A private helper on the migration's anonymous class, following the
+     * WR-10 shape (`2026_09_05_120000_add_number_and_due_at_to_job_orders_table.php`):
+     * it takes its own transaction and is re-runnable on its own, since the
+     * schema-altering `up()` above is not re-invocable once already
+     * migrated. `whereNull('due_at')` is what makes a re-run a no-op — a
+     * row already backfilled, or newly approved with `due_at` already set,
+     * is never touched again.
+     */
+    private function backfillDueDates(): void
+    {
+        $creditTermDays = SystemConfiguration::getInt('credit_term_days', 30);
+
+        DB::transaction(function () use ($creditTermDays): void {
+            DB::table('accounts_receivable')
+                ->where('status', 'active')
+                ->whereNull('due_at')
+                ->whereNotNull('approved_at')
+                ->orderBy('id')
+                ->select('id', 'approved_at')
+                ->chunkById(100, function ($rows) use ($creditTermDays): void {
+                    foreach ($rows as $row) {
+                        DB::table('accounts_receivable')
+                            ->where('id', $row->id)
+                            ->update(['due_at' => Carbon::parse($row->approved_at)->addDays($creditTermDays)]);
+                    }
+                });
         });
     }
 };

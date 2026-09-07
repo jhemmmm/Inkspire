@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Owner\ApproveCreditRequest;
 use App\Http\Requests\Owner\RejectCreditRequest;
 use App\Models\AccountsReceivable;
+use App\Models\SystemConfiguration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,7 @@ class CreditApprovalController extends Controller
                 'status' => AccountsReceivableStatus::Active,
                 'approved_by' => $request->user()->id,
                 'approved_at' => now(),
+                'due_at' => now()->addDays(SystemConfiguration::getInt('credit_term_days', 30)),
             ])->save();
 
             $accountsReceivable->jobOrder->forceFill(['payment_status' => PaymentStatus::OnCredit])->save();
