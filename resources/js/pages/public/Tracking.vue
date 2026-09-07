@@ -34,10 +34,15 @@ const { start, stop } = usePoll(
     { autoStart: false },
 );
 
+// Stages a job order can never leave. Polling past one of them burns the
+// per-IP rate-limit bucket forever on every device that ever looked the
+// order up, without the answer ever changing again.
+const TERMINAL_STAGES = ['Completed', 'Cancelled'];
+
 watch(
     () => props.result,
     (value) => {
-        if (value?.found) {
+        if (value?.found && !TERMINAL_STAGES.includes(value.stage ?? '')) {
             start();
         } else {
             stop();

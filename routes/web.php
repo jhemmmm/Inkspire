@@ -19,8 +19,15 @@ Route::get('queue-display', [QueueDisplayController::class, 'index'])
 // their job order's current production stage by number. Deliberately
 // outside every auth/role:* group; see TrackingController for the PII
 // boundary.
+//
+// Sized above the other public routes' 60/min on purpose: Laravel's
+// throttle limiter keys guests by IP, and Tracking.vue polls every 5s
+// (12 req/min per open tab). At 60/min, five customers tracking orders
+// from behind one NAT — shop Wi-Fi, a mall, mobile carrier CGNAT — start
+// receiving 429s, which the page does not handle. The response is three
+// scalar fields, so the extra headroom is cheap.
 Route::get('track', [TrackingController::class, 'show'])
-    ->middleware('throttle:60,1')
+    ->middleware('throttle:120,1')
     ->name('public.tracking.show');
 
 // Public, unauthenticated, signed-URL-protected (D-17 through D-21) — the

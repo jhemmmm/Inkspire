@@ -128,11 +128,13 @@ test('a malformed job order number fails validation and never sets a result', fu
     $response->assertSessionHasErrors('number');
 });
 
-test('the tracking route is throttled at 60 requests per minute', function () {
+test('the tracking route is throttled with enough headroom for a 5s poll behind one NAT', function () {
+    // The limiter keys guests by IP and the page polls 12 req/min per open
+    // tab, so 60/min starts 429ing five customers on the same shop Wi-Fi.
     expect(collect(app('router')->getRoutes())
         ->first(fn ($route) => $route->getName() === 'public.tracking.show')
         ->middleware())
-        ->toContain('throttle:60,1');
+        ->toContain('throttle:120,1');
 });
 
 test('the tracking response never leaks pricing, payment, or file data for a found order', function () {
