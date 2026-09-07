@@ -3,6 +3,8 @@
 use App\Enums\JobOrderStatus;
 use App\Models\JobOrder;
 use App\Models\User;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('the frontline dashboard shows every job order ready for pickup', function () {
@@ -90,6 +92,29 @@ test('the queue page carries a ready-for-pickup summary with count and up to two
         ->has('readyForPickup.items', 2)
         ->where('readyForPickup.items.0.number', $first->number)
         ->where('readyForPickup.items.1.number', $second->number));
+});
+
+test('the queue page summary count and items come from a single fetch, not two unsynchronised queries', function () {
+    $staff = User::factory()->frontlineStaff()->create();
+    JobOrder::factory()->count(3)->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+
+    $readyForPickupStatements = 0;
+    DB::listen(function (QueryExecuted $query) use (&$readyForPickupStatements): void {
+        if (in_array(JobOrderStatus::ReadyForPickup->value, $query->bindings, true)) {
+            $readyForPickupStatements++;
+        }
+    });
+
+    $response = $this->actingAs($staff)->get(route('frontline-staff.queue-entries.index'));
+
+    $response->assertOk();
+    // Two statements with no snapshot between them let a release land in
+    // the gap and yield `count: 1, items: []`, which the banner renders as
+    // "1 job order ready for pickup /  is waiting on the shelf."
+    expect($readyForPickupStatements)->toBe(1);
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('readyForPickup.count', 3)
+        ->has('readyForPickup.items', 2));
 });
 
 test('a released or cancelled job order is excluded from the queue page summary', function () {

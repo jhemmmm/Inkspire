@@ -37,13 +37,21 @@ class QueueEntryController extends Controller
      * Also carries a `readyForPickup` summary (PROD-03/D-13) so staff
      * already working this page see the same self-correcting alert as the
      * Frontline Dashboard, without navigating away.
+     *
+     * The summary's count and items come from ONE fetch, not two cloned
+     * queries. This page polls every 5 seconds per staff member, and a
+     * release landing between a separate count() and get() yielded
+     * `count: 1, items: []`, which the banner rendered as an empty
+     * subject ("1 job order ready for pickup /  is waiting on the shelf.").
      */
     public function index(Request $request): Response
     {
-        $readyForPickupQuery = JobOrder::query()
+        $readyForPickup = JobOrder::query()
             ->where('status', JobOrderStatus::ReadyForPickup->value)
             ->whereNull('released_at')
-            ->whereNull('cancelled_at');
+            ->whereNull('cancelled_at')
+            ->oldest('updated_at')
+            ->get(['id', 'number']);
 
         return Inertia::render('frontline-staff/QueueList', [
             'queueEntries' => QueueEntry::query()
@@ -56,8 +64,10 @@ class QueueEntryController extends Controller
                 ->orderBy('queue_number')
                 ->get(['id', 'customer_id', 'queue_number', 'status']),
             'readyForPickup' => [
-                'count' => $readyForPickupQuery->clone()->count(),
-                'items' => $readyForPickupQuery->clone()->oldest('updated_at')->limit(2)->get(['number']),
+                'count' => $readyForPickup->count(),
+                'items' => $readyForPickup->take(2)
+                    ->map(fn (JobOrder $jobOrder) => ['number' => $jobOrder->number])
+                    ->values(),
             ],
         ]);
     }
