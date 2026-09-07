@@ -127,10 +127,13 @@ function jobOrderTypeLabel(type: string): string {
 
 // Mirrors JobOrderReleaseController::store's own server-side gate (POS-09) —
 // this only decides whether to render the button; the controller re-checks
-// payment_status independently and rejects a direct request regardless of
-// what this predicate returns.
+// production stage and payment_status independently and rejects a direct
+// request regardless of what this predicate returns. The ready_for_pickup
+// check keeps a fully-paid order still on the press from rendering a live
+// "Release to Customer" button here.
 function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
     return (
+        jobOrder.status === 'ready_for_pickup' &&
         (jobOrder.payment_status === 'paid' ||
             jobOrder.payment_status === 'on_credit') &&
         jobOrder.released_at === null
