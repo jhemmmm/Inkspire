@@ -290,7 +290,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 07-04-PLAN.md — Collection Status & Printable Collection Letter (AR-03)
+- [x] 07-04-PLAN.md — Collection Status & Printable Collection Letter (AR-03)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -326,5 +326,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
-| 7. Accounts Receivable | 3/5 | In Progress|  |
+| 7. Accounts Receivable | 4/5 | In Progress|  |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
