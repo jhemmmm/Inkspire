@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\JobOrder;
 use App\Models\QueueEntry;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('submitting a visit with two job orders assigns each a distinct sequential JO-{year}-#### number', function () {
@@ -43,6 +44,30 @@ test('adding a job order to an existing visit continues the sequence from the hi
     $newJobOrder = JobOrder::where('number', '!=', "JO-{$year}-0005")->firstOrFail();
 
     expect($newJobOrder->number)->toBe("JO-{$year}-0006");
+});
+
+test('adding a job order to an existing visit inserts inside an enclosing transaction so the number lock outlives the generator', function () {
+    $staff = User::factory()->frontlineStaff()->create();
+    $queueEntry = QueueEntry::factory()->create();
+
+    $baselineLevel = DB::transactionLevel();
+    $levelAtInsert = null;
+
+    JobOrder::creating(function () use (&$levelAtInsert): void {
+        $levelAtInsert = DB::transactionLevel();
+    });
+
+    $this->actingAs($staff)->post(route('frontline-staff.queue-entries.job-orders.store', $queueEntry), [
+        'description' => 'Business Cards, 100pcs',
+        'type' => 'type_b',
+    ]);
+
+    // nextNumberForYear() opens and commits its own transaction, releasing
+    // its lockForUpdate() row/gap lock. Only an enclosing transaction keeps
+    // that lock alive until the insert lands — visible here as one extra
+    // nesting level at insert time. SQLite makes lockForUpdate() a no-op,
+    // so the transaction boundary itself is the only assertable evidence.
+    expect($levelAtInsert)->toBe($baselineLevel + 1);
 });
 
 test('the Cashier Dashboard response includes each job order\'s number', function () {

@@ -101,18 +101,29 @@ class QueueEntryController extends Controller
     /**
      * Add a job order to an existing visit, regardless of its current
      * status (D-15/D-18) — visits are never locked, even when Done.
+     *
+     * The create + intake outcome run inside one transaction, matching
+     * store(). That enclosing transaction is load-bearing, not cosmetic:
+     * JobOrder::nextNumberForYear() opens its own transaction, so without
+     * an outer one its lockForUpdate() range lock would be released before
+     * this insert ran and two concurrent staff could compute the same
+     * number (SQLite makes lockForUpdate() a no-op, so no test catches it).
      */
     public function addJobOrder(AddJobOrderRequest $request, QueueEntry $queueEntry): RedirectResponse
     {
-        $jobOrder = $queueEntry->jobOrders()->create([
-            'number' => JobOrder::nextNumberForYear(JobOrder::currentNumberingYear()),
-            'description' => $request->validated('description'),
-            'type' => $request->validated('type'),
-            'status' => JobOrderStatus::Intake,
-            'file_path' => $request->file('file')?->store('job-orders', 'local'),
-        ]);
+        $jobOrder = DB::transaction(function () use ($request, $queueEntry): JobOrder {
+            $jobOrder = $queueEntry->jobOrders()->create([
+                'number' => JobOrder::nextNumberForYear(JobOrder::currentNumberingYear()),
+                'description' => $request->validated('description'),
+                'type' => $request->validated('type'),
+                'status' => JobOrderStatus::Intake,
+                'file_path' => $request->file('file')?->store('job-orders', 'local'),
+            ]);
 
-        $this->applyIntakeOutcome($jobOrder, $request->file('file'));
+            $this->applyIntakeOutcome($jobOrder, $request->file('file'));
+
+            return $jobOrder;
+        });
 
         Inertia::flash('toast', [
             'type' => 'success',
