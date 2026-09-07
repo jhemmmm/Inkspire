@@ -1,10 +1,11 @@
 ---
 phase: 7
 slug: accounts-receivable
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: final
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-09-08
+updated: 2026-09-08
 ---
 
 # Phase 7 — Validation Strategy
@@ -57,11 +58,13 @@ The requirement-level map below is the binding contract the planner must satisfy
 
 ## Wave 0 Requirements
 
-- [ ] `tests/Feature/AccountingStaff/AccountsReceivableListTest.php` — AR-01 (bracket grouping, derived balance, no-N+1 column allowlist)
-- [ ] `tests/Feature/Console/SendAccountsReceivableRemindersTest.php` — AR-02, including the **first `Mail::fake()` / `Mail::assertSent()` test in this codebase**, plus same-day idempotency and terminal-bracket-repeat cases
-- [ ] `tests/Feature/AccountingStaff/CollectionStatusTest.php` + `tests/Feature/AccountingStaff/CollectionLetterTest.php` — AR-03
-- [ ] `tests/Feature/Owner/WriteOffApprovalTest.php` + `tests/Feature/AccountingStaff/WriteOffRequestTest.php` — AR-04, including the locked-re-read concurrency test matching `CreditApprovalTest.php`'s CR-05 pattern
-- [ ] `database/factories/AccountsReceivableFactory.php` — extend `active()` with `due_at`/`collection_status`, and add a bracket state (e.g. `atBracket(AccountsReceivableAgingBracket $bracket)`) so bracket-specific tests stay concise
+- [x] `tests/Feature/AccountingStaff/AccountsReceivableListTest.php` — AR-01 (bracket grouping, derived balance, no-N+1 column allowlist)
+- [x] `tests/Feature/Console/SendAccountsReceivableRemindersTest.php` — AR-02, including the **first `Mail::fake()` / `Mail::assertSent()` test in this codebase**, plus same-day idempotency (D-17 resolved this to single-fire-per-bracket only -- no terminal-bracket-repeat case, per 07-03-PLAN.md and 07-CONTEXT.md D-17)
+- [x] `tests/Feature/AccountingStaff/CollectionStatusTest.php` + `tests/Feature/AccountingStaff/CollectionLetterTest.php` — AR-03
+- [x] `tests/Feature/Owner/WriteOffApprovalTest.php` + `tests/Feature/AccountingStaff/WriteOffRequestTest.php` — AR-04, including the locked-re-read concurrency test matching `CreditApprovalTest.php`'s CR-05 pattern
+- [x] `database/factories/AccountsReceivableFactory.php` — extend `active()` with `due_at`/`collection_status`, and add a bracket state (e.g. `atBracket(AccountsReceivableAgingBracket $bracket)`) so bracket-specific tests stay concise
+- [x] `tests/Unit/Mail/AccountsReceivableReminderMailableTest.php` — locked in 07-03-PLAN.md Task 1 (Warning 2 fix; no longer "executor's choice")
+- [x] Pending-window race test (write-off requested -> entry settles to Paid -> approve must fail, `payment_status` unchanged) — locked in 07-05-PLAN.md Task 2 (Blocker 2 fix)
 
 ---
 
@@ -77,11 +80,11 @@ The requirement-level map below is the binding contract the planner must satisfy
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies (11/11 tasks across all 5 plans)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-09-08 (plan-checker revision pass)

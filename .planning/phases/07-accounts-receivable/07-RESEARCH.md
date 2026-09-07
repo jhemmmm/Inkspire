@@ -774,10 +774,10 @@ $creditTermDays = SystemConfiguration::getInt('credit_term_days', 30);
 
 ## Open Questions
 
-1. **Does D-08's "never go quiet after 90+" mean recurring daily re-emails, or just remaining visible in the aging list/write-off queue?**
-   - What we know: D-07 describes a strict "bracket later than stored bracket" mechanism (single-fire per bracket); D-08 explicitly rejects "going quiet after the 90+ final notice." These are in tension if 90+ is treated as a terminal, non-advancing bracket.
-   - What's unclear: Whether "stay visible" refers to the email channel recurring, or simply to the entry remaining un-dismissed in Accounting's list and Owner's write-off queue (which it does regardless, since nothing in any decision removes a 90+ entry from either list until it closes).
-   - Recommendation: Default to the simpler reading (D-07's literal single-fire mechanism; entries stay visible via the persistent list/queue, not repeat email) **unless** the planner or a quick `/gsd-discuss-phase 7` follow-up confirms recurring email is the actual intent. If recurring email is confirmed, use Pattern 1's two-column design as specified.
+1. **RESOLVED (2026-09-08, user decision during plan-phase verification -- see `07-CONTEXT.md` D-17):** "Fire once per bracket, then stop." Each aging bracket (15/30/60/90+) triggers exactly one email, ever. After the 90+ final notice the entry generates no further mail; "never goes quiet" is satisfied by the entry's persistent visibility in the Accounting aging list and the Owner's write-off queue, not by repeat mail. This confirms the reading `07-03-PLAN.md` already assumed (D-07's literal single-fire mechanism, one `last_reminder_bracket` column) -- no mechanism change was needed as a result of this resolution.
+   - Original question: Does D-08's "never go quiet after 90+" mean recurring daily re-emails, or just remaining visible in the aging list/write-off queue?
+   - What we knew: D-07 describes a strict "bracket later than stored bracket" mechanism (single-fire per bracket); D-08 explicitly rejects "going quiet after the 90+ final notice." These are in tension if 90+ is treated as a terminal, non-advancing bracket.
+   - What was unclear: Whether "stay visible" refers to the email channel recurring, or simply to the entry remaining un-dismissed in Accounting's list and Owner's write-off queue (which it does regardless, since nothing in any decision removes a 90+ entry from either list until it closes).
 
 2. **Should the printed collection letter reference the original approved credit amount (`balance` column) or the current derived outstanding balance?**
    - What we know: D-16 explicitly keeps `accounts_receivable.balance` as the original approved amount and forbids repurposing it as a running balance. D-12 says the letter's body text is bracket-driven but doesn't specify which figure the letter quotes.
