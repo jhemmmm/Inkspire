@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountingStaff\AccountsReceivableController;
 use App\Http\Controllers\Artist\DesignEditorController;
 use App\Http\Controllers\Artist\JobOrderQueueController;
 use App\Http\Controllers\Artist\JobOrderWorkspaceController;
@@ -68,5 +69,7 @@ Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')
 
 Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')->name('accounting-staff.')->group(function () {
     Route::get('dashboard', [ReconciliationController::class, 'index'])->name('dashboard');
+    Route::get('accounts-receivable', [AccountsReceivableController::class, 'index'])->name('accounts-receivable.index');
+    Route::get('accounts-receivable/{accountsReceivable}', [AccountsReceivableController::class, 'show'])->name('accounts-receivable.show');
     Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
 });
