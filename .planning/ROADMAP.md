@@ -285,8 +285,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 07-02-PLAN.md — Aging List & Entry Detail (AR-01)
-- [ ] 07-03-PLAN.md — Escalating Reminder Command (AR-02)
+- [x] 07-02-PLAN.md — Aging List & Entry Detail (AR-01)
+- [x] 07-03-PLAN.md — Escalating Reminder Command (AR-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -326,5 +326,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
-| 7. Accounts Receivable | 1/5 | In Progress|  |
+| 7. Accounts Receivable | 3/5 | In Progress|  |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
