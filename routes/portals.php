@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AccountingStaff\AccountsReceivableController;
+use App\Http\Controllers\AccountingStaff\CollectionLetterController;
+use App\Http\Controllers\AccountingStaff\CollectionStatusController;
 use App\Http\Controllers\Artist\DesignEditorController;
 use App\Http\Controllers\Artist\JobOrderQueueController;
 use App\Http\Controllers\Artist\JobOrderWorkspaceController;
@@ -71,5 +73,7 @@ Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')
     Route::get('dashboard', [ReconciliationController::class, 'index'])->name('dashboard');
     Route::get('accounts-receivable', [AccountsReceivableController::class, 'index'])->name('accounts-receivable.index');
     Route::get('accounts-receivable/{accountsReceivable}', [AccountsReceivableController::class, 'show'])->name('accounts-receivable.show');
+    Route::patch('accounts-receivable/{accountsReceivable}/collection-status', [CollectionStatusController::class, 'update'])->name('accounts-receivable.collection-status.update');
+    Route::get('accounts-receivable/{accountsReceivable}/collection-letter', [CollectionLetterController::class, 'show'])->name('accounts-receivable.collection-letter.show');
     Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
 });
