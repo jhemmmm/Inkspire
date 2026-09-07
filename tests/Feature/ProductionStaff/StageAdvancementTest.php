@@ -4,6 +4,9 @@ use App\Enums\JobOrderStatus;
 use App\Models\JobOrder;
 use App\Models\ProductionLog;
 use App\Models\User;
+use Illuminate\Database\Events\TransactionBeginning;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 
 test('advancing moves a job order forward exactly one stage and logs the transition', function (JobOrderStatus $from, JobOrderStatus $to) {
     $staff = User::factory()->productionStaff()->create();
@@ -161,6 +164,27 @@ test('a released job order rejects advance and send back so it can never become 
     expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ReadyForPickup);
     expect(ProductionLog::query()->where('job_order_id', $jobOrder->id)->count())->toBe(0);
 });
+
+test('a cancellation landing after route binding is still caught because every guard reads the locked row', function (string $action, array $payload) {
+    $staff = User::factory()->productionStaff()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value]);
+
+    // Simulate a cancellation committing between route-model binding and
+    // the locked re-read: the bound instance still looks actionable, the
+    // row the transaction is about to lock does not.
+    Event::listen(TransactionBeginning::class, function () use ($jobOrder): void {
+        DB::table('job_orders')->where('id', $jobOrder->id)->update(['cancelled_at' => now()]);
+    });
+
+    $response = $this->actingAs($staff)->patch(route($action, $jobOrder), $payload);
+
+    $response->assertStatus(422);
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::Printing);
+    expect(ProductionLog::query()->where('job_order_id', $jobOrder->id)->count())->toBe(0);
+})->with([
+    'advance' => ['production-staff.job-orders.advance', []],
+    'send back' => ['production-staff.job-orders.send-back', ['reason' => 'Colour banding']],
+]);
 
 test('a non-production-staff role is forbidden from advancing or sending back', function () {
     $staff = User::factory()->frontlineStaff()->create();

@@ -54,14 +54,20 @@ class ProductionStageController extends Controller
      * double-submitted/retried request can never write two ProductionLog
      * rows for a single logical move, mirroring
      * CreditApprovalController::approve()'s idempotency boundary.
+     *
+     * Every guard runs against that locked re-read, never against the
+     * route-model-bound instance: a cancellation or release committing
+     * between the two would otherwise slip a stage transition through on a
+     * job order that is no longer actionable, defeating the idempotency
+     * the lock exists to provide.
      */
     public function advance(AdvanceProductionStageRequest $request, JobOrder $jobOrder): RedirectResponse
     {
-        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
-        abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
-
         [$jobOrder, $nextStatus] = DB::transaction(function () use ($request, $jobOrder): array {
             $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
+
+            abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
+            abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
 
             $currentIndex = array_search($jobOrder->status, self::SEQUENCE, true);
 
@@ -97,15 +103,17 @@ class ProductionStageController extends Controller
      * with a mandatory reason recorded on the ProductionLog row.
      *
      * Re-reads the job order under a database lock (T-06-06-03), identical
-     * idempotency boundary to advance().
+     * idempotency boundary to advance() — including running every guard
+     * against the locked re-read rather than the route-model-bound
+     * instance.
      */
     public function sendBack(SendBackProductionStageRequest $request, JobOrder $jobOrder): RedirectResponse
     {
-        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
-        abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
-
         [$jobOrder, $previousStatus] = DB::transaction(function () use ($request, $jobOrder): array {
             $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
+
+            abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
+            abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
 
             $currentIndex = array_search($jobOrder->status, self::SEQUENCE, true);
 
