@@ -178,20 +178,38 @@ class JobOrder extends Model
      * year, under a database lock so concurrent requests can never collide
      * (D-04, matching QueueEntry::nextForBusinessDay()'s pattern).
      *
-     * Extracts the zero-padded 4-digit sequence suffix in PHP rather than
-     * via a SUBSTR/CAST SQL expression, avoiding a SQLite/MySQL portability
-     * mismatch — string-lexicographic MAX() already returns the correct row
-     * because every number sharing a year prefix has the same fixed width.
+     * The sequence is zero-padded to a MINIMUM of four digits, not a fixed
+     * four — a year that reaches 10,000 job orders keeps counting
+     * (JO-2026-10000, JO-2026-10001, ...), which is exactly what
+     * TrackJobOrderRequest's `\d{4,}` regex already accepts.
+     *
+     * That variable width rules out both a plain `MAX(number)` (a
+     * string-lexicographic max ranks 'JO-2026-9999' above 'JO-2026-10000')
+     * and a fixed-width `substr(-4)` parse (which reads '0000' out of
+     * 'JO-2026-10000'). Ordering by LENGTH() first and the string second
+     * restores numeric order without a SUBSTR/CAST SQL expression, keeping
+     * the query portable across SQLite and MySQL; the suffix is then parsed
+     * in PHP from the known prefix length rather than a fixed offset.
+     *
+     * Callers MUST invoke this inside an enclosing transaction that also
+     * performs the insert — the lockForUpdate() range lock is released the
+     * moment this method's own transaction commits, so a caller that
+     * inserts afterwards races exactly the collision the lock prevents.
      */
     public static function nextNumberForYear(int $year): string
     {
-        return DB::transaction(function () use ($year): string {
-            $maxNumber = static::query()
-                ->where('number', 'like', "JO-{$year}-%")
-                ->lockForUpdate()
-                ->max('number');
+        $prefix = "JO-{$year}-";
 
-            $sequence = $maxNumber === null ? 1 : ((int) substr($maxNumber, -4)) + 1;
+        return DB::transaction(function () use ($prefix, $year): string {
+            $maxNumber = static::query()
+                ->where('number', 'like', $prefix.'%')
+                ->lockForUpdate()
+                ->orderByRaw('LENGTH(number) DESC, number DESC')
+                ->value('number');
+
+            $sequence = is_string($maxNumber)
+                ? ((int) substr($maxNumber, strlen($prefix))) + 1
+                : 1;
 
             return sprintf('JO-%d-%04d', $year, $sequence);
         });

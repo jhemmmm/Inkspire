@@ -18,6 +18,18 @@ test('nextNumberForYear increments sequentially within the same year', function 
     expect($second)->toBe('JO-2026-0002');
 });
 
+test('nextNumberForYear keeps counting past the four-digit sequence instead of colliding', function () {
+    JobOrder::factory()->create(['number' => 'JO-2026-9999']);
+
+    $tenThousandth = JobOrder::nextNumberForYear(2026);
+    JobOrder::factory()->create(['number' => $tenThousandth]);
+
+    $tenThousandAndFirst = JobOrder::nextNumberForYear(2026);
+
+    expect($tenThousandth)->toBe('JO-2026-10000');
+    expect($tenThousandAndFirst)->toBe('JO-2026-10001');
+});
+
 test('nextNumberForYear maintains independent sequences per year', function () {
     $first2025 = JobOrder::nextNumberForYear(2025);
     JobOrder::factory()->create(['number' => $first2025]);
