@@ -125,6 +125,22 @@ function jobOrderTypeLabel(type: string): string {
     return type === 'type_a' ? 'Type A' : 'Type B';
 }
 
+// The four stages that actually mean "on the press". Enumerated rather
+// than left as a catch-all v-else: everything else falling through would
+// label in_consultation / in_design / pending_review / design_approved
+// job orders "In Production", telling Frontline Staff a design still being
+// consulted with the customer is already printing.
+const PRODUCTION_STATUSES = [
+    'for_production',
+    'printing',
+    'quality_check',
+    'ready_for_pickup',
+];
+
+function isInProduction(status: string): boolean {
+    return PRODUCTION_STATUSES.includes(status);
+}
+
 // Mirrors JobOrderReleaseController::store's own server-side gate (POS-09) —
 // this only decides whether to render the button; the controller re-checks
 // production stage and payment_status independently and rejects a direct
@@ -234,8 +250,24 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                                     >
                                         Validation Failed
                                     </Badge>
-                                    <Badge v-else variant="secondary">
+                                    <Badge
+                                        v-else-if="
+                                            jobOrder.released_at !== null
+                                        "
+                                        class="text-green-600 dark:text-green-400"
+                                    >
+                                        Released
+                                    </Badge>
+                                    <Badge
+                                        v-else-if="
+                                            isInProduction(jobOrder.status)
+                                        "
+                                        variant="secondary"
+                                    >
                                         In Production
+                                    </Badge>
+                                    <Badge v-else variant="secondary">
+                                        In Design
                                     </Badge>
                                     <ReplaceJobOrderFileDialog
                                         v-if="

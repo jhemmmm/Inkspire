@@ -169,6 +169,20 @@ function jobOrderTypeLabel(type: string): string {
     return type === 'type_a' ? 'Type A' : 'Type B';
 }
 
+// The four stages that actually mean "on the press". Enumerated rather
+// than left as a catch-all v-else, which labelled in_consultation /
+// in_design / pending_review / design_approved job orders "In Production".
+const PRODUCTION_STATUSES = [
+    'for_production',
+    'printing',
+    'quality_check',
+    'ready_for_pickup',
+];
+
+function isInProduction(status: string): boolean {
+    return PRODUCTION_STATUSES.includes(status);
+}
+
 function jobOrderStatusLabel(status: string): string {
     switch (status) {
         case 'ready_for_production':
@@ -398,8 +412,14 @@ function jobOrderStatusLabel(status: string): string {
                                 >
                                     {{ jobOrderStatusLabel(jobOrder.status) }}
                                 </Badge>
-                                <Badge v-else variant="secondary">
+                                <Badge
+                                    v-else-if="isInProduction(jobOrder.status)"
+                                    variant="secondary"
+                                >
                                     In Production
+                                </Badge>
+                                <Badge v-else variant="secondary">
+                                    In Design
                                 </Badge>
                             </div>
                         </li>
