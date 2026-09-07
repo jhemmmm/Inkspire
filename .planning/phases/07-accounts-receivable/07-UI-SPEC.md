@@ -1,10 +1,11 @@
 ---
 phase: 7
 slug: accounts-receivable
-status: draft
+status: approved
 shadcn_initialized: true
 preset: new-york-v4 / neutral / cssVariables
 created: 2026-09-08
+reviewed_at: 2026-09-08
 ---
 
 # Phase 7 — UI Design Contract
@@ -81,6 +82,8 @@ Unchanged 4-role scale from Phase 1-6 — reused as-is. **No fifth size, no thir
 - **Label** — table column headers, bracket summary card captions, "Collection Status" / "Reason" field labels, all badge text, filter tab labels, entry-detail field captions ("Approved On", "Due Date", "Days Past Due").
 - **Heading** — entry-detail panel headings ("Amounts", "Collection Status", "Activity"), dialog titles, the collection letter's "Statement of Account" title.
 - **Display** — page titles ("Accounts Receivable", "Write-Off Requests"), each bracket card's peso total, the entry-detail **Outstanding Balance** figure, and the collection letter's **Amount Due** figure and letterhead name.
+
+The four roles above govern **in-app surfaces only**. The reminder email inherits Laravel's Markdown mail theme — the reminder email body line entry under Body describes its intended reading weight, not a licence to override the mail theme's CSS to hit 14px/1.5. §5's "no extra branding" holds.
 
 Display is applied to the money figure that the surface exists to communicate — the same "the number that matters most" rule Phase 4 (performance stats), Phase 5 (receipt Total) and Phase 6 (stage counts, public stage label) already set. It is **not** applied to every peso amount: Total and Paid on the entry-detail Amounts panel stay at Body, so Outstanding is the one figure that reads first.
 
@@ -432,14 +435,14 @@ Add the `written_off` label and badge treatment from the Color section to **ever
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS (with recommendation — mail-theme scope clarified in §Typography, applied)
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS (no third-party registries; all 12 primitives already installed)
 
-**Approval:** pending
+**Approval:** approved 2026-09-08 by gsd-ui-checker
 
 **Carried to the planner (three UI-pass calls that change server-side work, not just markup):**
 
