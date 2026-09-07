@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\AccountsReceivableAgingBracket;
 use App\Enums\AccountsReceivableStatus;
 use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
@@ -41,9 +42,30 @@ class AccountsReceivableFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => AccountsReceivableStatus::Active->value,
         ])->afterCreating(fn (AccountsReceivable $accountsReceivable) => $accountsReceivable->forceFill([
-            'approved_by' => User::factory()->owner(),
+            'approved_by' => User::factory()->owner()->create()->id,
             'approved_at' => now(),
+            'due_at' => now()->addDays(30),
         ])->save());
+    }
+
+    /**
+     * Indicate that this active receivable's due_at is set such that its
+     * derived agingBracket() (D-03) is exactly the given bracket.
+     */
+    public function atBracket(AccountsReceivableAgingBracket $bracket): static
+    {
+        return $this->active()->afterCreating(function (AccountsReceivable $accountsReceivable) use ($bracket) {
+            $daysPastDue = match ($bracket) {
+                AccountsReceivableAgingBracket::Current => -5,
+                AccountsReceivableAgingBracket::OneToFifteen => 10,
+                AccountsReceivableAgingBracket::SixteenToThirty => 20,
+                AccountsReceivableAgingBracket::ThirtyOneToSixty => 45,
+                AccountsReceivableAgingBracket::SixtyOneToNinety => 75,
+                AccountsReceivableAgingBracket::NinetyPlus => 120,
+            };
+
+            $accountsReceivable->forceFill(['due_at' => now()->subDays($daysPastDue)])->save();
+        });
     }
 
     /**

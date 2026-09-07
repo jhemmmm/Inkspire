@@ -11,4 +11,5 @@ enum PaymentStatus: string
     case CreditPendingApproval = 'credit_pending_approval';
     case OnCredit = 'on_credit';
     case CreditRejected = 'credit_rejected';
+    case WrittenOff = 'written_off';
 }

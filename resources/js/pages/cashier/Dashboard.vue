@@ -184,6 +184,8 @@ function paymentStatusLabel(status: string): string {
             return 'On Credit';
         case 'credit_rejected':
             return 'Credit Rejected';
+        case 'written_off':
+            return 'Written Off';
         default:
             return status;
     }
@@ -330,6 +332,17 @@ function paymentStatusLabel(status: string): string {
                                     'credit_rejected'
                                 "
                                 variant="destructive"
+                            >
+                                {{
+                                    paymentStatusLabel(jobOrder.payment_status)
+                                }}
+                            </Badge>
+                            <Badge
+                                v-else-if="
+                                    jobOrder.payment_status === 'written_off'
+                                "
+                                variant="outline"
+                                class="text-muted-foreground"
                             >
                                 {{
                                     paymentStatusLabel(jobOrder.payment_status)
