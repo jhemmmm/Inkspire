@@ -5,6 +5,7 @@ use App\Enums\PaymentStatus;
 use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
 use App\Models\PricingEntry;
+use App\Models\SystemConfiguration;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 
@@ -32,6 +33,33 @@ test('an owner approving an OnCredit request flips the receivable active and the
     expect($accountsReceivable->fresh()->approved_by)->toBe($owner->id);
     expect($accountsReceivable->fresh()->approved_at)->not->toBeNull();
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::OnCredit);
+});
+
+test('approving an OnCredit request stamps due_at from credit_term_days (D-02)', function () {
+    $owner = User::factory()->owner()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::CreditPendingApproval->value]);
+    $accountsReceivable = AccountsReceivable::factory()->for($jobOrder)->create(['balance' => 1000]);
+
+    $this->actingAs($owner)->patch(route('owner.credit-requests.approve', $accountsReceivable));
+
+    $fresh = $accountsReceivable->fresh();
+    expect($fresh->due_at)->not->toBeNull();
+    expect($fresh->due_at->diffInSeconds($fresh->approved_at->copy()->addDays(30)))->toBeLessThan(1);
+});
+
+test('changing credit_term_days after approval does not retroactively change an already-approved due_at (Pitfall 6)', function () {
+    $owner = User::factory()->owner()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::CreditPendingApproval->value]);
+    $accountsReceivable = AccountsReceivable::factory()->for($jobOrder)->create(['balance' => 1000]);
+
+    $this->actingAs($owner)->patch(route('owner.credit-requests.approve', $accountsReceivable));
+
+    $dueAtBefore = $accountsReceivable->fresh()->due_at;
+
+    SystemConfiguration::query()->where('key', 'credit_term_days')->update(['value' => 60]);
+    SystemConfiguration::invalidate('credit_term_days');
+
+    expect($accountsReceivable->fresh()->due_at->equalTo($dueAtBefore))->toBeTrue();
 });
 
 test('an owner rejecting an OnCredit request flips both to their rejected states with no other job order field touched', function () {
