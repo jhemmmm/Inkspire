@@ -140,3 +140,7 @@ None - no external service configuration required.
 ---
 *Phase: 07-accounts-receivable*
 *Completed: 2026-09-08*
+
+## Self-Check: PASSED
+
+All 11 claimed files verified present on disk; all 3 claimed commit hashes (`7000166`, `2b0645f`, `2b10f82`) verified present in `git log --oneline --all`.
