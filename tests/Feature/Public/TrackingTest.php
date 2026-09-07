@@ -65,6 +65,36 @@ test('an order with released_at set shows Completed regardless of status', funct
         ->where('result.stage', 'Completed'));
 });
 
+test('a cancelled job order reports Cancelled, not its production stage', function () {
+    // CancellationController::store() leaves `status` untouched on purpose,
+    // so a cancelled order sits at its last production status forever.
+    $jobOrder = JobOrder::factory()->create([
+        'number' => 'JO-2026-0005',
+        'status' => JobOrderStatus::Printing->value,
+    ]);
+    $jobOrder->forceFill(['cancelled_at' => now()])->save();
+
+    $response = $this->get(route('public.tracking.show', ['number' => $jobOrder->number]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('result.found', true)
+        ->where('result.stage', 'Cancelled'));
+});
+
+test('a cancelled job order reports Cancelled even when it was already released', function () {
+    $jobOrder = JobOrder::factory()->create([
+        'number' => 'JO-2026-0006',
+        'status' => JobOrderStatus::ReadyForPickup->value,
+    ]);
+    $jobOrder->forceFill(['released_at' => now(), 'cancelled_at' => now()])->save();
+
+    $response = $this->get(route('public.tracking.show', ['number' => $jobOrder->number]));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('result.stage', 'Cancelled'));
+});
+
 test('looking up a non-existent job order number returns a not-found result', function () {
     $response = $this->get(route('public.tracking.show', ['number' => 'JO-2026-9999']));
 

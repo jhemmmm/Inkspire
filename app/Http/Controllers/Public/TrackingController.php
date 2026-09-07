@@ -15,7 +15,7 @@ class TrackingController extends Controller
      * Show the public, unauthenticated job-order tracking page (TRACK-01).
      *
      * Security boundary (D-02, T-06-03-01): the column list on the query
-     * (`['number', 'status', 'released_at']`) and the response shape
+     * (`['number', 'status', 'released_at', 'cancelled_at']`) and the response shape
      * (`['found', 'number', 'stage']`) are the only things standing between
      * this route and a PII/pricing/payment leak — never widen the query to
      * a full model, never eager-load a relation. One level stricter than
@@ -32,7 +32,7 @@ class TrackingController extends Controller
 
         $jobOrder = JobOrder::query()
             ->where('number', $number)
-            ->first(['number', 'status', 'released_at']);
+            ->first(['number', 'status', 'released_at', 'cancelled_at']);
 
         if ($jobOrder === null) {
             return Inertia::render('public/Tracking', [
@@ -50,13 +50,25 @@ class TrackingController extends Controller
     }
 
     /**
-     * Map a job order's internal status (and released state) to the public,
-     * customer-facing stage label (D-02, 06-UI-SPEC.md §5). Every
-     * pre-production status collapses into "In Progress" so the public page
-     * never leaks an internal validation-failure or design-review state.
+     * Map a job order's internal status (and released/cancelled state) to
+     * the public, customer-facing stage label (D-02, 06-UI-SPEC.md §5).
+     * Every pre-production status collapses into "In Progress" so the
+     * public page never leaks an internal validation-failure or
+     * design-review state.
+     *
+     * cancelled_at is consulted first and outranks everything else:
+     * CancellationController::store() deliberately leaves `status`
+     * untouched (cancelled_at is the authoritative "no longer actionable"
+     * signal) and permits cancelling from all four production statuses, so
+     * a cancelled order would otherwise keep telling the customer it is
+     * "Printing" while the page polls that answer forever.
      */
     private function publicStage(JobOrder $jobOrder): string
     {
+        if ($jobOrder->cancelled_at !== null) {
+            return 'Cancelled';
+        }
+
         if ($jobOrder->released_at !== null) {
             return 'Completed';
         }
