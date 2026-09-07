@@ -3,6 +3,7 @@
 use App\Enums\JobOrderStatus;
 use App\Models\Customer;
 use App\Models\JobOrder;
+use App\Models\ProductionLog;
 use App\Models\QueueEntry;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -115,6 +116,57 @@ test('replace-file on a type b job order returns a 422', function () {
     ]);
 
     $response->assertStatus(422);
+});
+
+test('replace-file on a job order that already entered production is rejected and mutates nothing', function (JobOrderStatus $status) {
+    Storage::fake('local');
+
+    $staff = User::factory()->frontlineStaff()->create();
+    $jobOrder = JobOrder::factory()->typeA()->create();
+    $jobOrder->forceFill(['status' => $status->value])->save();
+
+    $response = $this->actingAs($staff)->post(route('frontline-staff.job-orders.replace-file', $jobOrder), [
+        'file' => UploadedFile::fake()->create('design.pdf', 500),
+    ]);
+
+    $response->assertStatus(422);
+    expect($jobOrder->fresh()->status)->toBe($status);
+    expect(ProductionLog::query()->where('job_order_id', $jobOrder->id)->count())->toBe(0);
+})->with([
+    JobOrderStatus::ForProduction,
+    JobOrderStatus::Printing,
+    JobOrderStatus::QualityCheck,
+    JobOrderStatus::ReadyForPickup,
+]);
+
+test('replace-file on a released job order is rejected', function () {
+    Storage::fake('local');
+
+    $staff = User::factory()->frontlineStaff()->create();
+    $jobOrder = JobOrder::factory()->typeA()->validationFailed()->create();
+    $jobOrder->forceFill(['released_at' => now()])->save();
+
+    $response = $this->actingAs($staff)->post(route('frontline-staff.job-orders.replace-file', $jobOrder), [
+        'file' => UploadedFile::fake()->create('design.pdf', 500),
+    ]);
+
+    $response->assertStatus(422);
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ValidationFailed);
+});
+
+test('replace-file on a cancelled job order is rejected', function () {
+    Storage::fake('local');
+
+    $staff = User::factory()->frontlineStaff()->create();
+    $jobOrder = JobOrder::factory()->typeA()->validationFailed()->create();
+    $jobOrder->forceFill(['cancelled_at' => now()])->save();
+
+    $response = $this->actingAs($staff)->post(route('frontline-staff.job-orders.replace-file', $jobOrder), [
+        'file' => UploadedFile::fake()->create('design.pdf', 500),
+    ]);
+
+    $response->assertStatus(422);
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ValidationFailed);
 });
 
 test('a non frontline staff role is forbidden from the replace-file route', function () {
