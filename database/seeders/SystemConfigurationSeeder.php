@@ -116,6 +116,14 @@ class SystemConfigurationSeeder extends Seeder
                 'label' => 'Cancellation fee (flat ₱)',
                 'description' => null,
             ],
+            [
+                'key' => 'credit_term_days',
+                'group' => 'business_rules',
+                'value' => 30,
+                'type' => 'integer',
+                'label' => 'Credit term (days)',
+                'description' => 'Days after Owner approval before an On-Credit balance is considered due (D-02).',
+            ],
 
             // File Handling
             [
