@@ -123,3 +123,7 @@ None — no external service configuration required. `resend/resend-php` was alr
 ---
 *Phase: 07-accounts-receivable*
 *Completed: 2026-09-08*
+
+## Self-Check: PASSED
+
+All 7 claimed files verified present on disk; all 3 claimed commit hashes (`7e11d31`, `cadc035`, `865c3a4`) verified present in `git log --oneline --all`.
