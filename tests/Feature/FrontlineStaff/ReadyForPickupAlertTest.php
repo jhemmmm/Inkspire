@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\JobOrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\JobOrder;
+use App\Models\ProductionLog;
 use App\Models\User;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +29,81 @@ test('the frontline dashboard shows every job order ready for pickup', function 
         ->where('readyForPickup.0.queue_entry_id', $jobOrder->queue_entry_id)
         ->has('readyForPickup.0.updated_at')
         ->where('readyForPickup.0.queue_entry.customer.name', $jobOrder->queueEntry->customer->name));
+});
+
+test('ready since and the dashboard ordering come from the logged ready_for_pickup transition, not updated_at', function () {
+    $staff = User::factory()->frontlineStaff()->create();
+
+    $waitingLongest = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    ProductionLog::factory()->for($waitingLongest)->create([
+        'from_status' => JobOrderStatus::QualityCheck->value,
+        'to_status' => JobOrderStatus::ReadyForPickup->value,
+        'created_at' => now()->subHours(2),
+    ]);
+
+    $waitingBriefly = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    ProductionLog::factory()->for($waitingBriefly)->create([
+        'from_status' => JobOrderStatus::QualityCheck->value,
+        'to_status' => JobOrderStatus::ReadyForPickup->value,
+        'created_at' => now()->subMinutes(10),
+    ]);
+
+    // An unrelated write — taking payment at the counter — bumps
+    // updated_at on the order that has actually been on the shelf longest,
+    // inverting the updated_at ordering relative to the real one.
+    JobOrder::withoutTimestamps(fn () => $waitingBriefly->forceFill(['updated_at' => now()->subHour()])->save());
+    $waitingLongest->forceFill(['payment_status' => PaymentStatus::Paid->value])->save();
+
+    $response = $this->actingAs($staff)->get(route('frontline-staff.dashboard'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->has('readyForPickup', 2)
+        ->where('readyForPickup.0.id', $waitingLongest->id)
+        ->where('readyForPickup.1.id', $waitingBriefly->id)
+        ->has('readyForPickup.0.ready_at'));
+});
+
+test('the ready_at aggregate does not widen the dashboard payload beyond its column list', function () {
+    // withAggregate() falls back to selecting job_orders.* when no columns
+    // are set before it runs, which would silently expose pricing data.
+    $staff = User::factory()->frontlineStaff()->create();
+    JobOrder::factory()->create([
+        'status' => JobOrderStatus::ReadyForPickup->value,
+        'total_amount' => 1234.56,
+    ]);
+
+    $response = $this->actingAs($staff)->get(route('frontline-staff.dashboard'));
+
+    $response->assertOk();
+    $content = $response->getContent();
+    expect($content)->not->toContain('total_amount');
+    expect($content)->not->toContain('base_price_snapshot');
+});
+
+test('the queue page summary orders by the logged ready_for_pickup transition, not updated_at', function () {
+    $staff = User::factory()->frontlineStaff()->create();
+
+    $waitingLongest = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    ProductionLog::factory()->for($waitingLongest)->create([
+        'to_status' => JobOrderStatus::ReadyForPickup->value,
+        'created_at' => now()->subHours(2),
+    ]);
+
+    $waitingBriefly = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    ProductionLog::factory()->for($waitingBriefly)->create([
+        'to_status' => JobOrderStatus::ReadyForPickup->value,
+        'created_at' => now()->subMinutes(10),
+    ]);
+
+    JobOrder::withoutTimestamps(fn () => $waitingBriefly->forceFill(['updated_at' => now()->subHour()])->save());
+    $waitingLongest->forceFill(['payment_status' => PaymentStatus::Paid->value])->save();
+
+    $response = $this->actingAs($staff)->get(route('frontline-staff.queue-entries.index'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('readyForPickup.items.0.number', $waitingLongest->number)
+        ->where('readyForPickup.items.1.number', $waitingBriefly->number));
 });
 
 test('a released job order does not appear on the dashboard', function () {

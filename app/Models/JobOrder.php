@@ -48,6 +48,9 @@ use Illuminate\Support\Facades\DB;
  *                                   when eager-loaded via withSum() (Cashier Dashboard listing, D-04/D-05).
  * @property bool|null $is_rush Not a persisted column — only present when
  *                              computed by ProductionBoardController::index() (PROD-01, D-05, D-07).
+ * @property Carbon|null $ready_at Not a persisted column — only present when
+ *                                 eager-loaded via withMax() over productionLogs (PROD-03, D-13);
+ *                                 the moment this job order last reached ready_for_pickup.
  */
 #[Fillable(['number', 'queue_entry_id', 'description', 'type', 'status', 'file_path', 'consultation_notes'])]
 #[ObservedBy(AuditObserver::class)]
@@ -78,6 +81,11 @@ class JobOrder extends Model
             'cancelled_at' => 'datetime',
             'released_at' => 'datetime',
             'due_at' => 'datetime',
+            // Not a column — only present when eager-loaded via withMax()
+            // over productionLogs. Casting it here is what makes it
+            // serialize as ISO-8601 to the frontend rather than a raw
+            // aggregate string.
+            'ready_at' => 'datetime',
         ];
     }
 

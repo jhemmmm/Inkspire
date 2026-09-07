@@ -14,6 +14,7 @@ use App\Http\Requests\FrontlineStaff\StoreQueueEntryRequest;
 use App\Http\Requests\FrontlineStaff\UpdateQueueEntryStatusRequest;
 use App\Models\JobOrder;
 use App\Models\QueueEntry;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -43,6 +44,12 @@ class QueueEntryController extends Controller
      * release landing between a separate count() and get() yielded
      * `count: 1, items: []`, which the banner rendered as an empty
      * subject ("1 job order ready for pickup /  is waiting on the shelf.").
+     *
+     * Oldest-first is measured from the production_logs row that recorded
+     * the ready_for_pickup transition, not from `updated_at` — which any
+     * unrelated write to the job order resets, silently dropping the
+     * longest-waiting order out of the two shown here (mirrors
+     * FrontlineStaff\DashboardController::index()).
      */
     public function index(Request $request): Response
     {
@@ -50,8 +57,14 @@ class QueueEntryController extends Controller
             ->where('status', JobOrderStatus::ReadyForPickup->value)
             ->whereNull('released_at')
             ->whereNull('cancelled_at')
-            ->oldest('updated_at')
-            ->get(['id', 'number']);
+            ->select(['id', 'number', 'updated_at'])
+            ->withMax(
+                ['productionLogs as ready_at' => fn (Builder $query) => $query->where('to_status', JobOrderStatus::ReadyForPickup->value)],
+                'created_at',
+            )
+            ->get()
+            ->sortBy(fn (JobOrder $jobOrder) => $jobOrder->ready_at ?? $jobOrder->updated_at)
+            ->values();
 
         return Inertia::render('frontline-staff/QueueList', [
             'queueEntries' => QueueEntry::query()

@@ -22,6 +22,11 @@ interface ReadyForPickupJobOrder {
     payment_status: string;
     queue_entry_id: number;
     updated_at: string;
+    // The production_logs row that recorded the ready_for_pickup
+    // transition. Null only for job orders that reached the stage without
+    // a logged transition (legacy/seeded rows), which fall back to
+    // updated_at.
+    ready_at: string | null;
     queue_entry: { customer: { name: string } };
 }
 
@@ -82,7 +87,9 @@ function paymentStatusLabel(status: string): string {
 
 /**
  * "Ready Since" cell copy (Copywriting Contract): "12 minutes ago" /
- * "2 hours ago" / "Yesterday, 4:30 PM".
+ * "2 hours ago" / "Yesterday, 4:30 PM". Measured from ready_at (the
+ * logged ready_for_pickup transition), never from updated_at, which any
+ * unrelated write to the job order resets.
  */
 function timeAgo(isoString: string): string {
     const then = new Date(isoString);
@@ -189,7 +196,7 @@ function timeAgo(isoString: string): string {
                         </TableCell>
                         <TableCell>{{ jobOrder.description }}</TableCell>
                         <TableCell>
-                            {{ timeAgo(jobOrder.updated_at) }}
+                            {{ timeAgo(jobOrder.ready_at ?? jobOrder.updated_at) }}
                         </TableCell>
                         <TableCell>
                             <Badge
