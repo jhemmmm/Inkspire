@@ -3,6 +3,7 @@
 use App\Enums\JobOrderStatus;
 use App\Models\JobOrder;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('the board lists a job order on a production stage with the required fields', function () {
@@ -28,7 +29,7 @@ test('the board lists a job order on a production stage with the required fields
         ->where('jobOrders.0.is_rush', false));
 });
 
-test('a job order due today or earlier is flagged rush', function (\Closure $dueAt) {
+test('a job order due today or earlier is flagged rush', function (Closure $dueAt) {
     $staff = User::factory()->productionStaff()->create();
     $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value]);
     $jobOrder->forceFill(['due_at' => $dueAt()])->save();
@@ -52,6 +53,38 @@ test('a job order due strictly after today is not flagged rush', function () {
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('jobOrders.0.is_rush', false));
+});
+
+test('rush is scoped to the Asia/Manila business day, not the UTC one', function () {
+    // 02:00 UTC is 10:00 the same day in Manila. The Manila business day
+    // ends at 15:59:59 UTC; the UTC day runs eight hours longer, so a job
+    // order due 07:00 tomorrow Manila (23:00 today UTC) falls inside the
+    // UTC day but outside the business day it is actually due on.
+    $this->travelTo(Carbon::parse('2026-09-05 02:00:00', 'UTC'));
+
+    $staff = User::factory()->productionStaff()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value]);
+    // ->utc() matters: Eloquent's datetime cast stores the wall-clock of
+    // whatever timezone the Carbon instance carries, without converting.
+    $jobOrder->forceFill(['due_at' => Carbon::parse('2026-09-06 07:00:00', 'Asia/Manila')->utc()])->save();
+
+    $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('jobOrders.0.is_rush', false));
+});
+
+test('a job order due at the very end of the Manila business day is flagged rush', function () {
+    $this->travelTo(Carbon::parse('2026-09-05 02:00:00', 'UTC'));
+
+    $staff = User::factory()->productionStaff()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value]);
+    $jobOrder->forceFill(['due_at' => Carbon::parse('2026-09-05 23:00:00', 'Asia/Manila')->utc()])->save();
+
+    $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('jobOrders.0.is_rush', true));
 });
 
 test('a job order with no due_at is not flagged rush', function () {
