@@ -101,7 +101,10 @@ function checkAnother(): void {
                 </template>
 
                 <template v-else>
-                    <div v-if="result?.found === false" class="flex flex-col gap-4">
+                    <div
+                        v-if="result?.found === false"
+                        class="flex flex-col gap-4"
+                    >
                         <Alert variant="destructive">
                             <AlertCircle class="size-4" />
                             <AlertTitle>
@@ -114,13 +117,15 @@ function checkAnother(): void {
                         </Alert>
                     </div>
 
-                    <div v-else class="flex flex-col items-center gap-2 text-center">
+                    <div
+                        v-else
+                        class="flex flex-col items-center gap-2 text-center"
+                    >
                         <h1 class="text-[28px] leading-[1.2] font-semibold">
                             Track Your Order
                         </h1>
                         <p class="text-muted-foreground text-sm">
-                            Enter the job order number printed on your
-                            receipt.
+                            Enter the job order number printed on your receipt.
                         </p>
                     </div>
 

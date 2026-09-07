@@ -196,7 +196,11 @@ function timeAgo(isoString: string): string {
                         </TableCell>
                         <TableCell>{{ jobOrder.description }}</TableCell>
                         <TableCell>
-                            {{ timeAgo(jobOrder.ready_at ?? jobOrder.updated_at) }}
+                            {{
+                                timeAgo(
+                                    jobOrder.ready_at ?? jobOrder.updated_at,
+                                )
+                            }}
                         </TableCell>
                         <TableCell>
                             <Badge
