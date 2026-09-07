@@ -31,11 +31,37 @@ test('invoking EnterProduction sets ForProduction, stamps due_at from default_sl
     expect($log->recorded_by)->toBeNull();
 });
 
+test('invoking EnterProduction twice writes only one production_logs row and does not reset due_at', function () {
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForProduction->value]);
+
+    (new EnterProduction)($jobOrder);
+    $firstDueAt = $jobOrder->refresh()->due_at;
+
+    $this->travel(2)->days();
+    (new EnterProduction)($jobOrder);
+
+    $jobOrder->refresh();
+    expect(ProductionLog::where('job_order_id', $jobOrder->id)->count())->toBe(1);
+    expect($jobOrder->due_at->equalTo($firstDueAt))->toBeTrue();
+});
+
+test('EnterProduction never re-enters a cancelled or released job order', function (string $stampedColumn) {
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForProduction->value]);
+    $jobOrder->forceFill([$stampedColumn => now()])->save();
+
+    (new EnterProduction)($jobOrder);
+
+    $jobOrder->refresh();
+    expect($jobOrder->status)->toBe(JobOrderStatus::ReadyForProduction);
+    expect($jobOrder->due_at)->toBeNull();
+    expect(ProductionLog::where('job_order_id', $jobOrder->id)->count())->toBe(0);
+})->with(['cancelled_at', 'released_at']);
+
 test('a type a addJobOrder post with a valid file redirects successfully and lands the job order at ForProduction', function () {
     Storage::fake('local');
 
     $staff = User::factory()->frontlineStaff()->create();
-    $queueEntry = \App\Models\QueueEntry::factory()->create();
+    $queueEntry = QueueEntry::factory()->create();
 
     $response = $this->actingAs($staff)->post(route('frontline-staff.queue-entries.job-orders.store', $queueEntry), [
         'description' => 'Tarpaulin, 3x5ft',
@@ -93,7 +119,7 @@ test('a type a job order whose file fails validation stays at ValidationFailed a
     Storage::fake('local');
 
     $staff = User::factory()->frontlineStaff()->create();
-    $queueEntry = \App\Models\QueueEntry::factory()->create();
+    $queueEntry = QueueEntry::factory()->create();
 
     $this->actingAs($staff)->post(route('frontline-staff.queue-entries.job-orders.store', $queueEntry), [
         'description' => 'Tarpaulin, 3x5ft',
