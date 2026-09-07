@@ -16,6 +16,11 @@ class PerformanceReportController extends Controller
      * Show the Artist's own performance report (JOB-10): jobs completed,
      * average revisions per job, and SLA adherence over a selectable date
      * range, scoped to this artist's own design_approved job orders (D-16).
+     *
+     * Cancelled job orders are excluded: CancellationController leaves
+     * `status` untouched and permits cancelling from all four production
+     * statuses, so without this a cancelled job would keep inflating both
+     * jobsCompleted and slaAdherence.
      */
     public function index(PerformanceReportFilterRequest $request): Response
     {
@@ -24,6 +29,7 @@ class PerformanceReportController extends Controller
 
         $completed = JobOrder::query()
             ->where('assigned_artist_id', $request->user()->id)
+            ->whereNull('cancelled_at')
             ->whereIn('status', [
                 JobOrderStatus::DesignApproved->value,
                 JobOrderStatus::ForProduction->value,

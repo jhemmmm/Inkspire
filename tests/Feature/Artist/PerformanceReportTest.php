@@ -33,6 +33,25 @@ test('counts a design_approved job order with an approved revision log as comple
         ->where('stats.jobsCompleted', 1));
 });
 
+test('excludes a cancelled job order from jobsCompleted', function (JobOrderStatus $status) {
+    // CancellationController leaves `status` untouched and permits
+    // cancelling from all four production statuses, so a cancelled job
+    // would otherwise still count towards jobsCompleted and slaAdherence.
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => $status->value]);
+    RevisionLog::factory()->for($jobOrder)->approved()->create();
+    $jobOrder->forceFill(['cancelled_at' => now()])->save();
+
+    $response = $this->actingAs($artist)->get(route('artist.performance-report.index'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('stats.jobsCompleted', 0)
+        ->where('stats.slaAdherence', 0));
+})->with([
+    JobOrderStatus::DesignApproved,
+    JobOrderStatus::Printing,
+]);
+
 test('excludes a completed job order whose approved reviewed_at falls outside the requested from/to range', function () {
     $artist = User::factory()->artist()->create();
     $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'design_approved']);
