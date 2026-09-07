@@ -179,11 +179,23 @@ function dueDateLabel(dueAt: string | null): string {
 }
 
 function dueSubLine(row: AccountsReceivableRow): string {
-    if (row.days_past_due === null) {
+    if (row.days_past_due !== null) {
+        return `${row.days_past_due} day${row.days_past_due === 1 ? '' : 's'} past due`;
+    }
+
+    if (!row.due_at) {
         return '';
     }
 
-    return `${row.days_past_due} day${row.days_past_due === 1 ? '' : 's'} past due`;
+    const daysUntilDue = Math.ceil(
+        (new Date(row.due_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    );
+
+    if (daysUntilDue <= 0) {
+        return '';
+    }
+
+    return `Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`;
 }
 </script>
 
