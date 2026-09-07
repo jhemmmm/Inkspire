@@ -277,7 +277,25 @@ Plans:
   3. Accounting Staff can update an AR entry's collection status and generate a printable collection letter
   4. Owner can approve a write-off of an AR balance
 
-**Plans**: TBD
+**Plans**: 5 plans in 4 waves
+Plans:
+**Wave 1**
+
+- [ ] 07-01-PLAN.md — Foundation: Aging & Collection Schema Substrate (substrate for AR-01, AR-02, AR-03, AR-04; closes the due_at stamping gap in CreditApprovalController)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 07-02-PLAN.md — Aging List & Entry Detail (AR-01)
+- [ ] 07-03-PLAN.md — Escalating Reminder Command (AR-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 07-04-PLAN.md — Collection Status & Printable Collection Letter (AR-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 07-05-PLAN.md — Write-Off Request & Owner Approval (AR-04)
+
 **UI hint**: yes
 
 ### Phase 8: Expenses & Reporting
