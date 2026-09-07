@@ -281,7 +281,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 07-01-PLAN.md — Foundation: Aging & Collection Schema Substrate (substrate for AR-01, AR-02, AR-03, AR-04; closes the due_at stamping gap in CreditApprovalController)
+- [x] 07-01-PLAN.md — Foundation: Aging & Collection Schema Substrate (substrate for AR-01, AR-02, AR-03, AR-04; closes the due_at stamping gap in CreditApprovalController)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -326,5 +326,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
-| 7. Accounts Receivable | 0/TBD | Not started | - |
+| 7. Accounts Receivable | 1/5 | In Progress|  |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
