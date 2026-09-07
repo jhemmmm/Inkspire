@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { Head, setLayoutProps } from '@inertiajs/vue3';
+import { Form, Head, Link, setLayoutProps } from '@inertiajs/vue3';
+import { Printer } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import CollectionStatusController from '@/actions/App/Http/Controllers/AccountingStaff/CollectionStatusController';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
 import { index as accountsReceivableIndex, show } from '@/routes/accounting-staff/accounts-receivable';
+import { show as collectionLetterShow } from '@/routes/accounting-staff/accounts-receivable/collection-letter';
 
 interface AccountsReceivableDetail {
     id: number;
@@ -125,6 +131,14 @@ function dateLabel(value: string | null): string {
         year: 'numeric',
     });
 }
+
+const HUMAN_SETTABLE_STATUSES = ['pending', 'follow_up', 'warning_sent', 'collections'] as const;
+
+const isTerminal = computed(
+    () => props.accountsReceivable.collection_status === 'paid' || props.accountsReceivable.collection_status === 'written_off',
+);
+
+const selectedCollectionStatus = ref<string>(props.accountsReceivable.collection_status);
 </script>
 
 <template>
@@ -224,7 +238,69 @@ function dateLabel(value: string | null): string {
             </CardContent>
         </Card>
 
-        <!-- Collection Status panel: added by 07-04 -->
+        <Card>
+            <CardHeader>
+                <CardTitle>Collection Status</CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+                <template v-if="isTerminal">
+                    <p class="text-muted-foreground text-sm">
+                        This entry is closed ({{ COLLECTION_STATUS_LABELS[accountsReceivable.collection_status] ?? accountsReceivable.collection_status }}). Its collection status is set by the system and can't be changed.
+                    </p>
+                </template>
+                <template v-else>
+                    <Form
+                        v-bind="CollectionStatusController.update.form(accountsReceivable.id)"
+                        :options="{ preserveScroll: true }"
+                        class="flex flex-col gap-2"
+                        v-slot="{ processing }"
+                    >
+                        <input type="hidden" name="collection_status" :value="selectedCollectionStatus" />
+                        <div class="flex items-center gap-2">
+                            <Select v-model="selectedCollectionStatus">
+                                <SelectTrigger id="collection-status-select" class="w-56">
+                                    <SelectValue placeholder="Select a status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem v-for="status in HUMAN_SETTABLE_STATUSES" :key="status" :value="status">
+                                        {{ COLLECTION_STATUS_LABELS[status] }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button type="submit" :disabled="processing">
+                                Update Status
+                            </Button>
+                        </div>
+                    </Form>
+                    <p class="text-muted-foreground text-sm">
+                        Record where this account stands. This does not stop
+                        reminder emails — only payment or an approved
+                        write-off does.
+                    </p>
+                </template>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Actions</CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-2">
+                <template v-if="!isTerminal && accountsReceivable.aging_bracket !== 'current'">
+                    <Button as-child variant="outline" class="w-fit">
+                        <Link :href="collectionLetterShow.url(accountsReceivable.id)">
+                            <Printer class="size-4" />
+                            Print Collection Letter
+                        </Link>
+                    </Button>
+                </template>
+                <p v-else-if="!isTerminal" class="text-muted-foreground text-sm">
+                    A collection letter becomes available once this balance is
+                    past due.
+                </p>
+            </CardContent>
+        </Card>
+
         <!-- Write-off actions: added by 07-05 -->
     </div>
 </template>

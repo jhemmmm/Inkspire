@@ -45,4 +45,27 @@ enum AccountsReceivableAgingBracket: string
     {
         return [self::OneToFifteen, self::SixteenToThirty, self::ThirtyOneToSixty, self::NinetyPlus];
     }
+
+    /**
+     * The collection letter body copied for this bracket (D-12), literal
+     * `07-UI-SPEC.md` Copywriting Contract text -- `{due date}` and `{n}`
+     * remain as literal placeholder tokens for the printable letter page to
+     * interpolate at render time. `SixtyOneToNinety` and `NinetyPlus` share
+     * the same final-notice body, per D-12. Never persisted anywhere.
+     *
+     * `Current` is unreachable in practice -- `CollectionLetterController`
+     * guards against ever calling this on a not-yet-due entry -- but the
+     * `match` must still be exhaustive, so it throws rather than silently
+     * returning an empty string for what would be a controller bug.
+     */
+    public function letterBody(): string
+    {
+        return match ($this) {
+            self::Current => throw new \LogicException('A Current entry has no collection letter body.'),
+            self::OneToFifteen => 'This is a friendly reminder that the balance below became due on {due date} and is still open as of today. If you have already sent your payment, thank you — please disregard this notice. Otherwise, we would appreciate settlement at your earliest convenience.',
+            self::SixteenToThirty => 'Our records show the balance below has been outstanding for {n} days past its due date of {due date}. We ask that you settle this amount within seven (7) days of this notice. If there is a problem with this account, please contact us so we can work it out with you.',
+            self::ThirtyOneToSixty => 'The balance below is now {n} days past its due date of {due date}. We are formally requesting full settlement within seven (7) days of this notice. Continued non-payment will affect your eligibility for credit terms with us on future orders.',
+            self::SixtyOneToNinety, self::NinetyPlus => 'This is a final notice. The balance below is {n} days past its due date of {due date} and remains unsettled despite our earlier reminders. Please settle it in full within seven (7) days of this notice. If we do not hear from you, this account will be endorsed for collection and may be written off as a loss, which ends your credit terms with us.',
+        };
+    }
 }
