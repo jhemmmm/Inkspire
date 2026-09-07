@@ -92,7 +92,9 @@ function printReceipt(): void {
             <CardContent class="grid gap-4">
                 <div class="flex items-center justify-between">
                     <span class="font-semibold">Job Order No.</span>
-                    <span class="tabular-nums">{{ jobOrder.number ?? '—' }}</span>
+                    <span class="tabular-nums">{{
+                        jobOrder.number ?? '—'
+                    }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span class="font-semibold">Job Order</span>
@@ -157,7 +159,17 @@ function printReceipt(): void {
                     </div>
                 </div>
 
-                <div class="flex flex-col items-center gap-2 border-t pt-4">
+                <!--
+                    `number` is nullable, and route() drops the query string
+                    entirely for a null parameter, so trackingUrl degrades to
+                    a bare /track lookup form and the fallback line renders
+                    "and enter " with nothing after it. Hide the whole block
+                    rather than print a dead QR code.
+                -->
+                <div
+                    v-if="jobOrder.number"
+                    class="flex flex-col items-center gap-2 border-t pt-4"
+                >
                     <TrackingQrCode :tracking-url="trackingUrl" />
                     <p class="text-muted-foreground text-sm">
                         Scan to track your order

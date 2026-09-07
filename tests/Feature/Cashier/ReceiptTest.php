@@ -44,6 +44,33 @@ test('a cashier viewing the receipt for a job order with zero transactions gets 
     $response->assertNotFound();
 });
 
+test('a job order with no number yields a bare tracking URL, which is why the receipt hides the QR block entirely', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create([
+        'total_amount' => 500,
+        'payment_status' => 'paid',
+    ]);
+    $jobOrder->forceFill(['number' => null])->save();
+    Transaction::factory()->create([
+        'job_order_id' => $jobOrder->id,
+        'payment_method' => 'cash',
+        'amount' => 500,
+        'status' => 'completed',
+        'recorded_by' => $cashier->id,
+    ]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.job-orders.receipt.show', $jobOrder));
+
+    $response->assertOk();
+    // route() drops the query string entirely for a null parameter, so the
+    // QR would encode a bare lookup form and the fallback line would read
+    // "Or visit http://host/track and enter " with nothing after it.
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('cashier/Receipt')
+        ->where('jobOrder.number', null)
+        ->where('trackingUrl', fn ($url) => ! str_contains($url, 'number=')));
+});
+
 test('the receipt includes the job order number and a tracking URL deep-linking to it', function () {
     $cashier = User::factory()->cashier()->create();
     $jobOrder = JobOrder::factory()->readyForProduction()->create([
