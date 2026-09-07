@@ -141,6 +141,27 @@ test('a cancelled job order rejects send back regardless of its status', functio
     expect(ProductionLog::query()->where('job_order_id', $jobOrder->id)->count())->toBe(0);
 });
 
+test('a released job order rejects advance and send back so it can never become a board-invisible zombie', function () {
+    $staff = User::factory()->productionStaff()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    $jobOrder->forceFill(['released_at' => now()])->save();
+
+    $this->actingAs($staff)
+        ->patch(route('production-staff.job-orders.advance', $jobOrder))
+        ->assertStatus(422);
+
+    $this->actingAs($staff)
+        ->patch(route('production-staff.job-orders.send-back', $jobOrder), ['reason' => 'Customer returned it'])
+        ->assertStatus(422);
+
+    // Sending a released order back would leave released_at populated while
+    // status regressed: hidden from the Production Board, the Frontline
+    // Dashboard, and the QueueList summary (all whereNull('released_at')),
+    // while /track keeps reporting "Completed" to the customer.
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ReadyForPickup);
+    expect(ProductionLog::query()->where('job_order_id', $jobOrder->id)->count())->toBe(0);
+});
+
 test('a non-production-staff role is forbidden from advancing or sending back', function () {
     $staff = User::factory()->frontlineStaff()->create();
     $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);

@@ -58,6 +58,7 @@ class ProductionStageController extends Controller
     public function advance(AdvanceProductionStageRequest $request, JobOrder $jobOrder): RedirectResponse
     {
         abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
+        abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
 
         [$jobOrder, $nextStatus] = DB::transaction(function () use ($request, $jobOrder): array {
             $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
@@ -101,6 +102,7 @@ class ProductionStageController extends Controller
     public function sendBack(SendBackProductionStageRequest $request, JobOrder $jobOrder): RedirectResponse
     {
         abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
+        abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
 
         [$jobOrder, $previousStatus] = DB::transaction(function () use ($request, $jobOrder): array {
             $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
