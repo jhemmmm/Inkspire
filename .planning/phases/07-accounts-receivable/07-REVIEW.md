@@ -1,8 +1,8 @@
 ---
 phase: 07-accounts-receivable
-reviewed: 2026-09-08T16:54:12Z
+reviewed: 2026-09-08T22:34:54Z
 depth: standard
-files_reviewed: 47
+files_reviewed: 49
 files_reviewed_list:
   - app/Concerns/AccountsReceivableValidationRules.php
   - app/Console/Commands/SendAccountsReceivableReminders.php
@@ -14,6 +14,7 @@ files_reviewed_list:
   - app/Http/Controllers/AccountingStaff/CollectionStatusController.php
   - app/Http/Controllers/AccountingStaff/WriteOffRequestController.php
   - app/Http/Controllers/Cashier/CancellationController.php
+  - app/Http/Controllers/Cashier/CreditRequestController.php
   - app/Http/Controllers/Cashier/PaymentController.php
   - app/Http/Controllers/Owner/CreditApprovalController.php
   - app/Http/Controllers/Owner/WriteOffApprovalController.php
@@ -45,6 +46,7 @@ files_reviewed_list:
   - tests/Feature/AccountingStaff/WriteOffRequestTest.php
   - tests/Feature/AccountsReceivable/AgingBracketTest.php
   - tests/Feature/Cashier/CancellationFeeTest.php
+  - tests/Feature/Cashier/CreditRequestTest.php
   - tests/Feature/Cashier/RecordPaymentTest.php
   - tests/Feature/Console/SendAccountsReceivableRemindersTest.php
   - tests/Feature/Owner/CreditApprovalTest.php
@@ -52,193 +54,138 @@ files_reviewed_list:
   - tests/Unit/Mail/AccountsReceivableReminderMailableTest.php
   - tests/Unit/SystemConfigurationTest.php
 findings:
-  critical: 2
-  warning: 12
-  info: 11
-  total: 25
+  critical: 4
+  warning: 9
+  info: 6
+  total: 19
 status: issues_found
 ---
 
-# Phase 7: Code Review Report (re-review after gap-closure 07-06)
+# Phase 07: Code Review Report
 
-**Reviewed:** 2026-09-08T16:54:12Z
+**Reviewed:** 2026-09-08T22:34:54Z
 **Depth:** standard
-**Files Reviewed:** 47
+**Files Reviewed:** 49
 **Status:** issues_found
 
 ## Summary
 
-**Prior findings verified closed.** All three blockers from the previous review are genuinely fixed in the current tree, with tests:
+Reviewed the full Accounts Receivable surface: aging derivation, the daily reminder command, collection status/letters, the write-off request/approval lifecycle, and the adjacent Cashier payment/credit/cancellation writers that share the `payment_status` / `collection_status` fault line.
 
-- **CR-01 (reject erases an approved write-off)** — `WriteOffApprovalController::reject()` now aborts 422 when `collection_status === WrittenOff`, inside the locked re-read (`WriteOffApprovalController.php:128-132`). Covered by `WriteOffApprovalTest.php:117-133`.
-- **CR-02 (approved write-offs stay queued forever)** — `approve()` nulls `write_off_requested_at` in the same write (`:102`) and `index()` additionally excludes `paid`/`written_off` rows (`:29`). Covered by `WriteOffApprovalTest.php:102-115` and `:135-152`.
-- **CR-03 (written-off order can be cancelled or paid)** — `CancellationController.php:39` and `PaymentController.php:108` both abort 422 for `WrittenOff`, and `cashier/Dashboard.vue:125-130` hides the Cancel action. Covered by `CancellationFeeTest.php:147-157` and `RecordPaymentTest.php:245-259`.
+The write-off approval path (the one hardened over two prior gap-closure rounds) is now genuinely solid: locked re-reads, derived-balance authority, stale-reject protection. The defects that remain are in the **surfaces those rounds did not revisit** — the same class of stale-read and missing-terminal-state guards, just in different controllers:
 
-**Two new blockers remain in the same fault line, both about the write-off's terminality.**
+- `CollectionStatusController` is the only mutating controller in this phase with **no** locked re-read, and its guard runs against a route-model-bound row read before the request. An Owner approving a write-off concurrently is silently reversed, putting a booked loss back into open AR with reminders resuming (CR-04).
+- `CollectionLetterController` is the only AR controller with **no** terminal-`collection_status` guard, so a dunning letter can be printed for a paid or written-off account (CR-03).
+- `PaymentController` guards `paid` and `written_off` but not `credit_pending_approval`, and `CreditApprovalController::approve()` never re-derives the balance the way `WriteOffApprovalController::approve()` now does — so a fully paid job order can be flipped back to `on_credit` with a receivable posted for money already in the till (CR-01).
+- There is no UI path anywhere in the Cashier portal to record a payment against an `on_credit` job order, which means the AR lifecycle this phase builds has no settle path (CR-02).
 
-First, the CR-02 fix made the Owner's approve path depend entirely on a *denormalized* settlement flag. `approve()` re-checks `collection_status`, but nothing sets `collection_status = paid` at payment time — only the nightly `ar:send-reminders` command does (`SendAccountsReceivableReminders.php:65-69`). A Cashier taking payment on an On-Credit balance in the morning leaves the AR row reading `pending`; the Owner approving the still-queued write-off an hour later marks a **fully paid** job order `written_off` and books the settled amount as a loss. The existing "settled while pending" test fakes settlement by hand-setting `collection_status`, so it asserts the flag, not the money.
-
-Second, the CR-03 fix hardened two of the three writers of `payment_status` but missed the third: `CreditRequestController::store` (`:42-47`) has no `WrittenOff` guard. A written-off job order can therefore be put back on credit — flipping `payment_status` from `written_off` to `credit_pending_approval` and creating a *second* `AccountsReceivable` row for the same job order. `PaymentController::edit` also has no terminal guard, so the page hosting that form renders for a written-off order.
-
-Everything else from the prior review that was not in 07-06's scope is unchanged and re-listed below: the `last_reminder_sent_at` column-allowlist drop, the lossy mail-failure stamp, the missing empty-recipient guard, the `null total_amount → Paid` close, the unguarded collection letter, the non-atomic write-off request, and the five-way duplicated balance derivation. Two further orphaned-state defects introduced by the shape of the CR-02 fix are new (WR-07, WR-08).
-
-## Structural Findings (fallow)
-
-_No structural pre-pass payload was supplied for this review._
+Underneath those: the reminder command records a reminder as sent when the send threw, the derived-balance computation is copy-pasted verbatim in five files, and `total_amount` crosses the Inertia boundary as a `decimal:2` string while both Vue interfaces declare it `number`.
 
 ## Narrative Findings (AI reviewer)
 
 ## Critical Issues
 
-### CR-01: Approving a write-off can book a fully paid job order as a loss
+### CR-01: A payment taken while a credit request is pending is silently reversed to `on_credit` on approval
 
-**File:** `app/Http/Controllers/Owner/WriteOffApprovalController.php:93-104`
-**Issue:** The only settlement guard inside the locked transaction is
+**File:** `app/Http/Controllers/Cashier/PaymentController.php:108-109`, `app/Http/Controllers/Owner/CreditApprovalController.php:44-64`
 
-```php
-abort_if(in_array($accountsReceivable->collection_status, [Paid, WrittenOff], true), 422, ...);
-```
+**Issue:** `PaymentController::store()` (and `edit()`, line 37-50) guards `cancelled_at`, `status`, `PaymentStatus::Paid` and `PaymentStatus::WrittenOff` — but **not** `PaymentStatus::CreditPendingApproval`. `CreditRequestController::store()` blocks the reverse direction (line 44-48: "This job order already has a payment action pending"), so the asymmetry is clearly unintended.
 
-`collection_status` is a denormalized flag. Nothing in the payment path writes it: `PaymentController::store` (`:158-162`) sets `payment_status` and creates the `Transaction` but never touches the AR row; `ConfirmPaymentIntent` (`app/Actions/POS/ConfirmPaymentIntent.php:43-47`) likewise. The **only** writer of `collection_status = paid` is `SendAccountsReceivableReminders::processOne()` (`:65-69`), scheduled `->daily()` (`routes/console.php:12`).
+Sequence:
+1. Cashier requests On-Credit → `payment_status = credit_pending_approval`, AR row created `pending_approval` with `balance = 1000`.
+2. Before the Owner acts, the customer pays cash. `POST /cashier/job-orders/{id}/payment` passes every guard → `Transaction` created, `payment_status = paid`.
+3. Owner approves the still-pending credit request. `CreditApprovalController::approve()` re-reads under lock but only checks `status === PendingApproval` — it never looks at the job order at all. It writes `payment_status = on_credit` and stamps `due_at`.
 
-So there is a window of up to 24 hours in which the derived outstanding balance is `0.00` while `collection_status` is still `pending`/`follow_up`/`collections`. In that window:
+Result: a fully-paid job order is booked as an open receivable for ₱1000 already collected. Consequences compound — the terminal `paid` state is destroyed (same class as the deferred `ConfirmPaymentIntent` defect, but reachable through a normal Cashier action), and because `CancellationController::store()` only blocks cancellation when `payment_status === Paid` (line 33), the now-`on_credit` order becomes cancellable again and can be charged a cancellation fee. The stored `balance` column is also stale (it was computed before the payment), so the collection letter's "Credit Extended" line overstates the debt.
 
-1. `WriteOffApprovalController::index()` still lists the entry (its filter is the same stale flag) — visibly with `balance => 0.0`, since `index()` *does* derive the balance correctly at `:39-42`.
-2. `approve()` passes both guards, sets `collection_status = written_off`, and overwrites the job order's `payment_status` from `paid` to `written_off` (`:104`).
+Note this is *not* covered by the deferred `ConfirmPaymentIntent` item in `deferred-items.md` — this is a direct cash/bank-transfer path plus a missing re-check in `CreditApprovalController`, and `CreditApprovalTest.php` has no test for a payment landing during the pending window.
 
-The result is a settled sale reported as a bad-debt loss, and a job order whose `payment_status` contradicts its own completed transactions. It is not recoverable through the UI: `CollectionStatusController::update` and `WriteOffRequestController::store` both refuse to touch a `written_off` entry, and `reject()` now aborts on `written_off` too (the CR-01 fix).
-
-Reachable via `POST /cashier/job-orders/{jobOrder}/payment` on an `on_credit` job order (the endpoint accepts it — `PaymentController.php:95-108` only excludes `Paid`/`WrittenOff`), or via a PayMongo webhook confirming a pending intent.
-
-`WriteOffApprovalTest.php:135-152` looks like it covers this, but it simulates settlement with `forceFill(['collection_status' => Paid])` — it asserts the flag is honored, never that a real payment is.
-
-**Fix:** Guard on the derived balance — the same value `index()` already computes and displays — inside the locked transaction:
+**Fix:** Guard both directions, and make the approval authoritative on the derived balance the way `WriteOffApprovalController::approve()` already is.
 
 ```php
-$accountsReceivable = AccountsReceivable::query()->whereKey($accountsReceivable->id)
-    ->with('jobOrder.transactions:id,job_order_id,amount,status')
-    ->lockForUpdate()->firstOrFail();
-
-abort_if($accountsReceivable->write_off_requested_at === null, 422, __('No write-off request is pending for this entry.'));
+// PaymentController::store() and ::edit() — alongside the existing guards
 abort_if(
-    in_array($accountsReceivable->collection_status, [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true),
+    $jobOrder->payment_status === PaymentStatus::CreditPendingApproval,
     422,
-    __('This entry was settled or closed before the write-off could be approved.'),
-);
-abort_if(
-    $accountsReceivable->outstandingBalance() <= 0.0, // see WR-10 — one shared derivation
-    422,
-    __('This balance has already been settled in full and cannot be written off.'),
-);
-```
-
-Add a test that records a real payment (`cashier.job-orders.payment.store`) against an `on_credit` job order with a pending write-off, then asserts the Owner's approve returns 422 and `payment_status` stays `paid`. See also WR-09: closing the AR entry at payment time removes the window entirely.
-
-### CR-02: A written-off job order can be put back on credit, reversing the write-off
-
-**File:** `app/Http/Controllers/Cashier/CreditRequestController.php:42-47` (enabled by `app/Http/Controllers/Cashier/PaymentController.php:35-49`; root cause is the `PaymentStatus::WrittenOff` case added at `app/Enums/PaymentStatus.php:14`)
-**Issue:** Plan 07-06 taught `CancellationController` and `PaymentController::store` that `WrittenOff` is terminal, but `CreditRequestController::store` — the third writer of `payment_status` — was not updated. Its guards are:
-
-```php
-abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, ...);
-abort_if(in_array($jobOrder->payment_status, [PendingConfirmation, CreditPendingApproval], true), 422, ...);
-```
-
-`WrittenOff` passes. The locked re-read at `:55-63` repeats the same two guards, so it does not catch it either. Consequences of one POST:
-
-- `payment_status` flips `written_off → credit_pending_approval` (`:104`), undoing the state the Owner confirmed as "This can't be undone" (`owner/WriteOffRequests.vue:168`).
-- A **second** `AccountsReceivable` row is created for the same job order (`:97-102`) while the first is still `collection_status = written_off`. Both then appear in the Accounting aging list — the old one under Closed, the new one open — for the same money.
-- If the Owner approves, `payment_status` becomes `on_credit` and the loss is silently reinstated as a live receivable, with a fresh `due_at` and a fresh aging clock.
-
-Reachable from the UI: `PaymentController::edit` (`:35-49`) checks `cancelled_at` and `status` only — never `payment_status` — so `GET /cashier/job-orders/{jobOrder}/payment` renders the full pricing/payment page for a written-off order, including the On-Credit dialog wired to `CreditRequestController.store` (`cashier/JobOrderPayment.vue:242,676`). The dashboard has no link there, but the URL is a plain GET (bookmarkable, in browser history, shareable).
-
-**Fix:** Add the terminal guard to both, matching the shape 07-06 already used:
-
-```php
-// CreditRequestController::store — and repeat inside the locked re-read
-abort_if(
-    $jobOrder->payment_status === PaymentStatus::WrittenOff,
-    422,
-    __('This job order has been written off and cannot be put back on credit.'),
+    __('This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.'),
 );
 
-// PaymentController::edit
-abort_if(
-    $jobOrder->payment_status === PaymentStatus::WrittenOff,
-    422,
-    __('This job order has been written off.'),
-);
+// CreditApprovalController::approve(), inside the locked transaction
+$jobOrder = JobOrder::query()->whereKey($accountsReceivable->job_order_id)->lockForUpdate()->firstOrFail();
+
+abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
+
+$amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
+$outstandingBalance = $jobOrder->total_amount !== null
+    ? round((float) $jobOrder->total_amount - $amountPaid, 2)
+    : 0.0;
+
+abort_if($outstandingBalance <= 0.0, 422, __('This job order was settled before the credit request could be approved.'));
+
+$accountsReceivable->forceFill([
+    'status' => AccountsReceivableStatus::Active,
+    'balance' => $outstandingBalance, // re-snapshot; the request-time value may be stale
+    'approved_by' => $request->user()->id,
+    'approved_at' => now(),
+    'due_at' => now()->addDays(SystemConfiguration::getInt('credit_term_days', 30)),
+])->save();
+
+$jobOrder->forceFill(['payment_status' => PaymentStatus::OnCredit])->save();
 ```
 
-Better still, add a single `PaymentStatus::isTerminal(): bool` (`Paid`, `WrittenOff`) and route every guard through it, so the next status added cannot be missed in one of four places. Add tests: "a written-off job order cannot be put on credit" (asserting `AccountsReceivable::count()` is unchanged) and "the payment page 422s for a written-off job order".
+---
 
-## Warnings
+### CR-02: There is no way to record a payment against an `on_credit` job order — the AR lifecycle has no settle path
 
-### WR-01: `index()` drops `last_reminder_sent_at` from the row shape it declares
+**File:** `resources/js/pages/cashier/Dashboard.vue:378-429`
 
-**File:** `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php:60` vs `:171`
-**Issue:** The `get([...])` column allowlist omits `last_reminder_sent_at`, but `deriveRow()` reads `$accountsReceivable->last_reminder_sent_at` (`:171`) and the declared `AccountsReceivableRow` shape promises it (`:27`). Eloquent returns `null` for an unselected attribute instead of failing, so every list row silently reports "never reminded". `Index.vue` does not render it today, so the bug is latent — but any future use in the list is silently wrong, and `Model::preventAccessingMissingAttributes()` would turn it into a hard `MissingAttributeException`. Unchanged since the previous review.
-**Fix:** Add `'last_reminder_sent_at'` to the `get()` list (keeping it in sync with `deriveRow()`), or move the field out of `deriveRow()` into `show()` the way `approved_at` is handled.
+**Issue:** The Cashier Dashboard action dropdown is an exhaustive `v-if` / `v-else-if` chain keyed on `payment_status`:
 
-### WR-02: A failed reminder email is stamped as sent and never retried
+- `unpaid` / `partially_paid` → "Process Payment"
+- `pending_confirmation` → "Check Payment Status"
+- `paid` → "View Receipt"
+- everything else → nothing (only "Cancel Job Order")
 
-**File:** `app/Console/Commands/SendAccountsReceivableReminders.php:84-90`
-**Issue:** `catch (\Throwable $e) { report($e); }` is followed unconditionally by the bracket stamp. Because the next run only sends when `bracket->rank() > lastBracket->rank()` (`:78`), one transport hiccup means that bracket's escalation is *never* sent — the 90+ "write-off decision needed" notice can be lost with nothing but a log line. `AccountsReceivableReminder` already uses `Queueable`, but the command sends synchronously, bypassing the queue's retry/backoff. Unchanged since the previous review.
-**Fix:** Queue the mail so failures retry, and stamp only after a successful hand-off:
+`on_credit`, `credit_pending_approval` and `credit_rejected` therefore have **no** action. `PaymentController.edit(...)` is the only link to the payment page anywhere in `resources/js` (verified by grep), so once an Owner approves a credit request the job order becomes a dead end in the Cashier portal.
 
-```php
-try {
-    Mail::to($recipients)->queue(new AccountsReceivableReminder($receivable, $bracket));
-} catch (\Throwable $e) {
-    report($e);
+This breaks the phase's own premise. `AccountsReceivable/Show.vue:226-228` tells Accounting Staff "Payments are recorded at the Cashier counter", and `Show.vue:302-306` says "This does not stop reminder emails — only payment or an approved write-off does". Neither is achievable: the only way an AR entry can reach `collection_status = paid` today is `SendAccountsReceivableReminders::processOne()` auto-closing it, which requires a payment that cannot be recorded. Every receivable's only reachable terminal state is write-off.
 
-    return; // leave the stamp untouched so the next run retries
-}
+The server side already permits it — `PaymentController::store()` accepts `on_credit` (it is not in any abort list) — so this is purely a missing dropdown branch.
 
-$receivable->forceFill(['last_reminder_bracket' => $bracket->value, 'last_reminder_sent_at' => now()])->save();
+**Fix:** Extend the payment branch to cover the credit states that still owe money.
+
+```vue
+<DropdownMenuItem
+    v-if="
+        jobOrder.payment_status === 'unpaid' ||
+        jobOrder.payment_status === 'partially_paid' ||
+        jobOrder.payment_status === 'on_credit' ||
+        jobOrder.payment_status === 'credit_rejected'
+    "
+    as-child
+>
+    <Link :href="PaymentController.edit(jobOrder.id).url" :data-test="`process-payment-${jobOrder.id}-link`">
+        {{ jobOrder.payment_status === 'on_credit' ? 'Collect Balance' : 'Process Payment' }}
+    </Link>
+</DropdownMenuItem>
 ```
 
-`SendAccountsReceivableRemindersTest.php:111-122` currently locks in the lossy behavior and must be rewritten alongside.
+Add a feature test asserting an `on_credit` job order can be paid in full and that the AR entry then reports a zero derived balance.
 
-### WR-03: No guard for an empty recipient list; the recipient query runs once per receivable
+---
 
-**File:** `app/Console/Commands/SendAccountsReceivableReminders.php:85,99-105`
-**Issue:** `reminderRecipients()` is called inside `processOne()`, re-running the same `users` query for every row. If no active Accounting Staff or Owner exists (all deactivated via `is_active`), the collection is empty and Symfony's mailer throws "An email must have a To..., Cc or Bcc header" — swallowed by the `catch` while WR-02 still advances the stamp. Every reminder is then permanently lost with no operator-visible signal beyond `report()`. Unchanged since the previous review.
-**Fix:** Resolve recipients once in `handle()` and bail out loudly when empty:
+### CR-03: A collection letter can be printed for a paid or written-off entry
 
-```php
-$recipients = $this->reminderRecipients();
+**File:** `app/Http/Controllers/AccountingStaff/CollectionLetterController.php:22-30`
 
-if ($recipients->isEmpty()) {
-    $this->error('No active Accounting Staff or Owner to notify — no reminders sent.');
+**Issue:** `show()` guards only `AccountsReceivableStatus::Active`. It is the sole AR controller with no terminal-`collection_status` check — both siblings have one (`CollectionStatusController.php:25-29`, `WriteOffRequestController.php:28-32`). `Show.vue:318` hides the "Print Collection Letter" button when `isTerminal`, but the route is a plain `GET` and remains directly reachable (bookmark, browser back, refresh of an already-open tab).
 
-    return self::FAILURE;
-}
-```
+For a `written_off` entry the letter renders at full face value with the 90+ final-notice body — "this account will be endorsed for collection and may be written off as a loss" — for a balance the Owner has already booked as a loss. For a `paid` entry it renders a demand letter showing "Amount Due ₱0.00". Both are customer-facing documents. `CollectionLetterTest.php` has no case for either state.
 
-### WR-04: A null `total_amount` closes a live receivable as Paid
-
-**File:** `app/Console/Commands/SendAccountsReceivableReminders.php:61-69`
-**Issue:** When `jobOrder->total_amount` is `null`, `$balance` falls back to `0.0` and the next branch (`$balance <= 0`) writes the terminal `collection_status = paid`. `Paid` is unreachable from the UI afterwards (`CollectionStatusController::update` aborts 422), so an unpriced job order permanently closes a real receivable with no route back short of a manual DB edit. The same `null → 0.0` fallback in `AccountsReceivableController::deriveRow()` (`:146-148`) renders such a row as "Settled" in the list (`Index.vue:298-301`). Unchanged since the previous review.
-**Fix:** Do not conflate "unpriced" with "settled":
+**Fix:** Mirror the sibling guard.
 
 ```php
-if ($receivable->jobOrder->total_amount === null) {
-    report(new RuntimeException("AR {$receivable->id} has no job order total; skipping."));
-
-    return;
-}
-```
-
-and surface an explicit "Total not set" state rather than `0.0` in `deriveRow()`.
-
-### WR-05: Collection letter renders for already Paid / Written Off entries
-
-**File:** `app/Http/Controllers/AccountingStaff/CollectionLetterController.php:24`
-**Issue:** The only guard is `status === AccountsReceivableStatus::Active`; `collection_status` is not checked, and a `paid` or `written_off` entry is still `Active`. `GET /accounting-staff/accounts-receivable/{id}/collection-letter` therefore renders a full dunning letter ("Continued non-payment will affect your eligibility…", "may be written off as a loss") for a customer who has already settled or whose debt was forgiven. `Show.vue:318` hides the button when terminal, but the route is a plain GET and directly reachable. Unchanged since the previous review.
-**Fix:**
-
-```php
+abort_unless($accountsReceivable->status === AccountsReceivableStatus::Active, 404);
 abort_if(
     in_array($accountsReceivable->collection_status, [
         AccountsReceivableCollectionStatus::Paid,
@@ -248,136 +195,321 @@ abort_if(
 );
 ```
 
-### WR-06: Write-off request guard is not atomic
+---
 
-**File:** `app/Http/Controllers/AccountingStaff/WriteOffRequestController.php:27-39`
-**Issue:** The three preconditions and the subsequent write are unsynchronized statements with no `lockForUpdate()` and no transaction — unlike the approve/reject paths, which were deliberately hardened with exactly that (`WriteOffApprovalController.php:90-91,124-125`). Two concurrent submissions (double click, retried request) both pass the guard; the later write overwrites the first requester's reason and timestamp, and two `audit_trail` rows are produced for one logical request. `WriteOffRequestTest.php:40-57` only covers the sequential case. Unchanged since the previous review.
-**Fix:** Mirror the approval path — wrap in `DB::transaction()` with a `lockForUpdate()` re-read before the three guards.
+### CR-04: `CollectionStatusController` mutates on an unlocked stale read and can resurrect a written-off entry
 
-### WR-07: Approving a write-off erases the request timestamp and hides the reason
+**File:** `app/Http/Controllers/AccountingStaff/CollectionStatusController.php:22-33`
 
-**File:** `app/Http/Controllers/Owner/WriteOffApprovalController.php:100-104`, `resources/js/pages/accounting-staff/AccountsReceivable/Show.vue:159,191-198`
-**Issue:** The CR-02 fix chose to null `write_off_requested_at` on approval and overload that column as the "still pending" flag. Two consequences on the most consequential financial action in the phase:
+**Issue:** This is the only mutating controller in the phase with neither a `DB::transaction()` nor a `lockForUpdate()` re-read — `CreditApprovalController`, `WriteOffApprovalController` and `CreditRequestController` all have both, added specifically to close this class of defect in earlier rounds. The guards on lines 24-29 evaluate the route-model-bound instance, hydrated from the request's own `SELECT`, with no re-read before the write.
 
-1. The requested-at timestamp is destroyed on the row. It survives only in `audit_trail.old_values`, which is not surfaced anywhere in the AR UI.
-2. `Show.vue` gates the entire write-off panel on `hasPendingWriteOff` (`write_off_requested_at !== null`). Once approved, that is false, so `write_off_reason` — still stored on the row and still shipped in the payload (`AccountsReceivableController.php:169`) — is rendered nowhere. Accounting Staff looking at a written-off entry sees a "Written Off" badge, a "closed by the system" note, and no reason, no requester, no approver.
+Interleaving:
+1. Accounting Staff opens `AccountsReceivable/Show` for an entry with a pending write-off (`collection_status = pending`).
+2. Owner approves the write-off → `collection_status = written_off`, `payment_status = written_off`.
+3. Accounting Staff clicks "Update Status" → `collections`. Their bound model still reads `pending`, both guards pass, `forceFill(['collection_status' => 'collections'])->save()` lands.
 
-There is still no record of *who* approved the loss: `approved_by`/`approved_at` belong to the credit decision and continue to point at the original credit approver, so a reader cannot distinguish "credit approved by X" from "loss authorized by X".
-**Fix:** Stop using a data column as a state flag. Add `write_off_approved_by` / `write_off_approved_at`, keep `write_off_requested_at` intact on approval, and let `index()`'s `collection_status` filter (already in place at `:29`) be the sole queue gate. Then key `Show.vue`'s pending alert on `collection_status !== 'written_off' && write_off_requested_at !== null`, and add a separate "Written off on {date}, approved by {name}, reason: …" panel for the terminal state.
+The booked loss is reversed on the AR side while the job order stays `payment_status = written_off`. Concretely: the entry re-enters `AccountsReceivableController::index()`'s open set and its bracket totals (line 69-80), and `SendAccountsReceivableReminders::handle()`'s `whereNotIn('collection_status', [paid, written_off])` (line 41-44) starts escalating it again — reminder emails for a written-off balance. The two columns now permanently disagree with no code path to reconcile them.
 
-### WR-08: A settled entry with a pending write-off request is stuck showing "awaiting Owner approval" forever
+The same shape applies to `WriteOffRequestController::store()` (see WR-07), but there the blast radius is smaller.
 
-**File:** `app/Console/Commands/SendAccountsReceivableReminders.php:65-69`, `resources/js/pages/accounting-staff/AccountsReceivable/Show.vue:159,191-198`, `resources/js/pages/accounting-staff/AccountsReceivable/Index.vue:327-330`
-**Issue:** `processOne()` sets `collection_status = paid` without clearing the write-off columns. `WriteOffApprovalController::index()` then excludes the row (CR-02's fix), so the Owner can never approve or reject it — but `write_off_requested_at` stays populated forever. `Show.vue` renders "…is awaiting Owner approval. Reminder emails continue until it's approved." on an entry that is settled and closed, and `Index.vue` renders a "Write-Off Pending" badge next to a "Paid" badge. Both terminal paths (`CollectionStatusController`, `WriteOffRequestController`) refuse to touch a closed entry, so there is no way to clear the state.
-**Fix:** Clear the request when the entry settles:
+**Fix:** Use the phase's established locked-re-read boundary.
 
 ```php
-if ($balance <= 0) {
-    $receivable->forceFill([
-        'collection_status' => AccountsReceivableCollectionStatus::Paid->value,
-        'write_off_requested_at' => null,
-    ])->save();
+public function update(UpdateCollectionStatusRequest $request, AccountsReceivable $accountsReceivable): RedirectResponse
+{
+    DB::transaction(function () use ($request, $accountsReceivable): void {
+        $accountsReceivable = AccountsReceivable::query()
+            ->whereKey($accountsReceivable->id)
+            ->lockForUpdate()
+            ->firstOrFail();
 
-    return;
+        abort_unless($accountsReceivable->status === AccountsReceivableStatus::Active, 422, __('This entry is closed and its collection status can\'t be changed.'));
+        abort_if(
+            in_array($accountsReceivable->collection_status, [
+                AccountsReceivableCollectionStatus::Paid,
+                AccountsReceivableCollectionStatus::WrittenOff,
+            ], true),
+            422,
+            __('This entry is closed and its collection status can\'t be changed.'),
+        );
+
+        $accountsReceivable->forceFill(['collection_status' => $request->validated('collection_status')])->save();
+    });
+
+    Inertia::flash('toast', ['type' => 'success', 'message' => __('Collection status updated.')]);
+
+    return back();
 }
 ```
 
-(If WR-07 is adopted, gate the Show/Index badges on `collection_status` instead, which fixes both at once.) Add a test asserting the pending badge disappears after an entry settles.
+Add a test that forces `collection_status` to `written_off` after route binding resolves (i.e. update the row inside the request lifecycle, or assert the locked re-read via a second in-test update before the patch) and asserts a 422.
 
-### WR-09: Nothing closes the AR entry at payment time — settlement is reconciled only by a daily cron
+## Warnings
 
-**File:** `app/Http/Controllers/Cashier/PaymentController.php:158-162`, `app/Actions/POS/ConfirmPaymentIntent.php:43-47`, `app/Console/Commands/SendAccountsReceivableReminders.php:65-69`
-**Issue:** The AR row's `collection_status` is the system's own record of whether a balance is still being chased, but no payment path updates it. Between a counter payment and the next nightly `ar:send-reminders` run, Accounting's aging list shows the entry in the *open* set with a live `Pending`/`Follow-up` badge and an Outstanding cell reading "Settled" — internally contradictory data — and the entry still counts (at ₱0.00) in a bracket bucket. This staleness is the mechanism behind CR-01; even after CR-01 is guarded, the stale display remains.
-**Fix:** Recompute and close the AR entry in the same transaction that records a payment, e.g. a small `App\Actions\AR\SettleReceivableIfPaid` invoked from `PaymentController::store` and `ConfirmPaymentIntent`, leaving `ar:send-reminders` as the safety net rather than the primary writer.
+### WR-01: A failed reminder send is recorded as sent, permanently consuming that bracket's escalation
 
-### WR-10: The outstanding-balance derivation is copy-pasted in five places
+**File:** `app/Console/Commands/SendAccountsReceivableReminders.php:84-90`
 
-**File:** `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php:145-148`, `app/Http/Controllers/AccountingStaff/CollectionLetterController.php:32-35`, `app/Http/Controllers/Owner/WriteOffApprovalController.php:39-42`, `app/Console/Commands/SendAccountsReceivableReminders.php:57-63`, `app/Mail/AccountsReceivableReminder.php:116-125`
-**Issue:** The same "total_amount minus completed transactions, rounded to 2" computation — including the questionable `null → 0.0` fallback from WR-04 — is duplicated verbatim five times in this phase alone, plus `ReceiptController::show()`. Any future change (partial refunds, cancellation-fee transactions, void handling) must be found and applied in six places; missing one produces a silently wrong balance on a customer-facing collection letter or a reminder email. CR-01's fix needs a sixth call site, making the extraction more urgent, not less. Unchanged since the previous review.
-**Fix:** Extract one accessor/action — `AccountsReceivable::outstandingBalance(): ?float` or `App\Actions\AR\DeriveOutstandingBalance` — operating on the already-eager-loaded relation, and call it from every site.
+**Issue:** The `try`/`catch` swallows the throw, then execution falls through to `forceFill(['last_reminder_bracket' => ..., 'last_reminder_sent_at' => now()])->save()` unconditionally. Two separate problems:
 
-### WR-11: Reminder mail body is not covered by tests, only the subject line
+1. `last_reminder_sent_at` is surfaced to Accounting Staff as "Last Reminder Sent" (`Show.vue:259-263`). Stamping it when the transport threw makes the UI assert a delivery that never happened.
+2. Because `last_reminder_bracket` advances, the `rank()` comparison on line 78 will never fire again for that bracket. A transient SMTP outage on the single day an entry crosses into 31-60 means the 31-60 escalation is lost forever — the next email is only sent if the entry survives to 90+.
 
-**File:** `tests/Unit/Mail/AccountsReceivableReminderMailableTest.php:11-17`
-**Issue:** The only assertion is that a `NinetyPlus` subject starts with "Final notice". The markdown view (`resources/views/mail/accounts-receivable-reminder.blade.php`) is never rendered in a test, so a missing `with()` key would surface as an undefined-variable error at send time — inside the `try/catch` of WR-02, which swallows it and stamps the bracket as delivered. `content()` passes eight variables, one of which (`$daysPastDue`) is legitimately `null` for a not-yet-due entry. Unchanged since the previous review.
-**Fix:** Add a render assertion (`$mail->assertSeeInHtml(...)` or `$mail->render()`) for at least one reminder-bearing bracket, and assert each bracket's subject rather than only `NinetyPlus`.
+The zero-recipient case has the same effect and is easier to hit than a transport outage: `reminderRecipients()` returns an empty `Collection` when no active Accounting Staff or Owner exists, `Mail::to(collect([]))->send(...)` throws "An email must have a To/Cc/Bcc header", the catch swallows it, and every entry in the run gets stamped as reminded.
 
-### WR-12: The Cashier payment page renders for a written-off job order
+`SendAccountsReceivableRemindersTest.php:111-122` encodes the current behavior deliberately, so this needs a decision rather than a blind patch — but stamping `last_reminder_sent_at` on failure is wrong under any policy.
 
-**File:** `app/Http/Controllers/Cashier/PaymentController.php:35-49`
-**Issue:** `edit()` guards `cancelled_at` and `status` but never `payment_status`. A written-off job order still sitting in a production status therefore renders the full Pricing + Payment page, with the Record Payment form (which 422s on submit — `:108`) and the On-Credit dialog (which does **not** — CR-02). Beyond enabling CR-02, this is a misleading affordance: the page shows a live remaining balance for an account already booked as a loss.
-**Fix:** Add the same terminal guard used in `store()` to `edit()`, so the page 422s rather than rendering a dead form. See CR-02 for the shared-helper suggestion.
+**Fix:** At minimum, only stamp on success; the daily cadence makes retry natural and the duplicate risk is bounded by one email.
 
-## Info
+```php
+if ($this->reminderRecipients()->isEmpty()) {
+    $this->warn('No active Accounting Staff or Owner to notify; skipping reminders.');
 
-### IN-01: The "90+ Days" bucket does not include day 90
+    return;
+}
 
-**File:** `app/Models/AccountsReceivable.php:128`, `resources/js/pages/accounting-staff/AccountsReceivable/Index.vue:78`
-**Issue:** `$daysPastDue <= 90 => SixtyOneToNinety` puts exactly 90 days past due in the "61–90 Days" bucket, so the bucket labelled "90+ Days" actually begins at day 91 (encoded in `AgingBracketTest.php:44-45`). The label and the behavior disagree for one day, and the 90+ escalation email fires a day later than the label implies.
-**Fix:** Relabel to "91+ Days", or change the boundary to `$daysPastDue < 90` — whichever matches D-03's intent — and make the label and test agree explicitly.
+try {
+    Mail::to($this->reminderRecipients())->send(new AccountsReceivableReminder($receivable, $bracket));
+} catch (\Throwable $e) {
+    report($e);
 
-### IN-02: An entry becomes "1–15 Days" and triggers a reminder at 0 days past due
+    return; // retry on tomorrow's run rather than consuming the bracket
+}
 
-**File:** `app/Models/AccountsReceivable.php:118-131`, `app/Http/Controllers/Owner/CreditApprovalController.php:61`
-**Issue:** `due_at` is stamped as `now()->addDays($creditTermDays)` and so carries a time of day. The moment it passes, `isFuture()` is false and `(int) diffInDays()` is `0`, which falls into `OneToFifteen`. The reminder subject reads "… is 0 days past due" (`AccountsReceivableReminder.php:78`) and `Show.vue:250` displays "Days Past Due: 0".
-**Fix:** Normalize `due_at` to end-of-day on approval, or floor `daysPastDue()` at 1 so the first reminder reads "1 day past due".
+$receivable->forceFill(['last_reminder_bracket' => $bracket->value, 'last_reminder_sent_at' => now()])->save();
+```
 
-### IN-03: `CollectionLetter.vue` does not pass `navItems`
-
-**File:** `resources/js/pages/accounting-staff/CollectionLetter.vue:22-26`
-**Issue:** Every sibling page passes its portal's nav (`Index.vue:53`, `Show.vue:56`), but the letter page omits it, so `AppSidebarLayout` receives `undefined` and the Accounting Staff sidebar renders empty — no way back except the browser Back button.
-**Fix:** `layout: { navItems: accountingStaffNavItems, breadcrumbs: [...] }`.
-
-### IN-04: Only the print button is `print:hidden` on the collection letter
-
-**File:** `resources/js/pages/accounting-staff/CollectionLetter.vue:91-97`
-**Issue:** The page renders inside `AppLayout`, so the sidebar, header and breadcrumbs are included in the printed output; only the "Print Letter" button is hidden. A customer-facing letter should print as a clean document.
-**Fix:** Add `print:hidden` to the layout chrome, or render this page without `AppLayout` (the resolver in `app.ts` supports a no-layout page).
-
-### IN-05: `credit_extended` is sent to the aging list but never rendered
-
-**File:** `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php:164`, `resources/js/pages/accounting-staff/AccountsReceivable/Index.vue:31`
-**Issue:** The field is in the payload and in the TS interface, but unused in the Index template (only `Show.vue:207` renders it). Dead prop. The same file also ships `write_off_reason` and `last_reminder_sent_at` to Index without a corresponding interface field or template use.
-**Fix:** Drop the unused fields from the list payload/interface, or render `credit_extended` as its own column.
-
-### IN-06: `v-for` combined with `v-else` on the same element
-
-**File:** `resources/js/pages/accounting-staff/AccountsReceivable/Index.vue:279`, `resources/js/pages/owner/WriteOffRequests.vue:102-106`
-**Issue:** `<TableRow v-for="…" v-else :key="…">` relies on Vue 3's "v-if wins over v-for" precedence. It works, but it is the documented anti-pattern and reads as if the `v-else` applied per row.
-**Fix:** Wrap the rows in a `<template v-else>` and put `v-for` on the inner `<TableRow>`.
-
-### IN-07: Bracket/status label maps and formatting helpers are duplicated across four pages
-
-**File:** `Index.vue:72-88,118-167`, `Show.vue:70-137`, `CollectionLetter.vue:28-33`, `owner/WriteOffRequests.vue:58-63`
-**Issue:** `BRACKET_LABELS`, `COLLECTION_STATUS_LABELS`, `money()`, `agingBadgeProps()` and `collectionStatusBadgeProps()` are byte-identical copies across multiple SFCs. A single label change (e.g. IN-01's "90+ Days") must be made in several files.
-**Fix:** Move them into a shared module (e.g. `resources/js/lib/accounts-receivable.ts`) and import.
-
-### IN-08: The aging list is unpaginated
-
-**File:** `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php:57-62`
-**Issue:** Every Active receivable — open and closed — is loaded, mapped, sorted in PHP and shipped to the browser on each page load. There is no pagination or date window, so the payload grows without bound as written-off/paid history accumulates in `closedReceivables`. Noted as a scale/maintainability observation only; performance is out of scope for this review.
-**Fix:** Paginate, or bound the closed set (e.g. last 90 days) behind a "view all" affordance.
-
-### IN-09: Admin sees write-off action buttons that always 403
-
-**File:** `resources/js/pages/owner/WriteOffRequests.vue:149-245`, `routes/owner.php:24-26`
-**Issue:** The route group is `role:owner,admin`, so an Admin can open the queue, but `AccountsReceivablePolicy::approveWriteOff/rejectWriteOff` restrict the mutations to Owner. The page renders both buttons unconditionally, so an Admin gets a 403 error screen on click. This matches the pre-existing `owner/CreditRequests.vue` pattern, so it is consistency-preserving rather than a regression — and `WriteOffApprovalTest.php:26-39` asserts the 403.
-**Fix:** Share `auth.user.role` (already available via `usePage()`) and gate the action column on `role === 'owner'` — in both pages together.
-
-### IN-10: `WriteOffApprovalController::index()` does not filter on `status`
-
-**File:** `app/Http/Controllers/Owner/WriteOffApprovalController.php:27-36`
-**Issue:** The queue filters on `write_off_requested_at` and `collection_status` but not `status`, and does not select the `status` column. `WriteOffRequestController` only ever sets `write_off_requested_at` on an `Active` entry, so this is unreachable today — but the queue's own defense-in-depth story (documented at `:76-80`) is one predicate short of the one the previous review recommended.
-**Fix:** Add `->where('status', AccountsReceivableStatus::Active->value)` to `index()`, and re-check `status` alongside the other guards inside `approve()`'s locked re-read.
-
-### IN-11: A written-off job order gets an empty actions menu on the Cashier dashboard
-
-**File:** `resources/js/pages/cashier/Dashboard.vue:377-431`
-**Issue:** With the CR-03 fix, a `written_off` job order matches none of the `Process Payment` / `Check Payment Status` / `View Receipt` branches and `canCancelJobOrder()` is false, so the "⋯" trigger opens an empty `DropdownMenuContent`. Correct behavior, poor affordance.
-**Fix:** Hide the trigger when no action applies, or render a disabled "No actions available" item.
+If the "never block the stamp" policy is intentional, split the columns: advance `last_reminder_bracket` but leave `last_reminder_sent_at` untouched on failure, and update the test name/assertion to say so.
 
 ---
 
-_Reviewed: 2026-09-08T16:54:12Z_
+### WR-02: `index()`'s column allowlist omits a column `deriveRow()` reads — `last_reminder_sent_at` is always null in the list payload
+
+**File:** `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php:60` and `:171`
+
+**Issue:** `index()` selects `['id','job_order_id','balance','status','collection_status','due_at','write_off_reason','write_off_requested_at']`. The shared `deriveRow()` reads `$accountsReceivable->last_reminder_sent_at` on line 171. Eloquent returns `null` for an unselected attribute silently — no exception, no warning — so every row in the index payload reports `last_reminder_sent_at: null` regardless of the stored value.
+
+`show()` uses route-model binding (all columns) so it is correct, which is exactly why this hides: the two callers of `deriveRow()` disagree and only one is wrong. `Index.vue` does not render the field today, so nothing is visibly broken — but the declared `AccountsReceivableRow` phpstan shape (line 27) promises it, and the first person to add a "Last Reminder" column to the list table will ship a silently-empty column. The class docblock (lines 32-40) already documents having been bitten by this exact allowlist problem with `queue_entry_id`.
+
+**Fix:** Add the column to the select list so the allowlist matches what `deriveRow()` actually reads.
+
+```php
+->get(['id', 'job_order_id', 'balance', 'status', 'collection_status', 'due_at', 'write_off_reason', 'write_off_requested_at', 'last_reminder_sent_at']);
+```
+
+---
+
+### WR-03: `total_amount` crosses the Inertia boundary as a string while both Vue interfaces declare it `number`
+
+**File:** `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php:156`; `resources/js/pages/accounting-staff/AccountsReceivable/Index.vue:26`; `resources/js/pages/accounting-staff/AccountsReceivable/Show.vue:34`
+
+**Issue:** `JobOrder::casts()` declares `'total_amount' => 'decimal:2'`, so the attribute serializes as the string `"1000.00"`. `deriveRow()` passes it through raw on line 156 while casting its neighbour on the very next relevant line (`'credit_extended' => (float) $accountsReceivable->balance`, line 164). `CancellationFeeTest.php:199` already pins this: `->where('jobOrders.0.accounts_receivable.balance', '1000.00')` — a string.
+
+Both Vue interfaces declare `total_amount: number | null`. Today nothing breaks because every consumer either wraps in `Number()` (`money()`) or uses `-`, which coerces. But the type is a lie, and the first `+` or `.toFixed()` written against it produces string concatenation or a `TypeError`. `cashier/Dashboard.vue:82-88` documents this exact hazard as a prior defect (CR-04) and coerces defensively; this phase reintroduced the un-coerced shape.
+
+**Fix:** Cast at the boundary, consistent with the sibling field.
+
+```php
+'total_amount' => $accountsReceivable->jobOrder->total_amount !== null
+    ? (float) $accountsReceivable->jobOrder->total_amount
+    : null,
+```
+
+---
+
+### WR-04: The derived-balance computation is duplicated verbatim across five files
+
+**File:** `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php:145-148`; `app/Http/Controllers/AccountingStaff/CollectionLetterController.php:32-35`; `app/Http/Controllers/Owner/WriteOffApprovalController.php:40-43` and `:108-111`; `app/Console/Commands/SendAccountsReceivableReminders.php:57-63`; `app/Mail/AccountsReceivableReminder.php:118-124`
+
+**Issue:** The same five lines — sum Completed transactions, subtract from `total_amount`, `round(..., 2)`, fall back to `0.0` on null — appear identically in six places across five files, each with its own comment claiming it "matches `ReceiptController::show()`'s identical derivation". This is the exact fault line called out as having already produced two rounds of defects: the derived-balance guard added to `WriteOffApprovalController::approve()` in round 07-07 had to be hand-copied because there was no shared implementation, and `CreditApprovalController::approve()` (CR-01 above) was missed precisely because there was nothing central to add it to.
+
+Any future change — netting out `TransactionType::CancellationFee`, handling refunds, changing rounding — must be found and applied in six places or the surfaces silently disagree.
+
+**Fix:** Put it on the model (or a small support class) and call it everywhere.
+
+```php
+// app/Models/JobOrder.php
+public function outstandingBalance(): float
+{
+    $amountPaid = (float) ($this->relationLoaded('transactions')
+        ? $this->transactions->where('status', TransactionStatus::Completed->value)->sum('amount')
+        : $this->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount'));
+
+    return $this->total_amount !== null
+        ? round((float) $this->total_amount - $amountPaid, 2)
+        : 0.0;
+}
+```
+
+Add a unit test covering the null-`total_amount`, no-transactions, and partially-paid cases once, instead of implicitly across six feature tests.
+
+---
+
+### WR-05: A cancelled job order's receivable keeps aging, keeps escalating, and can still be approved
+
+**File:** `app/Http/Controllers/Cashier/CancellationController.php:30-50`; `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php:57-60`; `app/Console/Commands/SendAccountsReceivableReminders.php:38-46`; `app/Http/Controllers/Owner/CreditApprovalController.php:44-64`
+
+**Issue:** No AR surface filters or flags `job_orders.cancelled_at`. Two distinct paths:
+
+1. **Post-approval cancellation.** `CancellationController::store()` blocks `paid`, `pending_confirmation` and `written_off` but permits `on_credit`. `cashier/Dashboard.vue:103-114` shows this is deliberate ("will NOT be written off by cancelling — follow up on collection separately"). But the AR aging list, `Show`, and the reminder command give Accounting Staff no signal that the job order behind the balance is cancelled — and CR-03 aside, a collection letter for it prints normally.
+
+2. **Cancellation during pending approval.** `CreditRequestController::store()` explicitly refuses to create a credit request for a cancelled job order (line 29, tested at `CreditApprovalTest.php:176`), but `CreditApprovalController::approve()` never re-checks `cancelled_at`. Cancel after requesting → Owner approves → an Active receivable with a `due_at` is posted against a cancelled job order and immediately begins escalating. The asymmetry means the create-side guard is trivially bypassed by reordering two actions.
+
+Note also that `CancellationController` writes a `cancellation_fee` `Transaction` with `status = completed`, and every derived-balance computation in WR-04 sums *all* Completed transactions regardless of `type` — so a cancellation fee is silently credited against the customer's outstanding receivable.
+
+**Fix:** Add the missing `cancelled_at` re-check in `CreditApprovalController::approve()` (see CR-01's snippet), and surface cancellation on the AR side:
+
+```php
+// AccountsReceivableController::eagerLoads() — add cancelled_at
+'jobOrder:id,number,description,total_amount,queue_entry_id,cancelled_at',
+
+// deriveRow()
+'job_order' => [
+    // ...
+    'cancelled_at' => $accountsReceivable->jobOrder->cancelled_at,
+],
+```
+
+Render a "Job Order Cancelled" badge in `Index.vue` / `Show.vue`, and decide explicitly whether the cancellation fee should be excluded from the outstanding-balance sum (`->whereNot('type', TransactionType::CancellationFee->value)`).
+
+---
+
+### WR-06: The Collection Letter page drops the Accounting Staff sidebar and hardcodes its breadcrumb href
+
+**File:** `resources/js/pages/accounting-staff/CollectionLetter.vue:22-26`
+
+**Issue:** `defineOptions({ layout: { breadcrumbs: [{ title: 'Collection Letter', href: '#' }] } })` passes no `navItems`. `AppSidebar.vue:32` falls back to `defaultNavItems` — the starter-kit stub pointing at the generic `dashboard()` route — so an Accounting Staff member printing a letter loses their portal nav and is offered a link out of their portal. Both sibling pages pass `accountingStaffNavItems` (`Index.vue:52`, `Show.vue:56`).
+
+The `href: '#'` also violates the documented convention ("referencing generated route helpers for `href` values — never hardcoded URL strings"); every other breadcrumb in the phase uses a Wayfinder helper.
+
+**Fix:**
+
+```ts
+import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
+import { index as accountsReceivableIndex, show } from '@/routes/accounting-staff/accounts-receivable';
+
+const props = defineProps<{ /* ... */ accountsReceivableId: number }>(); // add to the controller payload
+
+defineOptions({ layout: { navItems: accountingStaffNavItems } });
+
+setLayoutProps({
+    breadcrumbs: [
+        { title: 'Accounts Receivable', href: accountsReceivableIndex() },
+        { title: 'Collection Letter', href: collectionLetterShow.url(props.accountsReceivableId) },
+    ],
+});
+```
+
+---
+
+### WR-07: `WriteOffRequestController::store()` mutates on an unlocked read — concurrent requests overwrite each other
+
+**File:** `app/Http/Controllers/AccountingStaff/WriteOffRequestController.php:25-39`
+
+**Issue:** Same shape as CR-04 with a smaller blast radius. All three guards (lines 27-33) evaluate the route-model-bound instance, and the `forceFill(...)->save()` runs outside any transaction. Two Accounting Staff members (or one double-click) both observe `write_off_requested_at === null`, both pass, and the second write silently overwrites the first's `write_off_reason` and `write_off_requested_by` — the audit trail records both, but the Owner reviewing the queue sees only the survivor. The "already pending" guard tested at `WriteOffRequestTest.php:40-57` is therefore only correct for serialized requests.
+
+**Fix:** Wrap in `DB::transaction()` with a `lockForUpdate()` re-read before the three guards, matching `WriteOffApprovalController::approve()`.
+
+---
+
+### WR-08: A write-off can be requested for an entry that is already settled, creating a permanently un-approvable queue item
+
+**File:** `app/Http/Controllers/AccountingStaff/WriteOffRequestController.php:27-33`
+
+**Issue:** The request side guards `status` and `collection_status`, but never the derived balance — the guard that round 07-07 established as *authoritative* on the approve side precisely because `collection_status` lags by up to 24 hours (only the daily cron reconciles it). So the common case is reachable: a customer pays, the cron has not run, Accounting Staff requests a write-off, the request is accepted, and the Owner's `approve()` then rejects it with 422 "settled or closed before the write-off could be approved" — with no way to clear the entry from the queue except `reject()`, which the copy frames as an Owner decision rather than a cleanup.
+
+**Fix:** Apply the same derived-balance guard on the request side.
+
+```php
+$outstandingBalance = $accountsReceivable->jobOrder->outstandingBalance(); // see WR-04
+
+abort_if($outstandingBalance <= 0.0, 422, __('This balance has already been settled and cannot be written off.'));
+```
+
+---
+
+### WR-09: Admin is shown enabled Approve/Reject buttons that always 403
+
+**File:** `resources/js/pages/owner/WriteOffRequests.vue:149-245`
+
+**Issue:** `routes/owner.php:11` gates the group at `role:owner,admin`, and `AccountsReceivablePolicy::approveWriteOff()` deliberately narrows the mutation to Owner only. `WriteOffApprovalController::index()` acknowledges this in its docblock, but the page renders both destructive actions unconditionally — an Admin gets a full confirmation dialog for an irreversible loss booking and then a 403. `WriteOffApprovalTest.php:26-39` asserts the 403 but nothing asserts the buttons are hidden.
+
+**Fix:** Pass the capability from the controller and gate the buttons.
+
+```php
+return Inertia::render('owner/WriteOffRequests', [
+    'writeOffRequests' => $writeOffRequests,
+    'canDecide' => $request->user()->role === UserRole::Owner,
+]);
+```
+
+```vue
+<div v-if="canDecide" class="flex justify-end gap-2"> ... </div>
+<span v-else class="text-muted-foreground text-sm">Owner decision required</span>
+```
+
+## Info
+
+### IN-01: `credit_term_days` accepts `0`
+
+**File:** `database/seeders/SystemConfigurationSeeder.php:119-126`, `app/Concerns/SystemConfigValidationRules.php:19`
+
+**Issue:** The new key falls under the generic `['required', 'integer', 'min:0']` rule. Setting it to `0` makes every subsequently approved credit due at the instant of approval — `due_at = now()`, `isFuture()` false, bracket `one_to_fifteen`, reminder fired on the next cron run.
+
+**Fix:** Key the rule on the configuration key for the ones where zero is meaningless (`credit_term_days`, `default_sla_days`), or use `min:1`.
+
+---
+
+### IN-02: Bracket labels are off by one against the thresholds
+
+**File:** `app/Models/AccountsReceivable.php:124-130`
+
+**Issue:** `$daysPastDue <= 90 => SixtyOneToNinety` with `default => NinetyPlus` means `ninety_plus` actually begins at 91 days, not 90. Symmetrically, day 0 (due date passed by minutes) falls into `one_to_fifteen`, and the reminder email subject renders "is 0 days past due". `AgingBracketTest.php:44-45` pins the current behavior, so this is a labelling decision rather than a silent bug — but the mail copy reads badly at the boundary.
+
+**Fix:** Either rename the case/labels, or floor the "past due" check at 1 full day (`$this->due_at->addDay()->isFuture()`).
+
+---
+
+### IN-03: Empty `rules()` bodies with placeholder comments
+
+**File:** `app/Http/Requests/Owner/ApproveWriteOffRequest.php:23-28`, `app/Http/Requests/Owner/RejectWriteOffRequest.php:23-28`
+
+**Issue:** Both return `[ // ]` — a scaffold artifact. These requests exist purely for `authorize()`, which is fine, but the placeholder comment reads as unfinished work.
+
+**Fix:** `return [];` with a one-line PHPDoc noting the request carries no payload.
+
+---
+
+### IN-04: `agingBracket()` and `daysPastDue()` duplicate the same computation
+
+**File:** `app/Models/AccountsReceivable.php:116-144`
+
+**Issue:** Both re-implement the null/future check and `(int) $this->due_at->diffInDays(now())`. Small, but they must stay in lockstep — a fix to one (see IN-02) silently diverges the other.
+
+**Fix:** Have `agingBracket()` call `daysPastDue()` and `match` on the nullable result.
+
+---
+
+### IN-05: The mailable's only test asserts the subject prefix
+
+**File:** `tests/Unit/Mail/AccountsReceivableReminderMailableTest.php:11-17`
+
+**Issue:** One assertion, on `envelope()->subject`. `content()` and `resources/views/mail/accounts-receivable-reminder.blade.php` are never rendered, so a missing `with` key, a typo in a blade variable, or a `number_format(null)` on `outstandingBalance` would only surface in production. The file also lives under `tests/Unit/` while pulling in `RefreshDatabase` and hitting the database — the project guidance is that most tests should be feature tests.
+
+**Fix:** Add `$mail->render()` (or `assertSeeInHtml`) coverage for at least the 1-15 and 90+ brackets, and move the file to `tests/Feature/Mail/`.
+
+---
+
+### IN-06: The seeder's new key is only covered by a row count
+
+**File:** `tests/Unit/SystemConfigurationTest.php:32-43`
+
+**Issue:** The test asserts `count() === 16` and spot-checks two unrelated keys. A typo in `credit_term_days` would keep the count at 16 while every caller silently fell back to the hardcoded `30` default in `CreditApprovalController::approve()` and the backfill migration — with no test failing.
+
+**Fix:** Add `expect(SystemConfiguration::getInt('credit_term_days', 0))->toBe(30);` to the seeder test.
+
+---
+
+_Reviewed: 2026-09-08T22:34:54Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
