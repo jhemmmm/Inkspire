@@ -47,6 +47,7 @@ class PaymentController extends Controller
             422,
             'This job order is not ready for pricing.',
         );
+        abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
 
         $jobOrder->loadMissing(['pricingEntry', 'transactions', 'queueEntry.customer:id,name']);
 
