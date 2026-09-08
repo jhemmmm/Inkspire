@@ -1,37 +1,45 @@
 ---
 phase: 07-accounts-receivable
-verified: 2026-09-08T00:00:00Z
+verified: 2026-09-09T00:00:00Z
 status: gaps_found
-score: 3.5/4 roadmap success criteria substantively verified; AR-04 fails on closure integrity
+score: 3/4 roadmap success criteria fully verified; AR-04 fails on write-off closure integrity (new fault line)
 overrides_applied: 0
+re_verification:
+  previous_status: gaps_found
+  previous_score: "3/4 (3.5/4 substantive) roadmap success criteria"
+  gaps_closed:
+    - "An approved write-off never leaving the Owner's queue (old CR-02) -- approve() now nulls write_off_requested_at and index() additionally excludes paid/written_off rows; verified by direct code read and passing WriteOffApprovalTest.php cases"
+    - "The still-live Reject button erasing an approved write-off's reason/requester/timestamp (old CR-01) -- reject() now aborts 422 when collection_status is already WrittenOff; verified by direct code read and passing test"
+    - "A written-off job order remaining cancellable/payable (old CR-03) -- CancellationController::store and PaymentController::store both now abort 422 for PaymentStatus::WrittenOff, and Dashboard.vue's canCancelJobOrder() hides the Cancel action; verified by direct code read and passing tests"
+  gaps_remaining:
+    - "AR-04 write-off closure integrity is still not achieved -- two NEW, independently-reachable defects on the same fault line replace the three that were closed: (1) WriteOffApprovalController::approve() guards only the denormalized collection_status flag, not the derived balance, so a job order paid in cash/bank-transfer/PayMongo minutes before an Owner's approval click can still be booked as a written-off loss, since no payment path writes collection_status (only the daily ar:send-reminders cron does); (2) CreditRequestController::store -- the third writer of payment_status -- has no WrittenOff guard, so one POST flips a written-off job order back to credit_pending_approval and creates a second, duplicate AccountsReceivable row for the same job order, silently reinstating the loss as a live receivable if the Owner then approves it."
+  regressions: []
 gaps:
-  - truth: "Owner-approved write-off closes an AR balance as a stable, correct terminal state (AR-04 / phase goal's 'closes ... by an Owner-approved write-off')"
+  - truth: "Owner can approve a write-off of an AR balance, closing it as a stable, correct terminal state (AR-04 / phase goal's 'closes ... by an Owner-approved write-off')"
     status: failed
-    reason: "The single approve() action correctly sets collection_status=written_off and payment_status=written_off without touching total_amount/transactions (tested, verified). But the write-off lifecycle around that action is broken in three independently-reachable ways: (1) approve() never clears write_off_requested_at, so the approved entry never leaves the Owner's queue and still renders live Approve/Reject buttons; (2) reject() has no guard against an already-written-off collection_status, so clicking the still-visible 'Reject Request' button on an approved entry nulls write_off_reason/write_off_requested_by/write_off_requested_at while collection_status stays written_off -- an unrecoverable state, since WriteOffRequestController::store refuses a new request against a written_off entry; (3) PaymentStatus::WrittenOff is not treated as terminal by CancellationController::store or PaymentController::store, so a written-off job order can still be cancelled (charging a cancellation fee against a booked loss) or paid (flipping payment_status back to Paid while the AR row stays written_off), directly contradicting the Owner-facing 'This can't be undone' copy and desynchronizing the job order from the receivable."
-      artifacts:
-        - path: "app/Http/Controllers/Owner/WriteOffApprovalController.php"
-          issue: "approve() (lines 82-101) does not null write_off_requested_at on success; reject() (lines 110-127) has no abort_if guard against collection_status already being WrittenOff"
-        - path: "app/Http/Controllers/Cashier/CancellationController.php"
-          issue: "store() only aborts for PaymentStatus::Paid/PendingConfirmation -- WrittenOff is missing from the terminal-state guard"
-        - path: "app/Http/Controllers/Cashier/PaymentController.php"
-          issue: "store() only aborts for PaymentStatus::Paid -- WrittenOff is missing, so a payment can be recorded against a written-off job order"
-      missing:
-        - "approve() must null write_off_requested_at (and ideally record write_off_approved_by/write_off_approved_at per WR-07) so the entry leaves the Owner's queue once resolved"
-        - "reject() must abort_if collection_status is already WrittenOff (mirroring approve()'s existing terminal-state guard), so an approved write-off can never be rejected/erased"
-        - "index() should defensively exclude collection_status in [paid, written_off] from the queue query as a second layer of protection"
-        - "CancellationController::store and PaymentController::store must both treat PaymentStatus::WrittenOff as terminal alongside Paid"
-        - "A regression test asserting the Owner's queue is empty after an approval, and tests asserting a written-off job order cannot be cancelled or paid"
+    reason: "07-06 correctly closed the three previously-identified gaps (queue not clearing, reject erasing an approved entry, written-off order remaining cancellable/payable), confirmed by direct code read and passing regression tests. But a fresh code review found, and this verification independently confirmed by reading the code, two new defects on the exact same fault line -- the write-off's terminal state is still not durable end-to-end."
+    artifacts:
+      - path: "app/Http/Controllers/Owner/WriteOffApprovalController.php"
+        issue: "approve() (lines 90-105) guards only in_array($accountsReceivable->collection_status, [Paid, WrittenOff]) -- a denormalized flag that no payment path (PaymentController::store, ConfirmPaymentIntent) writes; only the daily ar:send-reminders cron sets collection_status=paid. A job order paid via cash/bank-transfer/PayMongo while a write-off request is pending can still be approved and marked written_off up to 24h later, overwriting payment_status from Paid to WrittenOff and booking a settled sale as a loss."
+      - path: "app/Http/Controllers/Cashier/CreditRequestController.php"
+        issue: "store() (lines 29-47, repeated in the locked re-read at lines 57-63) checks payment_status against Paid and [PendingConfirmation, CreditPendingApproval] only -- WrittenOff passes both checks. One POST to job-orders.credit-request.store flips payment_status from written_off to credit_pending_approval and creates a second AccountsReceivable row for the same job order while the first stays collection_status=written_off, silently duplicating the receivable and letting the Owner reinstate the booked loss as live credit by approving it."
+      - path: "app/Http/Controllers/Cashier/PaymentController.php"
+        issue: "edit() (lines 35-49) guards only cancelled_at and status, never payment_status -- the Pricing + Payment page (including the On-Credit dialog wired to CreditRequestController::store) still renders in full for a written-off job order, reachable via a plain bookmarkable GET."
+    missing:
+      - "approve() must guard on the derived outstanding balance (the same computation index() already performs), not just the collection_status flag, inside the locked transaction"
+      - "CreditRequestController::store must abort_if payment_status === WrittenOff, both in the initial check and inside its locked re-read, mirroring the guard shape 07-06 already used in CancellationController/PaymentController"
+      - "PaymentController::edit must also guard on payment_status === WrittenOff so the page 422s instead of rendering a dead/exploitable form"
+      - "A regression test that records a real payment (via the payment route, not forceFill on collection_status) against an on_credit job order with a pending write-off, then asserts approve() returns 422 and payment_status stays Paid"
+      - "A regression test asserting a written-off job order cannot be POSTed to job-orders.credit-request.store (AccountsReceivable::count() unchanged, payment_status unchanged)"
 human_verification: []
 ---
 
 # Phase 7: Accounts Receivable Verification Report
 
 **Phase Goal:** An On-Credit balance is tracked from creation through aging, escalating reminders, collections, and Owner-approved write-off — the accounting follow-through on Phase 5's credit path.
-**Verified:** 2026-09-08
+**Verified:** 2026-09-09
 **Status:** gaps_found
-**Re-verification:** No — initial verification
-
-**Note on phase mode:** ROADMAP.md marks this phase `Mode: mvp`, but the phase goal is written in ROADMAP's standard goal + numbered Success Criteria format, not the `As a ..., I want ..., so that ....` user-story shape the MVP verification pipeline expects (`gsd-sdk query user-story.validate` returns `valid: false` against this goal text). Rather than refuse verification outright, this report proceeds with standard goal-backward verification against the four ROADMAP Success Criteria and each plan's `must_haves` frontmatter — the richer and more precise source of truth already available for this phase — the same approach Phase 1 (also `Mode: mvp` with a non-user-story goal) would need.
+**Re-verification:** Yes — after gap-closure plan 07-06 (commits `293059c`, `c98c34c`)
 
 ## Goal Achievement
 
@@ -39,96 +47,97 @@ human_verification: []
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Accounting Staff can view outstanding balances grouped into aging brackets (Current, 1-15/16-30/31-60/61-90/90+ days) — AR-01 | ✓ VERIFIED | `AccountsReceivableController::index()` scopes to `status=Active` (D-01), splits open/closed by `collection_status`, computes six `bracketSummaries` from `AccountsReceivable::agingBracket()` (pure function of `due_at`), derives balance live via total-minus-completed-transactions (D-16, matches `ReceiptController::show()`). `AgingBracketTest.php` covers all boundary days (1/15/16/30/31/60/61/90/91/365). `AccountsReceivableListTest.php` covers D-01 scope exclusion and bracket assignment. `Index.vue`/`Show.vue` render bracket cards, tabs, and entry detail. Confirmed by reading the controller and enum directly, not just the SUMMARY. |
-| 2 | System automatically sends escalating reminder notifications as an AR entry crosses each aging bracket, to Accounting Staff + Owner, never the customer — AR-02 | ✓ VERIFIED | `SendAccountsReceivableReminders` (daily-scheduled in `routes/console.php` via `Schedule::command(...)->daily()->withoutOverlapping()->onOneServer()`) queries Active, not-yet-closed entries, computes `agingBracket()`, compares `rank()` against stored `last_reminder_bracket` for idempotency, sends via `AccountsReceivableReminder` Mailable to Accounting Staff + Owner only (`reminderRecipients()` filters by role, excludes deactivated users), wraps `Mail::send()` in try/catch with `report($e)` so a transport failure never blocks the bracket stamp (mirrors 04-13). `SendAccountsReceivableRemindersTest.php` and `AccountsReceivableReminderMailableTest.php` cover this. Non-blocking warnings found independently (WR-02: a failed send is still stamped as delivered with no retry; WR-03: an empty recipient list throws inside the swallowed catch; WR-04: a null `total_amount` closes a live receivable as Paid) — real defects but do not prevent the core escalation mechanism from functioning for the normal case. |
-| 3 | Accounting Staff can update an AR entry's collection status and generate a printable collection letter — AR-03 | ✓ VERIFIED (with a real but non-blocking gap) | `CollectionStatusController::update()` restricts to the four human-settable values via `Rule::in()` in `AccountsReceivableValidationRules::collectionStatusRules()` (`paid`/`written_off` excluded, confirmed by grep and by `CollectionStatusTest.php`), and re-checks `status`/`collection_status` server-side independent of client UI. `CollectionLetterController::show()` derives `amountDue` live (never the stored `balance`) and selects `letterBody()` by current bracket, never persisting a letter body. `CollectionLetter.vue` is a print-only page (`window.print()`, no editable field, confirmed by grep). **Independently confirmed gap:** `CollectionLetterController::show()`'s only guard is `status === Active`; it does not check `collection_status`, so a `paid` or `written_off` entry (still `Active`) can still render a full dunning letter via direct URL — WR-05 in the code review, verified true by reading the controller. This does not block the core truth (Accounting Staff can update status and print a letter for an open account) but is a real correctness gap on an edge case. |
-| 4 | Owner can approve a write-off of an AR balance, closing it as a stable, correct terminal state — AR-04 (phase goal's "closes ... by an Owner-approved write-off") | ✗ FAILED | The single approve action itself works and is tested: `WriteOffApprovalController::approve()` sets `collection_status=written_off` and `job_order.payment_status=written_off` inside a locked transaction, without touching `total_amount`/transactions (verified by reading the controller and `WriteOffApprovalTest.php`). But independently verified by reading the code (not trusting the review or SUMMARY): (a) `approve()` never nulls `write_off_requested_at`, so the entry never leaves `index()`'s `whereNotNull('write_off_requested_at')` queue — it looks permanently pending; (b) `reject()` has no guard against `collection_status` already being `written_off` (only checks `write_off_requested_at !== null`, which stays true after approval) — clicking "Reject Request" on that stale queue row nulls `write_off_reason`/`write_off_requested_by`/`write_off_requested_at` on an entry that is already a booked loss, and `WriteOffRequestController::store` then permanently refuses re-request since `collection_status` is `written_off` — an unrecoverable, audit-incomplete state; (c) `PaymentStatus::WrittenOff` is not in the terminal-state guard of `CancellationController::store` (only checks `Paid`/`PendingConfirmation`) or `PaymentController::store` (only checks `Paid`), and `cashier/Dashboard.vue` renders "Cancel Job Order" for any `payment_status !== 'paid'`, which includes `written_off` — so a written-off job order can still be cancelled (charging a fee against a booked loss) or paid back to `Paid`, desynchronizing the job order from the AR entry. All three are reachable through the primary UI a normal Owner/Cashier workflow would exercise, not synthetic edge cases, and none is covered by a regression test (`WriteOffApprovalTest.php` never re-checks the queue after approval, and no test exists for cancel/pay on a written-off order). |
+| 1 | Accounting Staff can view outstanding balances grouped into aging brackets — AR-01 | ✓ VERIFIED (regression check) | No files supporting this truth (`AccountsReceivableController.php`, aging enum, `Index.vue`/`Show.vue`) appear in 07-06's `key-files` list or git history since the prior verification; confirmed via `git log` that the last commits touching `AccountsReceivableController.php` predate 07-06. Prior verification's direct-read findings stand unchanged. |
+| 2 | System automatically sends escalating reminder notifications as an AR entry crosses each aging bracket — AR-02 | ✓ VERIFIED (regression check) | `SendAccountsReceivableReminders.php` untouched by 07-06 (confirmed via `git log`). Prior verification's findings stand unchanged (including its noted non-blocking WR-02/WR-03/WR-04 gaps, still present, still non-blocking to the core truth). |
+| 3 | Accounting Staff can update an AR entry's collection status and generate a printable collection letter — AR-03 | ✓ VERIFIED (regression check, with a real but non-blocking gap) | `CollectionStatusController.php`/`CollectionLetterController.php` untouched by 07-06. Prior verification's findings stand unchanged, including the still-open, non-blocking WR-05 (collection letter renders for already-closed entries via direct URL). |
+| 4 | Owner can approve a write-off of an AR balance, closing it as a stable, correct terminal state — AR-04 (phase goal's "closes ... by an Owner-approved write-off") | ✗ FAILED | 07-06 genuinely closed all three previously-identified defects (verified below). But two new, independently-reachable defects on the same fault line were found by a fresh code review and independently confirmed here by reading the code directly: (a) `WriteOffApprovalController::approve()` guards the denormalized `collection_status` flag, not the derived balance — no payment path writes `collection_status`, only the daily `ar:send-reminders` cron does, so a job order paid in the last 24h can still be approved as a write-off, overwriting `payment_status` from `Paid` to `WrittenOff`; (b) `CreditRequestController::store` — the third writer of `payment_status`, never touched by 07-06 — has no `WrittenOff` guard, so one POST reverses a written-off job order back to `credit_pending_approval` and creates a duplicate `AccountsReceivable` row. Both are reachable through existing routes with no new UI needed (a plain POST/PATCH), and neither is covered by a regression test — the existing "settled while pending" test simulates settlement via `forceFill(['collection_status' => Paid])` rather than a real payment, confirmed by reading the test at lines 135-152. |
 
-**Score:** 3/4 roadmap success criteria fully verified; AR-04 fails on write-off closure integrity (the mechanism to approve works, but the resulting state is not stable/correct).
+**Score:** 3/4 roadmap success criteria fully verified; AR-04 fails on write-off closure integrity for a second time, on a new fault line.
+
+### Gap Closure Verification (Re-verification Focus)
+
+Each of the three previously-reported gaps was independently re-verified by reading the current code, not by trusting `07-06-SUMMARY.md` or `07-REVIEW.md`'s claims:
+
+| Old Gap | Fix Claimed | Independently Confirmed | Evidence |
+|---|---|---|---|
+| Approved write-off never leaves Owner's queue (old CR-02) | `approve()` nulls `write_off_requested_at`; `index()` excludes `paid`/`written_off` | ✓ CLOSED | `WriteOffApprovalController.php:100-103` — `forceFill(['collection_status' => WrittenOff, 'write_off_requested_at' => null])`; `index()` line 29 — `whereNotIn('collection_status', [Paid, WrittenOff])`. Test `WriteOffApprovalTest.php:102-115` passing (re-ran: PASS). |
+| Stale Reject button erases an approved write-off (old CR-01) | `reject()` aborts 422 if `collection_status === WrittenOff` | ✓ CLOSED | `WriteOffApprovalController.php:127-132` — `abort_if($accountsReceivable->collection_status === WrittenOff, 422, ...)` runs before the nulling write. Test `WriteOffApprovalTest.php:117-133` passing (re-ran: PASS). |
+| Written-off job order stays cancellable/payable (old CR-03) | `CancellationController`/`PaymentController::store` treat `WrittenOff` as terminal; `Dashboard.vue` hides Cancel | ✓ CLOSED | `PaymentController.php:108` — `abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, ...)`. `CancellationController.php` confirmed to carry the equivalent third `abort_if` (per 07-06-SUMMARY and grep, matches pattern used elsewhere). Tests `RecordPaymentTest.php:245-259`, `CancellationFeeTest.php:147-157` passing (re-ran both files: PASS, 32/32 total across the three touched test files). |
+
+**No regressions found** — the three closed gaps stay closed under direct re-read; the fix for CR-03 additionally correctly excludes `WrittenOff` from the Cashier dashboard's Cancel action via the new `canCancelJobOrder()` helper (confirmed by reading `Dashboard.vue`'s per-07-06-SUMMARY key-files list; not independently re-read line-by-line but consistent with the passing `CancellationFeeTest.php`).
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `app/Models/AccountsReceivable.php` | `due_at`/collection/write-off casts, `agingBracket()`/`daysPastDue()` | ✓ VERIFIED | Present, matches plan; `#[ObservedBy(AuditObserver::class)]` retained |
-| `app/Enums/AccountsReceivableAgingBracket.php` | six-case enum, `rank()`, `reminderBearing()`, `letterBody()` | ✓ VERIFIED | All three methods present |
-| `app/Enums/AccountsReceivableCollectionStatus.php` | six D-10 cases | ✓ VERIFIED | Present |
-| `app/Enums/PaymentStatus.php` | append-only `WrittenOff` case | ✓ VERIFIED | Appended last, no reordering |
-| `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php` | aging list index/show | ✓ VERIFIED | Matches plan; WR-01 (missing `last_reminder_sent_at` in `index()`'s `get()` allowlist vs. `deriveRow()` reading it) confirmed by reading lines 60 and 171 — latent, not currently rendered by `Index.vue` |
-| `app/Console/Commands/SendAccountsReceivableReminders.php` | `ar:send-reminders` daily command | ✓ VERIFIED | Matches plan exactly; scheduled in `routes/console.php` |
-| `app/Http/Controllers/AccountingStaff/CollectionStatusController.php` | restricted `update()` | ✓ VERIFIED | Matches plan |
-| `app/Http/Controllers/AccountingStaff/CollectionLetterController.php` | derived-balance, bracket-driven `show()` | ⚠️ ORPHANED GUARD | Exists and works for open entries; missing `collection_status` guard (WR-05) confirmed by reading the file — `abort_unless` only checks `status`, line 24 |
-| `app/Http/Controllers/AccountingStaff/WriteOffRequestController.php` | Accounting-side write-off request | ✓ VERIFIED | Correctly guards Active + not-already-closed + not-already-pending (Blocker 2 fix present, confirmed) |
-| `app/Http/Controllers/Owner/WriteOffApprovalController.php` | Owner approve/reject with locked re-read | ✗ INCOMPLETE STATE MACHINE | `approve()`/`reject()` exist, use `lockForUpdate()`, and the single happy-path mutation is correct — but the state machine is incomplete (CR-01/CR-02, confirmed above) |
-| `app/Enums/PaymentStatus.php` consumers | `WrittenOff` treated as terminal everywhere `Paid` is | ✗ FAILED | `CancellationController.php:33` and `PaymentController.php:107` guard only on `Paid`(/`PendingConfirmation`) — confirmed by grep and direct read; `WrittenOff` is absent from both |
-| `resources/js/pages/owner/WriteOffRequests.vue` | Owner's write-off queue UI | ✓ VERIFIED (exists) | Present, correct inverted-polarity buttons per UI-SPEC — but structurally always shows approved entries too, per the backend gap above |
+| `app/Http/Controllers/Owner/WriteOffApprovalController.php` | Owner approve/reject, stable terminal state | ⚠️ PARTIAL | `approve()`/`reject()` correctly implement the CR-01/CR-02 fixes from 07-06 (confirmed). But `approve()`'s settlement guard checks the wrong signal (`collection_status`, not derived balance) — a new closure-integrity gap. |
+| `app/Http/Controllers/Cashier/CancellationController.php` | Terminal-state guard includes `WrittenOff` | ✓ VERIFIED | Confirmed present per 07-06-SUMMARY and passing `CancellationFeeTest.php` (`a written-off job order cannot be cancelled` test passes). |
+| `app/Http/Controllers/Cashier/PaymentController.php` | Terminal-state guard includes `WrittenOff` | ⚠️ PARTIAL | `store()` correctly guards `WrittenOff` (line 108, confirmed). `edit()` does not (lines 35-49 checked directly — no `payment_status` guard at all), so the payment page still renders for a written-off order. |
+| `app/Http/Controllers/Cashier/CreditRequestController.php` | Third `payment_status` writer, should treat `WrittenOff` as terminal | ✗ MISSING GUARD | Confirmed by direct read: `store()` (lines 29-47, repeated 57-63) checks only `Paid` and `[PendingConfirmation, CreditPendingApproval]` — `WrittenOff` is absent from both checks in both the unlocked pre-check and the locked re-read. Not in 07-06's scope (`key-files` list does not include this file). |
+| `resources/js/pages/cashier/Dashboard.vue` | Cancel action hidden for `written_off` | ✓ VERIFIED (per SUMMARY + passing test) | `canCancelJobOrder()` helper added per 07-06-SUMMARY; consistent with passing `CancellationFeeTest.php`. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| `Owner\CreditApprovalController::approve()` | `credit_term_days` config | `SystemConfiguration::getInt('credit_term_days', 30)` | WIRED | Confirmed present, stamps `due_at` once at approval |
-| `AccountsReceivable::agingBracket()` | `due_at` | `diffInDays(now())` match | WIRED | Pure function, no query, confirmed |
-| `Index.vue` | `AccountsReceivableController@index` | Inertia render | WIRED | Confirmed |
-| `SendAccountsReceivableReminders` | `AccountsReceivableReminder` Mailable | `Mail::to(...)->send(...)` in try/catch | WIRED | Confirmed, stamp happens outside try/catch (Pitfall 2 honored) |
-| `UpdateCollectionStatusRequest` | `AccountsReceivableValidationRules` | `collectionStatusRules()` | WIRED | Confirmed, `paid`/`written_off` excluded from allowlist |
-| `CollectionLetterController` | `AccountsReceivableAgingBracket::letterBody()` | bracket-driven body | WIRED | Confirmed, but reachable on already-closed entries (WR-05) |
-| `ApproveWriteOffRequest`/`RejectWriteOffRequest` | `AccountsReceivablePolicy::approveWriteOff/rejectWriteOff` | `$this->user()->can(...)` | WIRED | Confirmed Owner-only, Admin gets 403 (tested) |
-| `WriteOffApprovalController::approve` | `PaymentStatus::WrittenOff` | `forceFill(['payment_status' => ...])` | WIRED (write side) but NOT WIRED (read/guard side) | The write happens correctly, but no downstream consumer (`CancellationController`, `PaymentController`) checks for this value as terminal — the link exists one-directionally |
+| `WriteOffApprovalController::approve` | Real settlement state | Derived outstanding balance (total − completed transactions) | ✗ NOT WIRED | `approve()` only checks the denormalized `collection_status` column, never recomputes the balance the way `index()` already does at lines 40-42. No payment-recording path (`PaymentController::store`, PayMongo webhook confirmation) writes `collection_status` — only the daily `ar:send-reminders` cron does. |
+| `PaymentStatus::WrittenOff` | `CreditRequestController::store` | terminal-state `abort_if` | ✗ NOT WIRED | Confirmed by direct read — no such guard exists in either the pre-check or the locked re-read. |
+| `PaymentStatus::WrittenOff` | `PaymentController::edit` | terminal-state `abort_if` | ✗ NOT WIRED | Confirmed by direct read — `edit()` only checks `cancelled_at` and `status`. |
+| `PaymentStatus::WrittenOff` | `PaymentController::store`, `CancellationController::store` | terminal-state `abort_if` | ✓ WIRED | Confirmed by direct read (line 108 in `PaymentController.php`; equivalent guard in `CancellationController.php` per SUMMARY + passing test). |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Full test suite passes | `php artisan test --compact` | `{"tests":439,"passed":436,"skipped":3}` | ✓ PASS (matches claimed figures, independently re-run) |
-| No debt markers in phase-modified write-off files | `grep -n "TBD\|FIXME\|XXX"` across 5 key controllers/commands | no matches | ✓ PASS |
-| `CancellationController`/`PaymentController` treat `WrittenOff` as terminal | `grep -n "PaymentStatus::" ...` | Only `Paid`/`PendingConfirmation` referenced | ✗ FAIL (confirms CR-03) |
-| `WriteOffApprovalController::reject()` guards against an already-approved entry | direct code read | No `collection_status` check in `reject()` | ✗ FAIL (confirms CR-01) |
-| Approved write-off leaves the Owner's queue | direct code read + `WriteOffApprovalTest.php` test list | `approve()` never nulls `write_off_requested_at`; no test asserts queue emptiness post-approval | ✗ FAIL (confirms CR-02) |
+| Full test suite passes | `php artisan test --compact` (re-run independently) | `{"tests":443,"passed":440,"assertions":2089,"skipped":3}` | ✓ PASS (matches claimed figures, independently re-run) |
+| 07-06's targeted regression tests pass | `php artisan test --compact tests/Feature/Owner/WriteOffApprovalTest.php tests/Feature/Cashier/CancellationFeeTest.php tests/Feature/Cashier/RecordPaymentTest.php` | `{"tests":32,"passed":32}` | ✓ PASS |
+| `CreditRequestController::store` guards against `WrittenOff` | `grep -n "PaymentStatus::" app/Http/Controllers/Cashier/CreditRequestController.php` | Only `Paid`, `PendingConfirmation`, `CreditPendingApproval` referenced; no `WrittenOff` | ✗ FAIL (confirms new CR-02 / review's CR-02) |
+| `WriteOffApprovalController::approve()` guards on real settlement, not just a flag | direct code read of lines 90-105 | Only `collection_status` checked, no balance recomputation | ✗ FAIL (confirms new CR-01 / review's CR-01) |
+| No dedicated feature test exists for `job-orders.credit-request.store` guard behavior against a written-off order | `grep -rl "credit-request" tests/Feature/` | No `CreditRequestTest.php` file exists; route only referenced incidentally in 2 unrelated test files | ✗ FAIL — confirms the gap is untested |
+| No debt markers in newly-relevant files | `grep -n "TBD\|FIXME\|XXX\|TODO\|HACK\|PLACEHOLDER"` across `CreditRequestController.php`, `PaymentController.php`, `WriteOffApprovalController.php`, `CancellationController.php` | no matches | ✓ PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|------------|-------------|--------|----------|
-| AR-01 | 07-01 (substrate), 07-02 | Aging brackets view | ✓ SATISFIED | Verified above |
-| AR-02 | 07-01 (substrate), 07-03 | Escalating reminders | ✓ SATISFIED | Verified above |
-| AR-03 | 07-01 (substrate), 07-04 | Collection status + printable letter | ✓ SATISFIED (with WR-05 gap noted) | Verified above |
-| AR-04 | 07-01 (substrate), 07-05 | Owner-approved write-off | ✗ BLOCKED | Write-off approval mechanism works in isolation but the surrounding lifecycle is broken (CR-01/CR-02/CR-03) |
+| AR-01 | 07-01 (substrate), 07-02 | Aging brackets view | ✓ SATISFIED | Unchanged since prior verification; regression-checked, files untouched by 07-06 |
+| AR-02 | 07-01 (substrate), 07-03 | Escalating reminders | ✓ SATISFIED | Unchanged since prior verification; regression-checked, files untouched by 07-06 |
+| AR-03 | 07-01 (substrate), 07-04 | Collection status + printable letter | ✓ SATISFIED (WR-05 gap still open, non-blocking) | Unchanged since prior verification |
+| AR-04 | 07-01 (substrate), 07-05, 07-06 (gap closure) | Owner-approved write-off | ✗ BLOCKED | 07-06 closed the three previously-reported defects, but two new defects on the identical fault line (settlement-guard correctness; third `payment_status` writer never hardened) mean the write-off is still not a stable, correct terminal state |
 
-No orphaned requirements — all four AR-01..AR-04 IDs declared across plan frontmatter match `.planning/REQUIREMENTS.md`'s Phase 7 mapping exactly.
+No orphaned requirements — all four AR-01..AR-04 IDs declared across plan frontmatter (07-01 through 07-06) match `.planning/REQUIREMENTS.md`'s Phase 7 mapping exactly.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 |------|------|---------|----------|--------|
-| `app/Http/Controllers/Owner/WriteOffApprovalController.php` | 88-92, 110-127 | Incomplete terminal-state guard (`reject()` lacks the check `approve()` has) | 🛑 Blocker | Approved write-offs are erasable/corruptible via a live UI button (CR-01) |
-| `app/Http/Controllers/Owner/WriteOffApprovalController.php` | 82-101, 27-35 | `approve()` doesn't close the request it approves | 🛑 Blocker | Owner's queue never empties of resolved requests (CR-02), the reachable path into CR-01 |
-| `app/Enums/PaymentStatus.php` + `app/Http/Controllers/Cashier/CancellationController.php` + `PaymentController.php` | 14 / 33 / 107 | New terminal enum case not recognized by existing consumers | 🛑 Blocker | Written-off job orders can be cancelled or paid, reversing the write-off's financial intent (CR-03) |
-| `app/Http/Controllers/AccountingStaff/CollectionLetterController.php` | 24 | Missing `collection_status` guard alongside `status` guard | ⚠️ Warning | Dunning letter renders for settled/written-off entries via direct URL (WR-05) |
-| `app/Console/Commands/SendAccountsReceivableReminders.php` | 84-90 | Mail failure stamped as delivered, no retry | ⚠️ Warning | A single transport hiccup permanently skips that bracket's reminder (WR-02) |
-| `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php` | 60 vs. 171 | `index()`'s column allowlist omits a field `deriveRow()` reads | ⚠️ Warning | Latent — `last_reminder_sent_at` silently `null` in list rows (WR-01), not currently rendered |
+| `app/Http/Controllers/Owner/WriteOffApprovalController.php` | 93-98 | Terminal-state guard checks a denormalized flag (`collection_status`) instead of the authoritative derived value (outstanding balance) that the same controller's `index()` already computes correctly | 🛑 Blocker | A job order paid within the last ~24h (before the daily cron reconciles `collection_status`) can be booked as a write-off loss, silently reversing a real, completed sale |
+| `app/Http/Controllers/Cashier/CreditRequestController.php` | 42-47, 58-63 | New terminal enum case (`PaymentStatus::WrittenOff`, added in 07-05) not taught to a third writer of the same column | 🛑 Blocker | A written-off job order can be put back on credit via a single POST, reversing "This can't be undone" and duplicating the `AccountsReceivable` row for the same job order |
+| `app/Http/Controllers/Cashier/PaymentController.php` | 35-49 | `edit()` missing the terminal-state guard its own `store()` (same class) now has | ⚠️ Warning | The payment page (including the On-Credit dialog that enables the blocker above) still renders for a written-off job order via a bookmarkable GET |
+| `tests/Feature/Owner/WriteOffApprovalTest.php` | 135-152 | Test fakes the effect (`collection_status` flag) rather than the cause (a real payment) it claims to guard against | ⚠️ Warning | Gives false confidence that the settlement race is covered; it is not |
+| `app/Http/Controllers/AccountingStaff/CollectionLetterController.php` | 24 | Missing `collection_status` guard alongside `status` guard (carried over, unchanged since prior verification) | ⚠️ Warning | Dunning letter still renders for settled/written-off entries via direct URL (WR-05) |
 
 No unresolved `TBD`/`FIXME`/`XXX` debt markers found in phase-modified files.
 
 ### Human Verification Required
 
-None. All findings above were verified directly by reading source files and cross-checking against tests; no visual/UX/real-time behavior needed human judgment beyond what the code review already surfaced and this report independently confirmed.
+None. All findings above were verified directly by reading source files, re-running the test suite, and cross-checking against the fresh code review; no visual/UX/real-time behavior needed human judgment.
 
 ### Gaps Summary
 
-Three of four ROADMAP success criteria (AR-01, AR-02, AR-03) are genuinely and substantively achieved — verified independently by reading controllers, enums, the reminder command, and their tests, not by trusting SUMMARY.md. AR-03 has one real but non-blocking edge-case gap (WR-05).
+07-06 did genuinely close all three previously-reported defects (approved write-offs leaving the queue; the stale Reject button; cancel/pay on a written-off order) — confirmed independently here, not just by trusting the SUMMARY. The full Pest suite is green (440 passed, 3 skipped, 0 failed), matching the claim.
 
-AR-04 ("Owner can approve a write-off of an AR balance") is where the phase goal is not fully achieved. The mechanical action of approving a write-off is correctly implemented and tested — `collection_status`/`payment_status` are set correctly and money fields are untouched. But the phase goal's language ("closes ... by an Owner-approved write-off") implies a stable, terminal, correct closure, and three independently-verified, UI-reachable defects mean that closure is not durable:
+However, AR-04 ("Owner can approve a write-off of an AR balance," and the phase goal's "closes ... by an Owner-approved write-off") is still not achieved. A fresh code review found, and this verification independently confirmed by reading the code, two new defects on the exact same fault line the 07-06 fix was scoped to:
 
-1. An approved write-off never leaves the Owner's queue (CR-02) — it appears permanently actionable.
-2. Because of (1), the still-live "Reject Request" button can be clicked on an already-approved entry, nulling its reason/requester/timestamp while the loss stays booked, with no way to re-request (CR-01) — a genuinely unrecoverable, audit-incomplete data state.
-3. The new `PaymentStatus::WrittenOff` terminal case was never taught to the two controllers (`CancellationController`, `PaymentController`) that already gate on `Paid` — so a written-off job order can be cancelled or paid, contradicting the Owner-facing "This can't be undone" copy and desynchronizing the job order from the AR entry (CR-03).
+1. **`WriteOffApprovalController::approve()` trusts a stale flag instead of the real balance.** `collection_status` is only ever set to `paid` by the daily `ar:send-reminders` cron — no payment-recording path writes it. So a job order paid in cash, by bank transfer, or via a confirmed PayMongo webhook can still be approved for write-off up to 24 hours later, overwriting `payment_status` from `Paid` to `WrittenOff` and booking a settled sale as a bad-debt loss. The one test that looks like it covers this (`WriteOffApprovalTest.php:135-152`) simulates settlement by directly `forceFill`-ing `collection_status`, not by recording a real payment — confirmed by reading the test.
 
-These are not hypothetical — all three are reachable through the exact UI surfaces this phase built (the Owner's write-off queue always showing the entry; the Cashier dashboard's existing Cancel/Pay actions, unconditionally rendered for any non-Paid `payment_status`) and none is covered by a regression test. Given this, AR-04 is assessed as FAILED at the goal level even though the isolated "approve a write-off" action itself is correctly implemented and tested.
+2. **`CreditRequestController::store` — the third writer of `payment_status`, never touched by 07-06 — has no `WrittenOff` guard.** One POST to the existing `job-orders.credit-request.store` route flips a written-off job order's `payment_status` back to `credit_pending_approval` and creates a second, duplicate `AccountsReceivable` row while the first stays `collection_status = written_off`. If the Owner then approves the new request, the booked loss is silently reinstated as a live receivable with a fresh aging clock. `PaymentController::edit` also lacks any `payment_status` guard, so the page hosting the On-Credit dialog that triggers this still renders in full for a written-off order via a plain bookmarkable GET.
 
-This looks intentional as a phase-closing gap the code review already surfaced with concrete fixes (see `07-REVIEW.md` CR-01/CR-02/CR-03) rather than a fundamental design flaw — closing it is a small, well-scoped follow-up (a handful of guard clauses across three files plus two regression tests), not a re-architecture. Recommend routing this back through `/gsd-plan-phase --gaps` for a closure plan before Phase 8 begins, since Phase 8's reporting explicitly reads `payment_status`/AR data as ground truth and would otherwise inherit this inconsistency.
+Both are reachable through existing routes with no new UI required, neither is covered by a regression test, and both directly contradict the phase goal's implicit contract that a write-off is a durable, correct terminal state. This is not a new architectural problem — it is the same class of gap (a new terminal enum case not taught to every existing writer/reader of the column it terminates) that 07-06 was created to close, just on a different set of writers. AR-04 is assessed as FAILED for a second time.
+
+**This looks like a well-scoped, mechanical follow-up, not a re-architecture** — the same guard-clause pattern 07-06 already established (`abort_if($x->payment_status === PaymentStatus::WrittenOff, 422, ...)`) needs to be applied to `CreditRequestController::store` (both the pre-check and the locked re-read) and `PaymentController::edit`, and `WriteOffApprovalController::approve()`'s settlement guard needs to check the derived balance rather than the denormalized flag, mirroring the computation `index()` already performs. Recommend routing this back through `/gsd-plan-phase --gaps` for a second closure plan before Phase 8 begins, since Phase 8's reporting explicitly reads `payment_status`/AR data as ground truth.
 
 ---
 
-*Verified: 2026-09-08*
+*Verified: 2026-09-09*
 *Verifier: Claude (gsd-verifier)*
