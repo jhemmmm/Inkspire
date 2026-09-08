@@ -277,7 +277,7 @@ Plans:
   3. Accounting Staff can update an AR entry's collection status and generate a printable collection letter
   4. Owner can approve a write-off of an AR balance
 
-**Plans**: 5 plans in 4 waves
+**Plans**: 6 plans in 5 waves
 Plans:
 **Wave 1**
 
@@ -295,6 +295,10 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 07-05-PLAN.md — Write-Off Request & Owner Approval (AR-04)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 07-06-PLAN.md — Gap closure: write-off lifecycle integrity (AR-04; CR-01/CR-02/CR-03 from 07-VERIFICATION.md)
 
 **UI hint**: yes
 
