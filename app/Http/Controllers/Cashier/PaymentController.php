@@ -105,6 +105,7 @@ class PaymentController extends Controller
             'This job order is not ready for pricing.',
         );
         abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
+        abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
 
         $paymentMethod = $request->validated('payment_method');
 

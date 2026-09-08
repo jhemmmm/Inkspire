@@ -242,6 +242,22 @@ test('a cancelled job order cannot be paid (CR-03)', function () {
     expect($jobOrder->fresh()->total_amount)->toBeNull();
 });
 
+test('a written-off job order cannot be paid', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['payment_status' => 'written_off', 'total_amount' => 1000]);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'payment_method' => 'cash',
+        'payment_type' => 'full',
+        'amount_tendered' => 1000,
+    ], ['Accept' => 'application/json']);
+
+    $response->assertStatus(422);
+    $response->assertJsonFragment(['message' => 'This job order has been written off and cannot accept further payments.']);
+    expect(Transaction::count())->toBe(0);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::WrittenOff);
+});
+
 test('a maya payment failing to create a paymongo intent flashes an error and creates no transaction', function () {
     Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
     Paymongo::shouldReceive('create')->once()->andThrow(new Exception('PayMongo unavailable'));

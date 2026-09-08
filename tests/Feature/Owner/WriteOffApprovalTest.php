@@ -99,6 +99,39 @@ test('approving or rejecting an entry with no pending write-off request returns 
     $rejectResponse->assertStatus(422);
 });
 
+test('the owner\'s write-off queue no longer includes an entry after it has been approved', function () {
+    $owner = User::factory()->owner()->create();
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $accountsReceivable = pendingWriteOff($accountingStaff);
+
+    $this->actingAs($owner)->patch(route('owner.write-off-requests.approve', $accountsReceivable))->assertRedirect();
+
+    $response = $this->actingAs($owner)->get(route('owner.write-off-requests.index'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('owner/WriteOffRequests')
+        ->has('writeOffRequests', 0));
+});
+
+test('rejecting an entry whose collection_status is already written_off returns 422 and does not erase the write-off record', function () {
+    $owner = User::factory()->owner()->create();
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $accountsReceivable = pendingWriteOff($accountingStaff);
+    // Simulate the pre-CR-02-fix stale-row state: collection_status is
+    // already written_off but write_off_requested_at is somehow still set.
+    $accountsReceivable->forceFill(['collection_status' => AccountsReceivableCollectionStatus::WrittenOff->value])->save();
+
+    $response = $this->actingAs($owner)->patch(route('owner.write-off-requests.reject', $accountsReceivable));
+
+    $response->assertStatus(422);
+    $accountsReceivable->refresh();
+    expect($accountsReceivable->write_off_reason)->not->toBeNull();
+    expect($accountsReceivable->write_off_requested_by)->not->toBeNull();
+    expect($accountsReceivable->write_off_requested_at)->not->toBeNull();
+    expect($accountsReceivable->collection_status)->toBe(AccountsReceivableCollectionStatus::WrittenOff);
+});
+
 test('approving a write-off request fails if the entry was settled while the request was pending', function () {
     $owner = User::factory()->owner()->create();
     $accountingStaff = User::factory()->accountingStaff()->create();
