@@ -150,3 +150,28 @@ test('approving a write-off request fails if the entry was settled while the req
     expect($accountsReceivable->collection_status)->toBe(AccountsReceivableCollectionStatus::Paid);
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::OnCredit);
 });
+
+test('approving a write-off fails when a real payment settled the job order while the request was pending', function () {
+    $owner = User::factory()->owner()->create();
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::OnCredit->value]);
+    $accountsReceivable = pendingWriteOff($accountingStaff, $jobOrder);
+
+    // A real Cashier-recorded payment settles the job order in full -- not a
+    // forceFill on collection_status -- while the write-off request sits
+    // pending. The daily ar:send-reminders cron hasn't run yet, so
+    // collection_status is still Pending; only the derived-balance guard
+    // can catch this.
+    $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'payment_method' => 'cash',
+        'payment_type' => 'full',
+        'amount_tendered' => 1000,
+    ])->assertRedirect();
+
+    $response = $this->actingAs($owner)->patch(route('owner.write-off-requests.approve', $accountsReceivable));
+
+    $response->assertStatus(422);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Paid);
+    expect($accountsReceivable->fresh()->collection_status)->toBe(AccountsReceivableCollectionStatus::Pending);
+});

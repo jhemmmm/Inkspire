@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Owner\ApproveWriteOffRequest;
 use App\Http\Requests\Owner\RejectWriteOffRequest;
 use App\Models\AccountsReceivable;
+use App\Models\JobOrder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -79,11 +80,16 @@ class WriteOffApprovalController extends Controller
      * excludes `paid`/`written_off` `collection_status` rows as a second,
      * independent layer of protection.
      *
-     * The re-check that the entry hasn't settled to Paid/Written Off while
-     * the request sat pending happens INSIDE the locked re-read, immediately
-     * after the existing pending-request guard, so a payment landing in the
-     * window between the Owner's page load and their click is still caught
-     * (Blocker 2).
+     * Two settlement checks run inside the locked re-read, immediately after
+     * the existing pending-request guard: the `collection_status` check is a
+     * cheap short-circuit for the common case where the daily `ar:send-
+     * reminders` cron has already reconciled the flag, while the derived-
+     * balance check (`outstandingBalance`, computed identically to
+     * `index()`) is the AUTHORITATIVE guard -- it re-reads the job order
+     * under lock and sums its Completed transactions itself, so a real
+     * payment landing in the window between the Owner's page load and their
+     * approve click is still caught even though the lag-prone flag hasn't
+     * caught up yet.
      */
     public function approve(ApproveWriteOffRequest $request, AccountsReceivable $accountsReceivable): RedirectResponse
     {
@@ -97,11 +103,20 @@ class WriteOffApprovalController extends Controller
                 __('This entry was settled or closed before the write-off could be approved.'),
             );
 
+            $jobOrder = JobOrder::query()->whereKey($accountsReceivable->job_order_id)->lockForUpdate()->firstOrFail();
+
+            $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
+            $outstandingBalance = $jobOrder->total_amount !== null
+                ? round((float) $jobOrder->total_amount - $amountPaid, 2)
+                : 0.0;
+
+            abort_if($outstandingBalance <= 0.0, 422, __('This entry was settled or closed before the write-off could be approved.'));
+
             $accountsReceivable->forceFill([
                 'collection_status' => AccountsReceivableCollectionStatus::WrittenOff->value,
                 'write_off_requested_at' => null,
             ])->save();
-            $accountsReceivable->jobOrder->forceFill(['payment_status' => PaymentStatus::WrittenOff->value])->save();
+            $jobOrder->forceFill(['payment_status' => PaymentStatus::WrittenOff->value])->save();
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Write-off approved. :number is now marked Written Off.', ['number' => $accountsReceivable->jobOrder->number])]);
