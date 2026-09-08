@@ -8,6 +8,7 @@ use App\Enums\AccountsReceivableStatus;
 use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AccountsReceivable;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,6 +22,7 @@ use Inertia\Response;
  *     days_past_due: int|null,
  *     collection_status: string,
  *     due_at: \Illuminate\Support\Carbon|null,
+ *     write_off_reason: string|null,
  *     write_off_requested_at: \Illuminate\Support\Carbon|null,
  *     last_reminder_sent_at: \Illuminate\Support\Carbon|null,
  * }
@@ -55,7 +57,7 @@ class AccountsReceivableController extends Controller
         $entries = AccountsReceivable::query()
             ->where('status', AccountsReceivableStatus::Active->value)
             ->with($this->eagerLoads())
-            ->get(['id', 'job_order_id', 'balance', 'status', 'collection_status', 'due_at', 'write_off_requested_at']);
+            ->get(['id', 'job_order_id', 'balance', 'status', 'collection_status', 'due_at', 'write_off_reason', 'write_off_requested_at']);
 
         $rows = $entries->map(fn (AccountsReceivable $accountsReceivable): array => $this->deriveRow($accountsReceivable));
 
@@ -103,8 +105,8 @@ class AccountsReceivableController extends Controller
             $aDue = $a['due_at'] ?? null;
             $bDue = $b['due_at'] ?? null;
 
-            $aTimestamp = $aDue instanceof \Illuminate\Support\Carbon ? $aDue->timestamp : PHP_INT_MAX;
-            $bTimestamp = $bDue instanceof \Illuminate\Support\Carbon ? $bDue->timestamp : PHP_INT_MAX;
+            $aTimestamp = $aDue instanceof Carbon ? $aDue->timestamp : PHP_INT_MAX;
+            $bTimestamp = $bDue instanceof Carbon ? $bDue->timestamp : PHP_INT_MAX;
 
             return $aTimestamp <=> $bTimestamp ?: $b['balance'] <=> $a['balance'];
         });
@@ -164,6 +166,7 @@ class AccountsReceivableController extends Controller
             'days_past_due' => $accountsReceivable->daysPastDue(),
             'collection_status' => $accountsReceivable->collection_status->value,
             'due_at' => $accountsReceivable->due_at,
+            'write_off_reason' => $accountsReceivable->write_off_reason,
             'write_off_requested_at' => $accountsReceivable->write_off_requested_at,
             'last_reminder_sent_at' => $accountsReceivable->last_reminder_sent_at,
         ];

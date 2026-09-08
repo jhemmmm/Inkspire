@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountingStaff\AccountsReceivableController;
 use App\Http\Controllers\AccountingStaff\CollectionLetterController;
 use App\Http\Controllers\AccountingStaff\CollectionStatusController;
+use App\Http\Controllers\AccountingStaff\WriteOffRequestController;
 use App\Http\Controllers\Artist\DesignEditorController;
 use App\Http\Controllers\Artist\JobOrderQueueController;
 use App\Http\Controllers\Artist\JobOrderWorkspaceController;
@@ -75,5 +76,6 @@ Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')
     Route::get('accounts-receivable/{accountsReceivable}', [AccountsReceivableController::class, 'show'])->name('accounts-receivable.show');
     Route::patch('accounts-receivable/{accountsReceivable}/collection-status', [CollectionStatusController::class, 'update'])->name('accounts-receivable.collection-status.update');
     Route::get('accounts-receivable/{accountsReceivable}/collection-letter', [CollectionLetterController::class, 'show'])->name('accounts-receivable.collection-letter.show');
+    Route::post('accounts-receivable/{accountsReceivable}/write-off', [WriteOffRequestController::class, 'store'])->name('accounts-receivable.write-off.store');
     Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
 });
