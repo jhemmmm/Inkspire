@@ -61,7 +61,7 @@
 - [ ] **AR-01**: Accounting Staff can view outstanding balances grouped into aging brackets (Current, 15/30/60/90+ days)
 - [ ] **AR-02**: The system automatically sends escalating reminder notifications as an AR entry crosses each aging bracket (15-day → Accounting+Owner, 30-day → urgent, 60-day → escalation, 90+ → final escalation with write-off option)
 - [ ] **AR-03**: Accounting Staff can update an AR entry's collection status and generate a printable collection letter
-- [ ] **AR-04**: Owner can approve a write-off of an AR balance
+- [x] **AR-04**: Owner can approve a write-off of an AR balance
 
 ### Expenses
 
