@@ -302,7 +302,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 07-07-PLAN.md — Gap closure round 2: settlement-race balance guard + third payment_status writer (AR-04; second-round gaps from 07-VERIFICATION.md re-verification)
+- [x] 07-07-PLAN.md — Gap closure round 2: settlement-race balance guard + third payment_status writer (AR-04; second-round gaps from 07-VERIFICATION.md re-verification)
 
 **UI hint**: yes
 
@@ -334,5 +334,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
-| 7. Accounts Receivable | 6/6 | Complete   | 2026-09-08 |
+| 7. Accounts Receivable | 7/7 | Complete   | 2026-09-08 |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
