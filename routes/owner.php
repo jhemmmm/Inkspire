@@ -5,6 +5,7 @@ use App\Http\Controllers\Owner\CreditApprovalController;
 use App\Http\Controllers\Owner\DesignFileController;
 use App\Http\Controllers\Owner\SystemConfigurationController;
 use App\Http\Controllers\Owner\UserManagementController;
+use App\Http\Controllers\Owner\WriteOffApprovalController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:owner,admin'])->prefix('owner')->name('owner.')->group(function () {
@@ -20,4 +21,7 @@ Route::middleware(['auth', 'role:owner,admin'])->prefix('owner')->name('owner.')
     Route::get('credit-requests', [CreditApprovalController::class, 'index'])->name('credit-requests.index');
     Route::patch('credit-requests/{accountsReceivable}/approve', [CreditApprovalController::class, 'approve'])->name('credit-requests.approve');
     Route::patch('credit-requests/{accountsReceivable}/reject', [CreditApprovalController::class, 'reject'])->name('credit-requests.reject');
+    Route::get('write-off-requests', [WriteOffApprovalController::class, 'index'])->name('write-off-requests.index');
+    Route::patch('accounts-receivable/{accountsReceivable}/write-off/approve', [WriteOffApprovalController::class, 'approve'])->name('write-off-requests.approve');
+    Route::patch('accounts-receivable/{accountsReceivable}/write-off/reject', [WriteOffApprovalController::class, 'reject'])->name('write-off-requests.reject');
 });
