@@ -38,4 +38,22 @@ class AccountsReceivablePolicy
     {
         return $this->approve($actor, $accountsReceivable);
     }
+
+    /**
+     * Determine whether the actor can approve the given write-off request
+     * (D-13). Owner only, same Owner-not-Admin narrowing as approve().
+     */
+    public function approveWriteOff(User $actor, AccountsReceivable $accountsReceivable): bool
+    {
+        return $actor->role === UserRole::Owner;
+    }
+
+    /**
+     * Determine whether the actor can reject the given write-off request.
+     * Identical rule to write-off approval.
+     */
+    public function rejectWriteOff(User $actor, AccountsReceivable $accountsReceivable): bool
+    {
+        return $this->approveWriteOff($actor, $accountsReceivable);
+    }
 }
