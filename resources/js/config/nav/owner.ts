@@ -1,5 +1,6 @@
 import {
     CreditCard,
+    FileMinus,
     LayoutGrid,
     ScrollText,
     Settings,
@@ -12,6 +13,7 @@ import { index as creditRequestsIndex } from '@/routes/owner/credit-requests';
 import { index as designOverridesIndex } from '@/routes/owner/design-overrides';
 import { edit as systemConfigurationEditRoute } from '@/routes/owner/system-configuration';
 import { index as usersIndex } from '@/routes/owner/users';
+import { index as writeOffRequestsIndex } from '@/routes/owner/write-off-requests';
 import type { NavItem } from '@/types';
 
 export const ownerNavItems: NavItem[] = [
@@ -44,5 +46,10 @@ export const ownerNavItems: NavItem[] = [
         title: 'Credit Requests',
         href: creditRequestsIndex(),
         icon: CreditCard,
+    },
+    {
+        title: 'Write-Off Requests',
+        href: writeOffRequestsIndex(),
+        icon: FileMinus,
     },
 ];

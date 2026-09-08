@@ -1,12 +1,27 @@
 <script setup lang="ts">
 import { Form, Head, Link, setLayoutProps } from '@inertiajs/vue3';
-import { Printer } from '@lucide/vue';
+import { Clock, FileMinus, Printer } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import CollectionStatusController from '@/actions/App/Http/Controllers/AccountingStaff/CollectionStatusController';
+import WriteOffRequestController from '@/actions/App/Http/Controllers/AccountingStaff/WriteOffRequestController';
+import InputError from '@/components/InputError.vue';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
 import { index as accountsReceivableIndex, show } from '@/routes/accounting-staff/accounts-receivable';
 import { show as collectionLetterShow } from '@/routes/accounting-staff/accounts-receivable/collection-letter';
@@ -26,6 +41,7 @@ interface AccountsReceivableDetail {
     days_past_due: number | null;
     collection_status: string;
     due_at: string | null;
+    write_off_reason: string | null;
     write_off_requested_at: string | null;
     last_reminder_sent_at: string | null;
     approved_at: string | null;
@@ -139,6 +155,8 @@ const isTerminal = computed(
 );
 
 const selectedCollectionStatus = ref<string>(props.accountsReceivable.collection_status);
+
+const hasPendingWriteOff = computed(() => props.accountsReceivable.write_off_requested_at !== null);
 </script>
 
 <template>
@@ -169,6 +187,15 @@ const selectedCollectionStatus = ref<string>(props.accountsReceivable.collection
                 </Badge>
             </div>
         </div>
+
+        <Alert v-if="hasPendingWriteOff">
+            <Clock class="size-4" />
+            <AlertTitle>Write-off request submitted</AlertTitle>
+            <AlertDescription>
+                {{ money(accountsReceivable.balance) }} is awaiting Owner approval. Reminder emails continue until it's approved. Reason given:
+                "{{ accountsReceivable.write_off_reason }}"
+            </AlertDescription>
+        </Alert>
 
         <Card>
             <CardHeader>
@@ -286,21 +313,75 @@ const selectedCollectionStatus = ref<string>(props.accountsReceivable.collection
                 <CardTitle>Actions</CardTitle>
             </CardHeader>
             <CardContent class="flex flex-col gap-2">
-                <template v-if="!isTerminal && accountsReceivable.aging_bracket !== 'current'">
-                    <Button as-child variant="outline" class="w-fit">
+                <div class="flex items-center gap-2">
+                    <Button
+                        v-if="!isTerminal && accountsReceivable.aging_bracket !== 'current'"
+                        as-child
+                        variant="outline"
+                        class="w-fit"
+                    >
                         <Link :href="collectionLetterShow.url(accountsReceivable.id)">
                             <Printer class="size-4" />
                             Print Collection Letter
                         </Link>
                     </Button>
-                </template>
-                <p v-else-if="!isTerminal" class="text-muted-foreground text-sm">
+
+                    <Dialog v-if="!isTerminal && !hasPendingWriteOff">
+                        <DialogTrigger as-child>
+                            <Button variant="outline" class="w-fit">
+                                <FileMinus class="size-4" />
+                                Request Write-Off
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <Form
+                                v-bind="WriteOffRequestController.store.form(accountsReceivable.id)"
+                                :options="{ preserveScroll: true }"
+                                class="space-y-4"
+                                v-slot="{ errors, processing }"
+                            >
+                                <DialogHeader>
+                                    <DialogTitle>
+                                        Request a write-off for {{ money(accountsReceivable.balance) }}?
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        An Owner reviews every write-off. Until they approve it, this balance stays active and keeps aging.
+                                    </DialogDescription>
+                                </DialogHeader>
+
+                                <div class="grid gap-2">
+                                    <Label for="write-off-reason">Reason</Label>
+                                    <Textarea
+                                        id="write-off-reason"
+                                        name="reason"
+                                        rows="4"
+                                        placeholder="e.g. Business closed permanently — three collection attempts returned undeliverable"
+                                    />
+                                    <p class="text-muted-foreground text-sm">
+                                        The Owner sees this reason when deciding. It's recorded in the audit trail.
+                                    </p>
+                                    <InputError :message="errors.reason" />
+                                </div>
+
+                                <DialogFooter class="gap-2">
+                                    <DialogClose as-child>
+                                        <Button type="button" variant="secondary">
+                                            Cancel
+                                        </Button>
+                                    </DialogClose>
+                                    <Button type="submit" :disabled="processing">
+                                        Submit Request
+                                    </Button>
+                                </DialogFooter>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+                <p v-if="!isTerminal && accountsReceivable.aging_bracket === 'current'" class="text-muted-foreground text-sm">
                     A collection letter becomes available once this balance is
                     past due.
                 </p>
             </CardContent>
         </Card>
-
-        <!-- Write-off actions: added by 07-05 -->
     </div>
 </template>
