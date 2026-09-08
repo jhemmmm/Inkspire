@@ -116,6 +116,19 @@ function cancellationDialogBody(jobOrder: CashierJobOrder): string {
     return body;
 }
 
+/**
+ * Mirrors CancellationController@store's terminal-state guard: a job order
+ * that is already fully paid or written off can never be cancelled from
+ * here, so the Cancel Job Order action must never be offered for either
+ * state (CR-03).
+ */
+function canCancelJobOrder(jobOrder: CashierJobOrder): boolean {
+    return (
+        jobOrder.payment_status !== 'paid' &&
+        jobOrder.payment_status !== 'written_off'
+    );
+}
+
 defineOptions({
     layout: {
         navItems: cashierNavItems,
@@ -415,9 +428,7 @@ function paymentStatusLabel(status: string): string {
                                         </Link>
                                     </DropdownMenuItem>
                                     <AlertDialog
-                                        v-if="
-                                            jobOrder.payment_status !== 'paid'
-                                        "
+                                        v-if="canCancelJobOrder(jobOrder)"
                                     >
                                         <AlertDialogTrigger as-child>
                                             <DropdownMenuItem

@@ -36,6 +36,7 @@ class CancellationController extends Controller
             422,
             __('This job order has a payment awaiting confirmation. Resolve it before cancelling.'),
         );
+        abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot be cancelled.'));
 
         $designStarted = in_array($jobOrder->status, [
             JobOrderStatus::InDesign,

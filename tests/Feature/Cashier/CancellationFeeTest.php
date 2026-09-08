@@ -144,6 +144,18 @@ test('a job order with a payment pending PayMongo confirmation cannot be cancell
     expect($jobOrder->fresh()->cancelled_at)->toBeNull();
 });
 
+test('a written-off job order cannot be cancelled', function () {
+    seedCancellationFee(500.0);
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => 'design_approved', 'payment_status' => 'written_off', 'total_amount' => 1000]);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.cancel', $jobOrder));
+
+    $response->assertStatus(422);
+    expect(Transaction::count())->toBe(0);
+    expect($jobOrder->fresh()->cancelled_at)->toBeNull();
+});
+
 test('the cashier dashboard casts amount_paid to a float, not a numeric string (CR-04)', function () {
     $cashier = User::factory()->cashier()->create();
     $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000]);
