@@ -26,6 +26,7 @@ class WriteOffApprovalController extends Controller
     {
         $entries = AccountsReceivable::query()
             ->whereNotNull('write_off_requested_at')
+            ->whereNotIn('collection_status', [AccountsReceivableCollectionStatus::Paid->value, AccountsReceivableCollectionStatus::WrittenOff->value])
             ->with([
                 'jobOrder:id,number,description,total_amount,queue_entry_id',
                 'jobOrder.queueEntry.customer:id,name',
@@ -73,6 +74,11 @@ class WriteOffApprovalController extends Controller
      * job order's `total_amount` and every `transactions` row are untouched
      * -- a write-off is a loss to report, not a sale that shrank.
      *
+     * Also nulls `write_off_requested_at` in the same write, so the entry
+     * leaves this queue immediately (CR-02) -- `index()` additionally
+     * excludes `paid`/`written_off` `collection_status` rows as a second,
+     * independent layer of protection.
+     *
      * The re-check that the entry hasn't settled to Paid/Written Off while
      * the request sat pending happens INSIDE the locked re-read, immediately
      * after the existing pending-request guard, so a payment landing in the
@@ -91,7 +97,10 @@ class WriteOffApprovalController extends Controller
                 __('This entry was settled or closed before the write-off could be approved.'),
             );
 
-            $accountsReceivable->forceFill(['collection_status' => AccountsReceivableCollectionStatus::WrittenOff->value])->save();
+            $accountsReceivable->forceFill([
+                'collection_status' => AccountsReceivableCollectionStatus::WrittenOff->value,
+                'write_off_requested_at' => null,
+            ])->save();
             $accountsReceivable->jobOrder->forceFill(['payment_status' => PaymentStatus::WrittenOff->value])->save();
         });
 
@@ -103,9 +112,12 @@ class WriteOffApprovalController extends Controller
     /**
      * Reject a pending write-off request. Nulls the three write-off columns
      * only -- `AccountsReceivableStatus` never left Active, so this is what
-     * "returns to Active and keeps aging" means (CONTEXT.md discretion). No
-     * `collection_status` re-check is needed here: rejecting a settled entry
-     * is harmless, since rejection never touches `payment_status`.
+     * "returns to Active and keeps aging" means (CONTEXT.md discretion). A
+     * `collection_status` re-check IS needed here (CR-01): an already-
+     * approved write-off still satisfies the `write_off_requested_at !==
+     * null` guard below (approve() nulls it, but a stale or replayed Reject
+     * click must never erase an already-booked loss's reason/requester/
+     * timestamp), so an already-`written_off` entry is rejected outright.
      */
     public function reject(RejectWriteOffRequest $request, AccountsReceivable $accountsReceivable): RedirectResponse
     {
@@ -113,6 +125,11 @@ class WriteOffApprovalController extends Controller
             $accountsReceivable = AccountsReceivable::query()->whereKey($accountsReceivable->id)->lockForUpdate()->firstOrFail();
 
             abort_if($accountsReceivable->write_off_requested_at === null, 422, __('No write-off request is pending for this entry.'));
+            abort_if(
+                $accountsReceivable->collection_status === AccountsReceivableCollectionStatus::WrittenOff,
+                422,
+                __('This write-off has already been approved and cannot be rejected.'),
+            );
 
             $accountsReceivable->forceFill([
                 'write_off_reason' => null,
