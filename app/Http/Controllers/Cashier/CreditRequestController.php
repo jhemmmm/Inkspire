@@ -40,6 +40,7 @@ class CreditRequestController extends Controller
             'This job order is not ready for pricing.',
         );
         abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
+        abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot be placed on credit.'));
         abort_if(
             in_array($jobOrder->payment_status, [PaymentStatus::PendingConfirmation, PaymentStatus::CreditPendingApproval], true),
             422,
@@ -56,6 +57,7 @@ class CreditRequestController extends Controller
 
             abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
             abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
+            abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot be placed on credit.'));
             abort_if(
                 in_array($jobOrder->payment_status, [PaymentStatus::PendingConfirmation, PaymentStatus::CreditPendingApproval], true),
                 422,

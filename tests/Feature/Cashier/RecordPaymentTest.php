@@ -246,6 +246,9 @@ test('a written-off job order cannot be paid', function () {
     $cashier = User::factory()->cashier()->create();
     $jobOrder = JobOrder::factory()->readyForProduction()->create(['payment_status' => 'written_off', 'total_amount' => 1000]);
 
+    $editResponse = $this->actingAs($cashier)->get(route('cashier.job-orders.payment.edit', $jobOrder));
+    $editResponse->assertStatus(422);
+
     $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
         'payment_method' => 'cash',
         'payment_type' => 'full',
