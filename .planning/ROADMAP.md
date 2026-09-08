@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Artist Workflow & Design Editor** - An Artist takes a Type B job from consultation through a locked, approved design (completed 2026-09-02)
 - [x] **Phase 5: POS & Payments** - A job order gets priced, paid (cash, bank transfer, GCash/Maya, or on-credit), and receipted (completed 2026-09-05)
 - [x] **Phase 6: Production Monitoring & Public Tracking** - Staff and customers can see a job order's physical progress through to pickup (completed 2026-09-06)
-- [ ] **Phase 7: Accounts Receivable** - An on-credit balance is tracked from creation through aging, reminders, collections, and write-off
+- [x] **Phase 7: Accounts Receivable** - An on-credit balance is tracked from creation through aging, reminders, collections, and write-off (completed 2026-09-08)
 - [ ] **Phase 8: Expenses & Reporting** - Expenses get logged and every module's data rolls up into exportable, role-scoped reports
 
 ## Phase Details
@@ -294,7 +294,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 07-05-PLAN.md — Write-Off Request & Owner Approval (AR-04)
+- [x] 07-05-PLAN.md — Write-Off Request & Owner Approval (AR-04)
 
 **UI hint**: yes
 
@@ -326,5 +326,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
-| 7. Accounts Receivable | 4/5 | In Progress|  |
+| 7. Accounts Receivable | 5/5 | Complete   | 2026-09-08 |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
