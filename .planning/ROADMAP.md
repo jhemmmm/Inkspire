@@ -306,7 +306,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 07-08-PLAN.md — Gap closure round 3: derived-balance extraction + full six-mutator payment_status audit + CollectionStatusController/CollectionLetterController hardening + Cashier on-credit payment path (AR-01, AR-02, AR-03, AR-04; third-round gaps from 07-VERIFICATION.md re-verification and 07-REVIEW.md)
+- [x] 07-08-PLAN.md — Gap closure round 3: derived-balance extraction + full six-mutator payment_status audit + CollectionStatusController/CollectionLetterController hardening + Cashier on-credit payment path (AR-01, AR-02, AR-03, AR-04; third-round gaps from 07-VERIFICATION.md re-verification and 07-REVIEW.md)
 
 **UI hint**: yes
 
@@ -338,5 +338,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Artist Workflow & Design Editor | 13/13 | Complete    | 2026-09-03 |
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
-| 7. Accounts Receivable | 7/7 | Complete   | 2026-09-08 |
+| 7. Accounts Receivable | 8/8 | Complete   | 2026-09-09 |
 | 8. Expenses & Reporting | 0/TBD | Not started | - |
