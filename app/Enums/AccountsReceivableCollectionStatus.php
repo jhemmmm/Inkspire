@@ -14,4 +14,11 @@ enum AccountsReceivableCollectionStatus: string
     case Collections = 'collections';
     case Paid = 'paid';
     case WrittenOff = 'written_off';
+
+    /**
+     * Cancelling a job order voids the print-job debt — only the
+     * cancellation fee stands. Distinct from WrittenOff, which is an
+     * Owner-approved uncollected loss and must stay reportable as such.
+     */
+    case Cancelled = 'cancelled';
 }

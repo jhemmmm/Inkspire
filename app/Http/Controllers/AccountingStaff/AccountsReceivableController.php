@@ -63,6 +63,7 @@ class AccountsReceivableController extends Controller
         $closedStatuses = [
             AccountsReceivableCollectionStatus::Paid->value,
             AccountsReceivableCollectionStatus::WrittenOff->value,
+            AccountsReceivableCollectionStatus::Cancelled->value,
         ];
 
         $closed = $rows->filter(fn (array $row): bool => in_array($row['collection_status'], $closedStatuses, true))->values();

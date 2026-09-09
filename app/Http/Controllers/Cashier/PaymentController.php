@@ -117,6 +117,20 @@ class PaymentController extends Controller
         }
 
         $result = DB::transaction(function () use ($request, $jobOrder): array {
+            // Locked re-read (CR-01) — the terminal-state guards above ran
+            // against the unlocked, route-bound instance. Without re-checking
+            // them here, a WriteOffApprovalController::approve() landing
+            // between that check and this commit is silently overwritten by
+            // the payment_status write below, reopening a just-booked loss.
+            // Same idempotency boundary every other payment_status writer
+            // already uses.
+            $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
+
+            abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
+            abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
+            abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
+            abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.'));
+
             $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
 
             if ($jobOrder->total_amount === null) {
@@ -274,6 +288,18 @@ class PaymentController extends Controller
         // reaches this point, so it can never leave a priced-but-untracked
         // job order behind.
         DB::transaction(function () use ($jobOrder, $computed, $request, $paymentMethod, $transactionAmount, $isDownPayment, $paymongoPaymentIntentId): void {
+            // Locked re-read (CR-01) — same boundary as the Cash/Bank
+            // Transfer branch above. The PayMongo calls between store()'s
+            // unlocked guard check and this commit widen the race window
+            // considerably, so re-verifying terminal state here matters more,
+            // not less, than on the synchronous path.
+            $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
+
+            abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
+            abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
+            abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
+            abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.'));
+
             if ($computed !== null) {
                 $jobOrder->forceFill([
                     'pricing_entry_id' => $request->validated('pricing_entry_id'),

@@ -40,6 +40,7 @@ class SendAccountsReceivableReminders extends Command
             ->whereNotIn('collection_status', [
                 AccountsReceivableCollectionStatus::Paid->value,
                 AccountsReceivableCollectionStatus::WrittenOff->value,
+                AccountsReceivableCollectionStatus::Cancelled->value,
             ])
             ->with(['jobOrder.transactions:id,job_order_id,amount,status', 'jobOrder.queueEntry.customer:id,name'])
             ->chunkById(50, fn ($receivables) => $receivables->each(fn (AccountsReceivable $r) => $this->processOne($r)));

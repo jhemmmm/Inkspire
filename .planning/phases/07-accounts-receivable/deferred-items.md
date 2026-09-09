@@ -15,3 +15,55 @@
 
 - **6th `payment_status` writer found by the Task 3 audit, NOT fixed in this plan (scope discipline per the orchestrator fence)**: `app/Actions/POS/ConfirmPaymentIntent.php` can silently overwrite `payment_status` from `written_off` back to `paid`/`partially_paid`. Trace: (1) a job order goes On-Credit (`payment_status = on_credit`, an Active `AccountsReceivable` row exists); (2) a Cashier initiates a GCash/Maya payment against it via `PaymentController::store()` — none of `store()`'s guards (`cancelled_at`, status, `Paid`, `WrittenOff`) block this for an `OnCredit` job order, so `storePaymongoIntent()` creates a `pending_confirmation` Transaction and sets `payment_status = pending_confirmation`; (3) Accounting Staff requests a write-off on the AR row via `WriteOffRequestController::store()`, which checks only the AR row's own `status`/`collection_status`, never the job order's `payment_status` or any in-flight transaction; (4) the Owner approves it via `WriteOffApprovalController::approve()` — Task 1's derived-balance guard only sums *Completed* transactions, so the still-pending GCash/Maya transaction doesn't count toward the balance and the guard passes, setting `payment_status = written_off`; (5) the PayMongo webhook (or Plan 05-04's manual reconciliation) later confirms the transaction, and `ConfirmPaymentIntent()` recomputes `payment_status` from `Completed` transactions with no `WrittenOff` awareness at all, overwriting it to `paid`/`partially_paid`. Reachable end-to-end through existing routes, no forceFill needed. This is a distinct defect from the two this plan closed (T-07-07-01/T-07-07-02) — not covered by Task 1 or Task 2's guards — and per the plan's explicit scope fence ("a newly discovered 6th defect is a candidate for a further gap-closure round, not a same-plan scope expansion") is deliberately left unfixed here. Needs its own gap-closure round; likely fix shape: guard `ConfirmPaymentIntent()`'s write branches with the same `abort`-free early-return-if-WrittenOff pattern this plan added elsewhere (a locked re-read already exists there), or block `WriteOffRequestController`/`WriteOffApprovalController` from proceeding while any of the job order's transactions are still `pending_confirmation`.
   - **RESOLVED in 07-08**: Task 2 wraps both the Completed and Failed/expired branches of `ConfirmPaymentIntent`'s locked `$jobOrder` re-read in a `payment_status !== WrittenOff` guard, so a confirmed webhook/reconciliation can never overwrite an already-written-off job order's terminal `payment_status`. Covered by a dedicated regression test in `tests/Unit/Actions/ConfirmPaymentIntentTest.php`.
+
+## From round 4 (inline close, 2026-09-09)
+
+Both AR-04 findings from `07-REVIEW.md` were fixed inline rather than through a fifth
+gap-closure plan. Rationale recorded below because the *loop itself* was the real defect.
+
+- **CR-01 `PaymentController` locked re-read — FIXED.** `store()` and `storePaymongoIntent()`
+  now re-fetch the job order under `lockForUpdate()` as the first act inside their own
+  `DB::transaction()` closures and re-run the `cancelled_at` / `Paid` / `WrittenOff` /
+  `CreditPendingApproval` guards against that locked instance, matching the pattern already
+  used by `CreditRequestController`, `CreditApprovalController`, `WriteOffApprovalController`,
+  `CollectionStatusController` and `ConfirmPaymentIntent`.
+  - **Honest limitation:** the TOCTOU race this closes is not covered by an automated test.
+    A feature test cannot interleave a second request between the outer guard and the
+    transaction commit without contrived instrumentation. The fix is verified by code review
+    against the seven sibling implementations of the same pattern, not by a failing-then-passing
+    test. If a future round wants proof, it needs a concurrency harness, not another grep audit.
+
+- **CR-02 `outstandingBalance()` / `CancellationFee` commingling — RESOLVED BY BUSINESS RULE,
+  not by a type filter.** The reviewer framed this as a missing `whereIn('type', ...)` filter,
+  but the underlying question was an unspecified business rule: *what does a customer owe when
+  an on-credit job order is cancelled?* Decision taken 2026-09-09: **fee only — cancelling voids
+  the print-job debt.**
+  - Implemented as: new terminal `AccountsReceivableCollectionStatus::Cancelled` (no migration —
+    `collection_status` is an unconstrained string column), added to the closed-status lists in
+    `AccountsReceivableController::index()` and `SendAccountsReceivableReminders`, and
+    `CancellationController::store()` now closes any Active receivable under a locked read.
+  - `outstandingBalance()` deliberately still has **no** `type` filter. It does not need one:
+    `CancellationFee` transactions are created only by `CancellationController` (verified by
+    grep — the enum case appears in exactly two files), so a job order carries one **iff** it is
+    cancelled, and a cancelled job order's receivable is now closed. No live AR figure can mix
+    a fee into a balance. Adding a filter as well would be redundant surface.
+  - `Cancelled` is deliberately distinct from `WrittenOff`: a write-off is an Owner-approved
+    uncollected loss (AR-04) and must stay reportable as such for Phase 8's financial reports.
+
+### Why this phase looped four times — process defect, not code defect
+
+`execute-phase`'s `code_review_gate` re-reviews **every file in the phase** (56 files) on every
+round, not just what the round changed. Rounds 07-06/07-07/07-08 therefore kept re-rolling a
+fresh LLM review across Phase 5 code that no gap round had ever touched — `PaymentController`'s
+guards and `CancellationController` both predate Phase 7. An LLM reading 56 files of money and
+concurrency code reliably returns 2-6 plausible Criticals, the verifier converts any Critical
+into `gaps_found`, and the next round begins. There is no fixed point in that arrangement.
+
+Evidence it was the harness and not the codebase: the suite was green at every round (445 → 456
+→ 458 tests, zero failures throughout), and the verifier independently confirmed that 07-06,
+07-07 and 07-08 each *did* fully close their declared scope. Real defects were being closed each
+round; the gate simply kept widening the net faster than the rounds could close it.
+
+**If Phase 8 shows the same symptom:** scope the review to the round's own diff
+(`/gsd-code-review 8 --files=...`) rather than the whole phase, or treat reviewer Criticals in
+untouched files as backlog items instead of phase-blocking gaps.

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Cashier;
 
+use App\Enums\AccountsReceivableCollectionStatus;
+use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
@@ -9,6 +11,7 @@ use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Cashier\CancelJobOrderRequest;
+use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
 use App\Models\SystemConfiguration;
 use App\Models\Transaction;
@@ -73,6 +76,23 @@ class CancellationController extends Controller
                 // confirmation dialog before submitting); processing an
                 // actual refund is out of scope for this plan.
             }
+
+            // Cancelling voids the print-job debt — only the cancellation
+            // fee stands. Close any open receivable so the balance stops
+            // ageing, stops generating reminders and collection letters, and
+            // can no longer be written off as an uncollected loss. Without
+            // this the fee Transaction above would also net against the
+            // print-job debt in outstandingBalance(), understating every AR
+            // surface by the fee amount.
+            $receivable = AccountsReceivable::query()
+                ->where('job_order_id', $jobOrder->id)
+                ->where('status', AccountsReceivableStatus::Active->value)
+                ->lockForUpdate()
+                ->first();
+
+            $receivable?->forceFill([
+                'collection_status' => AccountsReceivableCollectionStatus::Cancelled->value,
+            ])->save();
 
             // payment_status is left untouched in both branches — it
             // reflects payment history, not the active state. cancelled_at

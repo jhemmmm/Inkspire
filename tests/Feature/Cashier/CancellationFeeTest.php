@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\AccountsReceivableCollectionStatus;
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\PaymentStatus;
@@ -251,5 +252,51 @@ test('a cancelled job order no longer appears on the cashier dashboard', functio
         ->component('cashier/Dashboard')
         ->has('jobOrders', 0)
         ->where('cancellationFeeAmount', 500)
+    );
+});
+
+test('cancelling an On-Credit job order closes its receivable so the voided debt stops ageing', function () {
+    seedCancellationFee(500.0);
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->create([
+        'status' => 'in_design',
+        'total_amount' => 1000,
+        'payment_status' => PaymentStatus::OnCredit->value,
+    ]);
+    $receivable = AccountsReceivable::factory()->for($jobOrder)->active()->create(['balance' => 1000]);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.cancel', $jobOrder));
+
+    $response->assertRedirect();
+    $jobOrder->refresh();
+    $receivable->refresh();
+
+    expect($jobOrder->cancelled_at)->not->toBeNull();
+    // Cancelling voids the print-job debt — only the fee stands. The
+    // receivable must be closed, and closed as Cancelled rather than
+    // WrittenOff so it is never reported as an Owner-approved loss.
+    expect($receivable->collection_status)->toBe(AccountsReceivableCollectionStatus::Cancelled);
+    expect($receivable->status)->toBe(AccountsReceivableStatus::Active);
+});
+
+test('a cancelled receivable is excluded from the aging list open brackets', function () {
+    seedCancellationFee(500.0);
+    $cashier = User::factory()->cashier()->create();
+    $accounting = User::factory()->accountingStaff()->create();
+    $jobOrder = JobOrder::factory()->create([
+        'status' => 'in_design',
+        'total_amount' => 1000,
+        'payment_status' => PaymentStatus::OnCredit->value,
+    ]);
+    AccountsReceivable::factory()->for($jobOrder)->active()->create(['balance' => 1000]);
+
+    $this->actingAs($cashier)->post(route('cashier.job-orders.cancel', $jobOrder));
+
+    $response = $this->actingAs($accounting)->get(route('accounting-staff.accounts-receivable.index'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->component('accounting-staff/AccountsReceivable/Index')
+        ->has('receivables', 0)
+        ->has('closedReceivables', 1)
     );
 });
