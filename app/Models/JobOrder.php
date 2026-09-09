@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
 use App\Enums\PaymentStatus;
+use App\Enums\TransactionStatus;
 use App\Observers\AuditObserver;
 use Database\Factories\JobOrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -148,6 +149,23 @@ class JobOrder extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * The single source of truth for the derived outstanding balance
+     * (D-16) — total_amount minus the sum of Completed transactions.
+     * Replaces the copy that previously existed independently in eight
+     * other files. Safe to call on either an eager-loaded (uses the
+     * loaded `transactions` collection, no extra query) or a bare
+     * instance (falls back to a fresh query).
+     */
+    public function outstandingBalance(): float
+    {
+        $amountPaid = (float) ($this->relationLoaded('transactions')
+            ? $this->transactions->where('status', TransactionStatus::Completed->value)->sum('amount')
+            : $this->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount'));
+
+        return $this->total_amount !== null ? round((float) $this->total_amount - $amountPaid, 2) : 0.0;
     }
 
     /**

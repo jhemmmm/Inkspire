@@ -26,9 +26,7 @@ class ReceiptController extends Controller
 
         $completedTransactions = $jobOrder->transactions->where('status', TransactionStatus::Completed);
         $amountPaid = (float) $completedTransactions->sum('amount');
-        $balance = $jobOrder->total_amount !== null
-            ? round((float) $jobOrder->total_amount - $amountPaid, 2)
-            : 0.0;
+        $balance = $jobOrder->outstandingBalance();
 
         $latestTransaction = $completedTransactions->sortByDesc('created_at')->first();
 

@@ -18,6 +18,14 @@ class ConfirmPaymentIntent
      * or the same webhook delivered twice) can never double-credit the job
      * order (T-05-02). This is the single idempotency boundary — never
      * duplicate this guard logic elsewhere.
+     *
+     * Both the Completed and Failed/expired branches also protect an
+     * already-WrittenOff job order's terminal payment_status: the
+     * Transaction itself still resolves to Completed/Failed as normal
+     * (money still moved or didn't), but the job order's payment_status is
+     * never overwritten once it's a booked loss. Silent no-op, not an
+     * abort — this is a background job/webhook handler, not a user-facing
+     * request.
      */
     public function __invoke(Transaction $transaction, bool $succeeded): Transaction
     {
@@ -38,13 +46,16 @@ class ConfirmPaymentIntent
 
             if ($locked->status === TransactionStatus::Completed) {
                 $jobOrder = JobOrder::query()->whereKey($locked->job_order_id)->lockForUpdate()->first();
-                $amountPaid = $jobOrder->transactions()->where('status', TransactionStatus::Completed)->sum('amount');
 
-                $jobOrder->forceFill([
-                    'payment_status' => $amountPaid >= $jobOrder->total_amount
-                        ? PaymentStatus::Paid
-                        : PaymentStatus::PartiallyPaid,
-                ])->save();
+                if ($jobOrder->payment_status !== PaymentStatus::WrittenOff) {
+                    $amountPaid = $jobOrder->transactions()->where('status', TransactionStatus::Completed)->sum('amount');
+
+                    $jobOrder->forceFill([
+                        'payment_status' => $amountPaid >= $jobOrder->total_amount
+                            ? PaymentStatus::Paid
+                            : PaymentStatus::PartiallyPaid,
+                    ])->save();
+                }
             } else {
                 // Failed/expired confirmation (D-13, Plan 05-04) — recompute
                 // payment_status from any OTHER completed transactions for
@@ -53,13 +64,16 @@ class ConfirmPaymentIntent
                 // Staff sees an actionable Unpaid/PartiallyPaid state and
                 // can choose a different payment method.
                 $jobOrder = JobOrder::query()->whereKey($locked->job_order_id)->lockForUpdate()->first();
-                $amountPaid = $jobOrder->transactions()->where('status', TransactionStatus::Completed)->sum('amount');
 
-                $jobOrder->forceFill([
-                    'payment_status' => $amountPaid > 0
-                        ? PaymentStatus::PartiallyPaid
-                        : PaymentStatus::Unpaid,
-                ])->save();
+                if ($jobOrder->payment_status !== PaymentStatus::WrittenOff) {
+                    $amountPaid = $jobOrder->transactions()->where('status', TransactionStatus::Completed)->sum('amount');
+
+                    $jobOrder->forceFill([
+                        'payment_status' => $amountPaid > 0
+                            ? PaymentStatus::PartiallyPaid
+                            : PaymentStatus::Unpaid,
+                    ])->save();
+                }
             }
 
             return $locked;

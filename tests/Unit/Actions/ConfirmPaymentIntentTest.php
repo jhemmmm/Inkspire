@@ -71,6 +71,20 @@ test('confirming a failed pending payment falls back the job order to partially 
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PartiallyPaid);
 });
 
+test('confirming a pending payment on a written-off job order does not revert the terminal state', function () {
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+    $jobOrder->forceFill(['total_amount' => 1000, 'payment_status' => PaymentStatus::WrittenOff])->save();
+    $transaction = Transaction::factory()->pendingConfirmation()->create([
+        'job_order_id' => $jobOrder->id,
+        'amount' => 1000,
+    ]);
+
+    $confirmed = (new ConfirmPaymentIntent)($transaction, true);
+
+    expect($confirmed->status)->toBe(TransactionStatus::Completed);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::WrittenOff);
+});
+
 test('calling ConfirmPaymentIntent twice on the same transaction only applies the state transition once', function () {
     $jobOrder = JobOrder::factory()->readyForProduction()->create();
     $jobOrder->forceFill(['total_amount' => 1000])->save();

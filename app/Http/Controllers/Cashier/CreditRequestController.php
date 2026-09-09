@@ -6,7 +6,6 @@ use App\Actions\POS\ComputeJobOrderPrice;
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\PaymentStatus;
-use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Cashier\CreateCreditRequestRequest;
 use App\Models\AccountsReceivable;
@@ -64,8 +63,6 @@ class CreditRequestController extends Controller
                 'This job order already has a payment action pending.',
             );
 
-            $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
-
             if ($jobOrder->total_amount === null) {
                 // On Credit can be the very first payment action taken for a
                 // job order (D-08 needs no prior pricing step), but the
@@ -94,7 +91,7 @@ class CreditRequestController extends Controller
             // The full REMAINING outstanding amount, not the original total
             // — if a down payment already exists, the AR balance only
             // covers what's actually still owed (D-09).
-            $outstandingBalance = round((float) $jobOrder->total_amount - $amountPaid, 2);
+            $outstandingBalance = $jobOrder->outstandingBalance();
 
             AccountsReceivable::create([
                 'job_order_id' => $jobOrder->id,

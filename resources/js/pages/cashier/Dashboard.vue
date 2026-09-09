@@ -427,6 +427,41 @@ function paymentStatusLabel(status: string): string {
                                             View Receipt
                                         </Link>
                                     </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        v-else-if="
+                                            jobOrder.payment_status ===
+                                                'on_credit' ||
+                                            jobOrder.payment_status ===
+                                                'credit_rejected'
+                                        "
+                                        as-child
+                                    >
+                                        <Link
+                                            :href="
+                                                PaymentController.edit(
+                                                    jobOrder.id,
+                                                ).url
+                                            "
+                                            :data-test="`process-payment-${jobOrder.id}-link`"
+                                        >
+                                            {{
+                                                jobOrder.payment_status ===
+                                                'on_credit'
+                                                    ? 'Collect Balance'
+                                                    : 'Process Payment'
+                                            }}
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        v-else-if="
+                                            jobOrder.payment_status ===
+                                            'credit_pending_approval'
+                                        "
+                                        disabled
+                                        :data-test="`credit-pending-approval-${jobOrder.id}-item`"
+                                    >
+                                        Awaiting Owner Approval
+                                    </DropdownMenuItem>
                                     <AlertDialog
                                         v-if="canCancelJobOrder(jobOrder)"
                                     >

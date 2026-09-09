@@ -48,12 +48,13 @@ class PaymentController extends Controller
             'This job order is not ready for pricing.',
         );
         abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
+        abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.'));
 
         $jobOrder->loadMissing(['pricingEntry', 'transactions', 'queueEntry.customer:id,name']);
 
         $amountPaid = (float) $jobOrder->transactions->where('status', TransactionStatus::Completed)->sum('amount');
         $remainingBalance = $jobOrder->total_amount !== null
-            ? round((float) $jobOrder->total_amount - $amountPaid, 2)
+            ? $jobOrder->outstandingBalance()
             : null;
 
         // The most recent still-pending GCash/Maya transaction — sourced
@@ -107,6 +108,7 @@ class PaymentController extends Controller
         );
         abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
         abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
+        abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.'));
 
         $paymentMethod = $request->validated('payment_method');
 
@@ -138,7 +140,7 @@ class PaymentController extends Controller
             }
 
             $isDownPayment = $request->validated('payment_type') === 'down';
-            $remainingBalance = round((float) $jobOrder->total_amount - $amountPaid, 2);
+            $remainingBalance = $jobOrder->outstandingBalance();
             $transactionAmount = $isDownPayment
                 ? (float) $request->validated('down_payment_amount')
                 : $remainingBalance;

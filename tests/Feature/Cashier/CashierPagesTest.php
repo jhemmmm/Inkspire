@@ -53,3 +53,32 @@ test('a non cashier role cannot view the cashier dashboard', function () {
 
     $response->assertForbidden();
 });
+
+test('the cashier dashboard exposes payment_status for every eligible job order status, including on-credit states', function () {
+    $cashier = User::factory()->cashier()->create();
+
+    $onCredit = JobOrder::factory()->readyForProduction()->create(['payment_status' => 'on_credit', 'total_amount' => 1000]);
+    $creditRejected = JobOrder::factory()->readyForProduction()->create(['payment_status' => 'credit_rejected', 'total_amount' => 1000]);
+    $creditPendingApproval = JobOrder::factory()->readyForProduction()->create(['payment_status' => 'credit_pending_approval', 'total_amount' => 1000]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.dashboard'));
+
+    $response->assertOk();
+    $response->assertInertia(function (Assert $page) use ($onCredit, $creditRejected, $creditPendingApproval) {
+        $jobOrders = collect($page->toArray()['props']['jobOrders']);
+
+        expect($jobOrders->firstWhere('id', $onCredit->id)['payment_status'])->toBe('on_credit');
+        expect($jobOrders->firstWhere('id', $creditRejected->id)['payment_status'])->toBe('credit_rejected');
+        expect($jobOrders->firstWhere('id', $creditPendingApproval->id)['payment_status'])->toBe('credit_pending_approval');
+    });
+});
+
+test('the payment page is reachable for an on_credit job order (CR-02)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['payment_status' => 'on_credit', 'total_amount' => 1000]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.job-orders.payment.edit', $jobOrder));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page->component('cashier/JobOrderPayment'));
+});

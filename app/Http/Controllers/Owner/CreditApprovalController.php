@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Owner\ApproveCreditRequest;
 use App\Http\Requests\Owner\RejectCreditRequest;
 use App\Models\AccountsReceivable;
+use App\Models\JobOrder;
 use App\Models\SystemConfiguration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,6 +39,16 @@ class CreditApprovalController extends Controller
      *
      * Both writes (AccountsReceivable + JobOrder) are wrapped in a single
      * DB::transaction() per the Money-Moving precedent.
+     *
+     * A locked re-read of the job order also guards against CR-01: a real
+     * payment can land through a path other than PaymentController (which
+     * now preventively blocks payment during CreditPendingApproval) while
+     * this request sits pending. `outstandingBalance()` (D-16) is the
+     * authoritative, current-code re-derivation — if it's already settled,
+     * the approval is rejected and the AR row's `balance` is re-snapshotted
+     * from that same derived value rather than the possibly-stale
+     * request-time balance, matching WriteOffApprovalController::approve()'s
+     * established re-snapshot discipline.
      */
     public function approve(ApproveCreditRequest $request, AccountsReceivable $accountsReceivable): RedirectResponse
     {
@@ -54,14 +65,19 @@ class CreditApprovalController extends Controller
                 __('This credit request has already been resolved.'),
             );
 
+            $jobOrder = JobOrder::query()->whereKey($accountsReceivable->job_order_id)->lockForUpdate()->firstOrFail();
+
+            abort_if($jobOrder->outstandingBalance() <= 0.0, 422, __('This job order was settled before the credit request could be approved.'));
+
             $accountsReceivable->forceFill([
                 'status' => AccountsReceivableStatus::Active,
                 'approved_by' => $request->user()->id,
                 'approved_at' => now(),
                 'due_at' => now()->addDays(SystemConfiguration::getInt('credit_term_days', 30)),
+                'balance' => $jobOrder->outstandingBalance(),
             ])->save();
 
-            $accountsReceivable->jobOrder->forceFill(['payment_status' => PaymentStatus::OnCredit])->save();
+            $jobOrder->forceFill(['payment_status' => PaymentStatus::OnCredit])->save();
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Credit approved and posted to Accounts Receivable.')]);
