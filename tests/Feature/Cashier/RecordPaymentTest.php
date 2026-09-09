@@ -261,6 +261,25 @@ test('a written-off job order cannot be paid', function () {
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::WrittenOff);
 });
 
+test('a job order with a pending credit request cannot be paid directly (CR-01)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['payment_status' => 'credit_pending_approval', 'total_amount' => 1000]);
+
+    $editResponse = $this->actingAs($cashier)->get(route('cashier.job-orders.payment.edit', $jobOrder));
+    $editResponse->assertStatus(422);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'payment_method' => 'cash',
+        'payment_type' => 'full',
+        'amount_tendered' => 1000,
+    ], ['Accept' => 'application/json']);
+
+    $response->assertStatus(422);
+    $response->assertJsonFragment(['message' => 'This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.']);
+    expect(Transaction::count())->toBe(0);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::CreditPendingApproval);
+});
+
 test('a maya payment failing to create a paymongo intent flashes an error and creates no transaction', function () {
     Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
     Paymongo::shouldReceive('create')->once()->andThrow(new Exception('PayMongo unavailable'));

@@ -6,6 +6,7 @@ use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
 use App\Models\PricingEntry;
 use App\Models\SystemConfiguration;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 
@@ -132,6 +133,19 @@ test('approving an already-rejected credit request is rejected and does not reve
     $response->assertStatus(422);
     expect($accountsReceivable->fresh()->status)->toBe(AccountsReceivableStatus::Rejected);
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::CreditRejected);
+});
+
+test('approving a credit request fails when the job order was already settled by a real transaction (CR-01)', function () {
+    $owner = User::factory()->owner()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::CreditPendingApproval->value]);
+    $accountsReceivable = AccountsReceivable::factory()->for($jobOrder)->create(['balance' => 1000]);
+    Transaction::factory()->for($jobOrder)->create(['amount' => 1000]);
+
+    $response = $this->actingAs($owner)->patch(route('owner.credit-requests.approve', $accountsReceivable));
+
+    $response->assertStatus(422);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::CreditPendingApproval);
+    expect($accountsReceivable->fresh()->status)->toBe(AccountsReceivableStatus::PendingApproval);
 });
 
 test('a cashier can request OnCredit for an eligible job order, posting the remaining outstanding balance', function () {
