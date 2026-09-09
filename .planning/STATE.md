@@ -2,15 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-09-09T08:49:36.693Z"
+status: ready_to_plan
+last_updated: 2026-09-09T11:51:43.662Z
 last_activity: 2026-09-09 -- Phase 07 execution started
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 54
-  completed_plans: 53
+  completed_plans: 54
   percent: 75
+stopped_at: Phase 07 complete (8/8) — ready to discuss Phase 8
 ---
 
 # Project State
@@ -20,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-31)
 
 **Core value:** A job order flows correctly end-to-end — a customer queues in, gets a job order created (print-ready or needs-consultation), pays, and the order moves through production to pickup with the right role seeing and doing the right thing at each step.
-**Current focus:** Phase 07 — accounts-receivable
+**Current focus:** Phase 8 — expenses & reporting
 
 ## Current Position
 
-Phase: 07 (accounts-receivable) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 07
-Last activity: 2026-09-09 -- Phase 07 execution started
+Phase: 8
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-09
 
 Progress: [██████████] 100%
 
@@ -35,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 34
+- Total plans completed: 42
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -47,6 +48,7 @@ Progress: [██████████] 100%
 | 03 | 2 | - | - |
 | 04 | 13 | - | - |
 | 05 | 7 | - | - |
+| 07 | 8 | - | - |
 
 **Recent Trend:**
 
