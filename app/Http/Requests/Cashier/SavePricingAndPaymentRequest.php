@@ -66,7 +66,7 @@ class SavePricingAndPaymentRequest extends FormRequest
                 ->sum('amount');
 
             if ($jobOrder->total_amount !== null) {
-                $remainingBalance = (float) $jobOrder->total_amount - $amountPaid;
+                $remainingBalance = $jobOrder->outstandingBalance();
             } else {
                 // First pricing/payment visit (WR-01) — no total_amount
                 // snapshot exists yet to check the down payment against.

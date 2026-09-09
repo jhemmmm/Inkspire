@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Owner;
 
 use App\Enums\AccountsReceivableCollectionStatus;
 use App\Enums\PaymentStatus;
-use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Owner\ApproveWriteOffRequest;
 use App\Http\Requests\Owner\RejectWriteOffRequest;
@@ -37,10 +36,7 @@ class WriteOffApprovalController extends Controller
             ->get(['id', 'job_order_id', 'balance', 'write_off_reason', 'write_off_requested_by', 'write_off_requested_at', 'due_at']);
 
         $writeOffRequests = $entries->map(function (AccountsReceivable $accountsReceivable): array {
-            $amountPaid = (float) $accountsReceivable->jobOrder->transactions->where('status', TransactionStatus::Completed->value)->sum('amount');
-            $balance = $accountsReceivable->jobOrder->total_amount !== null
-                ? round((float) $accountsReceivable->jobOrder->total_amount - $amountPaid, 2)
-                : 0.0;
+            $balance = $accountsReceivable->jobOrder->outstandingBalance();
 
             return [
                 'id' => $accountsReceivable->id,
@@ -105,10 +101,7 @@ class WriteOffApprovalController extends Controller
 
             $jobOrder = JobOrder::query()->whereKey($accountsReceivable->job_order_id)->lockForUpdate()->firstOrFail();
 
-            $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
-            $outstandingBalance = $jobOrder->total_amount !== null
-                ? round((float) $jobOrder->total_amount - $amountPaid, 2)
-                : 0.0;
+            $outstandingBalance = $jobOrder->outstandingBalance();
 
             abort_if($outstandingBalance <= 0.0, 422, __('This entry was settled or closed before the write-off could be approved.'));
 

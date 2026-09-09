@@ -30,9 +30,7 @@ class CollectionLetterController extends Controller
         ]);
 
         $amountPaid = (float) $accountsReceivable->jobOrder->transactions->where('status', TransactionStatus::Completed->value)->sum('amount');
-        $amountDue = $accountsReceivable->jobOrder->total_amount !== null
-            ? round((float) $accountsReceivable->jobOrder->total_amount - $amountPaid, 2)
-            : 0.0;
+        $amountDue = $accountsReceivable->jobOrder->outstandingBalance();
 
         $bracket = $accountsReceivable->agingBracket();
         $pastDue = $bracket !== AccountsReceivableAgingBracket::Current;

@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Enums\AccountsReceivableAgingBracket;
 use App\Enums\AccountsReceivableCollectionStatus;
-use App\Enums\TransactionStatus;
 use App\Models\AccountsReceivable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -110,18 +109,12 @@ class AccountsReceivableReminder extends Mailable
     }
 
     /**
-     * The derived outstanding balance — job order total minus completed
-     * transactions, matching ReceiptController::show()'s computation.
+     * The derived outstanding balance — delegates to
+     * JobOrder::outstandingBalance() (D-16), the single source of truth.
      */
     private function outstandingBalance(): float
     {
-        $amountPaid = (float) $this->receivable->jobOrder->transactions
-            ->where('status', TransactionStatus::Completed->value)
-            ->sum('amount');
-
-        return $this->receivable->jobOrder->total_amount !== null
-            ? round((float) $this->receivable->jobOrder->total_amount - $amountPaid, 2)
-            : 0.0;
+        return $this->receivable->jobOrder->outstandingBalance();
     }
 
     /**

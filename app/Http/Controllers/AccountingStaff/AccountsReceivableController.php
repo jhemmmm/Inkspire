@@ -5,7 +5,6 @@ namespace App\Http\Controllers\AccountingStaff;
 use App\Enums\AccountsReceivableAgingBracket;
 use App\Enums\AccountsReceivableCollectionStatus;
 use App\Enums\AccountsReceivableStatus;
-use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AccountsReceivable;
 use Illuminate\Support\Carbon;
@@ -142,10 +141,7 @@ class AccountsReceivableController extends Controller
      */
     private function deriveRow(AccountsReceivable $accountsReceivable): array
     {
-        $amountPaid = (float) $accountsReceivable->jobOrder->transactions->where('status', TransactionStatus::Completed->value)->sum('amount');
-        $balance = $accountsReceivable->jobOrder->total_amount !== null
-            ? round((float) $accountsReceivable->jobOrder->total_amount - $amountPaid, 2)
-            : 0.0;
+        $balance = $accountsReceivable->jobOrder->outstandingBalance();
 
         return [
             'id' => $accountsReceivable->id,

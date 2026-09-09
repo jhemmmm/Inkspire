@@ -53,7 +53,7 @@ class PaymentController extends Controller
 
         $amountPaid = (float) $jobOrder->transactions->where('status', TransactionStatus::Completed)->sum('amount');
         $remainingBalance = $jobOrder->total_amount !== null
-            ? round((float) $jobOrder->total_amount - $amountPaid, 2)
+            ? $jobOrder->outstandingBalance()
             : null;
 
         // The most recent still-pending GCash/Maya transaction — sourced
@@ -138,7 +138,7 @@ class PaymentController extends Controller
             }
 
             $isDownPayment = $request->validated('payment_type') === 'down';
-            $remainingBalance = round((float) $jobOrder->total_amount - $amountPaid, 2);
+            $remainingBalance = $jobOrder->outstandingBalance();
             $transactionAmount = $isDownPayment
                 ? (float) $request->validated('down_payment_amount')
                 : $remainingBalance;

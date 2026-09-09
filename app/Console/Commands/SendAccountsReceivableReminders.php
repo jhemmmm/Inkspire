@@ -5,7 +5,6 @@ namespace App\Console\Commands;
 use App\Enums\AccountsReceivableAgingBracket;
 use App\Enums\AccountsReceivableCollectionStatus;
 use App\Enums\AccountsReceivableStatus;
-use App\Enums\TransactionStatus;
 use App\Enums\UserRole;
 use App\Mail\AccountsReceivableReminder;
 use App\Models\AccountsReceivable;
@@ -54,13 +53,7 @@ class SendAccountsReceivableReminders extends Command
      */
     private function processOne(AccountsReceivable $receivable): void
     {
-        $amountPaid = (float) $receivable->jobOrder->transactions
-            ->where('status', TransactionStatus::Completed->value)
-            ->sum('amount');
-
-        $balance = $receivable->jobOrder->total_amount !== null
-            ? round((float) $receivable->jobOrder->total_amount - $amountPaid, 2)
-            : 0.0;
+        $balance = $receivable->jobOrder->outstandingBalance();
 
         if ($balance <= 0) {
             $receivable->forceFill(['collection_status' => AccountsReceivableCollectionStatus::Paid->value])->save();
