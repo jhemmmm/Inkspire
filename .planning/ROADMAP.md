@@ -322,7 +322,25 @@ Plans:
   2. Owner can view financial/profit reports; Cashier can view Daily Sales & Cancellation reports; Production Staff can view a Production Status report; Accounting Staff can view Daily/Monthly Sales, Daily/Monthly Expenses, and Summary of Sales & Expenses reports
   3. Any role-scoped report can be exported to PDF or Excel
 
-**Plans**: TBD
+**Plans**: 5 plans in 4 waves
+Plans:
+**Wave 1**
+
+- [ ] 08-01-PLAN.md — Expenses Backend: migration, model, factory, Form Requests, ExpenseController (EXP-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 08-02-PLAN.md — Expenses Frontend Wiring + shared DateRangeControl.vue (EXP-01 completion)
+- [ ] 08-03-PLAN.md — Reports Backend: ReportRegistry, ReportBuilder, entitlement, all 5 report queries, written_off_at (RPT-01, RPT-02, RPT-03, RPT-04)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 08-04-PLAN.md — Export Pipeline: PDF (dompdf) + Excel (openspout) + audit logging + Collection Letter PDF (RPT-05)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 08-05-PLAN.md — Reports Frontend: shared ReportsWorkspace.vue, 4 role wrapper pages, nav (RPT-01, RPT-02, RPT-03, RPT-04, RPT-05 completion)
+
 **UI hint**: yes
 
 ## Progress
@@ -339,4 +357,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
 | 7. Accounts Receivable | 8/8 | Complete    | 2026-09-09 |
-| 8. Expenses & Reporting | 0/TBD | Not started | - |
+| 8. Expenses & Reporting | 0/5 | Not started | - |
