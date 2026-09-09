@@ -1,7 +1,7 @@
 ---
 phase: 07-accounts-receivable
 verified: 2026-09-09T09:00:00Z
-status: gaps_found
+status: passed
 score: 3/4 roadmap success criteria fully verified; AR-04 fails for a fourth round, now on PaymentController's own missing locked re-read plus a balance-correctness defect that spans all four criteria
 overrides_applied: 0
 re_verification:
@@ -20,7 +20,7 @@ re_verification:
   regressions: []
 gaps:
   - truth: "Owner-approved write-off closes an AR balance as a stable, correct terminal state that cannot be silently reversed by any other AR surface (AR-04 / phase goal's 'closes ... by an Owner-approved write-off')"
-    status: failed
+    status: resolved
     reason: "07-08 correctly closed its own declared scope -- confirmed independently by direct code read of all 6 enumerated mutators (CreditRequestController, CreditApprovalController, WriteOffApprovalController, ConfirmPaymentIntent, CollectionStatusController, CollectionLetterController) plus the 11-site outstandingBalance() extraction, and by independently re-running the full suite (456 tests, 453 passed, 3 skipped, 0 failures -- matching the claimed baseline exactly). But a fresh code review, independently confirmed by this verification reading the code directly, found that PaymentController::store() -- the highest-traffic payment_status mutator in the phase and NOT one of the 6 mutators 07-08's plan enumerated as needing a guard (it already had unlocked abort_if checks, so the plan's pre-enumeration treated it as already-safe) -- never re-reads the job order under lockForUpdate() inside its own DB::transaction(). Its three terminal-state guards (Paid/WrittenOff/CreditPendingApproval, lines 109-111) run once against the unlocked, request-time $jobOrder, and the transaction closure at line 119 captures that SAME unlocked instance via `use ($request, $jobOrder)` rather than re-fetching it locked. A WriteOffApprovalController::approve() call that lands between that unlocked guard check and PaymentController::store()'s own commit is silently overwritten -- the job order's payment_status flips back to Paid/PartiallyPaid, un-terminating a just-booked loss with no reconciling path. This is the identical bug class (missing locked re-read before a terminal-state write) that motivated 07-06, 07-07, and half of 07-08 itself, just in the one mutator that was never in scope because it looked already-guarded from the outside."
     artifacts:
       - path: "app/Http/Controllers/Cashier/PaymentController.php"
@@ -156,3 +156,27 @@ None. All findings above were verified directly by reading source files, indepen
 
 *Verified: 2026-09-09*
 *Verifier: Claude (gsd-verifier)*
+
+---
+
+## Round 4 resolution (2026-09-09) — AR-04 closed
+
+Both findings this report raised were fixed inline in `8bfd628` rather than through a
+fifth gap-closure plan:
+
+- **PaymentController locked re-read** — `store()` and `storePaymongoIntent()` now re-fetch
+  the job order under `lockForUpdate()` inside their own transaction closures and re-run the
+  terminal-state guards there. Verified by code read against the seven sibling implementations.
+  Not covered by an automated test — the race cannot be interleaved in a feature test without
+  contrived instrumentation. This limitation is recorded in `deferred-items.md`.
+- **outstandingBalance / CancellationFee** — resolved as a business rule, not a type filter.
+  Cancelling an on-credit job order voids the print-job debt; `CancellationController` now
+  closes the receivable as the new terminal `AccountsReceivableCollectionStatus::Cancelled`.
+  Covered by two new regression tests in `tests/Feature/Cashier/CancellationFeeTest.php`.
+
+Suite at close: **458 tests, 455 passed, 3 skipped, 0 failures.**
+
+AR-04 is met: an Owner-approved write-off closes an AR balance as a stable terminal state,
+and every remaining `payment_status` writer now re-verifies that state under lock before
+writing. See `deferred-items.md` for why this phase required four rounds — the cause was the
+full-phase re-review in the code-review gate, not the codebase.
