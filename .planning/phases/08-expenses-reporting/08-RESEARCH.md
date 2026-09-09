@@ -469,17 +469,19 @@ Wayfinder's generated `.url()` helper (e.g. `ReportController.exportPdf.url({ qu
 
 **If this table is empty:** N/A — three items above need planner attention before implementation, not user reconfirmation (none of these are business-rule assumptions the user needs to approve; they're implementation-detail verifications).
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Which exact timestamp marks a write-off as "approved in range" for D-09's disclosure line?**
    - What we know: `accounts_receivable` has `approved_at` (tied to credit approval per the original migration) and `write_off_requested_at` (tied to the *request*, not the Owner's approval). The migration list from `2026_09_08_090000_add_aging_and_collection_columns_to_accounts_receivable_table.php` does not show a distinct `written_off_at` column.
    - What's unclear: whether `Owner/WriteOffApprovalController::approve()` reuses `approved_at` (overwriting the credit-approval timestamp) or writes into `collection_status = WrittenOff` with no dedicated timestamp at all, in which case "written off in range" would need to be derived from `audit_trail` instead.
    - Recommendation: the planner should read `app/Http/Controllers/Owner/WriteOffApprovalController.php::approve()` directly (not researched in depth this session — out of this phase's dependency chain, sits in Phase 7) before finalizing the D-09 query.
+   - **(RESOLVED)** `08-03-PLAN.md` Task 1 adds a `written_off_at` timestamp column to `accounts_receivable` and extends `WriteOffApprovalController::approve()`'s existing `forceFill()` call to set it — this is the exact timestamp D-09's disclosure line filters on.
 
 2. **Is the Reports page one Vue component reused across four role directories, or four thin per-role Vue components sharing one composable?**
    - What we know: D-04 locks "one shared Reports page" at the *pipeline* level (one registry, one date control, one export mechanism); it does not explicitly say one `.vue` file.
    - What's unclear: whether Inertia's page-resolution convention (`resources/js/pages/{role}/Reports.vue`, one file per role folder per this project's established layout-by-namespace pattern) forces four separate files that each import a shared composable, or whether a single file lives in one place and multiple routes render it.
    - Recommendation: given the project's `app.ts` layout-resolution switches on page *path* (not a shared cross-namespace import), four thin per-role `.vue` files delegating to a shared composable/component is more consistent with existing conventions than one file referenced from four route namespaces — but this is a `/gsd-ui-phase 8` call, not a backend research call.
+   - **(RESOLVED)** `08-UI-SPEC.md` §1 settles this explicitly: four thin per-role `Reports.vue` wrapper pages, each delegating to one shared `resources/js/components/reports/ReportsWorkspace.vue` component — matching this research's own recommendation, implemented in `08-05-PLAN.md`.
 
 ## Environment Availability
 
