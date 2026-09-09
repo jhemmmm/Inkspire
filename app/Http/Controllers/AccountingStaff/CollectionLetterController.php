@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\AccountingStaff;
 
 use App\Enums\AccountsReceivableAgingBracket;
+use App\Enums\AccountsReceivableCollectionStatus;
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
@@ -18,10 +19,16 @@ class CollectionLetterController extends Controller
      * never a 404 -- so the Vue page itself renders the not-yet-due guard
      * copy (behavior block). `letterBody()` is only ever called on a
      * past-due bracket; a `Current` entry's body would throw.
+     *
+     * Also 404s for a Paid or WrittenOff `collection_status` (CR-03) --
+     * mirrors `WriteOffRequestController::store()`'s existing terminal-state
+     * guard shape, so an already-closed entry can never render a
+     * customer-facing demand/final-notice letter.
      */
     public function show(AccountsReceivable $accountsReceivable): Response
     {
         abort_unless($accountsReceivable->status === AccountsReceivableStatus::Active, 404);
+        abort_if(in_array($accountsReceivable->collection_status, [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true), 404);
 
         $accountsReceivable->loadMissing([
             'jobOrder:id,number,description,total_amount,queue_entry_id',

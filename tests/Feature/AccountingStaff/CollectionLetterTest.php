@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AccountsReceivableAgingBracket;
+use App\Enums\AccountsReceivableCollectionStatus;
 use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
 use App\Models\Transaction;
@@ -47,6 +48,18 @@ test('a non-Active entry 404s', function () {
     $this->actingAs($accountingStaff)->get(route('accounting-staff.accounts-receivable.collection-letter.show', $accountsReceivable))
         ->assertNotFound();
 });
+
+test('a Paid or Written Off entry 404s, not just a non-Active one', function (string $terminal) {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $accountsReceivable = AccountsReceivable::factory()->atBracket(AccountsReceivableAgingBracket::OneToFifteen)->for(JobOrder::factory()->create(['total_amount' => 1000]))->create();
+    $accountsReceivable->forceFill(['collection_status' => $terminal])->save();
+
+    $this->actingAs($accountingStaff)->get(route('accounting-staff.accounts-receivable.collection-letter.show', $accountsReceivable))
+        ->assertNotFound();
+})->with([
+    'paid' => [AccountsReceivableCollectionStatus::Paid->value],
+    'written_off' => [AccountsReceivableCollectionStatus::WrittenOff->value],
+]);
 
 test('letterBody() returns the correct body per aging bracket, with 61-90 and 90+ sharing the final notice', function () {
     expect(AccountsReceivableAgingBracket::OneToFifteen->letterBody())->toContain('friendly reminder');
