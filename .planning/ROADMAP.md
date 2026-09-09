@@ -277,7 +277,7 @@ Plans:
   3. Accounting Staff can update an AR entry's collection status and generate a printable collection letter
   4. Owner can approve a write-off of an AR balance
 
-**Plans**: 7 plans in 6 waves
+**Plans**: 8 plans in 7 waves
 Plans:
 **Wave 1**
 
@@ -303,6 +303,10 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [x] 07-07-PLAN.md — Gap closure round 2: settlement-race balance guard + third payment_status writer (AR-04; second-round gaps from 07-VERIFICATION.md re-verification)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 07-08-PLAN.md — Gap closure round 3: derived-balance extraction + full six-mutator payment_status audit + CollectionStatusController/CollectionLetterController hardening + Cashier on-credit payment path (AR-01, AR-02, AR-03, AR-04; third-round gaps from 07-VERIFICATION.md re-verification and 07-REVIEW.md)
 
 **UI hint**: yes
 
