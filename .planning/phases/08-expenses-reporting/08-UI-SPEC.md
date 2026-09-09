@@ -1,10 +1,11 @@
 ---
 phase: 8
 slug: expenses-reporting
-status: draft
+status: approved
 shadcn_initialized: true
 preset: new-york-v4 / neutral / cssVariables
 created: 2026-09-10
+reviewed_at: 2026-09-10
 ---
 
 # Phase 8 — UI Design Contract
@@ -531,14 +532,14 @@ CONTEXT.md's `### Claude's Discretion` block listed eight open items. Six were U
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved
 
 **Carried to the planner (UI-pass calls that change server-side work, not just markup):**
 
