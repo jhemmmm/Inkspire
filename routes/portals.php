@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccountingStaff\AccountsReceivableController;
 use App\Http\Controllers\AccountingStaff\CollectionLetterController;
 use App\Http\Controllers\AccountingStaff\CollectionStatusController;
+use App\Http\Controllers\AccountingStaff\ExpenseController;
 use App\Http\Controllers\AccountingStaff\WriteOffRequestController;
 use App\Http\Controllers\Artist\DesignEditorController;
 use App\Http\Controllers\Artist\JobOrderQueueController;
@@ -78,4 +79,8 @@ Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')
     Route::get('accounts-receivable/{accountsReceivable}/collection-letter', [CollectionLetterController::class, 'show'])->name('accounts-receivable.collection-letter.show');
     Route::post('accounts-receivable/{accountsReceivable}/write-off', [WriteOffRequestController::class, 'store'])->name('accounts-receivable.write-off.store');
     Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
+    Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+    Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    Route::patch('expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+    Route::patch('expenses/{expense}/void', [ExpenseController::class, 'void'])->name('expenses.void');
 });
