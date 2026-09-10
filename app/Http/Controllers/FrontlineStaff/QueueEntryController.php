@@ -12,7 +12,6 @@ use App\Enums\QueueStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FrontlineStaff\AddJobOrderRequest;
 use App\Http\Requests\FrontlineStaff\StoreQueueEntryRequest;
-use App\Http\Requests\FrontlineStaff\UpdateQueueEntryStatusRequest;
 use App\Models\JobOrder;
 use App\Models\QueueEntry;
 use Illuminate\Database\Eloquent\Builder;
@@ -84,42 +83,6 @@ class QueueEntryController extends Controller
                     ->values(),
             ],
         ]);
-    }
-
-    /**
-     * Advance a queue entry from Waiting to Serving (D-08) — a manual
-     * staff action, never auto-triggered.
-     */
-    public function callNext(UpdateQueueEntryStatusRequest $request, QueueEntry $queueEntry): RedirectResponse
-    {
-        abort_unless($queueEntry->status === QueueStatus::Waiting, 422, 'This queue entry is not waiting.');
-
-        $queueEntry->update(['status' => QueueStatus::Serving]);
-
-        Inertia::flash('toast', [
-            'type' => 'success',
-            'message' => __('Queue number :number is now being served.', ['number' => $queueEntry->paddedNumber()]),
-        ]);
-
-        return back();
-    }
-
-    /**
-     * Advance a queue entry from Serving to Done (D-08) — a manual staff
-     * action, never auto-triggered.
-     */
-    public function markDone(UpdateQueueEntryStatusRequest $request, QueueEntry $queueEntry): RedirectResponse
-    {
-        abort_unless($queueEntry->status === QueueStatus::Serving, 422, 'This queue entry is not being served.');
-
-        $queueEntry->update(['status' => QueueStatus::Done]);
-
-        Inertia::flash('toast', [
-            'type' => 'success',
-            'message' => __('Queue number :number is now done.', ['number' => $queueEntry->paddedNumber()]),
-        ]);
-
-        return back();
     }
 
     /**

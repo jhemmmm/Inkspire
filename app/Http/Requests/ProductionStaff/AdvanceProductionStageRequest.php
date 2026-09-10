@@ -24,8 +24,7 @@ class AdvanceProductionStageRequest extends FormRequest
      *
      * Body-less — the next stage is always derived server-side from the
      * job order's own current status (T-06-06-01), never from any
-     * client-supplied value, matching UpdateQueueEntryStatusRequest's
-     * documented body-less pattern.
+     * client-supplied value.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */

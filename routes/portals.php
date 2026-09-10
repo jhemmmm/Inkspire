@@ -33,8 +33,6 @@ Route::middleware(['auth', 'role:frontline_staff'])->prefix('frontline-staff')->
     Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
     Route::post('queue-entries', [QueueEntryController::class, 'store'])->name('queue-entries.store');
     Route::get('queue', [QueueEntryController::class, 'index'])->name('queue-entries.index');
-    Route::patch('queue-entries/{queueEntry}/call-next', [QueueEntryController::class, 'callNext'])->name('queue-entries.call-next');
-    Route::patch('queue-entries/{queueEntry}/mark-done', [QueueEntryController::class, 'markDone'])->name('queue-entries.mark-done');
     Route::post('queue-entries/{queueEntry}/job-orders', [QueueEntryController::class, 'addJobOrder'])->name('queue-entries.job-orders.store');
     Route::post('job-orders/{jobOrder}/replace-file', [JobOrderController::class, 'replaceFile'])->name('job-orders.replace-file');
     Route::post('job-orders/{jobOrder}/release', [JobOrderReleaseController::class, 'store'])->name('job-orders.release');
