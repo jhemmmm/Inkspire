@@ -158,3 +158,14 @@ test('a non-production-staff role is forbidden from the board', function () {
 
     $response->assertForbidden();
 });
+
+test('a job order marked rush at intake is flagged rush regardless of its due date', function () {
+    $staff = User::factory()->productionStaff()->create();
+    $jobOrder = JobOrder::factory()->rush()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $jobOrder->forceFill(['due_at' => now()->addWeek()])->save();
+
+    $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('jobOrders.0.is_rush', true));
+});
