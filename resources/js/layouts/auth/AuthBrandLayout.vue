@@ -25,10 +25,11 @@ const { title = '', description = '' } = defineProps<{
                 >
                     Your all-in-one<br />print shop portal.
                 </h2>
-                <p class="text-muted-foreground mb-8 text-[13px] leading-relaxed">
-                    Faster workflows, smarter order management, and
-                    real-time team coordination — built for Squarefoot
-                    Graphics &amp; Ads.
+                <p
+                    class="text-muted-foreground mb-8 text-[13px] leading-relaxed"
+                >
+                    Faster workflows, smarter order management, and real-time
+                    team coordination — built for Squarefoot Graphics &amp; Ads.
                 </p>
                 <div class="flex items-center gap-5">
                     <div>

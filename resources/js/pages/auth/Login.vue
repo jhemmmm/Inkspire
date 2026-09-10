@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Form, Head } from '@inertiajs/vue3';
+import { Form, Head, Link } from '@inertiajs/vue3';
+import { Lock, Mail } from '@lucide/vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
-import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -13,8 +13,8 @@ import { request } from '@/routes/password';
 
 defineOptions({
     layout: {
-        title: 'Log in to your account',
-        description: 'Enter your email and password below to log in',
+        title: '',
+        description: '',
     },
 });
 
@@ -29,7 +29,7 @@ defineProps<{
 
     <div
         v-if="status"
-        class="mb-4 text-center text-sm font-medium text-green-600"
+        class="mb-4 text-center text-sm font-medium text-emerald-200"
     >
         {{ status }}
     </div>
@@ -42,7 +42,11 @@ defineProps<{
     >
         <div class="grid gap-6">
             <div class="grid gap-2">
-                <Label for="email">Email address</Label>
+                <Label
+                    for="email"
+                    class="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold tracking-widest text-white/70 uppercase"
+                    ><Mail class="size-3.5" />Email Address</Label
+                >
                 <Input
                     id="email"
                     type="email"
@@ -52,21 +56,26 @@ defineProps<{
                     :tabindex="1"
                     autocomplete="email"
                     placeholder="email@example.com"
+                    class="h-11 rounded-[10px] border-[1.5px] border-white/20 bg-white/12 px-3.5 text-white selection:bg-white/25 selection:text-white placeholder:text-white/35 focus-visible:border-white/70 focus-visible:ring-[3px] focus-visible:ring-white/20 dark:border-white/20 dark:bg-white/12 dark:text-white"
                 />
                 <InputError :message="errors.email" />
             </div>
 
             <div class="grid gap-2">
                 <div class="flex items-center justify-between">
-                    <Label for="password">Password</Label>
-                    <TextLink
+                    <Label
+                        for="password"
+                        class="flex items-center gap-1.5 text-[11px] font-bold tracking-widest text-white/70 uppercase"
+                        ><Lock class="size-3.5" />Password</Label
+                    >
+                    <Link
                         v-if="canResetPassword"
                         :href="request()"
-                        class="text-sm"
                         :tabindex="5"
+                        class="text-xs font-medium text-white/50 transition-colors hover:text-white/90"
                     >
                         Forgot your password?
-                    </TextLink>
+                    </Link>
                 </div>
                 <PasswordInput
                     id="password"
@@ -75,20 +84,29 @@ defineProps<{
                     :tabindex="2"
                     autocomplete="current-password"
                     placeholder="Password"
+                    class="h-11 rounded-[10px] border-[1.5px] border-white/20 bg-white/12 px-3.5 text-white selection:bg-white/25 selection:text-white placeholder:text-white/35 focus-visible:border-white/70 focus-visible:ring-[3px] focus-visible:ring-white/20 dark:border-white/20 dark:bg-white/12 dark:text-white"
                 />
                 <InputError :message="errors.password" />
             </div>
 
             <div class="flex items-center justify-between">
-                <Label for="remember" class="flex items-center space-x-3">
-                    <Checkbox id="remember" name="remember" :tabindex="3" />
+                <Label
+                    for="remember"
+                    class="flex items-center space-x-3 text-sm text-white/80"
+                >
+                    <Checkbox
+                        id="remember"
+                        name="remember"
+                        :tabindex="3"
+                        class="data-[state=checked]:text-primary border-white/40 focus-visible:ring-white/30 data-[state=checked]:border-white/70 data-[state=checked]:bg-white"
+                    />
                     <span>Remember me</span>
                 </Label>
             </div>
 
             <Button
                 type="submit"
-                class="mt-4 w-full"
+                class="text-primary mt-4 w-full bg-white hover:bg-white/90 focus-visible:ring-white/40"
                 :tabindex="4"
                 :disabled="processing"
                 data-test="login-button"
