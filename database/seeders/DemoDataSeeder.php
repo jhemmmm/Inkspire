@@ -1,0 +1,427 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Enums\AccountsReceivableAgingBracket;
+use App\Enums\AccountsReceivableStatus;
+use App\Enums\JobOrderStatus;
+use App\Enums\JobOrderType;
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentStatus;
+use App\Enums\TransactionType;
+use App\Enums\UserRole;
+use App\Models\AccountsReceivable;
+use App\Models\Customer;
+use App\Models\Expense;
+use App\Models\JobOrder;
+use App\Models\ProductionLog;
+use App\Models\QueueEntry;
+use App\Models\Transaction;
+use App\Models\User;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Seeder;
+
+/**
+ * Demo/UAT seeder for Phase 8 (Reports) manual verification -- NOT part of
+ * the automated test suite and NOT called from DatabaseSeeder::run(). Run
+ * explicitly:
+ *
+ *     php artisan db:seed --class=DemoDataSeeder
+ *
+ * Creates one login per role plus a month's worth of report-bearing data
+ * (job orders, transactions, expenses, an approved AR write-off) so every
+ * report in App\Services\Reports\ReportRegistry renders non-empty rows for
+ * a "this month" date range, for every role entitled to see it.
+ *
+ * Role accounts are updateOrCreate'd on email, so re-running is safe for
+ * logins. Job order/transaction/expense/AR rows are appended fresh on every
+ * run (no dedup) -- fine for a scratch demo DB, never point this at a real
+ * one. All dates are anchored to the current calendar month -- if a UAT
+ * cycle crosses a month boundary, re-run this seeder.
+ */
+class DemoDataSeeder extends Seeder
+{
+    private const string DEMO_PASSWORD = 'DemoPass123!';
+
+    /**
+     * @var array<string, User>
+     */
+    private array $accounts = [];
+
+    public function run(): void
+    {
+        $this->seedRoleAccounts();
+        $this->seedSalesData();
+        $this->seedCancellations();
+        $this->seedProductionPipeline();
+        $this->seedExpenses();
+        $this->seedWriteOff();
+        $this->seedAgingReceivables();
+
+        $this->printCredentials();
+    }
+
+    /**
+     * One login per role needed for Phase 8 verification.
+     */
+    private function seedRoleAccounts(): void
+    {
+        $definitions = [
+            'owner' => ['name' => 'Demo Owner', 'email' => 'owner@inkspire.test', 'role' => UserRole::Owner],
+            'admin' => ['name' => 'Demo Admin', 'email' => 'admin@inkspire.test', 'role' => UserRole::Admin],
+            'cashier' => ['name' => 'Demo Cashier', 'email' => 'cashier@inkspire.test', 'role' => UserRole::Cashier],
+            'production' => ['name' => 'Demo Production Staff', 'email' => 'production@inkspire.test', 'role' => UserRole::ProductionStaff],
+            'accounting' => ['name' => 'Demo Accounting Staff', 'email' => 'accounting@inkspire.test', 'role' => UserRole::AccountingStaff],
+        ];
+
+        foreach ($definitions as $key => $definition) {
+            $user = User::query()->updateOrCreate(
+                ['email' => $definition['email']],
+                [
+                    'name' => $definition['name'],
+                    'password' => self::DEMO_PASSWORD,
+                    'role' => $definition['role']->value,
+                    'email_verified_at' => now(),
+                ],
+            );
+
+            $user->forceFill(['is_active' => true])->save();
+
+            $this->accounts[$key] = $user;
+        }
+    }
+
+    /**
+     * Ten paid job orders spanning cash/bank transfer/GCash/Maya and
+     * down+balance/full payment splits, all confirmed this month -- feeds
+     * the Sales report and the Financial Summary's job_sales figure.
+     */
+    private function seedSalesData(): void
+    {
+        $cashier = $this->accounts['cashier'];
+
+        $orders = [
+            ['total' => 3000, 'status' => PaymentStatus::Paid, 'day' => 9, 'payments' => [
+                [TransactionType::FullPayment, 3000, PaymentMethod::Cash, 9],
+            ]],
+            ['total' => 4500, 'status' => PaymentStatus::Paid, 'day' => 8, 'payments' => [
+                [TransactionType::FullPayment, 4500, PaymentMethod::BankTransfer, 8],
+            ]],
+            ['total' => 2500, 'status' => PaymentStatus::PartiallyPaid, 'day' => 7, 'payments' => [
+                [TransactionType::DownPayment, 1000, PaymentMethod::Gcash, 7],
+            ]],
+            ['total' => 6000, 'status' => PaymentStatus::Paid, 'day' => 6, 'payments' => [
+                [TransactionType::FullPayment, 6000, PaymentMethod::Maya, 6],
+            ]],
+            ['total' => 3500, 'status' => PaymentStatus::Paid, 'day' => 5, 'payments' => [
+                [TransactionType::DownPayment, 1500, PaymentMethod::Cash, 3],
+                [TransactionType::BalancePayment, 2000, PaymentMethod::Gcash, 5],
+            ]],
+            ['total' => 2000, 'status' => PaymentStatus::Paid, 'day' => 4, 'payments' => [
+                [TransactionType::FullPayment, 2000, PaymentMethod::Cash, 4],
+            ]],
+            ['total' => 5000, 'status' => PaymentStatus::Paid, 'day' => 3, 'payments' => [
+                [TransactionType::FullPayment, 5000, PaymentMethod::BankTransfer, 3],
+            ]],
+            ['total' => 1800, 'status' => PaymentStatus::PartiallyPaid, 'day' => 2, 'payments' => [
+                [TransactionType::DownPayment, 800, PaymentMethod::Maya, 2],
+            ]],
+            ['total' => 4000, 'status' => PaymentStatus::Paid, 'day' => 2, 'payments' => [
+                [TransactionType::FullPayment, 4000, PaymentMethod::Gcash, 2],
+            ]],
+            ['total' => 2700, 'status' => PaymentStatus::Paid, 'day' => 1, 'payments' => [
+                [TransactionType::FullPayment, 2700, PaymentMethod::Cash, 1],
+            ]],
+        ];
+
+        foreach ($orders as $index => $order) {
+            $day = $this->dayOfMonth($order['day']);
+
+            $jobOrder = $this->newJobOrder($day, [
+                'type' => $index % 2 === 0 ? JobOrderType::TypeA->value : JobOrderType::TypeB->value,
+                'status' => JobOrderStatus::ReadyForPickup->value,
+                'total_amount' => $order['total'],
+                'payment_status' => $order['status']->value,
+                'due_at' => $day->copy()->addDays(2),
+            ]);
+
+            foreach ($order['payments'] as [$type, $amount, $method, $confirmDay]) {
+                Transaction::factory()->create([
+                    'job_order_id' => $jobOrder->id,
+                    'type' => $type->value,
+                    'payment_method' => $method->value,
+                    'amount' => $amount,
+                    'confirmed_at' => $this->dayOfMonth($confirmDay),
+                    'recorded_by' => $cashier->id,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Three cancelled job orders this month -- two with a cancellation fee
+     * transaction, one without (fee already covered by a prior payment,
+     * mirroring CashierReportsTest's zero-fee scenario).
+     */
+    private function seedCancellations(): void
+    {
+        $cashier = $this->accounts['cashier'];
+
+        $day1 = $this->dayOfMonth(6);
+        $order1 = $this->newJobOrder($day1, [
+            'total_amount' => 1000,
+            'cancelled_at' => $day1,
+        ]);
+        Transaction::factory()->create([
+            'job_order_id' => $order1->id,
+            'type' => TransactionType::CancellationFee->value,
+            'payment_method' => PaymentMethod::Cash->value,
+            'amount' => 500,
+            'confirmed_at' => $day1,
+            'recorded_by' => $cashier->id,
+        ]);
+
+        $day2 = $this->dayOfMonth(4);
+        $order2 = $this->newJobOrder($day2, [
+            'total_amount' => 2000,
+            'cancelled_at' => $day2,
+        ]);
+        Transaction::factory()->create([
+            'job_order_id' => $order2->id,
+            'type' => TransactionType::CancellationFee->value,
+            'payment_method' => PaymentMethod::BankTransfer->value,
+            'amount' => 500,
+            'confirmed_at' => $day2,
+            'recorded_by' => $cashier->id,
+        ]);
+
+        $day3 = $this->dayOfMonth(3);
+        $this->newJobOrder($day3, [
+            'total_amount' => 1500,
+            'cancelled_at' => $day3,
+        ]);
+    }
+
+    /**
+     * Eight job orders that entered production this month (a ProductionLog
+     * row with to_status=for_production), spread across later stages with
+     * a mix of overdue and future due dates -- feeds the Production Status
+     * report's stage/urgency columns.
+     */
+    private function seedProductionPipeline(): void
+    {
+        $production = $this->accounts['production'];
+
+        $stages = [
+            ['status' => JobOrderStatus::ForProduction, 'dueOffset' => 2, 'day' => 9],
+            ['status' => JobOrderStatus::ForProduction, 'dueOffset' => -1, 'day' => 8],
+            ['status' => JobOrderStatus::Printing, 'dueOffset' => 0, 'day' => 7],
+            ['status' => JobOrderStatus::Printing, 'dueOffset' => 5, 'day' => 6],
+            ['status' => JobOrderStatus::QualityCheck, 'dueOffset' => -3, 'day' => 5],
+            ['status' => JobOrderStatus::QualityCheck, 'dueOffset' => 3, 'day' => 4],
+            ['status' => JobOrderStatus::ReadyForPickup, 'dueOffset' => -5, 'day' => 3],
+            ['status' => JobOrderStatus::ReadyForPickup, 'dueOffset' => 7, 'day' => 2],
+        ];
+
+        foreach ($stages as $index => $stage) {
+            $day = $this->dayOfMonth($stage['day']);
+
+            $jobOrder = $this->newJobOrder($day, [
+                'status' => $stage['status']->value,
+                'total_amount' => 1500 + ($index * 350),
+                'due_at' => $this->dueOffset($stage['dueOffset']),
+            ]);
+
+            ProductionLog::factory()->create([
+                'job_order_id' => $jobOrder->id,
+                'from_status' => JobOrderStatus::DesignApproved->value,
+                'to_status' => JobOrderStatus::ForProduction->value,
+                'recorded_by' => $production->id,
+                'created_at' => $day,
+            ]);
+        }
+    }
+
+    /**
+     * Seven active expenses across every configured category, plus one
+     * voided expense (excluded from every sum, D-11) -- feeds the Expenses
+     * report and the Financial Summary's expenses_total.
+     */
+    private function seedExpenses(): void
+    {
+        $accounting = $this->accounts['accounting'];
+
+        $entries = [
+            ['category' => 'Utilities', 'amount' => 1500, 'day' => 9, 'description' => 'Electricity bill - this month'],
+            ['category' => 'Supplies', 'amount' => 2200, 'day' => 8, 'description' => 'Ink and vinyl roll restock'],
+            ['category' => 'Rent', 'amount' => 8000, 'day' => 5, 'description' => 'Shop space rent - this month'],
+            ['category' => 'Utilities', 'amount' => 900, 'day' => 7, 'description' => 'Water bill'],
+            ['category' => 'Supplies', 'amount' => 1200, 'day' => 6, 'description' => 'Business card stock paper'],
+            ['category' => 'Supplies', 'amount' => 600, 'day' => 4, 'description' => 'Lamination film'],
+            ['category' => 'Utilities', 'amount' => 750, 'day' => 3, 'description' => 'Internet subscription'],
+        ];
+
+        foreach ($entries as $entry) {
+            Expense::factory()->create([
+                'category' => $entry['category'],
+                'amount' => $entry['amount'],
+                'expense_date' => $this->dayOfMonth($entry['day']),
+                'description' => $entry['description'],
+                'recorded_by' => $accounting->id,
+            ]);
+        }
+
+        // Voided -- shows in the report row list with a "Voided" status
+        // badge, but must never contribute to any active sum (D-11).
+        Expense::factory()->voided()->create([
+            'category' => 'Supplies',
+            'amount' => 999,
+            'expense_date' => $this->dayOfMonth(9),
+            'description' => 'Duplicate ink cartridge order (voided)',
+            'recorded_by' => $accounting->id,
+        ]);
+    }
+
+    /**
+     * One On-Credit job order approved and then written off this month --
+     * exercises the Financial Summary's write-off disclosure line (D-09/
+     * D-10), which Plan 08-03 added `written_off_at` specifically for.
+     */
+    private function seedWriteOff(): void
+    {
+        $owner = $this->accounts['owner'];
+        $cashier = $this->accounts['cashier'];
+        $accounting = $this->accounts['accounting'];
+
+        $day = $this->dayOfMonth(9);
+
+        $jobOrder = $this->newJobOrder($day->copy()->subDays(20), [
+            'status' => JobOrderStatus::ReadyForPickup->value,
+            'total_amount' => 800,
+            'payment_status' => PaymentStatus::WrittenOff->value,
+        ]);
+
+        Transaction::factory()->create([
+            'job_order_id' => $jobOrder->id,
+            'type' => TransactionType::DownPayment->value,
+            'payment_method' => PaymentMethod::Cash->value,
+            'amount' => 300,
+            'confirmed_at' => $day->copy()->subDays(20),
+            'recorded_by' => $cashier->id,
+        ]);
+
+        $receivable = AccountsReceivable::factory()->create([
+            'job_order_id' => $jobOrder->id,
+            'balance' => 500,
+            'status' => AccountsReceivableStatus::Active->value,
+            'requested_by' => $cashier->id,
+        ]);
+
+        $receivable->forceFill([
+            'approved_by' => $owner->id,
+            'approved_at' => $day->copy()->subDays(15),
+            'due_at' => $day->copy()->subDays(1),
+            'write_off_requested_by' => $accounting->id,
+            'write_off_requested_at' => $day->copy()->subHours(2),
+            'write_off_reason' => 'Customer unreachable after repeated collection attempts; approved for write-off by Owner.',
+            'written_off_at' => $day,
+        ])->save();
+    }
+
+    /**
+     * Three active (not written off) On-Credit receivables at different
+     * aging brackets -- not required by the Reports registry, but rounds
+     * out the demo data for the AR aging pages a reviewer will also see
+     * from the Owner/Accounting Staff portals.
+     */
+    private function seedAgingReceivables(): void
+    {
+        $owner = $this->accounts['owner'];
+        $cashier = $this->accounts['cashier'];
+
+        $brackets = [
+            AccountsReceivableAgingBracket::OneToFifteen->value => 10,
+            AccountsReceivableAgingBracket::ThirtyOneToSixty->value => 45,
+            AccountsReceivableAgingBracket::NinetyPlus->value => 120,
+        ];
+
+        foreach ($brackets as $daysPastDue) {
+            $approvedAt = now()->subDays($daysPastDue + 30);
+
+            $jobOrder = $this->newJobOrder($approvedAt, [
+                'status' => JobOrderStatus::ReadyForPickup->value,
+                'total_amount' => 2500,
+                'payment_status' => PaymentStatus::OnCredit->value,
+            ]);
+
+            $receivable = AccountsReceivable::factory()->create([
+                'job_order_id' => $jobOrder->id,
+                'balance' => 2500,
+                'status' => AccountsReceivableStatus::Active->value,
+                'requested_by' => $cashier->id,
+            ]);
+
+            $receivable->forceFill([
+                'approved_by' => $owner->id,
+                'approved_at' => $approvedAt,
+                'due_at' => now()->subDays($daysPastDue),
+            ])->save();
+        }
+    }
+
+    /**
+     * A queue entry + job order pair for a fresh customer, dated on the
+     * given day. Shared by every section above.
+     *
+     * @param  array<string, mixed>  $jobOrderAttributes
+     */
+    private function newJobOrder(CarbonInterface $day, array $jobOrderAttributes): JobOrder
+    {
+        $customer = Customer::factory()->create();
+
+        $queueEntry = QueueEntry::factory()->done()->create([
+            'customer_id' => $customer->id,
+            'queue_date' => $day->toDateString(),
+        ]);
+
+        return JobOrder::factory()->create(array_merge([
+            'queue_entry_id' => $queueEntry->id,
+            'type' => JobOrderType::TypeB->value,
+        ], $jobOrderAttributes));
+    }
+
+    /**
+     * The given day-of-month (1-indexed) in the current calendar month, at
+     * a fixed mid-morning time -- always in the past relative to "today"
+     * for every value this seeder passes in.
+     */
+    private function dayOfMonth(int $dayOfMonth): CarbonInterface
+    {
+        return now()->startOfMonth()->addDays($dayOfMonth - 1)->setTime(10, 30);
+    }
+
+    /**
+     * Today, offset by the given number of days, at start of day -- used
+     * for due_at values so urgency (due today-or-earlier) is unambiguous.
+     */
+    private function dueOffset(int $days): CarbonInterface
+    {
+        return now()->copy()->startOfDay()->addDays($days);
+    }
+
+    /**
+     * Print the demo login credentials to the console.
+     */
+    private function printCredentials(): void
+    {
+        $this->command?->newLine();
+        $this->command?->info('Demo/UAT accounts (password is the same for all): '.self::DEMO_PASSWORD);
+
+        $rows = collect($this->accounts)
+            ->map(fn (User $user): array => [$user->role->value, $user->email, self::DEMO_PASSWORD])
+            ->values()
+            ->all();
+
+        $this->command?->table(['Role', 'Email', 'Password'], $rows);
+    }
+}
