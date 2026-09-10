@@ -23,6 +23,11 @@ use Illuminate\Support\Facades\DB;
  * @property string|null $number
  * @property int $queue_entry_id
  * @property string $description
+ * @property string|null $print_size
+ * @property string|null $material
+ * @property int|null $quantity
+ * @property Carbon|null $deadline
+ * @property string|null $client_notes
  * @property JobOrderType $type
  * @property JobOrderStatus $status
  * @property Carbon|null $due_at
@@ -30,8 +35,6 @@ use Illuminate\Support\Facades\DB;
  * @property int|null $assigned_artist_id
  * @property string|null $validation_failure_reason
  * @property string|null $consultation_notes
- * @property Carbon|null $queue_deprioritized_at
- * @property bool $not_appeared
  * @property PaymentStatus $payment_status
  * @property int|null $pricing_entry_id
  * @property float|null $base_price_snapshot
@@ -47,13 +50,17 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $updated_at
  * @property float|null $amount_paid Not a persisted column — only present
  *                                   when eager-loaded via withSum() (Cashier Dashboard listing, D-04/D-05).
- * @property bool|null $is_rush Not a persisted column — only present when
- *                              computed by ProductionBoardController::index() (PROD-01, D-05, D-07).
+ * @property bool $is_rush The staff-declared urgency flag captured at the
+ *                         counter at intake (RUSH-01). A real, NOT NULL column since
+ *                         2026_09_10_120000 — it was previously computed in memory only.
+ *                         ProductionBoardController::index() deliberately widens the
+ *                         in-memory value with its due-date heuristic for display
+ *                         (PROD-01, D-05, D-07) and never saves that widened value.
  * @property Carbon|null $ready_at Not a persisted column — only present when
  *                                 eager-loaded via withMax() over productionLogs (PROD-03, D-13);
  *                                 the moment this job order last reached ready_for_pickup.
  */
-#[Fillable(['number', 'queue_entry_id', 'description', 'type', 'status', 'file_path', 'consultation_notes'])]
+#[Fillable(['number', 'queue_entry_id', 'description', 'print_size', 'material', 'quantity', 'deadline', 'is_rush', 'client_notes', 'pricing_entry_id', 'type', 'status', 'file_path', 'consultation_notes'])]
 #[ObservedBy(AuditObserver::class)]
 class JobOrder extends Model
 {
@@ -70,9 +77,8 @@ class JobOrder extends Model
         return [
             'type' => JobOrderType::class,
             'status' => JobOrderStatus::class,
-            'queue_deprioritized_at' => 'datetime',
-            'not_appeared' => 'boolean',
             'payment_status' => PaymentStatus::class,
+            'is_rush' => 'boolean',
             'base_price_snapshot' => 'decimal:2',
             'rush_fee_applied' => 'boolean',
             'rush_fee_amount' => 'decimal:2',
@@ -82,6 +88,9 @@ class JobOrder extends Model
             'cancelled_at' => 'datetime',
             'released_at' => 'datetime',
             'due_at' => 'datetime',
+            // The date the customer was promised, captured at intake. Distinct
+            // from `due_at`, which EnterProduction stamps from the SLA config.
+            'deadline' => 'date',
             // Not a column — only present when eager-loaded via withMax()
             // over productionLogs. Casting it here is what makes it
             // serialize as ISO-8601 to the frontend rather than a raw

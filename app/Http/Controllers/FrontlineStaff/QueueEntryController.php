@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\FrontlineStaff;
 
-use App\Actions\JobOrder\AssignArtistToJobOrder;
 use App\Actions\JobOrder\EnterProduction;
 use App\Actions\JobOrder\ValidateJobOrderFile;
+use App\Enums\FileValidationOutcome;
 use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
 use App\Enums\QueueStatus;
@@ -26,7 +26,6 @@ class QueueEntryController extends Controller
 {
     public function __construct(
         public ValidateJobOrderFile $validateJobOrderFile,
-        public AssignArtistToJobOrder $assignArtistToJobOrder,
         public EnterProduction $enterProduction,
     ) {}
 
@@ -138,6 +137,13 @@ class QueueEntryController extends Controller
             $jobOrder = $queueEntry->jobOrders()->create([
                 'number' => JobOrder::nextNumberForYear(JobOrder::currentNumberingYear()),
                 'description' => $request->validated('description'),
+                'print_size' => $request->validated('print_size'),
+                'material' => $request->validated('material'),
+                'quantity' => $request->validated('quantity'),
+                'deadline' => $request->validated('deadline'),
+                'is_rush' => $request->boolean('is_rush'),
+                'client_notes' => $request->validated('client_notes'),
+                'pricing_entry_id' => $request->validated('pricing_entry_id'),
                 'type' => $request->validated('type'),
                 'status' => JobOrderStatus::Intake,
                 'file_path' => $request->file('file')?->store('job-orders', 'local'),
@@ -177,6 +183,16 @@ class QueueEntryController extends Controller
                 $jobOrder = $entry->jobOrders()->create([
                     'number' => JobOrder::nextNumberForYear(JobOrder::currentNumberingYear()),
                     'description' => $row['description'],
+                    'print_size' => $row['print_size'] ?? null,
+                    'material' => $row['material'] ?? null,
+                    'quantity' => $row['quantity'] ?? null,
+                    'deadline' => $row['deadline'] ?? null,
+                    // filter_var, not a bare cast: the FormData path delivers
+                    // the string "1"/"0" while a JSON payload delivers a real
+                    // boolean, and both must land as the same column value.
+                    'is_rush' => filter_var($row['is_rush'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                    'client_notes' => $row['client_notes'] ?? null,
+                    'pricing_entry_id' => $row['pricing_entry_id'] ?? null,
                     'type' => $row['type'],
                     'status' => JobOrderStatus::Intake,
                     'file_path' => $request->file("job_orders.{$index}.file")?->store('job-orders', 'local'),
@@ -204,27 +220,34 @@ class QueueEntryController extends Controller
 
     /**
      * Apply the correct auto-outcome for a freshly created job order
-     * (JOB-01/JOB-02) — Type A gets its file validated, Type B gets
-     * auto-assigned to an available artist.
+     * (JOB-01/JOB-02) — Type A gets its file validated. Type B is
+     * deliberately left at Intake with no artist: job orders are pulled
+     * from a shared pool by whichever available Artist accepts them, not
+     * pushed onto one at intake.
      */
     private function applyIntakeOutcome(JobOrder $jobOrder, ?UploadedFile $file): void
     {
-        if ($jobOrder->type === JobOrderType::TypeA) {
-            $outcome = ($this->validateJobOrderFile)($file);
-
-            $jobOrder->forceFill([
-                'status' => $outcome['passed'] ? JobOrderStatus::ReadyForProduction : JobOrderStatus::ValidationFailed,
-                'validation_failure_reason' => $outcome['reason'],
-            ])->save();
-
-            if ($outcome['passed']) {
-                ($this->enterProduction)($jobOrder);
-            }
-
+        if ($jobOrder->type !== JobOrderType::TypeA) {
             return;
         }
 
-        ($this->assignArtistToJobOrder)($jobOrder);
+        $result = ($this->validateJobOrderFile)($file, $jobOrder->print_size);
+
+        // NeedsArtist lands on Intake — the same shared pool a Type B waits
+        // in — so any available Artist can pull it. The failure reason rides
+        // along as the brief: it says exactly what is wrong with the file.
+        $jobOrder->forceFill([
+            'status' => match ($result['outcome']) {
+                FileValidationOutcome::Passed => JobOrderStatus::ReadyForProduction,
+                FileValidationOutcome::NeedsArtist => JobOrderStatus::Intake,
+                FileValidationOutcome::Rejected => JobOrderStatus::ValidationFailed,
+            },
+            'validation_failure_reason' => $result['reason'],
+        ])->save();
+
+        if ($result['outcome'] === FileValidationOutcome::Passed) {
+            ($this->enterProduction)($jobOrder);
+        }
     }
 
     /**
@@ -246,9 +269,10 @@ class QueueEntryController extends Controller
         return match ($jobOrder->status) {
             JobOrderStatus::ReadyForProduction => __('Job order added — ready for production.'),
             JobOrderStatus::ForProduction => __('Job order added — ready for production.'),
-            JobOrderStatus::ValidationFailed => __('Job order added — file needs replacement. See details in the queue list.'),
-            JobOrderStatus::Assigned => __('Job order added — assigned to :artist.', ['artist' => $jobOrder->assignedArtist->name]),
-            JobOrderStatus::Intake => __('Job order added — awaiting an available artist.'),
+            JobOrderStatus::ValidationFailed => __('Job order added — this file can\'t be used. See details in the queue list.'),
+            JobOrderStatus::Intake => $jobOrder->validation_failure_reason === null
+                ? __('Job order added — waiting for an artist to accept it.')
+                : __('Job order added — the file needs an artist to improve it before printing.'),
             default => __('Job order added.'),
         };
     }

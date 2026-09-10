@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePoll } from '@inertiajs/vue3';
-import { PackageCheck, Plus, RefreshCw } from '@lucide/vue';
+import { PackageCheck, Plus, RefreshCw, Ticket, Zap } from '@lucide/vue';
 import { reactive } from 'vue';
 import JobOrderReleaseController from '@/actions/App/Http/Controllers/FrontlineStaff/JobOrderReleaseController';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
+import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import InputError from '@/components/InputError.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
     Dialog,
     DialogClose,
@@ -21,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import {
     Table,
     TableBody,
@@ -31,7 +36,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
-import { dashboard } from '@/routes/frontline-staff';
+import { dashboard, newVisit } from '@/routes/frontline-staff';
 import { index as queueEntriesIndex } from '@/routes/frontline-staff/queue-entries';
 
 interface QueueEntryCustomer {
@@ -160,10 +165,11 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
 <template>
     <Head title="Queue" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">Queue</h1>
+    <PageContainer>
+        <PageHeader
+            title="Queue"
+            description="Today's visits in the order they arrived. Call the next customer, then mark them done."
+        />
 
         <Alert v-if="readyForPickup.count > 0">
             <PackageCheck class="size-4" />
@@ -179,9 +185,7 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
             </AlertDescription>
         </Alert>
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -194,14 +198,33 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                 </TableHeader>
                 <TableBody>
                     <TableEmpty v-if="queueEntries.length === 0" :colspan="5">
-                        No queue entries yet today.
+                        <EmptyState
+                            :icon="Ticket"
+                            title="No queue entries yet today"
+                            description="Queue numbers reset each business day. Start a visit to create the first one."
+                        >
+                            <template #actions>
+                                <Link
+                                    :href="newVisit()"
+                                    :class="buttonVariants({ size: 'sm' })"
+                                >
+                                    New Visit
+                                </Link>
+                            </template>
+                        </EmptyState>
                     </TableEmpty>
                     <TableRow
                         v-for="entry in queueEntries"
                         v-else
                         :key="entry.id"
                     >
-                        <TableCell>{{ entry.queue_number }}</TableCell>
+                        <TableCell>
+                            <span
+                                class="bg-secondary text-secondary-foreground inline-flex size-9 items-center justify-center rounded-lg text-base font-bold tabular-nums"
+                            >
+                                {{ entry.queue_number }}
+                            </span>
+                        </TableCell>
                         <TableCell>{{ entry.customer.name }}</TableCell>
                         <TableCell>
                             <div class="flex flex-col gap-1">
@@ -222,7 +245,7 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                                         v-if="jobOrder.status === 'intake'"
                                         variant="outline"
                                     >
-                                        Awaiting Assignment
+                                        Waiting for an Artist
                                     </Badge>
                                     <Badge
                                         v-else-if="
@@ -490,6 +513,48 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                                                 />
                                             </div>
 
+                                            <div class="grid gap-2">
+                                                <div
+                                                    class="flex items-center gap-3"
+                                                >
+                                                    <!--
+                                                        This Form is
+                                                        uncontrolled, so the
+                                                        name/value pair IS the
+                                                        wiring. The explicit
+                                                        value="1" is mandatory:
+                                                        reka-ui's SwitchRoot
+                                                        defaults its hidden
+                                                        checkbox value to 'on',
+                                                        which fails Laravel's
+                                                        boolean rule.
+                                                    -->
+                                                    <Switch
+                                                        :id="`add-job-order-rush-${entry.id}`"
+                                                        name="is_rush"
+                                                        value="1"
+                                                        :data-test="`add-job-order-rush-${entry.id}-switch`"
+                                                    />
+                                                    <Label
+                                                        :for="`add-job-order-rush-${entry.id}`"
+                                                        class="flex items-center gap-2"
+                                                    >
+                                                        <Zap class="size-4" />
+                                                        Rush Order
+                                                    </Label>
+                                                </div>
+                                                <p
+                                                    class="text-muted-foreground text-sm"
+                                                >
+                                                    Prioritised in production.
+                                                    The Cashier decides whether
+                                                    the rush fee is charged.
+                                                </p>
+                                                <InputError
+                                                    :message="errors.is_rush"
+                                                />
+                                            </div>
+
                                             <DialogFooter class="gap-2">
                                                 <DialogClose as-child>
                                                     <Button
@@ -515,6 +580,6 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
-    </div>
+        </DataTableCard>
+    </PageContainer>
 </template>

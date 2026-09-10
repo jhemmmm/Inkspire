@@ -31,8 +31,23 @@ class JobOrderFactory extends Factory
             ]),
             'type' => JobOrderType::TypeB->value,
             'status' => JobOrderStatus::Intake->value,
+            'is_rush' => false,
             'file_path' => null,
         ];
+    }
+
+    /**
+     * Indicate that this job order was marked Rush at the counter.
+     *
+     * A plain state() is correct here, unlike assigned()/validationFailed():
+     * `is_rush` IS inside JobOrder's #[Fillable] list, so a state()-merged
+     * create() writes it.
+     */
+    public function rush(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_rush' => true,
+        ]);
     }
 
     /**
@@ -90,6 +105,7 @@ class JobOrderFactory extends Factory
             $jobOrder->forceFill([
                 'status' => JobOrderStatus::Assigned->value,
                 'assigned_artist_id' => $artist->id,
+                'accepted_at' => $jobOrder->accepted_at ?? $jobOrder->created_at,
             ])->save();
         });
     }
@@ -118,6 +134,7 @@ class JobOrderFactory extends Factory
                     ? JobOrderStatus::Assigned->value
                     : $jobOrder->status,
                 'assigned_artist_id' => $artist->id,
+                'accepted_at' => $jobOrder->accepted_at ?? $jobOrder->created_at,
             ])->save();
         });
     }
