@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { BookOpen, FolderGit2, LayoutGrid } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
@@ -30,7 +30,15 @@ const defaultNavItems: NavItem[] = [
     },
 ];
 
-const navItems = computed(() => props.items ?? defaultNavItems);
+const page = usePage();
+
+const navItems = computed(() => {
+    const currentRole = page.props.auth.user.role;
+
+    return (props.items ?? defaultNavItems).filter(
+        (item) => !item.roles || item.roles.includes(currentRole),
+    );
+});
 
 const footerNavItems: NavItem[] = [
     {

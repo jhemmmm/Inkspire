@@ -1,7 +1,8 @@
-import { HandCoins, LayoutGrid, Wallet } from '@lucide/vue';
+import { ChartColumn, HandCoins, LayoutGrid, Wallet } from '@lucide/vue';
 import { dashboard } from '@/routes/accounting-staff';
 import { index as accountsReceivableIndex } from '@/routes/accounting-staff/accounts-receivable';
 import { index as expensesIndex } from '@/routes/accounting-staff/expenses';
+import { index as reportsIndex } from '@/routes/accounting-staff/reports';
 import type { NavItem } from '@/types';
 
 export const accountingStaffNavItems: NavItem[] = [
@@ -19,5 +20,10 @@ export const accountingStaffNavItems: NavItem[] = [
         title: 'Expenses',
         href: expensesIndex(),
         icon: Wallet,
+    },
+    {
+        title: 'Reports',
+        href: reportsIndex(),
+        icon: ChartColumn,
     },
 ];

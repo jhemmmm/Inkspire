@@ -144,7 +144,12 @@ function transactionTypeLabel(type: unknown): string {
     }
 }
 
-type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive' | undefined;
+type BadgeVariant =
+    | 'default'
+    | 'secondary'
+    | 'outline'
+    | 'destructive'
+    | undefined;
 
 function paymentStatusLabel(status: unknown): string {
     switch (status) {
@@ -181,11 +186,17 @@ function paymentStatusBadgeProps(status: unknown): {
         case 'pending_confirmation':
             return { variant: 'secondary', class: '' };
         case 'paid':
-            return { variant: undefined, class: 'text-green-600 dark:text-green-400' };
+            return {
+                variant: undefined,
+                class: 'text-green-600 dark:text-green-400',
+            };
         case 'credit_pending_approval':
             return { variant: 'default', class: '' };
         case 'on_credit':
-            return { variant: undefined, class: 'text-green-600 dark:text-green-400' };
+            return {
+                variant: undefined,
+                class: 'text-green-600 dark:text-green-400',
+            };
         case 'credit_rejected':
             return { variant: 'destructive', class: '' };
         case 'written_off':
@@ -222,7 +233,10 @@ function jobOrderStageBadgeProps(status: unknown): {
         case 'quality_check':
             return { variant: 'secondary', class: '' };
         case 'ready_for_pickup':
-            return { variant: undefined, class: 'text-green-600 dark:text-green-400' };
+            return {
+                variant: undefined,
+                class: 'text-green-600 dark:text-green-400',
+            };
         default:
             return { variant: 'secondary', class: '' };
     }
@@ -300,7 +314,7 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                     :key="key"
                     type="button"
                     :aria-pressed="key === selected"
-                    class="bg-card text-card-foreground flex flex-col gap-1 rounded-xl border p-4 text-left shadow-sm transition-colors hover:bg-accent/50"
+                    class="bg-card text-card-foreground hover:bg-accent/50 flex flex-col gap-1 rounded-xl border p-4 text-left shadow-sm transition-colors"
                     :class="
                         key === selected
                             ? 'border-primary'
@@ -309,11 +323,17 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                     @click="selectReport(key)"
                 >
                     <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm font-semibold">{{ report.title }}</span>
+                        <span class="text-sm font-semibold">{{
+                            report.title
+                        }}</span>
                         <Badge variant="secondary">{{ report.badge }}</Badge>
                     </div>
-                    <p class="text-muted-foreground text-sm">{{ report.subLine }}</p>
-                    <span v-if="key === selected" class="sr-only">Selected</span>
+                    <p class="text-muted-foreground text-sm">
+                        {{ report.subLine }}
+                    </p>
+                    <span v-if="key === selected" class="sr-only"
+                        >Selected</span
+                    >
                 </button>
             </div>
         </div>
@@ -335,7 +355,9 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
             <Card>
                 <CardHeader>
                     <CardTitle>{{ selectedReport?.title }}</CardTitle>
-                    <CardDescription>{{ selectedReport?.subLine }}</CardDescription>
+                    <CardDescription>{{
+                        selectedReport?.subLine
+                    }}</CardDescription>
                 </CardHeader>
                 <CardContent class="flex flex-col gap-4">
                     <div class="flex flex-col gap-1">
@@ -348,7 +370,11 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                     </div>
 
                     <div class="flex flex-wrap gap-2">
-                        <Button as="a" variant="outline" :href="exportPdfUrl(selected)">
+                        <Button
+                            as="a"
+                            variant="outline"
+                            :href="exportPdfUrl(selected)"
+                        >
                             <FileText class="size-4" />
                             Export PDF
                         </Button>
@@ -362,36 +388,49 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                         </Button>
                     </div>
                     <p class="text-muted-foreground text-sm">
-                        Exports carry every row in this range and are recorded in
-                        the audit trail.
+                        Exports carry every row in this range and are recorded
+                        in the audit trail.
                     </p>
 
                     <template v-if="selected === 'financial-summary'">
                         <div v-if="summary" class="flex flex-col gap-6">
                             <div class="flex flex-col gap-2">
-                                <h3 class="text-[20px] leading-[1.2] font-semibold">
+                                <h3
+                                    class="text-[20px] leading-[1.2] font-semibold"
+                                >
                                     Revenue
                                 </h3>
-                                <div class="flex items-center justify-between gap-4">
+                                <div
+                                    class="flex items-center justify-between gap-4"
+                                >
                                     <div class="flex flex-col">
-                                        <span class="text-sm font-semibold">Job sales</span>
-                                        <span class="text-muted-foreground text-sm">
-                                            Down payments, balance payments, and full
-                                            payments that cleared in this range.
+                                        <span class="text-sm font-semibold"
+                                            >Job sales</span
+                                        >
+                                        <span
+                                            class="text-muted-foreground text-sm"
+                                        >
+                                            Down payments, balance payments, and
+                                            full payments that cleared in this
+                                            range.
                                         </span>
                                     </div>
                                     <span class="text-sm tabular-nums">
                                         {{ money(summary.job_sales) }}
                                     </span>
                                 </div>
-                                <div class="flex items-center justify-between gap-4">
+                                <div
+                                    class="flex items-center justify-between gap-4"
+                                >
                                     <div class="flex flex-col">
                                         <span class="text-sm font-semibold">
                                             Cancellation fees
                                         </span>
-                                        <span class="text-muted-foreground text-sm">
-                                            Fees collected on job orders that were
-                                            cancelled.
+                                        <span
+                                            class="text-muted-foreground text-sm"
+                                        >
+                                            Fees collected on job orders that
+                                            were cancelled.
                                         </span>
                                     </div>
                                     <span class="text-sm tabular-nums">
@@ -400,7 +439,9 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                 </div>
                                 <Separator />
                                 <div class="flex items-center justify-between">
-                                    <span class="text-sm font-semibold">Total revenue</span>
+                                    <span class="text-sm font-semibold"
+                                        >Total revenue</span
+                                    >
                                     <span class="text-sm tabular-nums">
                                         {{ money(summary.revenue_total) }}
                                     </span>
@@ -408,17 +449,23 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                             </div>
 
                             <div class="flex flex-col gap-2">
-                                <h3 class="text-[20px] leading-[1.2] font-semibold">
+                                <h3
+                                    class="text-[20px] leading-[1.2] font-semibold"
+                                >
                                     Expenses
                                 </h3>
-                                <div class="flex items-center justify-between gap-4">
+                                <div
+                                    class="flex items-center justify-between gap-4"
+                                >
                                     <div class="flex flex-col">
                                         <span class="text-sm font-semibold">
                                             Recorded expenses
                                         </span>
-                                        <span class="text-muted-foreground text-sm">
-                                            Every non-voided expense dated in this
-                                            range.
+                                        <span
+                                            class="text-muted-foreground text-sm"
+                                        >
+                                            Every non-voided expense dated in
+                                            this range.
                                         </span>
                                     </div>
                                     <span class="text-sm tabular-nums">
@@ -428,20 +475,29 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                             </div>
 
                             <div class="flex flex-col gap-2">
-                                <h3 class="text-[20px] leading-[1.2] font-semibold">
+                                <h3
+                                    class="text-[20px] leading-[1.2] font-semibold"
+                                >
                                     Result
                                 </h3>
                                 <div class="flex flex-col gap-1">
                                     <span class="text-sm font-semibold">
-                                        {{ summary.result < 0 ? 'Net Loss' : 'Net Profit' }}
+                                        {{
+                                            summary.result < 0
+                                                ? 'Net Loss'
+                                                : 'Net Profit'
+                                        }}
                                     </span>
                                     <span
                                         class="text-[28px] leading-[1.2] font-semibold tabular-nums"
-                                        :class="summary.result < 0 ? 'text-destructive' : ''"
+                                        :class="
+                                            summary.result < 0
+                                                ? 'text-destructive'
+                                                : ''
+                                        "
                                     >
-                                        {{ summary.result < 0 ? '-' : '' }}{{
-                                            money(Math.abs(summary.result))
-                                        }}
+                                        {{ summary.result < 0 ? '-' : ''
+                                        }}{{ money(Math.abs(summary.result)) }}
                                     </span>
                                 </div>
                             </div>
@@ -449,21 +505,23 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                             <Alert v-if="summary.write_off_total > 0">
                                 <Info class="size-4" />
                                 <AlertTitle>
-                                    Bad debt written off: {{ money(summary.write_off_total) }}
+                                    Bad debt written off:
+                                    {{ money(summary.write_off_total) }}
                                 </AlertTitle>
                                 <AlertDescription>
-                                    This is not deducted above. Written-off balances
-                                    were never counted as revenue in the first place,
-                                    so subtracting them would book the same loss
-                                    twice. Shown here so the figure isn't lost.
+                                    This is not deducted above. Written-off
+                                    balances were never counted as revenue in
+                                    the first place, so subtracting them would
+                                    book the same loss twice. Shown here so the
+                                    figure isn't lost.
                                 </AlertDescription>
                             </Alert>
 
                             <p class="text-muted-foreground text-sm">
                                 Revenue counts money that actually arrived — a
-                                payment is included on the day it was confirmed, not
-                                the day it was started. Balances still on credit
-                                contribute nothing until they're paid.
+                                payment is included on the day it was confirmed,
+                                not the day it was started. Balances still on
+                                credit contribute nothing until they're paid.
                             </p>
                         </div>
                     </template>
@@ -493,47 +551,103 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                         v-if="rows.length === 0"
                                         :colspan="columns.length"
                                     >
-                                        <div class="flex flex-col items-center gap-1 text-center">
-                                            <p class="font-semibold">Nothing in this range</p>
+                                        <div
+                                            class="flex flex-col items-center gap-1 text-center"
+                                        >
+                                            <p class="font-semibold">
+                                                Nothing in this range
+                                            </p>
                                             <p class="text-muted-foreground">
                                                 No
-                                                {{ selectedReport?.title.toLowerCase() }}
+                                                {{
+                                                    selectedReport?.title.toLowerCase()
+                                                }}
                                                 activity between
-                                                {{ formatDateOnly(filters.from) }} and
-                                                {{ formatDateOnly(filters.to) }}. Try a
-                                                wider date range.
+                                                {{
+                                                    formatDateOnly(filters.from)
+                                                }}
+                                                and
+                                                {{
+                                                    formatDateOnly(filters.to)
+                                                }}. Try a wider date range.
                                             </p>
                                         </div>
                                     </TableEmpty>
-                                    <TableRow v-for="(row, idx) in rows" v-else :key="idx">
+                                    <TableRow
+                                        v-for="(row, idx) in rows"
+                                        v-else
+                                        :key="idx"
+                                    >
                                         <TableCell
                                             v-for="field in rowFields"
                                             :key="field"
                                             :class="cellClass(field)"
                                         >
                                             <template v-if="field === 'method'">
-                                                {{ paymentMethodLabel(row[field]) }}
+                                                {{
+                                                    paymentMethodLabel(
+                                                        row[field],
+                                                    )
+                                                }}
                                             </template>
-                                            <template v-else-if="field === 'type'">
-                                                {{ transactionTypeLabel(row[field]) }}
+                                            <template
+                                                v-else-if="field === 'type'"
+                                            >
+                                                {{
+                                                    transactionTypeLabel(
+                                                        row[field],
+                                                    )
+                                                }}
                                             </template>
-                                            <template v-else-if="field === 'payment_status'">
+                                            <template
+                                                v-else-if="
+                                                    field === 'payment_status'
+                                                "
+                                            >
                                                 <Badge
-                                                    :variant="paymentStatusBadgeProps(row[field]).variant"
-                                                    :class="paymentStatusBadgeProps(row[field]).class"
+                                                    :variant="
+                                                        paymentStatusBadgeProps(
+                                                            row[field],
+                                                        ).variant
+                                                    "
+                                                    :class="
+                                                        paymentStatusBadgeProps(
+                                                            row[field],
+                                                        ).class
+                                                    "
                                                 >
-                                                    {{ paymentStatusLabel(row[field]) }}
+                                                    {{
+                                                        paymentStatusLabel(
+                                                            row[field],
+                                                        )
+                                                    }}
                                                 </Badge>
                                             </template>
-                                            <template v-else-if="field === 'stage'">
+                                            <template
+                                                v-else-if="field === 'stage'"
+                                            >
                                                 <Badge
-                                                    :variant="jobOrderStageBadgeProps(row[field]).variant"
-                                                    :class="jobOrderStageBadgeProps(row[field]).class"
+                                                    :variant="
+                                                        jobOrderStageBadgeProps(
+                                                            row[field],
+                                                        ).variant
+                                                    "
+                                                    :class="
+                                                        jobOrderStageBadgeProps(
+                                                            row[field],
+                                                        ).class
+                                                    "
                                                 >
-                                                    {{ jobOrderStageLabel(row[field]) }}
+                                                    {{
+                                                        jobOrderStageLabel(
+                                                            row[field],
+                                                        )
+                                                    }}
                                                 </Badge>
                                             </template>
-                                            <template v-else-if="field === 'status'">
+                                            <template
+                                                v-else-if="field === 'status'"
+                                            >
                                                 <Badge
                                                     v-if="row[field]"
                                                     variant="outline"
@@ -542,7 +656,9 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                                     {{ row[field] }}
                                                 </Badge>
                                             </template>
-                                            <template v-else-if="field === 'urgency'">
+                                            <template
+                                                v-else-if="field === 'urgency'"
+                                            >
                                                 <Badge
                                                     v-if="row[field]"
                                                     variant="outline"
@@ -559,28 +675,49 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                                     Normal
                                                 </Badge>
                                             </template>
-                                            <template v-else-if="field === 'cancellation_fee'">
+                                            <template
+                                                v-else-if="
+                                                    field === 'cancellation_fee'
+                                                "
+                                            >
                                                 <span
-                                                    v-if="Number(row[field] ?? 0) === 0"
+                                                    v-if="
+                                                        Number(
+                                                            row[field] ?? 0,
+                                                        ) === 0
+                                                    "
                                                     class="text-muted-foreground"
                                                 >
                                                     No fee
                                                 </span>
-                                                <span v-else>{{ moneyField(row[field]) }}</span>
+                                                <span v-else>{{
+                                                    moneyField(row[field])
+                                                }}</span>
                                             </template>
-                                            <template v-else-if="MONEY_FIELDS.has(field)">
+                                            <template
+                                                v-else-if="
+                                                    MONEY_FIELDS.has(field)
+                                                "
+                                            >
                                                 {{ moneyField(row[field]) }}
                                             </template>
                                             <template
                                                 v-else-if="
-                                                    field === 'entered_production' ||
+                                                    field ===
+                                                        'entered_production' ||
                                                     field === 'due'
                                                 "
                                             >
                                                 {{ dateField(row[field]) }}
                                             </template>
-                                            <template v-else-if="field === 'date'">
-                                                {{ formatDateOnly(String(row[field])) }}
+                                            <template
+                                                v-else-if="field === 'date'"
+                                            >
+                                                {{
+                                                    formatDateOnly(
+                                                        String(row[field]),
+                                                    )
+                                                }}
                                             </template>
                                             <template v-else>
                                                 {{ displayValue(row[field]) }}
@@ -594,8 +731,9 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                             :colspan="columns.length"
                                             class="text-muted-foreground text-sm"
                                         >
-                                            Showing the first 100 of {{ rowsTotal }} rows.
-                                            Export to see them all.
+                                            Showing the first 100 of
+                                            {{ rowsTotal }} rows. Export to see
+                                            them all.
                                         </TableCell>
                                     </TableRow>
                                 </TableFooter>
