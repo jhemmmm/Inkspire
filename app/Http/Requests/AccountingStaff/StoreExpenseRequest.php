@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Http\Requests\AccountingStaff;
+
+use App\Concerns\ExpenseValidationRules;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreExpenseRequest extends FormRequest
+{
+    use ExpenseValidationRules;
+
+    /**
+     * Determine if the user is authorized to make this request.
+     *
+     * The route is already gated by the `role:accounting_staff` middleware
+     * group -- matching RequestWriteOffRequest's un-narrowed pattern.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return $this->expenseRules();
+    }
+}
