@@ -330,7 +330,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 08-02-PLAN.md — Expenses Frontend Wiring + shared DateRangeControl.vue (EXP-01 completion)
+- [x] 08-02-PLAN.md — Expenses Frontend Wiring + shared DateRangeControl.vue (EXP-01 completion)
 - [ ] 08-03-PLAN.md — Reports Backend: ReportRegistry, ReportBuilder, entitlement, all 5 report queries, written_off_at (RPT-01, RPT-02, RPT-03, RPT-04)
 
 **Wave 3** *(blocked on Wave 2 completion)*
@@ -357,4 +357,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
 | 7. Accounts Receivable | 8/8 | Complete    | 2026-09-09 |
-| 8. Expenses & Reporting | 1/5 | In Progress|  |
+| 8. Expenses & Reporting | 2/5 | In Progress|  |

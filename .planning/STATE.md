@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-09-10T00:29:34.971Z"
-last_activity: 2026-09-10 -- Phase 08 execution started
+last_updated: "2026-09-10T01:09:12.412Z"
+last_activity: 2026-09-10
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 59
-  completed_plans: 54
+  completed_plans: 56
   percent: 88
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 08 (expenses-reporting) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 08
-Last activity: 2026-09-10 -- Phase 08 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-09-10
 
-Progress: [██████████] 100%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | Phase 02 P03 | 20min | 2 tasks | 6 files |
 | Phase 02 P04 | 10min | 2 tasks | 9 files |
 | Phase 02 P05 | 9min | 2 tasks | 5 files |
+| Phase 08 P02 | 33min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,8 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-04: QueueList.vue's Add Job Order dialog uses Inertia's uncontrolled <Form> with RadioGroup's name prop (hidden native input mirror) instead of useForm(), per the plan's explicit v-bind instruction
 - [Phase 02]: 02-05: whereDate('queue_date', ...) not where() in QueueDisplayController, matching the pattern QueueEntry::nextForBusinessDay() already established for the date-cast/SQLite serialization issue
 - [Phase 02]: 02-05: public/ page namespace + name.startsWith('public/') case in app.ts layout switch gives QUEUE-06's kiosk display zero chrome, extending the Welcome.vue precedent
+- [Phase 08]: 08-02: Empty-ledger copy always uses the range-scoped message ('Nothing in this range') rather than distinguishing it from the all-time-empty case, since ExpenseController::index has no all-time-existence signal separate from its range-scoped props
+- [Phase 08]: 08-02: DateRangeControl.vue lives at resources/js/components/reports/ as the phase's one shared date-range control, consumed by the Expenses ledger now and the Reports workspace in Plan 08-05
 
 ### Pending Todos
 
@@ -137,6 +140,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-09T23:05:33.454Z
-Stopped at: Phase 8 UI-SPEC approved
-Resume file: .planning/phases/08-expenses-reporting/08-UI-SPEC.md
+Last session: 2026-09-10T01:09:12.407Z
+Stopped at: Completed 08-02-PLAN.md
+Resume file: None

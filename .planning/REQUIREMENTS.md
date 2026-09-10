@@ -130,7 +130,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | PROD-01 through PROD-03 | Phase 6 - Production Monitoring & Public Tracking | Pending |
 | TRACK-01, TRACK-02 | Phase 6 - Production Monitoring & Public Tracking | Pending |
 | AR-01 through AR-04 | Phase 7 - Accounts Receivable | Pending |
-| EXP-01 | Phase 8 - Expenses & Reporting | Pending |
+| EXP-01 | Phase 8 - Expenses & Reporting | Complete |
 | RPT-01 through RPT-05 | Phase 8 - Expenses & Reporting | Pending |
 
 **Coverage:**
