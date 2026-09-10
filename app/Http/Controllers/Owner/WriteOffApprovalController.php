@@ -108,6 +108,7 @@ class WriteOffApprovalController extends Controller
             $accountsReceivable->forceFill([
                 'collection_status' => AccountsReceivableCollectionStatus::WrittenOff->value,
                 'write_off_requested_at' => null,
+                'written_off_at' => now(),
             ])->save();
             $jobOrder->forceFill(['payment_status' => PaymentStatus::WrittenOff->value])->save();
         });

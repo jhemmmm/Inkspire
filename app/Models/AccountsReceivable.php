@@ -29,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $write_off_reason
  * @property int|null $write_off_requested_by
  * @property Carbon|null $write_off_requested_at
+ * @property Carbon|null $written_off_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -65,6 +66,7 @@ class AccountsReceivable extends Model
             'last_reminder_sent_at' => 'datetime',
             'collection_status' => AccountsReceivableCollectionStatus::class,
             'write_off_requested_at' => 'datetime',
+            'written_off_at' => 'datetime',
         ];
     }
 
