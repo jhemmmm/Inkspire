@@ -65,7 +65,7 @@
 
 ### Expenses
 
-- [ ] **EXP-01**: Accounting Staff can record an expense with a category, amount, and date
+- [x] **EXP-01**: Accounting Staff can record an expense with a category, amount, and date
 
 ### Reporting
 
