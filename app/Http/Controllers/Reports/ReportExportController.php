@@ -156,6 +156,16 @@ class ReportExportController extends Controller
             $values = $this->xlsxRowValues($reportKey, $row);
             $sheetRows[] = $values;
 
+            /**
+             * A voided row stays visible in the sheet but must never reach the
+             * Total, mirroring `Expense::active()` -- the same exclusion the
+             * on-screen ledger total and the Financial Summary's
+             * `expenses_total` already apply.
+             */
+            if (($row['status'] ?? null) === 'Voided') {
+                continue;
+            }
+
             foreach ($moneyIndexes as $index) {
                 $totals[$index] += (float) ($values[$index] ?? 0);
             }

@@ -186,3 +186,27 @@ test('viewing the on-screen report writes zero audit_trail rows -- only export d
 
     expect(AuditLog::where('action', 'report_exported')->count())->toBe(0);
 });
+
+test('the xlsx expenses Total row excludes voided expenses (mirrors Expense::active())', function () {
+    $this->skipUnlessZipAvailable();
+
+    $accountingStaff = User::factory()->accountingStaff()->create();
+
+    Expense::factory()->create(['amount' => 1000, 'expense_date' => now()]);
+    Expense::factory()->create(['amount' => 500, 'expense_date' => now()]);
+    Expense::factory()->voided()->create(['amount' => 250, 'expense_date' => now()]);
+
+    $response = $this->actingAs($accountingStaff)->get(route('accounting-staff.reports.export.xlsx', 'expenses'));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+    $totalRow = end($rows);
+
+    expect($totalRow[0])->toBe('Total');
+    // 1000 + 500, with the voided 250 excluded -- a voided expense stays
+    // visible as its own row but must never be summed into the Total.
+    expect((float) $totalRow[3])->toBe(1500.0);
+    // The voided row is still present in the sheet, just not in the Total.
+    expect(count($rows))->toBe(5); // header + 3 expenses + total
+});
