@@ -88,7 +88,9 @@ watch(
     },
 );
 
-const showCustomFields = computed(() => manualCustom.value || activePresetKey.value === null);
+const showCustomFields = computed(
+    () => manualCustom.value || activePresetKey.value === null,
+);
 
 function variantFor(key: string): 'default' | 'outline' {
     return activePresetKey.value === key ? 'default' : 'outline';
@@ -127,7 +129,8 @@ function applyCustomRange(): void {
     }
 
     if (customTo.value < customFrom.value) {
-        errorMessage.value = "The end date can't be earlier than the start date.";
+        errorMessage.value =
+            "The end date can't be earlier than the start date.";
         return;
     }
 
@@ -173,18 +176,30 @@ const rangeLabel = computed(() => {
         <div v-if="showCustomFields" class="flex flex-wrap items-end gap-2">
             <div class="flex flex-col gap-1">
                 <Label for="date-range-from">From</Label>
-                <Input id="date-range-from" v-model="customFrom" type="date" class="w-40" />
+                <Input
+                    id="date-range-from"
+                    v-model="customFrom"
+                    type="date"
+                    class="w-40"
+                />
             </div>
 
             <div class="flex flex-col gap-1">
                 <Label for="date-range-to">To</Label>
-                <Input id="date-range-to" v-model="customTo" type="date" class="w-40" />
+                <Input
+                    id="date-range-to"
+                    v-model="customTo"
+                    type="date"
+                    class="w-40"
+                />
             </div>
 
             <Button type="button" @click="applyCustomRange">Apply Range</Button>
         </div>
 
-        <p v-if="errorMessage" class="text-destructive text-sm">{{ errorMessage }}</p>
+        <p v-if="errorMessage" class="text-destructive text-sm">
+            {{ errorMessage }}
+        </p>
 
         <p class="text-muted-foreground text-sm">Showing {{ rangeLabel }}</p>
     </div>
