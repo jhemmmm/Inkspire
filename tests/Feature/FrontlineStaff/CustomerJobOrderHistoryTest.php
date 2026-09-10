@@ -132,6 +132,7 @@ test('the confirmation block carries a tracking token per job order and an absol
     $response->assertInertia(fn (Assert $page) => $page
         ->has('confirmedQueueEntry.job_orders', 1)
         ->where('confirmedQueueEntry.job_orders.0.tracking_token', $jobOrder->tracking_token)
+        ->where('confirmedQueueEntry.job_orders.0.number', $jobOrder->number)
         ->where('trackingBaseUrl', url('track')));
 
     expect($response->viewData('page')['props']['trackingBaseUrl'])->toEndWith('/track');

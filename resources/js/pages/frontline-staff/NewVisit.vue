@@ -30,6 +30,8 @@ import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vu
 import SearchableSelect, {
     type SearchableOption,
 } from '@/components/SearchableSelect.vue';
+import SectionHeading from '@/components/SectionHeading.vue';
+import TrackingQrCode from '@/components/TrackingQrCode.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -81,11 +83,22 @@ interface JobOrderRow {
 
 interface ConfirmedJobOrder {
     id: number;
+    number: string | null;
     description: string;
     type: string;
     status: string;
+    tracking_token: string;
     validation_failure_reason: string | null;
     assigned_artist: { id: number; name: string } | null;
+}
+
+interface CustomerJobOrder {
+    id: number;
+    number: string | null;
+    description: string;
+    type: string;
+    status: string;
+    created_at: string;
 }
 
 interface ConfirmedQueueEntry {
@@ -101,7 +114,9 @@ const props = defineProps<{
     pricingEntries: PricingEntry[];
     filters: { q?: string };
     selectedCustomer: CustomerRecord | null;
+    customerJobOrders: CustomerJobOrder[];
     confirmedQueueEntry: ConfirmedQueueEntry | null;
+    trackingBaseUrl: string;
 }>();
 
 defineOptions({
@@ -149,12 +164,24 @@ function closeRegisterForm(): void {
     registerRequested.value = false;
 }
 
+// Set once the staff member asks for the intake form on a returning customer.
+// Reset by the watch below so switching customers re-arms the gate rather than
+// leaving the previous customer's form open.
+const newJobOrderRequested = ref(false);
+
+// A first-time customer has nothing to show, so they drop straight into the
+// form with no extra click; a returning one sees their history first.
+const showJobOrderForm = computed(
+    () => newJobOrderRequested.value || props.customerJobOrders.length === 0,
+);
+
 // Inertia can preserve this component instance across the post-registration
 // redirect instead of remounting it — keep `selected` in sync when that happens.
 watch(
     () => props.selectedCustomer,
     (value) => {
         selected.value = value;
+        newJobOrderRequested.value = false;
     },
 );
 
@@ -174,15 +201,34 @@ function search(): void {
     );
 }
 
+// Round-trips through the server rather than setting `selected` locally,
+// because the customer's job order history is a server prop and a purely
+// client-side selection would leave it stale. `selected` is deliberately NOT
+// set optimistically here: doing so flashes the intake form for one frame
+// before the history arrives and replaces it.
 function selectCustomer(customer: CustomerRecord): void {
-    selected.value = customer;
+    router.get(
+        newVisit.url(),
+        { q: searchTerm.value, customer: customer.id },
+        { preserveState: true, preserveScroll: true, replace: true },
+    );
 }
 
 // Picking the wrong customer used to be unrecoverable without a page reload:
 // nothing ever cleared `selected` short of the post-submit "Start New Visit"
 // link.
+//
+// Dropping `customer` from the URL is the load-bearing half. Without it,
+// re-picking the SAME customer produces an identical `props.selectedCustomer`,
+// the watch above never fires, and the page sits stuck on the empty state.
 function clearCustomer(): void {
     selected.value = null;
+
+    router.get(
+        newVisit.url(),
+        { q: searchTerm.value },
+        { preserveState: true, preserveScroll: true, replace: true },
+    );
 }
 
 const STEPS = ['Customer', 'Job Orders', 'Queue Number'] as const;
@@ -340,6 +386,55 @@ function submitIntake(): void {
     });
 }
 
+// Which slip is currently being printed, so the others can be hidden. Both
+// class strings below appear as literals in this file on purpose — Tailwind's
+// scanner only generates classes it can see in the source.
+const printingJobOrderId = ref<number | null>(null);
+
+function slipPrintClass(jobOrderId: number): string {
+    return printingJobOrderId.value !== null &&
+        printingJobOrderId.value !== jobOrderId
+        ? 'print:hidden'
+        : '';
+}
+
+function trackingUrlFor(jobOrder: ConfirmedJobOrder): string {
+    return `${props.trackingBaseUrl}/${jobOrder.tracking_token}`;
+}
+
+/**
+ * Print one slip on its own.
+ *
+ * The `afterprint` reset is registered BEFORE window.print() rather than after
+ * it: window.print() returns immediately in some browsers and blocks until the
+ * preview closes in others, so a post-call reset races the render in the first
+ * case and the next print would show every slip. nextTick() in between lets
+ * the class binding actually reach the DOM before the preview snapshots it.
+ */
+async function printSlip(jobOrderId: number): Promise<void> {
+    printingJobOrderId.value = jobOrderId;
+
+    await nextTick();
+
+    window.addEventListener(
+        'afterprint',
+        () => {
+            printingJobOrderId.value = null;
+        },
+        { once: true },
+    );
+
+    window.print();
+}
+
+function formatSlipDate(value: string): string {
+    return new Date(value).toLocaleDateString('en-PH', {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+    });
+}
+
 function jobOrderTypeLabel(type: string): string {
     return type === 'type_a' ? 'Type A' : 'Type B';
 }
@@ -377,6 +472,7 @@ function jobOrderStatusLabel(status: string): string {
 
     <PageContainer>
         <PageHeader
+            class="print:hidden"
             title="New Visit"
             description="Find or register the customer, capture what they are having printed, then hand them their queue number."
         />
@@ -386,7 +482,7 @@ function jobOrderStatusLabel(status: string): string {
             column, so a staff member mid-visit had no way to tell how much was
             left. An ordered list keeps that legible to screen readers too.
         -->
-        <ol class="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <ol class="flex flex-wrap items-center gap-x-3 gap-y-2 print:hidden">
             <li
                 v-for="(step, stepIndex) in STEPS"
                 :key="step"
@@ -633,7 +729,7 @@ function jobOrderStatusLabel(status: string): string {
         -->
         <div
             v-else
-            class="bg-card border-border flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border p-4 shadow-sm"
+            class="bg-card border-border flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border p-4 shadow-sm print:hidden"
         >
             <span
                 class="bg-accent text-accent-foreground flex size-9 shrink-0 items-center justify-center rounded-lg"
@@ -668,13 +764,14 @@ function jobOrderStatusLabel(status: string): string {
 
         <Card
             v-if="selected && confirmedQueueEntry"
+            class="print:border-0 print:shadow-none"
             data-test="queue-confirmation-card"
         >
-            <CardHeader :icon="Ticket">
+            <CardHeader :icon="Ticket" class="print:hidden">
                 <CardTitle>Queue Number</CardTitle>
             </CardHeader>
             <CardContent class="flex flex-col gap-6">
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4 print:hidden">
                     <p
                         class="bg-primary text-primary-foreground flex size-20 shrink-0 items-center justify-center rounded-2xl text-4xl leading-none font-extrabold tabular-nums"
                     >
@@ -691,7 +788,7 @@ function jobOrderStatusLabel(status: string): string {
                     </div>
                 </div>
 
-                <ul class="divide-border flex flex-col divide-y">
+                <ul class="divide-border flex flex-col divide-y print:hidden">
                     <template
                         v-for="jobOrder in confirmedQueueEntry.job_orders"
                         :key="jobOrder.id"
@@ -777,10 +874,50 @@ function jobOrderStatusLabel(status: string): string {
                     </template>
                 </ul>
 
+                <section class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-1 print:hidden">
+                        <h3 class="font-semibold">Customer Slips</h3>
+                        <p class="text-muted-foreground text-sm">
+                            Print one slip per job order and hand it over with
+                            the queue number. Scanning it opens a page showing
+                            where the order is up to.
+                        </p>
+                    </div>
+
+                    <div
+                        v-for="jobOrder in confirmedQueueEntry.job_orders"
+                        :key="`slip-${jobOrder.id}`"
+                        class="border-border flex flex-col items-center gap-3 rounded-xl border p-6 text-center print:break-inside-avoid"
+                        :class="slipPrintClass(jobOrder.id)"
+                        :data-test="`job-order-slip-${jobOrder.id}`"
+                    >
+                        <TrackingQrCode
+                            :tracking-url="trackingUrlFor(jobOrder)"
+                        />
+                        <p class="text-lg font-bold tabular-nums">
+                            {{ jobOrder.number ?? '—' }}
+                        </p>
+                        <p class="font-medium">{{ selected.name }}</p>
+                        <p class="text-muted-foreground text-sm">
+                            Scan this code to follow your order.
+                        </p>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            class="print:hidden"
+                            :data-test="`print-slip-${jobOrder.id}-button`"
+                            @click="printSlip(jobOrder.id)"
+                        >
+                            <Printer class="size-4" />
+                            Print Slip
+                        </Button>
+                    </div>
+                </section>
+
                 <Link
                     :href="newVisit()"
                     :class="buttonVariants({ variant: 'secondary' })"
-                    class="self-start"
+                    class="self-start print:hidden"
                     data-test="start-new-visit-link"
                 >
                     Start New Visit
@@ -788,7 +925,80 @@ function jobOrderStatusLabel(status: string): string {
             </CardContent>
         </Card>
 
-        <template v-if="selected && !confirmedQueueEntry">
+        <template v-if="selected && !confirmedQueueEntry && !showJobOrderForm">
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <SectionHeading
+                    title="Previous Job Orders"
+                    description="This customer's most recent orders. Start a new one at any time."
+                />
+                <Button
+                    size="lg"
+                    type="button"
+                    data-test="new-job-order-button"
+                    @click="newJobOrderRequested = true"
+                >
+                    <Plus class="size-4" />
+                    New Job Order
+                </Button>
+            </div>
+
+            <DataTableCard>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Job Order</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Date</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow
+                            v-for="jobOrder in customerJobOrders"
+                            :key="jobOrder.id"
+                            :data-test="`customer-job-order-${jobOrder.id}-row`"
+                        >
+                            <TableCell class="tabular-nums">
+                                {{ jobOrder.number ?? '—' }}
+                            </TableCell>
+                            <TableCell>{{ jobOrder.description }}</TableCell>
+                            <TableCell>
+                                <Badge variant="outline">
+                                    {{ jobOrderTypeLabel(jobOrder.type) }}
+                                </Badge>
+                            </TableCell>
+                            <TableCell class="text-muted-foreground">
+                                {{ jobOrderStatusLabel(jobOrder.status) }}
+                            </TableCell>
+                            <TableCell
+                                class="text-muted-foreground tabular-nums"
+                            >
+                                {{ formatSlipDate(jobOrder.created_at) }}
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </DataTableCard>
+
+            <!--
+                Repeated below the table so the primary action is never a
+                screen away once a customer has a long history.
+            -->
+            <div class="flex">
+                <Button
+                    size="lg"
+                    type="button"
+                    data-test="new-job-order-below-button"
+                    @click="newJobOrderRequested = true"
+                >
+                    <Plus class="size-4" />
+                    New Job Order
+                </Button>
+            </div>
+        </template>
+
+        <template v-if="selected && !confirmedQueueEntry && showJobOrderForm">
             <Card v-for="(row, index) in intakeForm.job_orders" :key="row._key">
                 <CardHeader :icon="FileText">
                     <div class="flex items-center justify-between gap-2">
