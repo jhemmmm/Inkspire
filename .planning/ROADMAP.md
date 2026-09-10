@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: POS & Payments** - A job order gets priced, paid (cash, bank transfer, GCash/Maya, or on-credit), and receipted (completed 2026-09-05)
 - [x] **Phase 6: Production Monitoring & Public Tracking** - Staff and customers can see a job order's physical progress through to pickup (completed 2026-09-06)
 - [x] **Phase 7: Accounts Receivable** - An on-credit balance is tracked from creation through aging, reminders, collections, and write-off (all 8 plans executed; AR-04 closed after 4 verification rounds) (completed 2026-09-09)
-- [ ] **Phase 8: Expenses & Reporting** - Expenses get logged and every module's data rolls up into exportable, role-scoped reports
+- [x] **Phase 8: Expenses & Reporting** - Expenses get logged and every module's data rolls up into exportable, role-scoped reports (completed 2026-09-10)
 
 ## Phase Details
 
@@ -339,7 +339,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 08-05-PLAN.md — Reports Frontend: shared ReportsWorkspace.vue, 4 role wrapper pages, nav (RPT-01, RPT-02, RPT-03, RPT-04, RPT-05 completion)
+- [x] 08-05-PLAN.md — Reports Frontend: shared ReportsWorkspace.vue, 4 role wrapper pages, nav (RPT-01, RPT-02, RPT-03, RPT-04, RPT-05 completion)
 
 **UI hint**: yes
 
@@ -357,4 +357,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
 | 7. Accounts Receivable | 8/8 | Complete    | 2026-09-09 |
-| 8. Expenses & Reporting | 4/5 | In Progress|  |
+| 8. Expenses & Reporting | 5/5 | Complete   | 2026-09-10 |

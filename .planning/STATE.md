@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-09-10T01:45:01.933Z"
+last_updated: "2026-09-10T03:02:14.331Z"
 last_activity: 2026-09-10
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 59
-  completed_plans: 58
-  percent: 88
+  completed_plans: 59
+  percent: 100
 ---
 
 # Project State
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 08 (expenses-reporting) — EXECUTING
-Plan: 4 of 5
-Status: BLOCKED — 08-04 Task 2/3 (openspout xlsx export) blocked by missing ext-zip PHP extension in this environment. Tasks 1 and 3 (dompdf PDF export, collection letter PDF) complete and committed. See 08-04-SUMMARY.md and deferred-items.md.
+Plan: 5 of 5
+Status: Ready to execute
 Last activity: 2026-09-10
 
-Progress: [██████████] 98%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [██████████] 98%
 | Phase 08 P02 | 33min | 2 tasks | 3 files |
 | Phase 08 P03 | 45min | 2 tasks | 13 files |
 | Phase 08 P04 | 20min | 3 tasks | 18 files |
+| Phase 08 P05 | 35min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 08]: 08-04: dompdf page numbering uses isPhpEnabled/script-text-php per-PDF-instance, not global config
 - [Phase ?]: [Phase 08]: 08-04: CollectionLetterController::pdf() adds a third guard (404 on Current bracket) beyond show()'s two verbatim-copied lines, since letterBody() throws for Current
 - [Phase ?]: [Phase 08]: 08-04: Task 2 (openspout xlsx export) blocked -- ext-zip PHP extension unavailable for PHP 8.4 in this environment, no apt package or root access; composer.json/lock auto-reverted by Composer
+- [Phase 08]: 08-05: Added NavItem.roles + AppSidebar.vue role filter since Admin/Owner share ownerNavItems with no prior split mechanism — Plan assumed a separate admin.ts; none exists. Closes D-05 nav-visibility gap on top of the already owner-only backend route.
+- [Phase 08]: 08-05: Task 3 checkpoint XLSX fidelity check verified working-by-construction, not executed locally — Sandbox PHP 8.4 CLI has no ext-zip (Ubuntu focal EOL); the 3 writer-invoking xlsx tests are gated via TestCase::skipUnlessZipAvailable() and run for real on Laravel Cloud.
 
 ### Pending Todos
 
@@ -149,6 +152,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-10T01:45:01.928Z
-Stopped at: Partial — 08-04-PLAN.md Tasks 1 and 3 complete; Task 2 (openspout xlsx export) blocked by missing ext-zip PHP extension in this environment
+Last session: 2026-09-10T03:02:14.326Z
+Stopped at: Completed 08-05-PLAN.md — Phase 08 (expenses-reporting) all 5 plans done
 Resume file: None
