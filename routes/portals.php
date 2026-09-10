@@ -67,6 +67,7 @@ Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')
     Route::post('job-orders/{jobOrder}/credit-request', [CreditRequestController::class, 'store'])->name('job-orders.credit-request.store');
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/{reportKey}/export/pdf', [ReportExportController::class, 'exportPdf'])->name('reports.export.pdf');
+    Route::get('reports/{reportKey}/export/xlsx', [ReportExportController::class, 'exportXlsx'])->name('reports.export.xlsx');
 });
 
 Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')->name('production-staff.')->group(function () {
@@ -75,6 +76,7 @@ Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')
     Route::patch('job-orders/{jobOrder}/send-back', [ProductionStageController::class, 'sendBack'])->name('job-orders.send-back');
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/{reportKey}/export/pdf', [ReportExportController::class, 'exportPdf'])->name('reports.export.pdf');
+    Route::get('reports/{reportKey}/export/xlsx', [ReportExportController::class, 'exportXlsx'])->name('reports.export.xlsx');
 });
 
 Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')->name('accounting-staff.')->group(function () {
@@ -92,4 +94,5 @@ Route::middleware(['auth', 'role:accounting_staff'])->prefix('accounting-staff')
     Route::patch('expenses/{expense}/void', [ExpenseController::class, 'void'])->name('expenses.void');
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/{reportKey}/export/pdf', [ReportExportController::class, 'exportPdf'])->name('reports.export.pdf');
+    Route::get('reports/{reportKey}/export/xlsx', [ReportExportController::class, 'exportXlsx'])->name('reports.export.xlsx');
 });
