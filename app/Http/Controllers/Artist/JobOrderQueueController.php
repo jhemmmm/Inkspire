@@ -64,6 +64,7 @@ class JobOrderQueueController extends Controller
                 ->with('queueEntry.customer:id,name')
                 ->get(['id', 'number', 'description', 'queue_entry_id', 'created_at', 'is_rush', 'type', 'deadline']),
             'artistStatus' => $request->user()->artist_status,
+            'artistLabel' => $request->user()->artist_label,
         ]);
     }
 
@@ -111,6 +112,8 @@ class JobOrderQueueController extends Controller
      */
     public function next(UpdateJobOrderQueuePositionRequest $request, JobOrder $jobOrder): RedirectResponse
     {
+        $this->abortUnlessOnShift($request->user());
+
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
 
         abort_unless($jobOrder->status === JobOrderStatus::Assigned, 422, 'This job order is not waiting to be called.');
@@ -135,6 +138,8 @@ class JobOrderQueueController extends Controller
      */
     public function forward(UpdateJobOrderQueuePositionRequest $request, JobOrder $jobOrder): RedirectResponse
     {
+        $this->abortUnlessOnShift($request->user());
+
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
         abort_unless(
             in_array($jobOrder->status, [JobOrderStatus::Assigned, JobOrderStatus::InConsultation, JobOrderStatus::InDesign], true),
@@ -151,6 +156,29 @@ class JobOrderQueueController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Forwarded. Another artist can now accept this job order.')]);
 
         return back();
+    }
+
+    /**
+     * An Artist on break or off shift works nothing in their own queue.
+     *
+     * Enforced here and not only by disabling the buttons: the dashboard
+     * greys the row's actions out, but the routes behind them stay
+     * reachable, and "on break" has to mean the same thing on both sides.
+     * Accept already carries its own equivalent guard.
+     */
+    private function abortUnlessOnShift(User $artist): void
+    {
+        abort_if(
+            $artist->artist_status === ArtistStatus::OnBreak,
+            422,
+            __('End your break before working your queue.'),
+        );
+
+        abort_if(
+            $artist->artist_status === ArtistStatus::OffShift,
+            422,
+            __('Start your shift before working your queue.'),
+        );
     }
 
     /**

@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePoll } from '@inertiajs/vue3';
-import { PackageCheck, Plus, RefreshCw, Ticket, Zap } from '@lucide/vue';
+import {
+    PackageCheck,
+    Plus,
+    RefreshCw,
+    Ticket,
+    UserRound,
+    Zap,
+} from '@lucide/vue';
 import { reactive } from 'vue';
 import JobOrderReleaseController from '@/actions/App/Http/Controllers/FrontlineStaff/JobOrderReleaseController';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
@@ -38,6 +45,7 @@ import {
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { dashboard, newVisit } from '@/routes/frontline-staff';
 import { index as queueEntriesIndex } from '@/routes/frontline-staff/queue-entries';
+import { queueNumberLabel } from '@/lib/utils';
 
 interface QueueEntryCustomer {
     id: number;
@@ -51,7 +59,11 @@ interface JobOrderRecord {
     type: string;
     status: string;
     validation_failure_reason: string | null;
-    assigned_artist: { id: number; name: string } | null;
+    assigned_artist: {
+        id: number;
+        name: string;
+        artist_label: string | null;
+    } | null;
     payment_status: string;
     released_at: string | null;
 }
@@ -91,6 +103,25 @@ defineOptions({
 // Frontline Dashboard, surfaced here so staff already on this page see it
 // without navigating away.
 usePoll(5000, { only: ['readyForPickup'] });
+
+/**
+ * Where to send the customer once an artist has taken the job.
+ *
+ * The label ("Artist 3") is what the shop floor is signposted with, so it
+ * leads; the artist's own name follows for staff. An artist created before
+ * labels existed falls back to their name alone rather than showing nothing.
+ */
+function artistDestination(jobOrder: JobOrderRecord): string {
+    const artist = jobOrder.assigned_artist;
+
+    if (artist === null) {
+        return 'Assigned';
+    }
+
+    return artist.artist_label
+        ? `${artist.artist_label} — ${artist.name}`
+        : artist.name;
+}
 
 function readyForPickupBannerHeading(): string {
     const count = props.readyForPickup.count;
@@ -222,7 +253,7 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                             <span
                                 class="bg-secondary text-secondary-foreground inline-flex size-9 items-center justify-center rounded-lg text-base font-bold tabular-nums"
                             >
-                                {{ entry.queue_number }}
+                                {{ queueNumberLabel(entry.queue_number) }}
                             </span>
                         </TableCell>
                         <TableCell>{{ entry.customer.name }}</TableCell>
@@ -258,11 +289,15 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                                     </Badge>
                                     <Badge
                                         v-else-if="
-                                            jobOrder.status === 'assigned'
+                                            jobOrder.status === 'assigned' ||
+                                            jobOrder.status ===
+                                                'in_consultation'
                                         "
                                         variant="default"
+                                        :data-test="`job-order-${jobOrder.id}-artist-badge`"
                                     >
-                                        Assigned
+                                        <UserRound class="size-3" />
+                                        {{ artistDestination(jobOrder) }}
                                     </Badge>
                                     <Badge
                                         v-else-if="

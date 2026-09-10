@@ -51,7 +51,22 @@ const props = defineProps<{
     jobOrders: ArtistJobOrder[];
     availableJobOrders: PoolJobOrder[];
     artistStatus: string;
+    artistLabel: string | null;
 }>();
+
+/**
+ * On break or off shift, the queue is read-only.
+ *
+ * Mirrored by a server-side guard on next/forward -- greying a button out
+ * does not close the route behind it.
+ */
+const isOnShift = computed(() => props.artistStatus === 'available');
+
+const offDutyReason = computed(() =>
+    props.artistStatus === 'on_break'
+        ? 'You are on break. End your break to work your queue.'
+        : 'Your shift has ended. Start your shift to work your queue.',
+);
 
 /**
  * Type A arrived print-ready and only reached an artist because its file
@@ -230,13 +245,36 @@ function artistStatusLabel(artistStatus: string): string {
             <CardContent
                 class="flex flex-wrap items-center justify-between gap-4"
             >
-                <Badge
-                    :variant="artistStatusBadgeVariant(artistStatus)"
-                    :class="artistStatusBadgeClass(artistStatus)"
-                >
-                    {{ artistStatusLabel(artistStatus) }}
-                </Badge>
+                <div class="flex flex-wrap items-center gap-2">
+                    <Badge
+                        v-if="artistLabel"
+                        variant="secondary"
+                        data-test="artist-label-badge"
+                    >
+                        {{ artistLabel }}
+                    </Badge>
+                    <Badge
+                        :variant="artistStatusBadgeVariant(artistStatus)"
+                        :class="artistStatusBadgeClass(artistStatus)"
+                    >
+                        {{ artistStatusLabel(artistStatus) }}
+                    </Badge>
+                </div>
                 <div class="flex items-center gap-2">
+                    <Form
+                        v-if="artistStatus === 'off_shift'"
+                        v-bind="SessionStatusController.startShift.form()"
+                        :options="{ preserveScroll: true }"
+                        v-slot="{ processing }"
+                    >
+                        <Button
+                            type="submit"
+                            :disabled="processing"
+                            data-test="start-shift-button"
+                        >
+                            Start Shift
+                        </Button>
+                    </Form>
                     <Form
                         v-if="artistStatus === 'available'"
                         v-bind="SessionStatusController.startBreak.form()"
@@ -412,10 +450,19 @@ function artistStatusLabel(artistStatus: string): string {
         </section>
 
         <section class="flex flex-col gap-3">
-            <SectionHeading
-                title="My Queue"
-                description="Jobs you have accepted, oldest first."
-            />
+            <div class="flex flex-wrap items-end justify-between gap-2">
+                <SectionHeading
+                    title="My Queue"
+                    description="Rush jobs first, then the ones you accepted most recently."
+                />
+                <p
+                    v-if="!isOnShift"
+                    class="text-muted-foreground text-sm"
+                    data-test="queue-off-duty-note"
+                >
+                    {{ offDutyReason }}
+                </p>
+            </div>
             <DataTableCard>
                 <Table>
                     <TableHeader>
@@ -506,7 +553,9 @@ function artistStatusLabel(artistStatus: string): string {
                                         >
                                             <Button
                                                 type="submit"
-                                                :disabled="processing"
+                                                :disabled="
+                                                    processing || !isOnShift
+                                                "
                                                 :data-test="`next-${jobOrder.id}-button`"
                                             >
                                                 Next
@@ -524,7 +573,9 @@ function artistStatusLabel(artistStatus: string): string {
                                             <Button
                                                 type="submit"
                                                 variant="outline"
-                                                :disabled="processing"
+                                                :disabled="
+                                                    processing || !isOnShift
+                                                "
                                                 :data-test="`forward-${jobOrder.id}-button`"
                                             >
                                                 Forward
@@ -550,13 +601,16 @@ function artistStatusLabel(artistStatus: string): string {
                                             <Button
                                                 type="submit"
                                                 variant="outline"
-                                                :disabled="processing"
+                                                :disabled="
+                                                    processing || !isOnShift
+                                                "
                                                 :data-test="`forward-${jobOrder.id}-button`"
                                             >
                                                 Forward
                                             </Button>
                                         </Form>
                                         <Link
+                                            v-if="isOnShift"
                                             :href="show(jobOrder.id).url"
                                             :data-test="`continue-${jobOrder.id}-link`"
                                         >
@@ -570,7 +624,8 @@ function artistStatusLabel(artistStatus: string): string {
                                     </template>
                                     <Link
                                         v-else-if="
-                                            jobOrder.status === 'pending_review'
+                                            jobOrder.status ===
+                                                'pending_review' && isOnShift
                                         "
                                         :href="show(jobOrder.id).url"
                                         :data-test="`continue-${jobOrder.id}-link`"

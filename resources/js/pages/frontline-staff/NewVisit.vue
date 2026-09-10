@@ -50,6 +50,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { newVisit } from '@/routes/frontline-staff';
+import { queueNumberLabel } from '@/lib/utils';
 
 interface CustomerRecord {
     id: number;
@@ -775,7 +776,7 @@ function jobOrderStatusLabel(status: string): string {
                     <p
                         class="bg-primary text-primary-foreground flex size-20 shrink-0 items-center justify-center rounded-2xl text-4xl leading-none font-extrabold tabular-nums"
                     >
-                        {{ confirmedQueueEntry.queue_number }}
+                        {{ queueNumberLabel(confirmedQueueEntry.queue_number) }}
                     </p>
                     <div class="flex min-w-0 flex-col gap-1">
                         <p class="font-semibold">

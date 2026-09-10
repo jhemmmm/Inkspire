@@ -3,6 +3,7 @@ import { Head, usePoll } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { queueNumberLabel } from '@/lib/utils';
 
 interface QueueEntryRecord {
     id: number;
@@ -90,7 +91,7 @@ const done = computed(() =>
                                 <p
                                     class="text-[64px] leading-[1.1] font-semibold"
                                 >
-                                    {{ entry.queue_number }}
+                                    {{ queueNumberLabel(entry.queue_number) }}
                                 </p>
                                 <Badge
                                     variant="default"
@@ -117,7 +118,7 @@ const done = computed(() =>
                                 <p
                                     class="text-[64px] leading-[1.1] font-semibold"
                                 >
-                                    {{ entry.queue_number }}
+                                    {{ queueNumberLabel(entry.queue_number) }}
                                 </p>
                                 <Badge
                                     variant="outline"
@@ -144,7 +145,7 @@ const done = computed(() =>
                                 <p
                                     class="text-[64px] leading-[1.1] font-semibold"
                                 >
-                                    {{ entry.queue_number }}
+                                    {{ queueNumberLabel(entry.queue_number) }}
                                 </p>
                                 <Badge
                                     class="text-base font-semibold text-green-600 dark:text-green-400"

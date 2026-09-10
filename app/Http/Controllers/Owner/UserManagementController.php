@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Owner;
 use App\Enums\ArtistStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Owner\CreateUserRequest;
 use App\Http\Requests\Owner\DeactivateUserRequest;
 use App\Http\Requests\Owner\ReactivateUserRequest;
 use App\Models\SystemConfiguration;
@@ -25,7 +26,7 @@ class UserManagementController extends Controller
 
         return Inertia::render('owner/UserManagement', [
             'users' => User::query()
-                ->select(['id', 'name', 'email', 'role', 'is_active', 'artist_status', 'break_started_at'])
+                ->select(['id', 'name', 'email', 'role', 'artist_label', 'is_active', 'artist_status', 'break_started_at'])
                 ->orderBy('name')
                 ->get()
                 ->map(fn (User $user) => [
@@ -33,6 +34,9 @@ class UserManagementController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role,
+                    // The name a customer is sent to ("Artist 3"), so the
+                    // Owner can see at a glance which numbers are in use.
+                    'artist_label' => $user->role === UserRole::Artist ? $user->artist_label : null,
                     'is_active' => $user->is_active,
                     'artist_status' => $user->role === UserRole::Artist ? $user->artist_status : null,
                     // Carbon 3's diff defaults to a signed difference (not
@@ -45,6 +49,34 @@ class UserManagementController extends Controller
                         && now()->diffInMinutes($user->break_started_at, absolute: true) > $maxBreakMinutes,
                 ]),
         ]);
+    }
+
+    /**
+     * Create a new user account with a role and an initial password.
+     */
+    public function store(CreateUserRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $user = new User;
+        $user->forceFill([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'role' => $validated['role'],
+            // Assigned here rather than left to the Owner to type: the label
+            // is what a customer is sent to, so an artist must never exist
+            // without one.
+            'artist_label' => $validated['role'] === UserRole::Artist->value
+                ? User::nextArtistLabel()
+                : null,
+            'password' => $validated['password'],
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ])->save();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __(":name's account has been created.", ['name' => $user->name])]);
+
+        return back();
     }
 
     /**

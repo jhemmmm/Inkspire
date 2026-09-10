@@ -82,6 +82,10 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => UserRole::Artist->value,
+            // Resolved per-model rather than once for the whole state, so a
+            // factory run creating several artists numbers them 1..N instead
+            // of handing them all the same label.
+            'artist_label' => User::nextArtistLabel(),
         ]);
     }
 

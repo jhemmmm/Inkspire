@@ -39,7 +39,7 @@ class PerformanceReportController extends Controller
             ])
             ->withCount('revisionLogs')
             ->with(['revisionLogs' => fn ($query) => $query->where('outcome', 'approved')->latest('reviewed_at')->limit(1)])
-            ->get(['id', 'created_at', 'assigned_artist_id', 'status'])
+            ->get(['id', 'number', 'description', 'created_at', 'assigned_artist_id', 'status'])
             ->filter(function (JobOrder $jobOrder) use ($from, $to) {
                 $approvedAt = $jobOrder->revisionLogs->first()?->reviewed_at;
 
@@ -69,7 +69,26 @@ class PerformanceReportController extends Controller
                 'jobsCompleted' => $jobsCompleted,
                 'avgRevisions' => $avgRevisions,
                 'slaAdherence' => $slaAdherence,
+                'slaDays' => $slaDays,
             ],
+            // The rows behind the three figures. Without them the page states
+            // an SLA percentage an artist has no way to check or learn from.
+            'completedJobOrders' => $completed
+                ->map(function (JobOrder $jobOrder) use ($slaDays) {
+                    $approvedAt = $jobOrder->revisionLogs->first()->reviewed_at;
+
+                    return [
+                        'id' => $jobOrder->id,
+                        'number' => $jobOrder->number,
+                        'description' => $jobOrder->description,
+                        'approved_at' => $approvedAt->toDateString(),
+                        'revisions' => $jobOrder->revision_logs_count,
+                        'days_taken' => (int) $jobOrder->created_at->diffInDays($approvedAt),
+                        'within_sla' => $jobOrder->created_at->diffInDays($approvedAt) <= $slaDays,
+                    ];
+                })
+                ->sortByDesc('approved_at')
+                ->values(),
             'filters' => $request->only(['from', 'to']),
         ]);
     }

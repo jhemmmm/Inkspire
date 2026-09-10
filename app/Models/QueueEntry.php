@@ -71,6 +71,18 @@ class QueueEntry extends Model
      * reset is concerned — do not re-derive this conversion elsewhere.
      * config('app.timezone') stays UTC project-wide.
      */
+    /**
+     * The queue number as the shop writes it on the ticket: 001, not 1.
+     *
+     * Three digits because the numbering resets each business day and the
+     * shop has never come close to 1000 visits in one -- past that it simply
+     * grows, rather than truncating.
+     */
+    public function paddedNumber(): string
+    {
+        return str_pad((string) $this->queue_number, 3, '0', STR_PAD_LEFT);
+    }
+
     public static function currentBusinessDate(): string
     {
         return now()->timezone('Asia/Manila')->toDateString();

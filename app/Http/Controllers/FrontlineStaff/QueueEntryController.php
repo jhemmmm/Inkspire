@@ -70,7 +70,7 @@ class QueueEntryController extends Controller
                 ->with([
                     'customer:id,name',
                     'jobOrders:id,queue_entry_id,description,type,status,validation_failure_reason,assigned_artist_id,payment_status,released_at,number',
-                    'jobOrders.assignedArtist:id,name',
+                    'jobOrders.assignedArtist:id,name,artist_label',
                 ])
                 ->whereDate('queue_date', QueueEntry::currentBusinessDate())
                 ->orderBy('queue_number')
@@ -96,7 +96,7 @@ class QueueEntryController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => __('Queue number :number is now being served.', ['number' => $queueEntry->queue_number]),
+            'message' => __('Queue number :number is now being served.', ['number' => $queueEntry->paddedNumber()]),
         ]);
 
         return back();
@@ -114,7 +114,7 @@ class QueueEntryController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => __('Queue number :number is now done.', ['number' => $queueEntry->queue_number]),
+            'message' => __('Queue number :number is now done.', ['number' => $queueEntry->paddedNumber()]),
         ]);
 
         return back();
@@ -207,7 +207,7 @@ class QueueEntryController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('Queue number :number created with :count job order(s).', [
-                'number' => $queueEntry->queue_number,
+                'number' => $queueEntry->paddedNumber(),
                 'count' => $queueEntry->jobOrders()->count(),
             ]),
         ]);

@@ -1,9 +1,27 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
+import { CalendarRange, CircleCheck, Repeat2, Target } from '@lucide/vue';
 import { ref } from 'vue';
+import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import SectionHeading from '@/components/SectionHeading.vue';
+import StatCard from '@/components/StatCard.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { artistNavItems } from '@/config/nav/artist';
 import { index as performanceReportIndex } from '@/routes/artist/performance-report';
 
@@ -11,6 +29,17 @@ interface Stats {
     jobsCompleted: number;
     avgRevisions: number;
     slaAdherence: number;
+    slaDays: number;
+}
+
+interface CompletedJobOrder {
+    id: number;
+    number: string | null;
+    description: string;
+    approved_at: string;
+    revisions: number;
+    days_taken: number;
+    within_sla: boolean;
 }
 
 interface Filters {
@@ -20,6 +49,7 @@ interface Filters {
 
 const props = defineProps<{
     stats: Stats;
+    completedJobOrders: CompletedJobOrder[];
     filters: Filters;
 }>();
 
@@ -49,6 +79,19 @@ function visit(): void {
     );
 }
 
+/** Matches the 'en-PH' long-date convention used across the other portals. */
+function approvedLabel(approvedAt: string): string {
+    return new Date(approvedAt).toLocaleDateString('en-PH', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
+function daysLabel(days: number): string {
+    return days === 1 ? '1 day' : `${days} days`;
+}
+
 function clearFilters(): void {
     fromDate.value = '';
     toDate.value = '';
@@ -59,88 +102,154 @@ function clearFilters(): void {
 <template>
     <Head title="Performance Report" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            Performance Report
-        </h1>
+    <PageContainer>
+        <PageHeader
+            title="Performance Report"
+            description="Your throughput and revision counts over the selected period."
+        />
 
-        <form class="flex flex-wrap items-end gap-4" @submit.prevent="visit()">
-            <div class="flex flex-col gap-1">
-                <label
-                    class="text-sm font-semibold"
-                    for="performance-filter-from"
-                    >From</label
+        <Card>
+            <CardHeader :icon="CalendarRange">
+                <CardTitle>Date Range</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <form
+                    class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                    @submit.prevent="visit()"
                 >
-                <Input
-                    id="performance-filter-from"
-                    v-model="fromDate"
-                    type="date"
-                    class="w-40"
-                />
-            </div>
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <Label for="performance-filter-from">From</Label>
+                        <Input
+                            id="performance-filter-from"
+                            v-model="fromDate"
+                            type="date"
+                            class="w-full"
+                        />
+                    </div>
 
-            <div class="flex flex-col gap-1">
-                <label class="text-sm font-semibold" for="performance-filter-to"
-                    >To</label
-                >
-                <Input
-                    id="performance-filter-to"
-                    v-model="toDate"
-                    type="date"
-                    class="w-40"
-                />
-            </div>
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <Label for="performance-filter-to">To</Label>
+                        <Input
+                            id="performance-filter-to"
+                            v-model="toDate"
+                            type="date"
+                            class="w-full"
+                        />
+                    </div>
 
-            <Button type="submit" data-test="apply-performance-filters-button">
-                Apply Filters
-            </Button>
-            <Button
-                type="button"
-                variant="secondary"
-                data-test="clear-performance-filters-button"
-                @click="clearFilters"
-            >
-                Clear
-            </Button>
-        </form>
+                    <div
+                        class="flex flex-wrap items-center gap-2 sm:col-span-2"
+                    >
+                        <Button
+                            type="submit"
+                            data-test="apply-performance-filters-button"
+                        >
+                            Apply Filters
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            data-test="clear-performance-filters-button"
+                            @click="clearFilters"
+                        >
+                            Clear
+                        </Button>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Card>
-                <CardContent class="flex flex-col gap-1">
-                    <p class="text-[28px] leading-[1.2] font-semibold">
-                        {{ stats.jobsCompleted }}
-                    </p>
-                    <p class="text-sm font-semibold">Jobs Completed</p>
-                </CardContent>
-            </Card>
+            <StatCard
+                :value="stats.jobsCompleted"
+                label="Jobs Completed"
+                hint="Designs the client approved"
+                :icon="CircleCheck"
+            />
 
-            <Card>
-                <CardContent class="flex flex-col gap-1">
-                    <p class="text-[28px] leading-[1.2] font-semibold">
-                        {{ stats.avgRevisions }}
-                    </p>
-                    <p class="text-sm font-semibold">Avg. Revisions per Job</p>
-                </CardContent>
-            </Card>
+            <StatCard
+                :value="stats.avgRevisions"
+                label="Avg. Revisions per Job"
+                hint="Rounds of changes before approval"
+                :icon="Repeat2"
+            />
 
-            <Card>
-                <CardContent class="flex flex-col gap-1">
-                    <p class="text-[28px] leading-[1.2] font-semibold">
-                        {{ stats.slaAdherence }}%
-                    </p>
-                    <p class="text-sm font-semibold">SLA Adherence</p>
-                </CardContent>
-            </Card>
+            <StatCard
+                :value="`${stats.slaAdherence}%`"
+                label="SLA Adherence"
+                :hint="`Approved within ${daysLabel(stats.slaDays)} of intake`"
+                :icon="Target"
+            />
         </div>
 
-        <div
-            v-if="stats.jobsCompleted === 0"
-            class="flex flex-col items-center gap-1 text-center"
-        >
-            <p class="font-semibold">No completed job orders in this range</p>
-            <p class="text-muted-foreground">Try a wider date range.</p>
-        </div>
-    </div>
+        <section class="flex flex-col gap-3">
+            <SectionHeading
+                title="Completed Job Orders"
+                description="The jobs behind the figures above, most recently approved first."
+            />
+            <DataTableCard>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Job Order</TableHead>
+                            <TableHead>Approved</TableHead>
+                            <TableHead class="text-right">Revisions</TableHead>
+                            <TableHead class="text-right">Turnaround</TableHead>
+                            <TableHead>SLA</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableEmpty
+                            v-if="completedJobOrders.length === 0"
+                            :colspan="5"
+                        >
+                            <EmptyState
+                                title="No completed job orders in this range"
+                                description="Only designs the client approved count here. Try a wider date range."
+                                :icon="CalendarRange"
+                            />
+                        </TableEmpty>
+                        <TableRow
+                            v-for="jobOrder in completedJobOrders"
+                            v-else
+                            :key="jobOrder.id"
+                            :data-test="`completed-job-order-${jobOrder.id}-row`"
+                        >
+                            <TableCell>
+                                <div class="flex flex-col gap-1">
+                                    <span>{{ jobOrder.description }}</span>
+                                    <span
+                                        class="text-muted-foreground text-xs tabular-nums"
+                                    >
+                                        {{ jobOrder.number ?? '—' }}
+                                    </span>
+                                </div>
+                            </TableCell>
+                            <TableCell class="text-muted-foreground">
+                                {{ approvedLabel(jobOrder.approved_at) }}
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                {{ jobOrder.revisions }}
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                {{ daysLabel(jobOrder.days_taken) }}
+                            </TableCell>
+                            <TableCell>
+                                <Badge
+                                    v-if="jobOrder.within_sla"
+                                    variant="outline"
+                                    class="border-green-600/40 text-green-600 dark:text-green-400"
+                                >
+                                    On time
+                                </Badge>
+                                <Badge v-else variant="outline">
+                                    Over {{ daysLabel(stats.slaDays) }}
+                                </Badge>
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </DataTableCard>
+        </section>
+    </PageContainer>
 </template>

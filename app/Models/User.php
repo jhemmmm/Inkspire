@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
  * @property UserRole $role
+ * @property string|null $artist_label
  * @property bool $is_active
  * @property int $failed_login_attempts
  * @property Carbon|null $locked_until
@@ -38,7 +39,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'role'])]
+#[Fillable(['name', 'email', 'password', 'role', 'artist_label'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 #[ObservedBy(AuditObserver::class)]
 class User extends Authenticatable
@@ -65,5 +66,30 @@ class User extends Authenticatable
             'artist_status' => ArtistStatus::class,
             'break_started_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The next free "Artist N" label.
+     *
+     * Fills the lowest gap rather than counting rows: the shop's artists are
+     * numbered 1..N and a departing artist frees their number for the next
+     * hire, so `count() + 1` would skip a free slot and eventually collide
+     * with a reactivated account. Deactivated artists still hold their
+     * label -- they have not left, and their historical job orders still
+     * refer to them.
+     */
+    public static function nextArtistLabel(): string
+    {
+        $taken = static::query()
+            ->where('role', UserRole::Artist->value)
+            ->pluck('artist_label')
+            ->filter()
+            ->flip();
+
+        for ($number = 1; $taken->has('Artist '.$number); $number++) {
+            // Intentionally empty -- the guard is the whole loop.
+        }
+
+        return 'Artist '.$number;
     }
 }

@@ -43,6 +43,24 @@ class SessionStatusController extends Controller
     }
 
     /**
+     * Come back on shift, from Off Shift to Available.
+     *
+     * Without this an ended shift was a one-way door: the dashboard showed
+     * the Off Shift badge and offered nothing, so the next morning an
+     * artist had no way back to Available and could accept nothing.
+     */
+    public function startShift(UpdateSessionStatusRequest $request): RedirectResponse
+    {
+        abort_unless($request->user()->artist_status === ArtistStatus::OffShift, 422, 'You are already on shift.');
+
+        ($this->setArtistSessionStatus)($request->user(), ArtistStatus::Available);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Welcome back. Status updated to :label.', ['label' => 'Available'])]);
+
+        return back();
+    }
+
+    /**
      * End shift. Allowed at any time from Available or On Break, with no
      * reassignment of in-progress job orders (D-15).
      */

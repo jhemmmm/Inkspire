@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\AccountsReceivableAgingBracket;
 use App\Enums\AccountsReceivableStatus;
+use App\Enums\ArtistStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
 use App\Enums\PaymentMethod;
@@ -28,10 +29,12 @@ use Illuminate\Database\Seeder;
  *
  *     php artisan db:seed --class=DemoDataSeeder
  *
- * Creates one login per role plus a month's worth of report-bearing data
- * (job orders, transactions, expenses, an approved AR write-off) so every
- * report in App\Services\Reports\ReportRegistry renders non-empty rows for
- * a "this month" date range, for every role entitled to see it.
+ * Creates one login for each of the seven roles plus a month's worth of
+ * report-bearing data (job orders, transactions, expenses, an approved AR
+ * write-off) so every report in App\Services\Reports\ReportRegistry renders
+ * non-empty rows for a "this month" date range, for every role entitled to
+ * see it -- and so the Artist and Frontline Staff portals, which no report
+ * covers, also open onto real work rather than empty states.
  *
  * Role accounts are updateOrCreate'd on email, so re-running is safe for
  * logins. Job order/transaction/expense/AR rows are appended fresh on every
@@ -54,6 +57,8 @@ class DemoDataSeeder extends Seeder
         $this->seedSalesData();
         $this->seedCancellations();
         $this->seedProductionPipeline();
+        $this->seedArtistQueue();
+        $this->seedWaitingQueue();
         $this->seedExpenses();
         $this->seedWriteOff();
         $this->seedAgingReceivables();
@@ -69,6 +74,8 @@ class DemoDataSeeder extends Seeder
         $definitions = [
             'owner' => ['name' => 'Demo Owner', 'email' => 'owner@inkspire.test', 'role' => UserRole::Owner],
             'admin' => ['name' => 'Demo Admin', 'email' => 'admin@inkspire.test', 'role' => UserRole::Admin],
+            'frontline' => ['name' => 'Demo Frontline Staff', 'email' => 'frontline@inkspire.test', 'role' => UserRole::FrontlineStaff],
+            'artist' => ['name' => 'Demo Artist', 'email' => 'artist@inkspire.test', 'role' => UserRole::Artist],
             'cashier' => ['name' => 'Demo Cashier', 'email' => 'cashier@inkspire.test', 'role' => UserRole::Cashier],
             'production' => ['name' => 'Demo Production Staff', 'email' => 'production@inkspire.test', 'role' => UserRole::ProductionStaff],
             'accounting' => ['name' => 'Demo Accounting Staff', 'email' => 'accounting@inkspire.test', 'role' => UserRole::AccountingStaff],
@@ -85,7 +92,24 @@ class DemoDataSeeder extends Seeder
                 ],
             );
 
-            $user->forceFill(['is_active' => true])->save();
+            /**
+             * `is_active` sits outside User's #[Fillable] list by design.
+             * `artist_status` is only written for the Artist -- it is a
+             * NOT NULL column carrying a DB-level default, so echoing the
+             * unrefreshed (null) attribute back for other roles would
+             * violate the constraint.
+             */
+            $attributes = ['is_active' => true];
+
+            if ($definition['role'] === UserRole::Artist) {
+                $attributes['artist_status'] = ArtistStatus::Available;
+                // The label a customer is sent to. Assigned here rather than
+                // left null so a freshly seeded install matches what
+                // UserManagementController::store() produces for real hires.
+                $attributes['artist_label'] = $user->artist_label ?? User::nextArtistLabel();
+            }
+
+            $user->forceFill($attributes)->save();
 
             $this->accounts[$key] = $user;
         }
@@ -238,6 +262,72 @@ class DemoDataSeeder extends Seeder
                 'to_status' => JobOrderStatus::ForProduction->value,
                 'recorded_by' => $production->id,
                 'created_at' => $day,
+            ]);
+        }
+    }
+
+    /**
+     * Five job orders assigned to the demo Artist, one per stage their
+     * dashboard actually lists (JobOrderQueueController::index excludes
+     * intake, validation_failed, ready_for_production and everything from
+     * for_production onward). The oldest `assigned` row is the one "Call
+     * Next Customer" will claim.
+     */
+    private function seedArtistQueue(): void
+    {
+        $artist = $this->accounts['artist'];
+
+        $stages = [
+            ['status' => JobOrderStatus::Assigned, 'day' => 2, 'description' => 'Tarpaulin, 4x6ft - birthday banner'],
+            ['status' => JobOrderStatus::Assigned, 'day' => 4, 'description' => 'Sticker sheet, A4 - logo decals'],
+            ['status' => JobOrderStatus::InConsultation, 'day' => 6, 'description' => 'Business cards, 500pcs - matte finish'],
+            ['status' => JobOrderStatus::InDesign, 'day' => 7, 'description' => 'Roll-up banner, 2x5ft - trade show'],
+            ['status' => JobOrderStatus::PendingReview, 'day' => 8, 'description' => 'Menu board, 3x4ft - cafe signage'],
+        ];
+
+        foreach ($stages as $stage) {
+            $day = $this->dayOfMonth($stage['day']);
+
+            $customer = Customer::factory()->create();
+
+            $queueEntry = QueueEntry::factory()->serving()->create([
+                'customer_id' => $customer->id,
+                'queue_date' => $day->toDateString(),
+            ]);
+
+            JobOrder::factory()->create([
+                'queue_entry_id' => $queueEntry->id,
+                'type' => JobOrderType::TypeB->value,
+                'status' => $stage['status']->value,
+                'description' => $stage['description'],
+                'assigned_artist_id' => $artist->id,
+                'accepted_at' => $day,
+                'created_at' => $day,
+                'due_at' => $this->dueOffset(3),
+            ]);
+        }
+    }
+
+    /**
+     * Three customers still waiting in today's queue so the Frontline
+     * Staff queue monitor and Queue List aren't empty -- every other
+     * section marks its queue entries `done`.
+     */
+    private function seedWaitingQueue(): void
+    {
+        foreach (['Walk-in - tarpaulin inquiry', 'Walk-in - sticker reprint', 'Walk-in - ID lace order'] as $description) {
+            $customer = Customer::factory()->create();
+
+            $queueEntry = QueueEntry::factory()->create([
+                'customer_id' => $customer->id,
+                'queue_date' => now()->toDateString(),
+            ]);
+
+            JobOrder::factory()->create([
+                'queue_entry_id' => $queueEntry->id,
+                'type' => JobOrderType::TypeB->value,
+                'status' => JobOrderStatus::Intake->value,
+                'description' => $description,
             ]);
         }
     }

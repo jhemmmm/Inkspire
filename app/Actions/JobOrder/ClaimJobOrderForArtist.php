@@ -5,6 +5,7 @@ namespace App\Actions\JobOrder;
 use App\Enums\ArtistStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
+use App\Enums\QueueStatus;
 use App\Models\JobOrder;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -59,7 +60,34 @@ class ClaimJobOrderForArtist
 
         $jobOrder->refresh();
 
+        $this->callCustomerToTheArtist($jobOrder);
+
         return true;
+    }
+
+    /**
+     * Accepting a job order calls that customer's queue number.
+     *
+     * This reverses the original "never auto-triggered" rule on call-next
+     * (D-08): an artist taking the job IS the moment the customer is wanted,
+     * and leaving Frontline to notice and press Call Next themselves meant
+     * the customer sat in the waiting area while their artist waited too.
+     * Frontline keeps the manual Call Next for walk-ups that never reach an
+     * artist, and Mark Done stays entirely manual.
+     *
+     * Only a Waiting entry is promoted -- an entry already Serving or Done
+     * is left alone, so a second job order accepted for the same visit
+     * cannot drag a finished visit backwards.
+     */
+    private function callCustomerToTheArtist(JobOrder $jobOrder): void
+    {
+        $queueEntry = $jobOrder->queueEntry;
+
+        if ($queueEntry?->status !== QueueStatus::Waiting) {
+            return;
+        }
+
+        $queueEntry->update(['status' => QueueStatus::Serving]);
     }
 
     /**

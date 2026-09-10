@@ -44,13 +44,14 @@ Route::middleware(['auth', 'role:artist'])->prefix('artist')->name('artist.')->g
     Route::get('dashboard', [JobOrderQueueController::class, 'index'])->name('dashboard');
     Route::get('job-orders/{jobOrder}', [JobOrderWorkspaceController::class, 'show'])->name('job-orders.show');
     Route::patch('job-orders/{jobOrder}/consultation', [JobOrderWorkspaceController::class, 'updateConsultation'])->name('job-orders.consultation.update');
+    Route::patch('job-orders/{jobOrder}/accept', [JobOrderQueueController::class, 'accept'])->name('job-orders.accept');
     Route::patch('job-orders/{jobOrder}/next', [JobOrderQueueController::class, 'next'])->name('job-orders.next');
     Route::patch('job-orders/{jobOrder}/forward', [JobOrderQueueController::class, 'forward'])->name('job-orders.forward');
-    Route::patch('job-orders/{jobOrder}/not-appear', [JobOrderQueueController::class, 'notAppear'])->name('job-orders.not-appear');
     Route::patch('job-orders/{jobOrder}/design/start', [DesignEditorController::class, 'startDesign'])->name('job-orders.design.start');
     Route::post('job-orders/{jobOrder}/design/send-for-review', [DesignEditorController::class, 'sendForReview'])->name('job-orders.design.send-for-review');
     Route::patch('job-orders/{jobOrder}/design/approve', [DesignEditorController::class, 'approve'])->name('job-orders.design.approve');
     Route::patch('job-orders/{jobOrder}/design/request-changes', [DesignEditorController::class, 'requestChanges'])->name('job-orders.design.request-changes');
+    Route::patch('session-status/start-shift', [SessionStatusController::class, 'startShift'])->name('session-status.start-shift');
     Route::patch('session-status/start-break', [SessionStatusController::class, 'startBreak'])->name('session-status.start-break');
     Route::patch('session-status/end-break', [SessionStatusController::class, 'endBreak'])->name('session-status.end-break');
     Route::patch('session-status/end-shift', [SessionStatusController::class, 'endShift'])->name('session-status.end-shift');
