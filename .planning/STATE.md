@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-09-10T01:09:12.412Z"
+last_updated: "2026-09-10T01:26:20.636Z"
 last_activity: 2026-09-10
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 59
-  completed_plans: 56
+  completed_plans: 57
   percent: 88
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 08 (expenses-reporting) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-10
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [██████████] 95%
 | Phase 02 P04 | 10min | 2 tasks | 9 files |
 | Phase 02 P05 | 9min | 2 tasks | 5 files |
 | Phase 08 P02 | 33min | 2 tasks | 3 files |
+| Phase 08 P03 | 45min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,9 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-05: public/ page namespace + name.startsWith('public/') case in app.ts layout switch gives QUEUE-06's kiosk display zero chrome, extending the Welcome.vue precedent
 - [Phase 08]: 08-02: Empty-ledger copy always uses the range-scoped message ('Nothing in this range') rather than distinguishing it from the all-time-empty case, since ExpenseController::index has no all-time-existence signal separate from its range-scoped props
 - [Phase 08]: 08-02: DateRangeControl.vue lives at resources/js/components/reports/ as the phase's one shared date-range control, consumed by the Expenses ledger now and the Reports workspace in Plan 08-05
+- [Phase 08]: 08-03: ReportBuilder type-hints Carbon\CarbonInterface, since Date::use(CarbonImmutable::class) makes now() return CarbonImmutable app-wide
+- [Phase 08]: 08-03: financial-summary's write_off_total sums JobOrder::outstandingBalance() per written-off AccountsReceivable row, never the stored balance column
+- [Phase 08]: 08-03: Owner's reports.index route lives in a SECOND, owner-only role:owner group in routes/owner.php, separate from the existing role:owner,admin group (D-05)
 
 ### Pending Todos
 
@@ -140,6 +144,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-10T01:09:12.407Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-09-10T01:26:20.631Z
+Stopped at: Completed 08-03-PLAN.md
 Resume file: None
