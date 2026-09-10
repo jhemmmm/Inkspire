@@ -22,14 +22,21 @@ class JobOrderWorkspaceController extends Controller
     {
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
 
-        $jobOrder->loadMissing(['designFile', 'revisionLogs' => fn ($query) => $query->latest('submitted_at')]);
+        $jobOrder->loadMissing(['designFile', 'queueEntry.customer:id,name,organization', 'revisionLogs' => fn ($query) => $query->latest('submitted_at')]);
 
         return Inertia::render('artist/JobOrderWorkspace', [
             'jobOrder' => [
                 'id' => $jobOrder->id,
+                'number' => $jobOrder->number,
                 'description' => $jobOrder->description,
                 'status' => $jobOrder->status->value,
+                'type' => $jobOrder->type->value,
                 'is_rush' => $jobOrder->is_rush,
+                'deadline' => $jobOrder->deadline?->toDateString(),
+                // Staff-side screen behind role:artist -- the customer's name
+                // is deliberately shown here, unlike the public tracking page.
+                'customer_name' => $jobOrder->queueEntry?->customer?->name,
+                'customer_organization' => $jobOrder->queueEntry?->customer?->organization,
                 'consultation_notes' => $jobOrder->consultation_notes,
                 // The customer's own words, captured at the counter. Read-only
                 // here: an artist records their own findings in
@@ -45,6 +52,13 @@ class JobOrderWorkspaceController extends Controller
                 'canEditConsultation' => $jobOrder->status === JobOrderStatus::InConsultation,
             ],
             'design' => [
+                // What the customer actually handed over at the counter. The
+                // artist was previously shown the validation VERDICT without
+                // the file it was passed on, which is the one thing they need
+                // to act on it.
+                'customerFileUrl' => $jobOrder->file_path
+                    ? Storage::disk('local')->temporaryUrl($jobOrder->file_path, now()->addMinutes(30))
+                    : null,
                 'initialImageUrl' => $jobOrder->designFile?->file_path
                     ? Storage::disk('local')->temporaryUrl($jobOrder->designFile->file_path, now()->addMinutes(10))
                     : null,

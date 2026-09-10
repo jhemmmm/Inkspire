@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { Zap } from '@lucide/vue';
+import { Inbox, LayoutList, Zap } from '@lucide/vue';
+import { computed } from 'vue';
 import JobOrderQueueController from '@/actions/App/Http/Controllers/Artist/JobOrderQueueController';
 import SessionStatusController from '@/actions/App/Http/Controllers/Artist/SessionStatusController';
 import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
+import StatCard from '@/components/StatCard.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,9 +28,12 @@ import { show } from '@/routes/artist/job-orders';
 
 interface ArtistJobOrder {
     id: number;
+    number: string | null;
     description: string;
     status: string;
     is_rush: boolean;
+    type: string;
+    deadline: string | null;
 }
 
 interface PoolJobOrder {
@@ -36,14 +42,45 @@ interface PoolJobOrder {
     description: string;
     created_at: string;
     is_rush: boolean;
+    type: string;
+    deadline: string | null;
     queue_entry: { customer: { name: string } | null } | null;
 }
 
-defineProps<{
+const props = defineProps<{
     jobOrders: ArtistJobOrder[];
     availableJobOrders: PoolJobOrder[];
     artistStatus: string;
 }>();
+
+/**
+ * Type A arrived print-ready and only reached an artist because its file
+ * needs fixing; Type B is a consultation from the start. Which one a row is
+ * changes what the artist is expected to do with it, so it belongs in the
+ * table rather than one level in.
+ */
+function typeLabel(type: string): string {
+    return type === 'type_a' ? 'Type A' : 'Type B';
+}
+
+/** Matches the 'en-PH' long-date convention used across the other portals. */
+function deadlineLabel(deadline: string | null): string {
+    if (deadline === null) {
+        return 'No deadline';
+    }
+
+    return new Date(deadline).toLocaleDateString('en-PH', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+    });
+}
+
+const rushCount = computed(
+    () =>
+        props.jobOrders.filter((jobOrder) => jobOrder.is_rush).length +
+        props.availableJobOrders.filter((jobOrder) => jobOrder.is_rush).length,
+);
 
 defineOptions({
     layout: {
@@ -250,22 +287,40 @@ function artistStatusLabel(artistStatus: string): string {
             </CardContent>
         </Card>
 
+        <div class="grid gap-4 sm:grid-cols-3">
+            <StatCard
+                label="In your queue"
+                :value="jobOrders.length"
+                hint="Jobs you have accepted"
+                :icon="LayoutList"
+            />
+            <StatCard
+                label="Waiting to be claimed"
+                :value="availableJobOrders.length"
+                hint="First to accept gets the job"
+                :icon="Inbox"
+            />
+            <StatCard
+                label="Rush"
+                :value="rushCount"
+                hint="Priority jobs across both lists"
+                :icon="Zap"
+                :tone="rushCount > 0 ? 'attention' : 'default'"
+            />
+        </div>
+
         <section class="flex flex-col gap-3">
-            <div class="flex items-baseline justify-between gap-4">
-                <SectionHeading
-                    title="Available Jobs"
-                    description="Unclaimed consultations. Accepting one moves it into your queue."
-                />
-                <p class="text-muted-foreground text-sm">
-                    Unclaimed consultations — first to accept gets the job.
-                </p>
-            </div>
+            <SectionHeading
+                title="Available Jobs"
+                description="Unclaimed jobs — first to accept gets it. Accepting one moves it into your queue."
+            />
 
             <DataTableCard>
                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Job Order</TableHead>
+                            <TableHead>Type</TableHead>
                             <TableHead>Customer</TableHead>
                             <TableHead>Waiting</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
@@ -274,17 +329,13 @@ function artistStatusLabel(artistStatus: string): string {
                     <TableBody>
                         <TableEmpty
                             v-if="availableJobOrders.length === 0"
-                            :colspan="4"
+                            :colspan="5"
                         >
-                            <div class="flex flex-col items-center gap-1">
-                                <p class="font-semibold">
-                                    No jobs waiting to be accepted
-                                </p>
-                                <p class="text-muted-foreground">
-                                    New consultations appear here the moment
-                                    Frontline Staff create them.
-                                </p>
-                            </div>
+                            <EmptyState
+                                title="No jobs waiting to be accepted"
+                                description="New jobs appear here the moment Frontline Staff create them."
+                                :icon="Inbox"
+                            />
                         </TableEmpty>
                         <TableRow
                             v-for="jobOrder in availableJobOrders"
@@ -292,18 +343,35 @@ function artistStatusLabel(artistStatus: string): string {
                             :key="jobOrder.id"
                         >
                             <TableCell>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span>{{ jobOrder.description }}</span>
-                                    <Badge
-                                        v-if="jobOrder.is_rush"
-                                        variant="outline"
-                                        class="border-amber-600/40 text-amber-600 dark:text-amber-400"
-                                        :data-test="`pool-rush-${jobOrder.id}-badge`"
+                                <div class="flex flex-col gap-1">
+                                    <div
+                                        class="flex flex-wrap items-center gap-2"
                                     >
-                                        <Zap class="size-3" />
-                                        Rush
-                                    </Badge>
+                                        <span>{{ jobOrder.description }}</span>
+                                        <Badge
+                                            v-if="jobOrder.is_rush"
+                                            variant="outline"
+                                            class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                            :data-test="`pool-rush-${jobOrder.id}-badge`"
+                                        >
+                                            <Zap class="size-3" />
+                                            Rush
+                                        </Badge>
+                                    </div>
+                                    <span
+                                        class="text-muted-foreground text-xs tabular-nums"
+                                    >
+                                        {{ jobOrder.number }}
+                                    </span>
                                 </div>
+                            </TableCell>
+                            <TableCell>
+                                <Badge
+                                    variant="secondary"
+                                    :data-test="`pool-type-${jobOrder.id}-badge`"
+                                >
+                                    {{ typeLabel(jobOrder.type) }}
+                                </Badge>
                             </TableCell>
                             <TableCell>
                                 {{
@@ -353,21 +421,19 @@ function artistStatusLabel(artistStatus: string): string {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Job Order</TableHead>
+                            <TableHead>Type</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead>Deadline</TableHead>
                             <TableHead class="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableEmpty v-if="jobOrders.length === 0" :colspan="3">
-                            <div class="flex flex-col items-center gap-1">
-                                <p class="font-semibold">
-                                    No job orders assigned
-                                </p>
-                                <p class="text-muted-foreground">
-                                    Accept a job from Available Jobs above to
-                                    start working on it.
-                                </p>
-                            </div>
+                        <TableEmpty v-if="jobOrders.length === 0" :colspan="5">
+                            <EmptyState
+                                title="No job orders assigned"
+                                description="Accept a job from Available Jobs above to start working on it."
+                                :icon="LayoutList"
+                            />
                         </TableEmpty>
                         <TableRow
                             v-for="jobOrder in jobOrders"
@@ -375,18 +441,35 @@ function artistStatusLabel(artistStatus: string): string {
                             :key="jobOrder.id"
                         >
                             <TableCell>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span>{{ jobOrder.description }}</span>
-                                    <Badge
-                                        v-if="jobOrder.is_rush"
-                                        variant="outline"
-                                        class="border-amber-600/40 text-amber-600 dark:text-amber-400"
-                                        :data-test="`queue-rush-${jobOrder.id}-badge`"
+                                <div class="flex flex-col gap-1">
+                                    <div
+                                        class="flex flex-wrap items-center gap-2"
                                     >
-                                        <Zap class="size-3" />
-                                        Rush
-                                    </Badge>
+                                        <span>{{ jobOrder.description }}</span>
+                                        <Badge
+                                            v-if="jobOrder.is_rush"
+                                            variant="outline"
+                                            class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                            :data-test="`queue-rush-${jobOrder.id}-badge`"
+                                        >
+                                            <Zap class="size-3" />
+                                            Rush
+                                        </Badge>
+                                    </div>
+                                    <span
+                                        class="text-muted-foreground text-xs tabular-nums"
+                                    >
+                                        {{ jobOrder.number ?? '—' }}
+                                    </span>
                                 </div>
+                            </TableCell>
+                            <TableCell>
+                                <Badge
+                                    variant="secondary"
+                                    :data-test="`queue-type-${jobOrder.id}-badge`"
+                                >
+                                    {{ typeLabel(jobOrder.type) }}
+                                </Badge>
                             </TableCell>
                             <TableCell>
                                 <div class="flex flex-wrap items-center gap-2">
@@ -401,6 +484,9 @@ function artistStatusLabel(artistStatus: string): string {
                                         {{ statusLabel(jobOrder.status) }}
                                     </Badge>
                                 </div>
+                            </TableCell>
+                            <TableCell class="text-muted-foreground">
+                                {{ deadlineLabel(jobOrder.deadline) }}
                             </TableCell>
                             <TableCell>
                                 <div

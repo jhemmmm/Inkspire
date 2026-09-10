@@ -3,12 +3,12 @@ import { Form, Head, router, setLayoutProps, useForm } from '@inertiajs/vue3';
 import {
     ClipboardList,
     CircleCheck,
+    FileDown,
     MessagesSquare,
     Palette,
     Zap,
 } from '@lucide/vue';
-import { readPsd } from 'ag-psd';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import DesignEditorController from '@/actions/App/Http/Controllers/Artist/DesignEditorController';
 import JobOrderWorkspaceController from '@/actions/App/Http/Controllers/Artist/JobOrderWorkspaceController';
@@ -16,7 +16,7 @@ import AlertError from '@/components/AlertError.vue';
 import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
-import ToastImageEditor from '@/components/ToastImageEditor.vue';
+import PhotopeaEditor from '@/components/PhotopeaEditor.vue';
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -62,9 +62,14 @@ function jobOrderStatusLabel(status: string): string {
 const props = defineProps<{
     jobOrder: {
         id: number;
+        number: string | null;
         description: string;
         status: string;
+        type: string;
         is_rush: boolean;
+        deadline: string | null;
+        customer_name: string | null;
+        customer_organization: string | null;
         consultation_notes: string | null;
         client_notes: string | null;
         print_size: string | null;
@@ -74,6 +79,7 @@ const props = defineProps<{
         canEditConsultation: boolean;
     };
     design: {
+        customerFileUrl: string | null;
         initialImageUrl: string | null;
         canEdit: boolean;
     };
@@ -107,90 +113,76 @@ setLayoutProps({
     ],
 });
 
-// D-11: an object URL from a locally-picked reference image, never uploaded
-// to the server before Send for Review.
-const referenceImageUrl = ref<string | null>(null);
 const started = ref(props.design.initialImageUrl !== null);
-const editorInitialUrl = computed(
-    () => props.design.initialImageUrl ?? referenceImageUrl.value,
-);
 // Single source of truth for the "waiting on the client's verdict" note —
 // mirrors review.canRecordVerdict, the same server-computed flag that gates
 // the Review card below.
 const isPendingReview = computed(() => props.review.canRecordVerdict);
 
-const fileInputRef = ref<HTMLInputElement | null>(null);
-const editorRef = ref<InstanceType<typeof ToastImageEditor> | null>(null);
+const editorRef = ref<InstanceType<typeof PhotopeaEditor> | null>(null);
 const sendForReviewForm = useForm<{ file: File | null }>({ file: null });
 
-function onStartBlankCanvas(): void {
-    started.value = true;
-    router.patch(start.url(props.jobOrder.id), {}, { preserveScroll: true });
-}
-
 /**
- * Returns null on BOTH a thrown parse exception (corrupt/unsupported PSD)
- * AND a successfully-parsed PSD with no composite image data (`psd.canvas`
- * undefined, e.g. a file saved without "Maximize Compatibility") — both
- * failure modes fail loud identically per D-23.
+ * Opening the editor goes straight to full screen — a print layout is not
+ * something you judge in a 300px box. `nextTick` is a microtask, so the
+ * click's user-activation still covers the requestFullscreen() call once the
+ * editor has been rendered; if a browser refuses anyway, PhotopeaEditor
+ * swallows the rejection and its own Full Screen button remains.
  */
-async function readPsdAsFlattenedDataUrl(file: File): Promise<string | null> {
-    try {
-        const buffer = await file.arrayBuffer();
-        const psd = readPsd(buffer);
-
-        return psd.canvas ? psd.canvas.toDataURL('image/png') : null;
-    } catch {
-        return null;
-    }
-}
-
-async function onReferenceFileChosen(event: Event): Promise<void> {
-    const file = (event.target as HTMLInputElement).files?.[0];
-
-    if (!file) {
-        return;
-    }
-
-    if (file.name.toLowerCase().endsWith('.psd')) {
-        const dataUrl = await readPsdAsFlattenedDataUrl(file);
-
-        if (!dataUrl) {
-            toast.error(
-                "Couldn't read this PSD — try exporting a flattened PNG/JPG from Photoshop.",
-            );
-            (event.target as HTMLInputElement).value = '';
-            return;
-        }
-
-        referenceImageUrl.value = dataUrl;
-        started.value = true;
-        router.patch(
-            start.url(props.jobOrder.id),
-            {},
-            { preserveScroll: true },
-        );
-        return;
-    }
-
-    referenceImageUrl.value = URL.createObjectURL(file);
+async function onStartBlankCanvas(): Promise<void> {
     started.value = true;
     router.patch(start.url(props.jobOrder.id), {}, { preserveScroll: true });
+
+    await nextTick();
+    await editorRef.value?.toggleFullscreen();
 }
+
+const isExporting = ref(false);
 
 /** D-10: exports and submits a flattened raster snapshot, never a re-editable layered project. */
 async function sendForReview(): Promise<void> {
-    const dataUrl = editorRef.value!.exportPng();
-    const blob = await (await fetch(dataUrl)).blob();
-    sendForReviewForm.file = new File([blob], 'design.png', {
-        type: 'image/png',
-    });
+    isExporting.value = true;
+
+    try {
+        const blob = await editorRef.value!.exportPng();
+
+        sendForReviewForm.file = new File([blob], 'design.png', {
+            type: 'image/png',
+        });
+    } catch {
+        // The editor round-trip is the one step here that can hang without
+        // the form ever knowing, so it fails loudly rather than leaving a
+        // disabled button behind.
+        toast.error(
+            "Couldn't read the design out of the editor. Try again, and check the editor finished loading.",
+        );
+
+        return;
+    } finally {
+        isExporting.value = false;
+    }
 
     sendForReviewForm.post(sendForReviewRoute.url(props.jobOrder.id), {
         forceFormData: true,
         preserveScroll: true,
     });
 }
+
+/** Matches the 'en-PH' long-date convention used across the other portals. */
+const deadlineLabel = computed(() =>
+    props.jobOrder.deadline === null
+        ? 'No deadline set'
+        : new Date(props.jobOrder.deadline).toLocaleDateString('en-PH', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+          }),
+);
+
+/** The artist-facing label for the two intake routes. */
+const typeLabel = computed(() =>
+    props.jobOrder.type === 'type_a' ? 'Type A' : 'Type B',
+);
 
 function outcomeLabel(outcome: string | null): string {
     if (outcome === 'approved') {
@@ -214,6 +206,9 @@ function outcomeLabel(outcome: string | null): string {
             description="Capture the consultation, build the layout, then send it for review."
         >
             <template #actions>
+                <Badge variant="outline" data-test="workspace-type-badge">
+                    {{ typeLabel }}
+                </Badge>
                 <Badge
                     v-if="jobOrder.is_rush"
                     variant="outline"
@@ -241,6 +236,28 @@ function outcomeLabel(outcome: string | null): string {
             </CardHeader>
             <CardContent class="flex flex-col gap-4">
                 <dl class="grid gap-4 sm:grid-cols-3">
+                    <div class="flex flex-col gap-1">
+                        <dt class="text-muted-foreground text-sm">Job Order</dt>
+                        <dd class="font-medium tabular-nums">
+                            {{ jobOrder.number ?? '—' }}
+                        </dd>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <dt class="text-muted-foreground text-sm">Customer</dt>
+                        <dd class="font-medium">
+                            {{ jobOrder.customer_name ?? '—' }}
+                            <span
+                                v-if="jobOrder.customer_organization"
+                                class="text-muted-foreground"
+                            >
+                                · {{ jobOrder.customer_organization }}
+                            </span>
+                        </dd>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <dt class="text-muted-foreground text-sm">Deadline</dt>
+                        <dd class="font-medium">{{ deadlineLabel }}</dd>
+                    </div>
                     <div class="flex flex-col gap-1">
                         <dt class="text-muted-foreground text-sm">
                             Print Size
@@ -273,6 +290,25 @@ function outcomeLabel(outcome: string | null): string {
                             'The customer left no instructions.'
                         }}
                     </p>
+                </div>
+
+                <div
+                    v-if="design.customerFileUrl"
+                    class="flex flex-col items-start gap-1"
+                >
+                    <dt class="text-muted-foreground text-sm">
+                        Customer's File
+                    </dt>
+                    <a
+                        :href="design.customerFileUrl"
+                        target="_blank"
+                        rel="noopener"
+                        class="text-primary inline-flex items-center gap-2 text-sm font-medium underline-offset-4 hover:underline"
+                        data-test="customer-file-link"
+                    >
+                        <FileDown class="size-4" />
+                        Open the file the customer supplied
+                    </a>
                 </div>
             </CardContent>
         </Card>
@@ -336,41 +372,40 @@ function outcomeLabel(outcome: string | null): string {
                         This design is locked.
                     </p>
                 </div>
-                <div v-else-if="!started" class="flex items-center gap-2">
+                <div
+                    v-else-if="!started"
+                    class="flex flex-col items-start gap-3"
+                >
+                    <p class="text-muted-foreground text-sm">
+                        Opens Photopea full screen. It reads PSD, AI, XD, Sketch
+                        and the usual image formats, and you can leave full
+                        screen at any time.
+                    </p>
                     <Button
                         type="button"
                         data-test="start-blank-canvas-button"
                         @click="onStartBlankCanvas"
                     >
+                        <Palette class="size-4" />
                         Start from Blank Canvas
                     </Button>
-                    <Button
-                        type="button"
-                        data-test="import-reference-image-button"
-                        @click="fileInputRef?.click()"
-                    >
-                        Import Reference Image
-                    </Button>
-                    <input
-                        ref="fileInputRef"
-                        type="file"
-                        accept="image/*,.psd"
-                        class="hidden"
-                        @change="onReferenceFileChosen"
-                    />
                 </div>
                 <div v-else class="space-y-4">
-                    <ToastImageEditor
+                    <PhotopeaEditor
                         ref="editorRef"
-                        :initial-image-url="editorInitialUrl"
+                        :initial-image-url="design.initialImageUrl"
                     />
                     <Button
                         type="button"
-                        :disabled="sendForReviewForm.processing"
+                        :disabled="sendForReviewForm.processing || isExporting"
                         data-test="send-for-review-button"
                         @click="sendForReview"
                     >
-                        Send for Review
+                        {{
+                            isExporting
+                                ? 'Reading the design…'
+                                : 'Send for Review'
+                        }}
                     </Button>
                 </div>
             </CardContent>

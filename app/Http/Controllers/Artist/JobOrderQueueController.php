@@ -51,10 +51,10 @@ class JobOrderQueueController extends Controller
                     JobOrderStatus::ReadyForPickup->value,
                 ])
                 ->orderByRaw(self::QUEUE_ORDER)
-                ->get(['id', 'description', 'status', 'created_at', 'is_rush']),
+                ->get(['id', 'number', 'description', 'status', 'created_at', 'is_rush', 'type', 'deadline']),
             'availableJobOrders' => ClaimJobOrderForArtist::pool()
                 ->with('queueEntry.customer:id,name')
-                ->get(['id', 'number', 'description', 'queue_entry_id', 'created_at', 'is_rush']),
+                ->get(['id', 'number', 'description', 'queue_entry_id', 'created_at', 'is_rush', 'type', 'deadline']),
             'artistStatus' => $request->user()->artist_status,
         ]);
     }
