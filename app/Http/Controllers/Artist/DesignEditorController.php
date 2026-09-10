@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Artist;
 
 use App\Actions\JobOrder\EnterProduction;
 use App\Actions\JobOrder\RecordDesignRevision;
+use App\Actions\JobOrder\SyncQueueEntryStatus;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Artist\RecordDesignVerdictRequest;
@@ -20,6 +21,7 @@ class DesignEditorController extends Controller
     public function __construct(
         public RecordDesignRevision $recordDesignRevision,
         public EnterProduction $enterProduction,
+        public SyncQueueEntryStatus $syncQueueEntryStatus,
     ) {}
 
     /**
@@ -90,6 +92,11 @@ class DesignEditorController extends Controller
             $jobOrder->forceFill(['status' => JobOrderStatus::DesignApproved])->save();
 
             ($this->enterProduction)($jobOrder);
+
+            // Approval is the end of the customer's visit, so the queue
+            // entry closes with it rather than waiting on a staff member to
+            // remember to press Mark Done.
+            ($this->syncQueueEntryStatus)($jobOrder->queueEntry);
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Design approved. This job order is ready for pricing at the Cashier.')]);

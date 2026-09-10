@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cashier;
 
+use App\Actions\JobOrder\SyncQueueEntryStatus;
 use App\Enums\AccountsReceivableCollectionStatus;
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
@@ -98,6 +99,12 @@ class CancellationController extends Controller
             // reflects payment history, not the active state. cancelled_at
             // is the authoritative "no longer actionable" signal.
             $jobOrder->forceFill(['cancelled_at' => now()])->save();
+
+            // A cancelled job order no longer holds its visit open. Without
+            // this, cancelling the last outstanding job order would strand
+            // the queue entry -- and Frontline's manual Mark Done, which
+            // used to be the way out of that, is gone.
+            (new SyncQueueEntryStatus)($jobOrder->queueEntry);
         });
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Job order cancelled.')]);

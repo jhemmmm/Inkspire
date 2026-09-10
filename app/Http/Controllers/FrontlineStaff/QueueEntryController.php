@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\FrontlineStaff;
 
 use App\Actions\JobOrder\EnterProduction;
+use App\Actions\JobOrder\SyncQueueEntryStatus;
 use App\Actions\JobOrder\ValidateJobOrderFile;
 use App\Enums\FileValidationOutcome;
 use App\Enums\JobOrderStatus;
@@ -27,6 +28,7 @@ class QueueEntryController extends Controller
     public function __construct(
         public ValidateJobOrderFile $validateJobOrderFile,
         public EnterProduction $enterProduction,
+        public SyncQueueEntryStatus $syncQueueEntryStatus,
     ) {}
 
     /**
@@ -151,6 +153,8 @@ class QueueEntryController extends Controller
 
             $this->applyIntakeOutcome($jobOrder, $request->file('file'));
 
+            ($this->syncQueueEntryStatus)($queueEntry);
+
             return $jobOrder;
         });
 
@@ -200,6 +204,10 @@ class QueueEntryController extends Controller
 
                 $this->applyIntakeOutcome($jobOrder, $request->file("job_orders.{$index}.file"));
             }
+
+            // A visit made entirely of print-ready Type A job orders never
+            // reaches an artist, so nothing downstream would ever close it.
+            ($this->syncQueueEntryStatus)($entry);
 
             return $entry;
         });

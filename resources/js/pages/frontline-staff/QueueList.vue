@@ -8,7 +8,7 @@ import {
     UserRound,
     Zap,
 } from '@lucide/vue';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 import JobOrderReleaseController from '@/actions/App/Http/Controllers/FrontlineStaff/JobOrderReleaseController';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
 import DataTableCard from '@/components/DataTableCard.vue';
@@ -148,6 +148,20 @@ function readyForPickupBannerBody(): string {
 // the RadioGroup's `name="type"` prop mirrors this value into a hidden
 // native input so the surrounding Inertia <Form> still submits it normally.
 const jobOrderTypeByEntry = reactive<Record<number, 'type_a' | 'type_b'>>({});
+
+/**
+ * Which entry's Add Job Order dialog is open, if any.
+ *
+ * Controlled rather than left to the Dialog's own state so the dialog can
+ * be closed from `onSuccess` -- an uncontrolled dialog stays open behind
+ * the toast after the job order is created, and the staff member is left
+ * looking at a form they already submitted.
+ */
+const openJobOrderDialog = ref<number | null>(null);
+
+function setJobOrderDialog(entryId: number, open: boolean): void {
+    openJobOrderDialog.value = open ? entryId : null;
+}
 
 function jobOrderType(entryId: number): 'type_a' | 'type_b' {
     return jobOrderTypeByEntry[entryId] ?? 'type_a';
@@ -389,54 +403,20 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                         </TableCell>
                         <TableCell>
                             <div class="flex items-center justify-end gap-2">
-                                <Form
-                                    v-if="entry.status === 'waiting'"
-                                    v-bind="
-                                        QueueEntryController.callNext.form(
-                                            entry.id,
-                                        )
+                                <Dialog
+                                    :open="openJobOrderDialog === entry.id"
+                                    @update:open="
+                                        (open) =>
+                                            setJobOrderDialog(entry.id, open)
                                     "
-                                    :options="{ preserveScroll: true }"
-                                    v-slot="{ processing }"
                                 >
-                                    <Button
-                                        type="submit"
-                                        :disabled="processing"
-                                        :data-test="`call-next-${entry.id}-button`"
-                                    >
-                                        Call Next
-                                    </Button>
-                                </Form>
-                                <Form
-                                    v-else-if="entry.status === 'serving'"
-                                    v-bind="
-                                        QueueEntryController.markDone.form(
-                                            entry.id,
-                                        )
-                                    "
-                                    :options="{ preserveScroll: true }"
-                                    v-slot="{ processing }"
-                                >
-                                    <Button
-                                        type="submit"
-                                        :disabled="processing"
-                                        :data-test="`mark-done-${entry.id}-button`"
-                                    >
-                                        Mark Done
-                                    </Button>
-                                </Form>
-
-                                <Dialog>
                                     <DialogTrigger as-child>
                                         <Button
                                             variant="outline"
-                                            size="icon"
                                             :data-test="`add-job-order-${entry.id}-button`"
                                         >
                                             <Plus class="size-4" />
-                                            <span class="sr-only">
-                                                Add Job Order
-                                            </span>
+                                            Add Job Order
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
@@ -449,6 +429,12 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                                             :options="{
                                                 preserveScroll: true,
                                             }"
+                                            @success="
+                                                setJobOrderDialog(
+                                                    entry.id,
+                                                    false,
+                                                )
+                                            "
                                             class="space-y-6"
                                             v-slot="{ errors, processing }"
                                         >

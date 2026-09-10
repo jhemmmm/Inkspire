@@ -77,18 +77,21 @@ test('accepting a job order calls that customer to the counter', function () {
     expect($queueEntry->fresh()->status)->toBe(QueueStatus::Serving);
 });
 
-test('accepting a second job order never drags a finished visit back to serving', function () {
+test('a visit whose remaining job orders are all settled closes on accept', function () {
     $artist = User::factory()->artist()->create(['artist_status' => ArtistStatus::Available]);
-    $queueEntry = QueueEntry::factory()->create(['status' => QueueStatus::Done]);
+    $queueEntry = QueueEntry::factory()->create(['status' => QueueStatus::Waiting]);
     $jobOrder = JobOrder::factory()->for($queueEntry)->create([
         'type' => 'type_b',
         'status' => JobOrderStatus::Intake,
         'assigned_artist_id' => null,
     ]);
+    JobOrder::factory()->for($queueEntry)->create(['status' => JobOrderStatus::ForProduction]);
 
     (new ClaimJobOrderForArtist)($jobOrder, $artist);
 
-    expect($queueEntry->fresh()->status)->toBe(QueueStatus::Done);
+    // The accepted job order is the only one still open, and it now has an
+    // artist, so the customer has somewhere to go.
+    expect($queueEntry->fresh()->status)->toBe(QueueStatus::Serving);
 });
 
 test('a lost claim race leaves the queue entry untouched', function () {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Public;
 
 use App\Actions\JobOrder\EnterProduction;
+use App\Actions\JobOrder\SyncQueueEntryStatus;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
 use App\Models\JobOrder;
@@ -15,7 +16,10 @@ use Inertia\Response;
 
 class DesignReviewController extends Controller
 {
-    public function __construct(public EnterProduction $enterProduction) {}
+    public function __construct(
+        public EnterProduction $enterProduction,
+        public SyncQueueEntryStatus $syncQueueEntryStatus,
+    ) {}
 
     /**
      * Show the client's remote design-review page for a signed link
@@ -50,6 +54,10 @@ class DesignReviewController extends Controller
                 $jobOrder->forceFill(['status' => JobOrderStatus::DesignApproved])->save();
 
                 ($this->enterProduction)($jobOrder);
+
+                // Mirrors DesignEditorController::approve() -- the remote
+                // verdict closes the visit exactly as the in-person one does.
+                ($this->syncQueueEntryStatus)($jobOrder->queueEntry);
             });
         }
 

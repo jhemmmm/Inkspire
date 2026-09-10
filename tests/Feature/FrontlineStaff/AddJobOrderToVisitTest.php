@@ -32,7 +32,12 @@ test('a job order can also be added to a done entry, per D-15/D-18', function ()
 
     $response->assertRedirect();
     expect($queueEntry->jobOrders()->count())->toBe(2);
-    expect($queueEntry->fresh()->status)->toBe(QueueStatus::Done);
+    // D-15/D-18 is about visits never being LOCKED, and they still are not.
+    // The status expectation changed when Call Next / Mark Done were replaced
+    // by SyncQueueEntryStatus: the new job order needs an artist, so the
+    // visit is genuinely open again and the queue has to say so rather than
+    // showing "Done" above a job order marked "Waiting for an Artist".
+    expect($queueEntry->fresh()->status)->toBe(QueueStatus::Waiting);
 });
 
 test('a type a row with no file fails validation', function () {
