@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\AuditLog;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
@@ -49,6 +50,32 @@ final class AuditLogger
             'old_values' => null,
             'new_values' => null,
             'ip_address' => ($request ?? request())->ip(),
+            'created_at' => now(),
+        ]);
+    }
+
+    /**
+     * Record a report export (D-02). An export mutates no model, so
+     * AuditObserver never fires for it -- this is the phase's one
+     * deliberate non-model-driven audit write, following
+     * recordAuthEvent()'s exact direct-AuditLog::create() shape. Must be
+     * called before any byte of the export file streams to the client.
+     */
+    public static function recordReportExport(User $user, string $reportKey, string $format, CarbonInterface $from, CarbonInterface $to): void
+    {
+        AuditLog::create([
+            'user_id' => $user->id,
+            'action' => 'report_exported',
+            'auditable_type' => null,
+            'auditable_id' => null,
+            'old_values' => null,
+            'new_values' => [
+                'report' => $reportKey,
+                'format' => $format,
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+            ],
+            'ip_address' => request()->ip(),
             'created_at' => now(),
         ]);
     }

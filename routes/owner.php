@@ -7,6 +7,7 @@ use App\Http\Controllers\Owner\SystemConfigurationController;
 use App\Http\Controllers\Owner\UserManagementController;
 use App\Http\Controllers\Owner\WriteOffApprovalController;
 use App\Http\Controllers\Reports\ReportController;
+use App\Http\Controllers\Reports\ReportExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:owner,admin'])->prefix('owner')->name('owner.')->group(function () {
@@ -32,4 +33,5 @@ Route::middleware(['auth', 'role:owner,admin'])->prefix('owner')->name('owner.')
 // through with a 200 (Pitfall 2/T-08-09).
 Route::middleware(['auth', 'role:owner'])->prefix('owner')->name('owner.')->group(function () {
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/{reportKey}/export/pdf', [ReportExportController::class, 'exportPdf'])->name('reports.export.pdf');
 });
