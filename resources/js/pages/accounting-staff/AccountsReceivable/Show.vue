@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, setLayoutProps } from '@inertiajs/vue3';
-import { Clock, FileMinus, Printer } from '@lucide/vue';
+import { Clock, FileDown, FileMinus, Printer } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import CollectionStatusController from '@/actions/App/Http/Controllers/AccountingStaff/CollectionStatusController';
 import WriteOffRequestController from '@/actions/App/Http/Controllers/AccountingStaff/WriteOffRequestController';
@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
 import { index as accountsReceivableIndex, show } from '@/routes/accounting-staff/accounts-receivable';
-import { show as collectionLetterShow } from '@/routes/accounting-staff/accounts-receivable/collection-letter';
+import { pdf as collectionLetterPdf, show as collectionLetterShow } from '@/routes/accounting-staff/accounts-receivable/collection-letter';
 
 interface AccountsReceivableDetail {
     id: number;
@@ -324,6 +324,17 @@ const hasPendingWriteOff = computed(() => props.accountsReceivable.write_off_req
                             <Printer class="size-4" />
                             Print Collection Letter
                         </Link>
+                    </Button>
+
+                    <Button
+                        v-if="!isTerminal && accountsReceivable.aging_bracket !== 'current'"
+                        as="a"
+                        variant="outline"
+                        class="w-fit"
+                        :href="collectionLetterPdf.url(accountsReceivable.id)"
+                    >
+                        <FileDown class="size-4" />
+                        Download Letter (PDF)
                     </Button>
 
                     <Dialog v-if="!isTerminal && !hasPendingWriteOff">

@@ -77,8 +77,12 @@
 <body>
     <div class="letterhead">{{ config('app.name') }}</div>
     <div class="document-title">{{ $title }}</div>
-    <div class="meta-line">Range: {{ $from->format('M j, Y') }} &ndash; {{ $to->format('M j, Y') }}</div>
-    <div class="meta-line">Generated {{ $generatedAt->format('M j, Y g:i A') }} by {{ $generatedBy }}</div>
+    @isset($from, $to)
+        <div class="meta-line">Range: {{ $from->format('M j, Y') }} &ndash; {{ $to->format('M j, Y') }}</div>
+    @endisset
+    @isset($generatedAt, $generatedBy)
+        <div class="meta-line">Generated {{ $generatedAt->format('M j, Y g:i A') }} by {{ $generatedBy }}</div>
+    @endisset
     <hr class="header-rule">
 
     @yield('content')
