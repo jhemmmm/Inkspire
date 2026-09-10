@@ -326,7 +326,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Expenses Backend: migration, model, factory, Form Requests, ExpenseController (EXP-01)
+- [x] 08-01-PLAN.md — Expenses Backend: migration, model, factory, Form Requests, ExpenseController (EXP-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -357,4 +357,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
 | 7. Accounts Receivable | 8/8 | Complete    | 2026-09-09 |
-| 8. Expenses & Reporting | 0/5 | Not started | - |
+| 8. Expenses & Reporting | 1/5 | In Progress|  |
