@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
+import { Zap } from '@lucide/vue';
 import JobOrderQueueController from '@/actions/App/Http/Controllers/Artist/JobOrderQueueController';
 import SessionStatusController from '@/actions/App/Http/Controllers/Artist/SessionStatusController';
+import DataTableCard from '@/components/DataTableCard.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import SectionHeading from '@/components/SectionHeading.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,11 +27,21 @@ interface ArtistJobOrder {
     id: number;
     description: string;
     status: string;
-    not_appeared: boolean;
+    is_rush: boolean;
+}
+
+interface PoolJobOrder {
+    id: number;
+    number: string;
+    description: string;
+    created_at: string;
+    is_rush: boolean;
+    queue_entry: { customer: { name: string } | null } | null;
 }
 
 defineProps<{
     jobOrders: ArtistJobOrder[];
+    availableJobOrders: PoolJobOrder[];
     artistStatus: string;
 }>();
 
@@ -113,6 +128,23 @@ function statusLabel(status: string): string {
     return 'Assigned';
 }
 
+function waitingSince(createdAt: string): string {
+    const minutes = Math.max(
+        0,
+        Math.round((Date.now() - new Date(createdAt).getTime()) / 60000),
+    );
+
+    if (minutes < 1) {
+        return 'Just now';
+    }
+
+    if (minutes < 60) {
+        return `${minutes}m waiting`;
+    }
+
+    return `${Math.floor(minutes / 60)}h ${minutes % 60}m waiting`;
+}
+
 function artistStatusBadgeVariant(
     artistStatus: string,
 ): 'secondary' | 'outline' | undefined {
@@ -151,12 +183,11 @@ function artistStatusLabel(artistStatus: string): string {
 <template>
     <Head title="Artist Dashboard" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            Artist Dashboard
-        </h1>
+    <PageContainer>
+        <PageHeader
+            title="Artist Dashboard"
+            description="Claim work from the shared pool, then work your own queue top to bottom."
+        />
 
         <Card>
             <CardContent
@@ -219,81 +250,74 @@ function artistStatusLabel(artistStatus: string): string {
             </CardContent>
         </Card>
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Job Order</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead class="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    <TableEmpty v-if="jobOrders.length === 0" :colspan="3">
-                        <div class="flex flex-col items-center gap-1">
-                            <p class="font-semibold">No job orders assigned</p>
-                            <p class="text-muted-foreground">
-                                New consultations will appear here automatically
-                                when you're set to Available.
-                            </p>
-                        </div>
-                    </TableEmpty>
-                    <TableRow
-                        v-for="jobOrder in jobOrders"
-                        v-else
-                        :key="jobOrder.id"
-                    >
-                        <TableCell>{{ jobOrder.description }}</TableCell>
-                        <TableCell>
-                            <div class="flex flex-wrap items-center gap-2">
-                                <Badge
-                                    :variant="
-                                        statusBadgeVariant(jobOrder.status)
-                                    "
-                                    :class="statusBadgeClass(jobOrder.status)"
-                                >
-                                    {{ statusLabel(jobOrder.status) }}
-                                </Badge>
-                                <Badge
-                                    v-if="jobOrder.not_appeared"
-                                    variant="outline"
-                                    class="text-muted-foreground"
-                                >
-                                    Not Appeared
-                                </Badge>
+        <section class="flex flex-col gap-3">
+            <div class="flex items-baseline justify-between gap-4">
+                <SectionHeading
+                    title="Available Jobs"
+                    description="Unclaimed consultations. Accepting one moves it into your queue."
+                />
+                <p class="text-muted-foreground text-sm">
+                    Unclaimed consultations — first to accept gets the job.
+                </p>
+            </div>
+
+            <DataTableCard>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Job Order</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Waiting</TableHead>
+                            <TableHead class="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableEmpty
+                            v-if="availableJobOrders.length === 0"
+                            :colspan="4"
+                        >
+                            <div class="flex flex-col items-center gap-1">
+                                <p class="font-semibold">
+                                    No jobs waiting to be accepted
+                                </p>
+                                <p class="text-muted-foreground">
+                                    New consultations appear here the moment
+                                    Frontline Staff create them.
+                                </p>
                             </div>
-                        </TableCell>
-                        <TableCell>
-                            <div class="flex items-center justify-end gap-2">
-                                <Form
-                                    v-if="jobOrder.status === 'assigned'"
-                                    v-bind="
-                                        JobOrderQueueController.next.form(
-                                            jobOrder.id,
-                                        )
-                                    "
-                                    :options="{ preserveScroll: true }"
-                                    v-slot="{ processing }"
-                                >
-                                    <Button
-                                        type="submit"
-                                        :disabled="processing"
-                                        :data-test="`next-${jobOrder.id}-button`"
+                        </TableEmpty>
+                        <TableRow
+                            v-for="jobOrder in availableJobOrders"
+                            v-else
+                            :key="jobOrder.id"
+                        >
+                            <TableCell>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span>{{ jobOrder.description }}</span>
+                                    <Badge
+                                        v-if="jobOrder.is_rush"
+                                        variant="outline"
+                                        class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                        :data-test="`pool-rush-${jobOrder.id}-badge`"
                                     >
-                                        Next
-                                    </Button>
-                                </Form>
-                                <template
-                                    v-else-if="
-                                        jobOrder.status === 'in_consultation' ||
-                                        jobOrder.status === 'in_design'
-                                    "
-                                >
+                                        <Zap class="size-3" />
+                                        Rush
+                                    </Badge>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                {{
+                                    jobOrder.queue_entry?.customer?.name ?? '—'
+                                }}
+                            </TableCell>
+                            <TableCell class="text-muted-foreground">
+                                {{ waitingSince(jobOrder.created_at) }}
+                            </TableCell>
+                            <TableCell>
+                                <div class="flex items-center justify-end">
                                     <Form
                                         v-bind="
-                                            JobOrderQueueController.forward.form(
+                                            JobOrderQueueController.accept.form(
                                                 jobOrder.id,
                                             )
                                         "
@@ -302,32 +326,166 @@ function artistStatusLabel(artistStatus: string): string {
                                     >
                                         <Button
                                             type="submit"
-                                            variant="outline"
-                                            :disabled="processing"
-                                            :data-test="`forward-${jobOrder.id}-button`"
+                                            :disabled="
+                                                processing ||
+                                                artistStatus !== 'available'
+                                            "
+                                            :data-test="`accept-${jobOrder.id}-button`"
                                         >
-                                            Forward
+                                            Accept
                                         </Button>
                                     </Form>
-                                    <Form
-                                        v-bind="
-                                            JobOrderQueueController.notAppear.form(
-                                                jobOrder.id,
-                                            )
-                                        "
-                                        :options="{ preserveScroll: true }"
-                                        v-slot="{ processing }"
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </DataTableCard>
+        </section>
+
+        <section class="flex flex-col gap-3">
+            <SectionHeading
+                title="My Queue"
+                description="Jobs you have accepted, oldest first."
+            />
+            <DataTableCard>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Job Order</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead class="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableEmpty v-if="jobOrders.length === 0" :colspan="3">
+                            <div class="flex flex-col items-center gap-1">
+                                <p class="font-semibold">
+                                    No job orders assigned
+                                </p>
+                                <p class="text-muted-foreground">
+                                    Accept a job from Available Jobs above to
+                                    start working on it.
+                                </p>
+                            </div>
+                        </TableEmpty>
+                        <TableRow
+                            v-for="jobOrder in jobOrders"
+                            v-else
+                            :key="jobOrder.id"
+                        >
+                            <TableCell>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span>{{ jobOrder.description }}</span>
+                                    <Badge
+                                        v-if="jobOrder.is_rush"
+                                        variant="outline"
+                                        class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                        :data-test="`queue-rush-${jobOrder.id}-badge`"
                                     >
-                                        <Button
-                                            type="submit"
-                                            variant="outline"
-                                            :disabled="processing"
-                                            :data-test="`not-appear-${jobOrder.id}-button`"
+                                        <Zap class="size-3" />
+                                        Rush
+                                    </Badge>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <Badge
+                                        :variant="
+                                            statusBadgeVariant(jobOrder.status)
+                                        "
+                                        :class="
+                                            statusBadgeClass(jobOrder.status)
+                                        "
+                                    >
+                                        {{ statusLabel(jobOrder.status) }}
+                                    </Badge>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <div
+                                    class="flex items-center justify-end gap-2"
+                                >
+                                    <template
+                                        v-if="jobOrder.status === 'assigned'"
+                                    >
+                                        <Form
+                                            v-bind="
+                                                JobOrderQueueController.next.form(
+                                                    jobOrder.id,
+                                                )
+                                            "
+                                            :options="{ preserveScroll: true }"
+                                            v-slot="{ processing }"
                                         >
-                                            Not Appear
-                                        </Button>
-                                    </Form>
+                                            <Button
+                                                type="submit"
+                                                :disabled="processing"
+                                                :data-test="`next-${jobOrder.id}-button`"
+                                            >
+                                                Next
+                                            </Button>
+                                        </Form>
+                                        <Form
+                                            v-bind="
+                                                JobOrderQueueController.forward.form(
+                                                    jobOrder.id,
+                                                )
+                                            "
+                                            :options="{ preserveScroll: true }"
+                                            v-slot="{ processing }"
+                                        >
+                                            <Button
+                                                type="submit"
+                                                variant="outline"
+                                                :disabled="processing"
+                                                :data-test="`forward-${jobOrder.id}-button`"
+                                            >
+                                                Forward
+                                            </Button>
+                                        </Form>
+                                    </template>
+                                    <template
+                                        v-else-if="
+                                            jobOrder.status ===
+                                                'in_consultation' ||
+                                            jobOrder.status === 'in_design'
+                                        "
+                                    >
+                                        <Form
+                                            v-bind="
+                                                JobOrderQueueController.forward.form(
+                                                    jobOrder.id,
+                                                )
+                                            "
+                                            :options="{ preserveScroll: true }"
+                                            v-slot="{ processing }"
+                                        >
+                                            <Button
+                                                type="submit"
+                                                variant="outline"
+                                                :disabled="processing"
+                                                :data-test="`forward-${jobOrder.id}-button`"
+                                            >
+                                                Forward
+                                            </Button>
+                                        </Form>
+                                        <Link
+                                            :href="show(jobOrder.id).url"
+                                            :data-test="`continue-${jobOrder.id}-link`"
+                                        >
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                            >
+                                                Continue
+                                            </Button>
+                                        </Link>
+                                    </template>
                                     <Link
+                                        v-else-if="
+                                            jobOrder.status === 'pending_review'
+                                        "
                                         :href="show(jobOrder.id).url"
                                         :data-test="`continue-${jobOrder.id}-link`"
                                     >
@@ -335,36 +493,25 @@ function artistStatusLabel(artistStatus: string): string {
                                             Continue
                                         </Button>
                                     </Link>
-                                </template>
-                                <Link
-                                    v-else-if="
-                                        jobOrder.status === 'pending_review'
-                                    "
-                                    :href="show(jobOrder.id).url"
-                                    :data-test="`continue-${jobOrder.id}-link`"
-                                >
-                                    <Button type="button" variant="ghost">
-                                        Continue
-                                    </Button>
-                                </Link>
-                                <Link
-                                    v-else-if="
-                                        POST_APPROVAL_STATUSES.includes(
-                                            jobOrder.status,
-                                        )
-                                    "
-                                    :href="show(jobOrder.id).url"
-                                    :data-test="`view-${jobOrder.id}-link`"
-                                >
-                                    <Button type="button" variant="ghost">
-                                        View
-                                    </Button>
-                                </Link>
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
-        </div>
-    </div>
+                                    <Link
+                                        v-else-if="
+                                            POST_APPROVAL_STATUSES.includes(
+                                                jobOrder.status,
+                                            )
+                                        "
+                                        :href="show(jobOrder.id).url"
+                                        :data-test="`view-${jobOrder.id}-link`"
+                                    >
+                                        <Button type="button" variant="ghost">
+                                            View
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </DataTableCard>
+        </section>
+    </PageContainer>
 </template>

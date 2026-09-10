@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router } from '@inertiajs/vue3';
-import { MoreHorizontal } from '@lucide/vue';
+import { MoreHorizontal, Zap } from '@lucide/vue';
 import { ref } from 'vue';
 import CancellationController from '@/actions/App/Http/Controllers/Cashier/CancellationController';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
@@ -15,6 +15,11 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import SectionHeading from '@/components/SectionHeading.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -44,6 +49,7 @@ interface CashierJobOrder {
     payment_status: string;
     total_amount: number | null;
     amount_paid: number | null;
+    is_rush: boolean;
     queue_entry: { customer: { name: string } };
     // Present only when an Active On-Credit receivable exists for this job
     // order (WR-05) — cancelling never writes this balance off, so the
@@ -208,16 +214,18 @@ function paymentStatusLabel(status: string): string {
 <template>
     <Head title="Cashier Dashboard" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            Cashier Dashboard
-        </h1>
+    <PageContainer>
+        <PageHeader
+            title="Cashier Dashboard"
+            description="Job orders waiting to be paid for."
+        />
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
+        <SectionHeading
+            title="Ready for Payment"
+            description="Take payment here, then hand the customer their receipt."
+        />
+
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -230,17 +238,10 @@ function paymentStatusLabel(status: string): string {
                 </TableHeader>
                 <TableBody>
                     <TableEmpty v-if="jobOrders.length === 0" :colspan="5">
-                        <div
-                            class="flex flex-col items-center gap-1 text-center"
-                        >
-                            <p class="font-semibold">
-                                No job orders ready for payment
-                            </p>
-                            <p class="text-muted-foreground">
-                                Job orders will appear here once they're
-                                validated or design-approved.
-                            </p>
-                        </div>
+                        <EmptyState
+                            title="No job orders ready for payment"
+                            description="Job orders will appear here once they're validated or design-approved."
+                        />
                     </TableEmpty>
                     <TableRow
                         v-for="jobOrder in jobOrders"
@@ -248,12 +249,21 @@ function paymentStatusLabel(status: string): string {
                         :key="jobOrder.id"
                     >
                         <TableCell>
-                            <div class="flex flex-col">
+                            <div class="flex flex-col items-start gap-1">
                                 <span
                                     class="text-muted-foreground text-xs tabular-nums"
                                     >{{ jobOrder.number ?? '—' }}</span
                                 >
                                 <span>{{ jobOrder.description }}</span>
+                                <Badge
+                                    v-if="jobOrder.is_rush"
+                                    variant="outline"
+                                    class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                    :data-test="`cashier-rush-${jobOrder.id}-badge`"
+                                >
+                                    <Zap class="size-3" />
+                                    Rush
+                                </Badge>
                             </div>
                         </TableCell>
                         <TableCell>
@@ -520,6 +530,6 @@ function paymentStatusLabel(status: string): string {
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
-    </div>
+        </DataTableCard>
+    </PageContainer>
 </template>

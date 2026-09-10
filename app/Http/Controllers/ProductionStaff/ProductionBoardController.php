@@ -25,6 +25,14 @@ class ProductionBoardController extends Controller
      * released and cancelled job orders (D-12), each carrying a
      * server-computed `is_rush` boolean (D-05, D-07).
      *
+     * `is_rush` is a real, persisted column since 2026_09_10_120000 — the
+     * urgency Frontline Staff declared at the counter (RUSH-01). The
+     * assignment below deliberately WIDENS the in-memory value to the OR of
+     * that column and this board's own due-date heuristic: the heuristic
+     * answers "is this urgent by the clock", the column answers "did the
+     * customer ask for urgency", and Production Staff need both. The widened
+     * value is never persisted — nothing on this request path calls save().
+     *
      * "Due today" is an Asia/Manila business day, not a UTC one —
      * config('app.timezone') stays UTC project-wide, so a bare
      * now()->endOfDay() would end the day at 07:59:59 the next Manila
@@ -48,8 +56,9 @@ class ProductionBoardController extends Controller
                 ->whereNull('cancelled_at')
                 ->with('queueEntry.customer:id,name')
                 ->orderByRaw('due_at IS NULL, due_at ASC')
-                ->get(['id', 'number', 'description', 'status', 'due_at', 'queue_entry_id'])
-                ->each(fn (JobOrder $jobOrder) => $jobOrder->is_rush = $jobOrder->due_at !== null && $jobOrder->due_at->lessThanOrEqualTo($endOfBusinessDay)),
+                ->get(['id', 'number', 'description', 'status', 'due_at', 'queue_entry_id', 'is_rush'])
+                ->each(fn (JobOrder $jobOrder) => $jobOrder->is_rush = $jobOrder->is_rush
+                    || ($jobOrder->due_at !== null && $jobOrder->due_at->lessThanOrEqualTo($endOfBusinessDay))),
         ]);
     }
 }

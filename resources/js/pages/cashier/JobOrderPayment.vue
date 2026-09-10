@@ -4,6 +4,7 @@ import {
     Banknote,
     CreditCard,
     Landmark,
+    Receipt,
     Smartphone,
     Wallet,
 } from '@lucide/vue';
@@ -11,6 +12,11 @@ import { computed, ref } from 'vue';
 import CreditRequestController from '@/actions/App/Http/Controllers/Cashier/CreditRequestController';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
 import InputError from '@/components/InputError.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import SearchableSelect, {
+    type SearchableOption,
+} from '@/components/SearchableSelect.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import PaymentQrCode from '@/components/PaymentQrCode.vue';
 import {
     AlertDialog,
@@ -53,6 +59,7 @@ interface JobOrderPaymentJobOrder {
     total_amount: number | null;
     base_price_snapshot: number | null;
     rush_fee_amount: number | null;
+    is_rush: boolean;
     discount_amount: number | null;
     pricing_entry: PricingEntryOption | null;
 }
@@ -85,7 +92,16 @@ const pricingEntryId = ref<number | null>(
     props.jobOrder.pricing_entry?.id ?? null,
 );
 const lineAmount = ref<number>(Number(props.jobOrder.base_price_snapshot ?? 0));
-const rushFeeApplied = ref<boolean>(Boolean(props.jobOrder.rush_fee_amount));
+// A saved rush_fee_amount of 0 means the Cashier already looked at this job
+// order and declined the fee — re-deriving the toggle from `is_rush` on a
+// revisit would silently overturn that decision. So the staff-declared flag
+// only supplies the DEFAULT, and only while this job order has never been
+// priced (rush_fee_amount still null).
+const rushFeeApplied = ref<boolean>(
+    props.jobOrder.rush_fee_amount === null
+        ? props.jobOrder.is_rush
+        : Boolean(props.jobOrder.rush_fee_amount),
+);
 const discountType = ref<'' | 'percentage' | 'flat'>('');
 const discountValue = ref<number | undefined>(undefined);
 
@@ -155,6 +171,16 @@ function checkPaymentStatus(): void {
 function round2(value: number): number {
     return Math.round(value * 100) / 100;
 }
+
+const pricingOptions = computed<SearchableOption[]>(() =>
+    props.pricingEntries.map((entry) => ({
+        value: String(entry.id),
+        label: entry.name,
+        hint: `₱${Number(entry.base_price).toLocaleString('en-PH', {
+            minimumFractionDigits: 2,
+        })}`,
+    })),
+);
 
 function onPricingEntryChange(value: unknown): void {
     const id = Number(value);
@@ -266,21 +292,20 @@ const discountCapHelper = computed(() =>
 <template>
     <Head :title="`Job Order Payment — ${jobOrder.description}`" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            Job Order Payment — {{ jobOrder.description }}
-        </h1>
+    <PageContainer>
+        <PageHeader
+            :title="`Job Order Payment — ${jobOrder.description}`"
+            description="Confirm the pricing, then take the payment. Both panels submit together."
+        />
 
         <Form
             v-bind="PaymentController.store.form(jobOrder.id)"
             :options="{ preserveScroll: true }"
-            class="flex flex-col gap-6"
+            class="grid gap-6 xl:grid-cols-2 xl:items-start"
             v-slot="{ errors, processing }"
         >
             <Card>
-                <CardHeader>
+                <CardHeader :icon="Receipt">
                     <CardTitle>Pricing</CardTitle>
                 </CardHeader>
                 <CardContent class="grid gap-4">
@@ -295,27 +320,14 @@ const discountCapHelper = computed(() =>
                             <Label for="pricing-entry-select">
                                 Product / Service
                             </Label>
-                            <Select
-                                :model-value="pricingEntryId?.toString()"
+                            <SearchableSelect
+                                id="pricing-entry-select"
+                                :model-value="pricingEntryId?.toString() ?? ''"
+                                :options="pricingOptions"
+                                placeholder="Search the price list…"
+                                empty-text="No service matches that search."
                                 @update:model-value="onPricingEntryChange"
-                            >
-                                <SelectTrigger id="pricing-entry-select">
-                                    <SelectValue
-                                        placeholder="Select a product or service"
-                                    />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem
-                                        v-for="entry in pricingEntries"
-                                        :key="entry.id"
-                                        :value="entry.id.toString()"
-                                    >
-                                        {{ entry.name }} — ₱{{
-                                            entry.base_price
-                                        }}
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
+                            />
                             <InputError :message="errors.pricing_entry_id" />
                         </div>
 
@@ -333,10 +345,31 @@ const discountCapHelper = computed(() =>
                         </div>
 
                         <div class="flex items-center gap-2">
+                            <!--
+                                The hidden "0" is load-bearing and must stay
+                                ahead of the Switch. reka-ui's SwitchRoot
+                                renders a real checkbox, which the browser
+                                omits from the submission entirely when
+                                unchecked — and `rush_fee_applied` is
+                                `required|boolean`, so an unchecked switch
+                                sent nothing and the save 422'd. With the
+                                hidden field first, an unchecked switch
+                                submits "0" and a checked one submits "0"
+                                then "1", which PHP resolves to the last
+                                value. The explicit value="1" replaces
+                                SwitchRoot's default of the string 'on',
+                                which fails the `boolean` rule outright.
+                            -->
+                            <input
+                                type="hidden"
+                                name="rush_fee_applied"
+                                value="0"
+                            />
                             <Switch
                                 id="rush-fee-switch"
                                 v-model="rushFeeApplied"
                                 name="rush_fee_applied"
+                                value="1"
                             />
                             <Label for="rush-fee-switch">
                                 Apply Rush Fee (+{{ rushFeePercentage }}%)
@@ -404,25 +437,33 @@ const discountCapHelper = computed(() =>
                             <InputError :message="errors.discount_value" />
                         </div>
 
-                        <div class="flex flex-col gap-1 pt-2">
+                        <div
+                            class="border-border mt-2 flex flex-col gap-2 border-t pt-4 tabular-nums"
+                        >
                             <div class="flex items-center justify-between">
-                                <span>Base Price</span>
+                                <span class="text-muted-foreground">
+                                    Base Price
+                                </span>
                                 <span>₱{{ breakdown.base.toFixed(2) }}</span>
                             </div>
                             <div class="flex items-center justify-between">
-                                <span>Rush Fee</span>
+                                <span class="text-muted-foreground"
+                                    >Rush Fee</span
+                                >
                                 <span>
                                     ₱{{ breakdown.rushFeeAmount.toFixed(2) }}
                                 </span>
                             </div>
                             <div class="flex items-center justify-between">
-                                <span>Discount</span>
+                                <span class="text-muted-foreground"
+                                    >Discount</span
+                                >
                                 <span>
                                     ₱{{ breakdown.discountAmount.toFixed(2) }}
                                 </span>
                             </div>
                             <div
-                                class="flex items-center justify-between pt-2 text-[28px] leading-[1.2] font-semibold"
+                                class="border-border flex items-center justify-between border-t pt-3 text-2xl leading-tight font-bold"
                             >
                                 <span>Total</span>
                                 <span>₱{{ breakdown.total.toFixed(2) }}</span>
@@ -430,9 +471,11 @@ const discountCapHelper = computed(() =>
                         </div>
                     </template>
 
-                    <div v-else class="flex flex-col gap-1">
+                    <div v-else class="flex flex-col gap-2 tabular-nums">
                         <div class="flex items-center justify-between">
-                            <span>Base Price</span>
+                            <span class="text-muted-foreground"
+                                >Base Price</span
+                            >
                             <span>
                                 ₱{{
                                     Number(
@@ -442,7 +485,7 @@ const discountCapHelper = computed(() =>
                             </span>
                         </div>
                         <div class="flex items-center justify-between">
-                            <span>Rush Fee</span>
+                            <span class="text-muted-foreground">Rush Fee</span>
                             <span>
                                 ₱{{
                                     Number(
@@ -452,7 +495,7 @@ const discountCapHelper = computed(() =>
                             </span>
                         </div>
                         <div class="flex items-center justify-between">
-                            <span>Discount</span>
+                            <span class="text-muted-foreground">Discount</span>
                             <span>
                                 ₱{{
                                     Number(
@@ -462,7 +505,7 @@ const discountCapHelper = computed(() =>
                             </span>
                         </div>
                         <div
-                            class="flex items-center justify-between pt-2 text-[28px] leading-[1.2] font-semibold"
+                            class="border-border flex items-center justify-between border-t pt-3 text-2xl leading-tight font-bold"
                         >
                             <span>Total</span>
                             <span>
@@ -478,7 +521,7 @@ const discountCapHelper = computed(() =>
             </Card>
 
             <Card>
-                <CardHeader>
+                <CardHeader :icon="CreditCard">
                     <CardTitle>Payment</CardTitle>
                 </CardHeader>
                 <CardContent v-if="subView === 'qr'" class="grid gap-4">
@@ -733,5 +776,5 @@ const discountCapHelper = computed(() =>
                 </CardContent>
             </Card>
         </Form>
-    </div>
+    </PageContainer>
 </template>

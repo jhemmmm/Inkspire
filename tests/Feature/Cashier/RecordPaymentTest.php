@@ -304,3 +304,45 @@ test('a maya payment failing to create a paymongo intent flashes an error and cr
     // to show for it, and a retry would skip pricing validation entirely.
     expect($jobOrder->fresh()->total_amount)->toBeNull();
 });
+
+test('the rush fee toggle submits as the string 0 or 1, matching the payment form', function (string $submitted, bool $expected) {
+    // The Apply Rush Fee switch is a reka-ui SwitchRoot, which renders a real
+    // checkbox: unchecked, the browser omits it entirely, so the form pairs it
+    // with a hidden "0" that always submits and an explicit value="1" that
+    // overrides it when checked. `rush_fee_applied` is required|boolean, so
+    // both of those exact strings must be accepted.
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 1000,
+        'rush_fee_applied' => $submitted,
+        'payment_method' => 'cash',
+        'payment_type' => 'full',
+        'amount_tendered' => 2000,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    expect($jobOrder->fresh()->rush_fee_applied)->toBe($expected);
+})->with([
+    'switch off (hidden field only)' => ['0', false],
+    'switch on (explicit value)' => ['1', true],
+]);
+
+test('omitting rush_fee_applied entirely is still rejected, so a broken form fails loudly', function () {
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 1000,
+        'payment_method' => 'cash',
+        'payment_type' => 'full',
+        'amount_tendered' => 2000,
+    ]);
+
+    $response->assertSessionHasErrors('rush_fee_applied');
+});

@@ -1,11 +1,21 @@
 <script setup lang="ts">
 import { Form, Head, router, setLayoutProps, useForm } from '@inertiajs/vue3';
+import {
+    ClipboardList,
+    CircleCheck,
+    MessagesSquare,
+    Palette,
+    Zap,
+} from '@lucide/vue';
 import { readPsd } from 'ag-psd';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import DesignEditorController from '@/actions/App/Http/Controllers/Artist/DesignEditorController';
 import JobOrderWorkspaceController from '@/actions/App/Http/Controllers/Artist/JobOrderWorkspaceController';
+import AlertError from '@/components/AlertError.vue';
 import InputError from '@/components/InputError.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import ToastImageEditor from '@/components/ToastImageEditor.vue';
 import {
     AlertDialog,
@@ -17,6 +27,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,12 +39,38 @@ import {
     start,
 } from '@/routes/artist/job-orders/design';
 
+/**
+ * The artist-facing name for each stage this workspace can be opened in.
+ */
+function jobOrderStatusLabel(status: string): string {
+    switch (status) {
+        case 'assigned':
+            return 'Assigned';
+        case 'in_consultation':
+            return 'In Consultation';
+        case 'in_design':
+            return 'In Design';
+        case 'pending_review':
+            return 'Pending Review';
+        case 'design_approved':
+            return 'Design Approved';
+        default:
+            return 'In Progress';
+    }
+}
+
 const props = defineProps<{
     jobOrder: {
         id: number;
         description: string;
         status: string;
+        is_rush: boolean;
         consultation_notes: string | null;
+        client_notes: string | null;
+        print_size: string | null;
+        material: string | null;
+        quantity: number | null;
+        validation_failure_reason: string | null;
         canEditConsultation: boolean;
     };
     design: {
@@ -171,196 +208,254 @@ function outcomeLabel(outcome: string | null): string {
 <template>
     <Head :title="jobOrder.description" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            {{ jobOrder.description }}
-        </h1>
+    <PageContainer>
+        <PageHeader
+            :title="jobOrder.description"
+            description="Capture the consultation, build the layout, then send it for review."
+        >
+            <template #actions>
+                <Badge
+                    v-if="jobOrder.is_rush"
+                    variant="outline"
+                    class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                    data-test="workspace-rush-badge"
+                >
+                    <Zap class="size-3" />
+                    Rush
+                </Badge>
+                <Badge variant="secondary">
+                    {{ jobOrderStatusLabel(jobOrder.status) }}
+                </Badge>
+            </template>
+        </PageHeader>
 
-        <div class="flex flex-col gap-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Consultation Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
+        <AlertError
+            v-if="jobOrder.validation_failure_reason"
+            title="This file needs work before it can be printed"
+            :errors="[jobOrder.validation_failure_reason]"
+        />
+
+        <Card>
+            <CardHeader :icon="ClipboardList">
+                <CardTitle>Job Brief</CardTitle>
+            </CardHeader>
+            <CardContent class="flex flex-col gap-4">
+                <dl class="grid gap-4 sm:grid-cols-3">
+                    <div class="flex flex-col gap-1">
+                        <dt class="text-muted-foreground text-sm">
+                            Print Size
+                        </dt>
+                        <dd class="font-medium">
+                            {{ jobOrder.print_size ?? '—' }}
+                        </dd>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <dt class="text-muted-foreground text-sm">Material</dt>
+                        <dd class="font-medium">
+                            {{ jobOrder.material ?? '—' }}
+                        </dd>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <dt class="text-muted-foreground text-sm">Quantity</dt>
+                        <dd class="font-medium tabular-nums">
+                            {{ jobOrder.quantity ?? '—' }}
+                        </dd>
+                    </div>
+                </dl>
+
+                <div class="flex flex-col gap-1">
+                    <dt class="text-muted-foreground text-sm">
+                        Client Instructions
+                    </dt>
+                    <p class="whitespace-pre-line">
+                        {{
+                            jobOrder.client_notes ||
+                            'The customer left no instructions.'
+                        }}
+                    </p>
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader :icon="MessagesSquare">
+                <CardTitle>Consultation Notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Form
+                    v-if="jobOrder.canEditConsultation"
+                    v-bind="
+                        JobOrderWorkspaceController.updateConsultation.form(
+                            jobOrder.id,
+                        )
+                    "
+                    :options="{ preserveScroll: true }"
+                    class="space-y-4"
+                    v-slot="{ errors, processing }"
+                >
+                    <Textarea
+                        name="consultation_notes"
+                        :default-value="jobOrder.consultation_notes ?? ''"
+                        rows="6"
+                    />
+                    <InputError :message="errors.consultation_notes" />
+                    <Button
+                        type="submit"
+                        :disabled="processing"
+                        data-test="save-consultation-notes-button"
+                    >
+                        Save Consultation Notes
+                    </Button>
+                </Form>
+                <p v-else class="text-sm">
+                    {{ jobOrder.consultation_notes ?? '—' }}
+                </p>
+            </CardContent>
+        </Card>
+
+        <Card v-if="jobOrder.status !== 'assigned'">
+            <CardHeader :icon="Palette">
+                <CardTitle>Design</CardTitle>
+            </CardHeader>
+            <CardContent class="space-y-4">
+                <p
+                    v-if="isPendingReview"
+                    class="text-muted-foreground text-sm"
+                    data-test="design-pending-review-note"
+                >
+                    Waiting on the client's verdict.
+                </p>
+                <div v-else-if="!design.canEdit" class="space-y-2">
+                    <img
+                        v-if="design.initialImageUrl"
+                        :src="design.initialImageUrl"
+                        alt="Approved design"
+                        class="w-full rounded-lg border"
+                    />
+                    <p class="text-muted-foreground text-sm">
+                        This design is locked.
+                    </p>
+                </div>
+                <div v-else-if="!started" class="flex items-center gap-2">
+                    <Button
+                        type="button"
+                        data-test="start-blank-canvas-button"
+                        @click="onStartBlankCanvas"
+                    >
+                        Start from Blank Canvas
+                    </Button>
+                    <Button
+                        type="button"
+                        data-test="import-reference-image-button"
+                        @click="fileInputRef?.click()"
+                    >
+                        Import Reference Image
+                    </Button>
+                    <input
+                        ref="fileInputRef"
+                        type="file"
+                        accept="image/*,.psd"
+                        class="hidden"
+                        @change="onReferenceFileChosen"
+                    />
+                </div>
+                <div v-else class="space-y-4">
+                    <ToastImageEditor
+                        ref="editorRef"
+                        :initial-image-url="editorInitialUrl"
+                    />
+                    <Button
+                        type="button"
+                        :disabled="sendForReviewForm.processing"
+                        data-test="send-for-review-button"
+                        @click="sendForReview"
+                    >
+                        Send for Review
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card v-if="review.canRecordVerdict">
+            <CardHeader :icon="CircleCheck">
+                <CardTitle>Review</CardTitle>
+            </CardHeader>
+            <CardContent class="space-y-4">
+                <div class="flex items-center gap-2">
+                    <AlertDialog>
+                        <AlertDialogTrigger as-child>
+                            <Button
+                                type="button"
+                                data-test="client-approved-button"
+                            >
+                                Client Approved
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                    Approve this design?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Once approved, this design file becomes
+                                    read-only. Only an Owner can unlock it for
+                                    further edits.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel> Cancel </AlertDialogCancel>
+                                <Form
+                                    v-bind="
+                                        DesignEditorController.approve.form(
+                                            jobOrder.id,
+                                        )
+                                    "
+                                    :options="{ preserveScroll: true }"
+                                    v-slot="{ processing }"
+                                >
+                                    <Button
+                                        type="submit"
+                                        :disabled="processing"
+                                        data-test="confirm-approve-button"
+                                    >
+                                        Confirm Approval
+                                    </Button>
+                                </Form>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
                     <Form
-                        v-if="jobOrder.canEditConsultation"
                         v-bind="
-                            JobOrderWorkspaceController.updateConsultation.form(
+                            DesignEditorController.requestChanges.form(
                                 jobOrder.id,
                             )
                         "
                         :options="{ preserveScroll: true }"
-                        class="space-y-4"
-                        v-slot="{ errors, processing }"
+                        v-slot="{ processing }"
                     >
-                        <Textarea
-                            name="consultation_notes"
-                            :default-value="jobOrder.consultation_notes ?? ''"
-                            rows="6"
-                        />
-                        <InputError :message="errors.consultation_notes" />
                         <Button
                             type="submit"
+                            variant="outline"
                             :disabled="processing"
-                            data-test="save-consultation-notes-button"
+                            data-test="request-changes-button"
                         >
-                            Save Consultation Notes
+                            Client Requested Changes
                         </Button>
                     </Form>
-                    <p v-else class="text-sm">
-                        {{ jobOrder.consultation_notes ?? '—' }}
-                    </p>
-                </CardContent>
-            </Card>
+                </div>
 
-            <Card v-if="jobOrder.status !== 'assigned'">
-                <CardHeader>
-                    <CardTitle>Design</CardTitle>
-                </CardHeader>
-                <CardContent class="space-y-4">
+                <div class="flex flex-col gap-1">
                     <p
-                        v-if="isPendingReview"
+                        v-for="log in review.revisionLogs"
+                        :key="log.id"
                         class="text-muted-foreground text-sm"
-                        data-test="design-pending-review-note"
                     >
-                        Waiting on the client's verdict.
+                        {{ new Date(log.submitted_at).toLocaleString() }}
+                        — {{ outcomeLabel(log.outcome) }}
                     </p>
-                    <div v-else-if="!design.canEdit" class="space-y-2">
-                        <img
-                            v-if="design.initialImageUrl"
-                            :src="design.initialImageUrl"
-                            alt="Approved design"
-                            class="w-full rounded-lg border"
-                        />
-                        <p class="text-muted-foreground text-sm">
-                            This design is locked.
-                        </p>
-                    </div>
-                    <div v-else-if="!started" class="flex items-center gap-2">
-                        <Button
-                            type="button"
-                            data-test="start-blank-canvas-button"
-                            @click="onStartBlankCanvas"
-                        >
-                            Start from Blank Canvas
-                        </Button>
-                        <Button
-                            type="button"
-                            data-test="import-reference-image-button"
-                            @click="fileInputRef?.click()"
-                        >
-                            Import Reference Image
-                        </Button>
-                        <input
-                            ref="fileInputRef"
-                            type="file"
-                            accept="image/*,.psd"
-                            class="hidden"
-                            @change="onReferenceFileChosen"
-                        />
-                    </div>
-                    <div v-else class="space-y-4">
-                        <ToastImageEditor
-                            ref="editorRef"
-                            :initial-image-url="editorInitialUrl"
-                        />
-                        <Button
-                            type="button"
-                            :disabled="sendForReviewForm.processing"
-                            data-test="send-for-review-button"
-                            @click="sendForReview"
-                        >
-                            Send for Review
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card v-if="review.canRecordVerdict">
-                <CardHeader>
-                    <CardTitle>Review</CardTitle>
-                </CardHeader>
-                <CardContent class="space-y-4">
-                    <div class="flex items-center gap-2">
-                        <AlertDialog>
-                            <AlertDialogTrigger as-child>
-                                <Button
-                                    type="button"
-                                    data-test="client-approved-button"
-                                >
-                                    Client Approved
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>
-                                        Approve this design?
-                                    </AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Once approved, this design file becomes
-                                        read-only. Only an Owner can unlock it
-                                        for further edits.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>
-                                        Cancel
-                                    </AlertDialogCancel>
-                                    <Form
-                                        v-bind="
-                                            DesignEditorController.approve.form(
-                                                jobOrder.id,
-                                            )
-                                        "
-                                        :options="{ preserveScroll: true }"
-                                        v-slot="{ processing }"
-                                    >
-                                        <Button
-                                            type="submit"
-                                            :disabled="processing"
-                                            data-test="confirm-approve-button"
-                                        >
-                                            Confirm Approval
-                                        </Button>
-                                    </Form>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-
-                        <Form
-                            v-bind="
-                                DesignEditorController.requestChanges.form(
-                                    jobOrder.id,
-                                )
-                            "
-                            :options="{ preserveScroll: true }"
-                            v-slot="{ processing }"
-                        >
-                            <Button
-                                type="submit"
-                                variant="outline"
-                                :disabled="processing"
-                                data-test="request-changes-button"
-                            >
-                                Client Requested Changes
-                            </Button>
-                        </Form>
-                    </div>
-
-                    <div class="flex flex-col gap-1">
-                        <p
-                            v-for="log in review.revisionLogs"
-                            :key="log.id"
-                            class="text-muted-foreground text-sm"
-                        >
-                            {{ new Date(log.submitted_at).toLocaleString() }}
-                            — {{ outcomeLabel(log.outcome) }}
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-    </div>
+                </div>
+            </CardContent>
+        </Card>
+    </PageContainer>
 </template>

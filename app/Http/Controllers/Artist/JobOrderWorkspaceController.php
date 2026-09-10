@@ -29,7 +29,19 @@ class JobOrderWorkspaceController extends Controller
                 'id' => $jobOrder->id,
                 'description' => $jobOrder->description,
                 'status' => $jobOrder->status->value,
+                'is_rush' => $jobOrder->is_rush,
                 'consultation_notes' => $jobOrder->consultation_notes,
+                // The customer's own words, captured at the counter. Read-only
+                // here: an artist records their own findings in
+                // consultation_notes rather than editing the brief they were
+                // given.
+                'client_notes' => $jobOrder->client_notes,
+                'print_size' => $jobOrder->print_size,
+                'material' => $jobOrder->material,
+                'quantity' => $jobOrder->quantity,
+                // Populated when a Type A file was too low-resolution for the
+                // size ordered -- this is the artist's brief for what to fix.
+                'validation_failure_reason' => $jobOrder->validation_failure_reason,
                 'canEditConsultation' => $jobOrder->status === JobOrderStatus::InConsultation,
             ],
             'design' => [

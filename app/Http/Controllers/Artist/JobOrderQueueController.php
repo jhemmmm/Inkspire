@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Artist;
 
+use App\Actions\JobOrder\ClaimJobOrderForArtist;
+use App\Enums\ArtistStatus;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Artist\UpdateJobOrderQueuePositionRequest;
@@ -14,6 +16,21 @@ use Inertia\Response;
 
 class JobOrderQueueController extends Controller
 {
+    /**
+     * The Artist's own queue order, shared by the dashboard list and by
+     * nextEligibleId() so the row the Artist sees on top is always the row
+     * the server will let them call next.
+     *
+     * Most recently accepted first -- an Artist pulls a job because they
+     * intend to start it, so it belongs where they are looking. A job they
+     * no longer want does not sink down this list, it leaves it entirely
+     * via forward().
+     *
+     * `accepted_at` falls back to `created_at` for rows assigned before the
+     * pull model existed.
+     */
+    private const string QUEUE_ORDER = 'COALESCE(accepted_at, created_at) DESC';
+
     /**
      * The artist's own dashboard queue — every in-progress job order
      * assigned to them, ordered oldest-first (deprioritized ones sort by
@@ -33,31 +50,65 @@ class JobOrderQueueController extends Controller
                     JobOrderStatus::QualityCheck->value,
                     JobOrderStatus::ReadyForPickup->value,
                 ])
-                ->orderByRaw('COALESCE(queue_deprioritized_at, created_at) ASC')
-                ->get(['id', 'description', 'status', 'not_appeared', 'created_at']),
+                ->orderByRaw(self::QUEUE_ORDER)
+                ->get(['id', 'description', 'status', 'created_at', 'is_rush']),
+            'availableJobOrders' => ClaimJobOrderForArtist::pool()
+                ->with('queueEntry.customer:id,name')
+                ->get(['id', 'number', 'description', 'queue_entry_id', 'created_at', 'is_rush']),
             'artistStatus' => $request->user()->artist_status,
         ]);
     }
 
     /**
-     * Claim the oldest eligible Assigned job order into in_consultation
-     * (D-04), or manually resume a not_appeared job order regardless of
-     * ordering.
+     * Accept an unclaimed Type B job order out of the shared pool.
+     *
+     * The claim itself is a compare-and-swap UPDATE inside
+     * ClaimJobOrderForArtist -- when two Artists press Accept on the same
+     * row at once exactly one of them gets `true` back, and the other is
+     * told, without any write having happened, that they lost.
+     *
+     * Losing the race is not an error state to abort on: the request was
+     * well-formed and authorized, it just arrived second. It redirects
+     * back with an error toast so the loser's pool list simply re-renders
+     * without that job order, rather than throwing an exception page at
+     * an Artist who did nothing wrong.
+     */
+    public function accept(UpdateJobOrderQueuePositionRequest $request, JobOrder $jobOrder, ClaimJobOrderForArtist $claim): RedirectResponse
+    {
+        $artist = $request->user();
+
+        abort_unless(
+            $artist->artist_status === ArtistStatus::Available,
+            422,
+            __('Set yourself to Available before accepting a job order.'),
+        );
+
+        if (! $claim($jobOrder, $artist)) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __('Another artist accepted that job order first.'),
+            ]);
+
+            return back();
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Job order accepted. It is now in your queue.')]);
+
+        return back();
+    }
+
+    /**
+     * Move the job order at the top of this artist's queue into
+     * in_consultation (D-04).
      */
     public function next(UpdateJobOrderQueuePositionRequest $request, JobOrder $jobOrder): RedirectResponse
     {
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
 
-        if (! $jobOrder->not_appeared) {
-            abort_unless($jobOrder->status === JobOrderStatus::Assigned, 422, 'This job order is not waiting to be called.');
-            abort_unless($this->oldestEligibleId($request->user()) === $jobOrder->id, 422, 'Another job order is next in your queue.');
-        }
+        abort_unless($jobOrder->status === JobOrderStatus::Assigned, 422, 'This job order is not waiting to be called.');
+        abort_unless($this->nextEligibleId($request->user()) === $jobOrder->id, 422, 'Another job order is next in your queue.');
 
-        $jobOrder->forceFill([
-            'status' => JobOrderStatus::InConsultation,
-            'not_appeared' => false,
-            'queue_deprioritized_at' => null,
-        ])->save();
+        $jobOrder->forceFill(['status' => JobOrderStatus::InConsultation])->save();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Job order moved to consultation.')]);
 
@@ -65,58 +116,46 @@ class JobOrderQueueController extends Controller
     }
 
     /**
-     * Forward an in-progress job order back into the Assigned pool,
-     * deprioritized to the back of the line, without reassigning it to
-     * another artist (D-03/D-04).
+     * Hand a job order back to the shared pool so a different Artist can
+     * take it — accepted by mistake, or better suited to someone else.
+     *
+     * The row returns to exactly the state the pool selects on (Intake,
+     * no artist, no acceptance stamp) and reappears in every available
+     * Artist's Available Jobs list. Consultation notes and any design file
+     * are deliberately left intact, so whoever picks it up inherits the
+     * work already done rather than starting the customer over.
      */
     public function forward(UpdateJobOrderQueuePositionRequest $request, JobOrder $jobOrder): RedirectResponse
     {
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
-        abort_unless($jobOrder->status === JobOrderStatus::InConsultation || $jobOrder->status->value === 'in_design', 422, 'This job order cannot be forwarded in its current status.');
+        abort_unless(
+            in_array($jobOrder->status, [JobOrderStatus::Assigned, JobOrderStatus::InConsultation, JobOrderStatus::InDesign], true),
+            422,
+            'This job order cannot be forwarded in its current status.',
+        );
 
         $jobOrder->forceFill([
-            'status' => JobOrderStatus::Assigned,
-            'queue_deprioritized_at' => now(),
+            'status' => JobOrderStatus::Intake,
+            'assigned_artist_id' => null,
+            'accepted_at' => null,
         ])->save();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Forwarded. This job order moves to the back of your queue.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Forwarded. Another artist can now accept this job order.')]);
 
         return back();
     }
 
     /**
-     * Mark a job order Not Appeared, removing it from Next's automatic
-     * oldest-first pool while it stays visible and directly resumable
-     * (D-04).
+     * The job order at the top of this artist's queue — independently
+     * re-derived server-side so a tampered request targeting a different
+     * row is rejected (T-04-02).
      */
-    public function notAppear(UpdateJobOrderQueuePositionRequest $request, JobOrder $jobOrder): RedirectResponse
-    {
-        abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
-        abort_unless($jobOrder->status === JobOrderStatus::InConsultation || $jobOrder->status->value === 'in_design', 422, 'This job order cannot be marked not-appeared in its current status.');
-
-        $jobOrder->forceFill([
-            'status' => JobOrderStatus::Assigned,
-            'queue_deprioritized_at' => now(),
-            'not_appeared' => true,
-        ])->save();
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Marked as not appeared. You can resume this job order any time from your dashboard.')]);
-
-        return back();
-    }
-
-    /**
-     * The oldest eligible Assigned, not-not_appeared job order for an
-     * artist — independently re-derived server-side so a tampered request
-     * targeting a non-oldest job order is rejected (T-04-02).
-     */
-    private function oldestEligibleId(User $artist): ?int
+    private function nextEligibleId(User $artist): ?int
     {
         return JobOrder::query()
             ->where('assigned_artist_id', $artist->id)
             ->where('status', JobOrderStatus::Assigned->value)
-            ->where('not_appeared', false)
-            ->orderByRaw('COALESCE(queue_deprioritized_at, created_at) ASC')
+            ->orderByRaw(self::QUEUE_ORDER)
             ->value('id');
     }
 }

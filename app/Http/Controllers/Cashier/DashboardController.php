@@ -21,6 +21,19 @@ class DashboardController extends Controller
      * guard added by Plan 05-05 so a cancelled job order no longer
      * appears as payable. Plan 05-07 (release) will extend this same
      * query with its own additional guard.
+     *
+     * Fully-paid job orders are rejected in PHP rather than in SQL, and
+     * deliberately so: this query is unpaginated and already fully
+     * materialised, and a `havingRaw` over the `amount_paid` alias has no
+     * GROUP BY to hang off (it is a correlated sub-select, not an
+     * aggregate). The predicate reuses the `withSum` over Completed
+     * transactions that already ran — there is exactly one definition of
+     * "paid" on this request, not two. The 0.005 epsilon absorbs the float
+     * dust a decimal cast leaves behind, so a peso-exact settlement is not
+     * left on the worklist by a rounding hair. `->values()` is mandatory:
+     * reject() preserves keys, and a gapped-key Collection serialises to
+     * Inertia as a JSON object, which breaks `v-for` and the
+     * `CashierJobOrder[]` prop type.
      */
     public function index(Request $request): Response
     {
@@ -48,7 +61,7 @@ class DashboardController extends Controller
                         ->select(['id', 'job_order_id', 'balance', 'status']),
                 ])
                 ->orderBy('created_at')
-                ->get(['id', 'number', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount'])
+                ->get(['id', 'number', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount', 'is_rush'])
                 // withSum's raw SQL aggregate arrives from PDO as a numeric
                 // string (or null with no completed transactions), unlike
                 // every other money value this phase passes to Inertia
@@ -56,7 +69,11 @@ class DashboardController extends Controller
                 // frontend never has to guess the runtime type.
                 ->each(fn (JobOrder $jobOrder) => $jobOrder->amount_paid = $jobOrder->amount_paid !== null
                     ? (float) $jobOrder->amount_paid
-                    : null),
+                    : null)
+                ->reject(fn (JobOrder $jobOrder) => $jobOrder->total_amount !== null
+                    && $jobOrder->amount_paid !== null
+                    && (float) $jobOrder->amount_paid >= (float) $jobOrder->total_amount - 0.005)
+                ->values(),
             // Mirrors the exact server-authoritative value CancellationController
             // reads, so the pre-confirmation dialog body (D-04/D-05) matches
             // what actually gets charged (informational display only).
