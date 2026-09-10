@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-09-10T01:26:20.636Z"
+status: completed
+last_updated: "2026-09-10T01:45:01.933Z"
 last_activity: 2026-09-10
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 59
-  completed_plans: 57
+  completed_plans: 58
   percent: 88
 ---
 
@@ -25,11 +25,11 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 ## Current Position
 
 Phase: 08 (expenses-reporting) — EXECUTING
-Plan: 3 of 5
-Status: Ready to execute
+Plan: 4 of 5
+Status: BLOCKED — 08-04 Task 2/3 (openspout xlsx export) blocked by missing ext-zip PHP extension in this environment. Tasks 1 and 3 (dompdf PDF export, collection letter PDF) complete and committed. See 08-04-SUMMARY.md and deferred-items.md.
 Last activity: 2026-09-10
 
-Progress: [██████████] 97%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [██████████] 97%
 | Phase 02 P05 | 9min | 2 tasks | 5 files |
 | Phase 08 P02 | 33min | 2 tasks | 3 files |
 | Phase 08 P03 | 45min | 2 tasks | 13 files |
+| Phase 08 P04 | 20min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ Recent decisions affecting current work:
 - [Phase 08]: 08-03: ReportBuilder type-hints Carbon\CarbonInterface, since Date::use(CarbonImmutable::class) makes now() return CarbonImmutable app-wide
 - [Phase 08]: 08-03: financial-summary's write_off_total sums JobOrder::outstandingBalance() per written-off AccountsReceivable row, never the stored balance column
 - [Phase 08]: 08-03: Owner's reports.index route lives in a SECOND, owner-only role:owner group in routes/owner.php, separate from the existing role:owner,admin group (D-05)
+- [Phase ?]: [Phase 08]: 08-04: dompdf page numbering uses isPhpEnabled/script-text-php per-PDF-instance, not global config
+- [Phase ?]: [Phase 08]: 08-04: CollectionLetterController::pdf() adds a third guard (404 on Current bracket) beyond show()'s two verbatim-copied lines, since letterBody() throws for Current
+- [Phase ?]: [Phase 08]: 08-04: Task 2 (openspout xlsx export) blocked -- ext-zip PHP extension unavailable for PHP 8.4 in this environment, no apt package or root access; composer.json/lock auto-reverted by Composer
 
 ### Pending Todos
 
@@ -132,6 +136,7 @@ None yet.
 - Phase 3 (Job Order Intake): Ghostscript/Imagick availability on Laravel Cloud for vector-format (PDF/AI/EPS) DPI reads is unverified — confirm before locking Type A validation scope; fallback is routing those formats to Type B regardless of technical readiness.
 - Phase 1 (Foundation): Laravel Cloud's managed-MySQL support for a restricted-privilege DB user (audit-trail DB-grant enforcement) is unverified — needs direct verification; have a MySQL-trigger fallback ready.
 - Phase 5 (POS & Payments): Highest pitfall density in the project (PayMongo webhook signature verification, idempotency, reconciliation fallback) — flagged for deeper research during planning.
+- Phase 08-04 Task 2 (openspout xlsx export) blocked: ext-zip PHP extension unavailable for PHP 8.4 in this environment. See .planning/phases/08-expenses-reporting/deferred-items.md
 
 ## Deferred Items
 
@@ -144,6 +149,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-10T01:26:20.631Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-09-10T01:45:01.928Z
+Stopped at: Partial — 08-04-PLAN.md Tasks 1 and 3 complete; Task 2 (openspout xlsx export) blocked by missing ext-zip PHP extension in this environment
 Resume file: None

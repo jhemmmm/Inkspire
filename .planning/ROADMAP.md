@@ -335,7 +335,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 08-04-PLAN.md — Export Pipeline: PDF (dompdf) + Excel (openspout) + audit logging + Collection Letter PDF (RPT-05)
+- [x] 08-04-PLAN.md — Export Pipeline: PDF (dompdf) + Excel (openspout) + audit logging + Collection Letter PDF (RPT-05)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -357,4 +357,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. POS & Payments | 7/7 | Complete    | 2026-09-05 |
 | 6. Production Monitoring & Public Tracking | 7/7 | Complete   | 2026-09-06 |
 | 7. Accounts Receivable | 8/8 | Complete    | 2026-09-09 |
-| 8. Expenses & Reporting | 3/5 | In Progress|  |
+| 8. Expenses & Reporting | 4/5 | In Progress|  |
