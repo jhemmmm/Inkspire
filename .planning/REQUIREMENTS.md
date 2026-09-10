@@ -73,7 +73,7 @@
 - [x] **RPT-02**: Cashier can view Daily Sales & Cancellation reports
 - [x] **RPT-03**: Production Staff can view a Production Status report
 - [x] **RPT-04**: Accounting Staff can view Daily/Monthly Sales, Daily/Monthly Expenses, and Summary of Sales & Expenses reports
-- [ ] **RPT-05**: Any role-scoped report can be exported to PDF or Excel
+- [x] **RPT-05**: Any role-scoped report can be exported to PDF or Excel
 
 ### Audit Trail
 
