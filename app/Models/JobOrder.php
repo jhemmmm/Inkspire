@@ -17,10 +17,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
  * @property string|null $number
+ * @property string $tracking_token
  * @property int $queue_entry_id
  * @property string $description
  * @property string|null $print_size
@@ -66,6 +68,23 @@ class JobOrder extends Model
 {
     /** @use HasFactory<JobOrderFactory> */
     use HasFactory;
+
+    /**
+     * Assign the public tracking token every job order needs (QR-01).
+     *
+     * `tracking_token` is deliberately absent from #[Fillable]: nothing
+     * request-driven may ever choose it. This hook assigns the attribute
+     * directly, which is not mass assignment, and it is why factories,
+     * seeders and controllers all get a token for free without any of them
+     * knowing the column exists. `??=` so an explicitly-set token (a test
+     * pinning a known value) is respected rather than clobbered.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (JobOrder $jobOrder): void {
+            $jobOrder->tracking_token ??= Str::random(32);
+        });
+    }
 
     /**
      * Get the attributes that should be cast.

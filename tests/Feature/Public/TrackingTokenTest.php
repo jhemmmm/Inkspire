@@ -89,9 +89,17 @@ test('the response leaks no customer pii, pricing, payment or raw status value',
     $response->assertDontSee('quality_check', false);
     $response->assertDontSee('payment_status', false);
     $response->assertDontSee('total_amount', false);
-    // The token is a bearer credential printed on a paper slip. It must never
-    // be echoed back onto a public surface.
-    $response->assertDontSee($jobOrder->tracking_token, false);
+    // The token is a bearer credential printed on a paper slip, so it must
+    // never be selected back out of the database into the payload we control.
+    // It does still appear once, inside Inertia's own `url` property, which
+    // is simply the request path the visitor already has in their address
+    // bar — that echo is unavoidable and discloses nothing they did not
+    // already hold. Pinning the count at exactly one is what makes a genuine
+    // re-selection of the column fail this test.
+    $props = $response->viewData('page')['props'];
+    expect(json_encode($props['result']))->not->toContain($jobOrder->tracking_token);
+    expect(substr_count($response->getContent(), $jobOrder->tracking_token))->toBe(1);
+    expect($response->viewData('page')['url'])->toContain($jobOrder->tracking_token);
 });
 
 test('a job order awaiting a verdict offers a freshly signed design review link', function () {

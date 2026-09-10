@@ -30,6 +30,14 @@ Route::get('track', [TrackingController::class, 'show'])
     ->middleware('throttle:120,1')
     ->name('public.tracking.show');
 
+// The QR-scan entry point to that same boundary (QR-01/QR-02) — the token
+// printed on the customer's handoff slip stands in for typing a job order
+// number. Also deliberately outside every auth/role:* group, and throttled
+// identically to its neighbour above for the same per-IP/NAT reasons.
+Route::get('track/{token}', [TrackingController::class, 'showByToken'])
+    ->middleware('throttle:120,1')
+    ->name('public.tracking.token');
+
 // Public, unauthenticated, signed-URL-protected (D-17 through D-21) — the
 // client's remote design-review path, reached only via an emailed
 // temporarySignedRoute() link. Deliberately outside every role:* group.
