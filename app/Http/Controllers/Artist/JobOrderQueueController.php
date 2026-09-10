@@ -21,15 +21,23 @@ class JobOrderQueueController extends Controller
      * nextEligibleId() so the row the Artist sees on top is always the row
      * the server will let them call next.
      *
-     * Most recently accepted first -- an Artist pulls a job because they
-     * intend to start it, so it belongs where they are looking. A job they
-     * no longer want does not sink down this list, it leaves it entirely
-     * via forward().
+     * Rush leads, matching the shared pool (ClaimJobOrderForArtist::pool()).
+     * Below that, most recently accepted first -- an Artist pulls a job
+     * because they intend to start it, so it belongs where they are looking.
+     * A job they no longer want does not sink down this list, it leaves it
+     * entirely via forward().
+     *
+     * The rush key MUST stay in this one constant rather than being added to
+     * the listing query alone. Both the list and nextEligibleId() read it,
+     * and the Next button is authorised by re-deriving the top row
+     * server-side (T-04-02): if the two orders ever disagree, the button on
+     * the row the Artist can see is rejected with "Another job order is next
+     * in your queue" and the queue becomes unworkable.
      *
      * `accepted_at` falls back to `created_at` for rows assigned before the
      * pull model existed.
      */
-    private const string QUEUE_ORDER = 'COALESCE(accepted_at, created_at) DESC';
+    private const string QUEUE_ORDER = 'is_rush DESC, COALESCE(accepted_at, created_at) DESC';
 
     /**
      * The artist's own dashboard queue — every in-progress job order
