@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"  @class(['dark' => ($appearance ?? 'system') == 'dark'])>
+{{-- The landing page and the brand-panel auth screens have no dark design. Keep in step with isLightOnlyPage() in useAppearance.ts. --}}
+@php($lightOnly = $page['component'] === 'Welcome' || str_starts_with($page['component'], 'auth/') || str_starts_with($page['component'], 'errors/'))
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"  @class(['dark' => ! $lightOnly && ($appearance ?? 'system') == 'dark'])>
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +11,7 @@
             (function() {
                 const appearance = '{{ $appearance ?? "system" }}';
 
-                if (appearance === 'system') {
+                if (appearance === 'system' && ! @json($lightOnly)) {
                     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
                     if (prefersDark) {

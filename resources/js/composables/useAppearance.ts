@@ -1,3 +1,4 @@
+import { router } from '@inertiajs/vue3';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, onMounted, ref } from 'vue';
 import type { Appearance, ResolvedAppearance } from '@/types';
@@ -10,24 +11,36 @@ export type UseAppearanceReturn = {
     updateAppearance: (value: Appearance) => void;
 };
 
+/**
+ * The landing page and the brand-panel auth screens were designed on white
+ * and have no dark variant, so they stay light whatever the saved
+ * appearance. Keep in step with `$lightOnly` in app.blade.php, which does
+ * the same for the first paint.
+ */
+export function isLightOnlyPage(component: string): boolean {
+    return (
+        component === 'Welcome' ||
+        component.startsWith('auth/') ||
+        component.startsWith('errors/')
+    );
+}
+
+let onLightOnlyPage = false;
+
 export function updateTheme(value: Appearance): void {
     if (typeof window === 'undefined') {
         return;
     }
 
-    if (value === 'system') {
-        const mediaQueryList = window.matchMedia(
-            '(prefers-color-scheme: dark)',
-        );
-        const systemTheme = mediaQueryList.matches ? 'dark' : 'light';
+    const isDark =
+        value === 'system'
+            ? window.matchMedia('(prefers-color-scheme: dark)').matches
+            : value === 'dark';
 
-        document.documentElement.classList.toggle(
-            'dark',
-            systemTheme === 'dark',
-        );
-    } else {
-        document.documentElement.classList.toggle('dark', value === 'dark');
-    }
+    document.documentElement.classList.toggle(
+        'dark',
+        isDark && !onLightOnlyPage,
+    );
 }
 
 const setCookie = (name: string, value: string, days = 365) => {
@@ -82,9 +95,12 @@ export function initializeTheme(): void {
         return;
     }
 
-    // Initialize theme from saved preference or default to light...
-    const savedAppearance = getStoredAppearance();
-    updateTheme(savedAppearance || 'light');
+    // Re-apply the saved preference (or light) on every visit, the initial
+    // load included, so leaving a light-only page restores the user's theme...
+    router.on('navigate', (event) => {
+        onLightOnlyPage = isLightOnlyPage(event.detail.page.component);
+        updateTheme(getStoredAppearance() || 'light');
+    });
 
     // Set up system theme change listener...
     mediaQuery()?.addEventListener('change', handleSystemThemeChange);

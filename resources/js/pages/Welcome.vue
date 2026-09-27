@@ -172,7 +172,7 @@ const PROCESS = [
                 <img
                     src="/logo.png"
                     alt="Inkspire"
-                    class="h-8 w-auto object-contain dark:brightness-0 dark:invert"
+                    class="h-8 w-auto object-contain"
                 />
 
                 <nav class="flex items-center gap-1 sm:gap-2">
