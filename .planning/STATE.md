@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 Phase: 08
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-09-27 - Completed quick task 260927-va3: Fix code-review bugs (pricing lock, credit pricing, DPI dims, written-off outstanding)
+Last activity: 2026-09-27 - Completed quick task 260927-wca: Print-shop ink panel redesign
 
 Progress: [██████████] 100%
 
@@ -158,6 +158,7 @@ None yet.
 | 260927-ts2 | Price at intake (W×H × qty × rate, quoted_amount), drop Material, price columns + Admin Job Orders page                                            | 2026-09-27 | uncommitted | [260927-ts2-price-at-intake-drop-material-price-colu](./quick/260927-ts2-price-at-intake-drop-material-price-colu/) |
 | 260927-va3 | Fix code-review bugs: one pricing-lock rule (cash/PayMongo/credit/payment page), DPI check uses intake W×H, admin outstanding excludes written-off | 2026-09-27 | uncommitted | [260927-va3-fix-code-review-bugs-pricing-lock-credit](./quick/260927-va3-fix-code-review-bugs-pricing-lock-credit/) |
 | 260927-fx1 | Fix parseNumber crash on numeric input (NewVisit quantity/price + service select reset) | 2026-09-27 | uncommitted | fast |
+| 260927-wca | Print-shop ink panel redesign: navy sidebar, CMYK hero band, ink stat chips, subtle motion | 2026-09-27 | fa1314a | [260927-wca-print-shop-ink-redesign-of-the-portal-sh](./quick/260927-wca-print-shop-ink-redesign-of-the-portal-sh/) |
 
 ## Deferred Items
 
