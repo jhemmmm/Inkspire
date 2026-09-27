@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, usePage } from '@inertiajs/vue3';
-import { Clock, Lock, Pencil, Plus } from '@lucide/vue';
+import { Clock, Lock, Pencil, Plus, UserX } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import UserManagementController from '@/actions/App/Http/Controllers/Admin/UserManagementController';
 import InputError from '@/components/InputError.vue';
@@ -106,6 +106,11 @@ defineProps<{
     users: ManagedUser[];
 }>();
 
+/**
+ * Controlled so a successful create can close it; left uncontrolled, the
+ * dialog stayed open over the new row with the submitted values still in it.
+ */
+const createDialogOpen = ref(false);
 const newUserRole = ref('');
 
 const page = usePage();
@@ -151,7 +156,7 @@ defineOptions({
             description="Create staff accounts and control who can still sign in. Accounts are deactivated, never deleted, so their audit history stays intact."
         >
             <template #actions>
-                <Dialog>
+                <Dialog v-model:open="createDialogOpen">
                     <DialogTrigger as-child>
                         <Button
                             data-test="new-user-button"
@@ -167,6 +172,7 @@ defineOptions({
                             :options="{ preserveScroll: true }"
                             class="space-y-4"
                             v-slot="{ errors, processing }"
+                            @success="createDialogOpen = false"
                         >
                             <DialogHeader>
                                 <DialogTitle>Create a new user</DialogTitle>
@@ -370,7 +376,8 @@ defineOptions({
                                             variant="destructive"
                                             :data-test="`deactivate-user-${user.id}-button`"
                                         >
-                                            Deactivate Account
+                                            <UserX class="size-4" />
+                                            Deactivate
                                         </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
