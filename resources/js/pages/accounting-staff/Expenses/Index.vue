@@ -305,6 +305,7 @@ function openVoidDialog(row: ExpenseRow): void {
             :label="`Total for ${rangeLabel}`"
             :value="money(total)"
             :hint="totalHint"
+            ink="yellow"
         />
 
         <DataTableCard>

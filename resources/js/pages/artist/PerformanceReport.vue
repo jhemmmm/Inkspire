@@ -172,6 +172,7 @@ function clearFilters(): void {
                 label="Avg. Revisions per Job"
                 hint="Rounds of changes before approval"
                 :icon="Repeat2"
+                ink="magenta"
             />
 
             <StatCard
@@ -179,6 +180,7 @@ function clearFilters(): void {
                 label="SLA Adherence"
                 :hint="`Approved within ${daysLabel(stats.slaDays)} of intake`"
                 :icon="Target"
+                ink="key"
             />
         </div>
 

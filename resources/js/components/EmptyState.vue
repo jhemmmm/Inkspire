@@ -23,9 +23,9 @@ const props = defineProps<{
     >
         <span
             v-if="icon"
-            class="bg-muted text-muted-foreground flex size-10 items-center justify-center rounded-full"
+            class="from-primary/15 via-ink-cyan/10 to-ink-magenta/15 text-primary ring-primary/15 mb-1 flex size-12 items-center justify-center rounded-2xl bg-linear-to-br ring-1 ring-inset"
         >
-            <component :is="icon" class="size-5" />
+            <component :is="icon" class="size-6" />
         </span>
         <p class="font-semibold">{{ title }}</p>
         <p v-if="description" class="text-muted-foreground max-w-prose text-sm">

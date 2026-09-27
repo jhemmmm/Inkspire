@@ -182,7 +182,7 @@ function actionLabel(action: string): string {
                     :hint="tile.hint"
                     :icon="tile.icon"
                     :tone="tile.value > 0 ? 'attention' : 'default'"
-                    class="hover:border-primary/40 transition-colors"
+                    ink="magenta"
                 />
             </Link>
         </div>
@@ -210,12 +210,14 @@ function actionLabel(action: string): string {
                 :value="money(shop.outstandingAmount)"
                 :hint="`Still owed across ${shop.unpaidJobOrders} job order(s).`"
                 :icon="Wallet"
+                ink="yellow"
             />
             <StatCard
                 label="Active Staff"
                 :value="`${shop.activeStaff} / ${shop.totalStaff}`"
                 hint="Accounts that can sign in today."
                 :icon="UserCheck"
+                ink="magenta"
             />
         </div>
 

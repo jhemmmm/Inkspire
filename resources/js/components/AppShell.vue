@@ -18,7 +18,16 @@ const isOpen = usePage().props.sidebarOpen;
     <div v-if="variant === 'header'" class="flex min-h-screen w-full flex-col">
         <slot />
     </div>
-    <SidebarProvider v-else :default-open="isOpen">
+    <!--
+        The inset variant paints the navy sidebar colour behind the whole
+        page; drop it in print so receipts and letters don't come out on a
+        navy sheet when "background graphics" is on.
+    -->
+    <SidebarProvider
+        v-else
+        :default-open="isOpen"
+        class="print:has-data-[variant=inset]:bg-transparent"
+    >
         <slot />
     </SidebarProvider>
 </template>

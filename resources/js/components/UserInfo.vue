@@ -27,17 +27,24 @@ const showAvatar = computed(
 <template>
     <Avatar class="h-8 w-8 overflow-hidden rounded-lg">
         <AvatarImage v-if="showAvatar" :src="user.avatar!" :alt="user.name" />
-        <AvatarFallback class="rounded-lg text-black dark:text-white">
+        <AvatarFallback
+            class="from-ink-cyan to-primary text-primary-foreground rounded-lg bg-linear-to-br font-semibold"
+        >
             {{ getInitials(user.name) }}
         </AvatarFallback>
     </Avatar>
 
+    <!--
+        Secondary lines dim with `opacity` rather than `text-muted-foreground`
+        so they inherit whatever ground they sit on: the navy sidebar and the
+        white dropdown both stay legible.
+    -->
     <div class="grid flex-1 text-left text-sm leading-tight">
         <span class="truncate font-medium">{{ user.name }}</span>
-        <span v-if="showEmail" class="text-muted-foreground truncate text-xs">{{
+        <span v-if="showEmail" class="truncate text-xs opacity-70">{{
             user.email
         }}</span>
-        <span v-if="showRole" class="text-muted-foreground truncate text-xs">{{
+        <span v-if="showRole" class="truncate text-xs opacity-70">{{
             roleLabel(user.role)
         }}</span>
     </div>

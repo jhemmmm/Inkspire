@@ -127,7 +127,7 @@ function scalarValue(value: unknown): string | number {
                 <div
                     v-for="row in configurations[group.value] ?? []"
                     :key="row.key"
-                    class="border-sidebar-border/70 dark:border-sidebar-border rounded-xl border p-4"
+                    class="border-border/70 dark:border-border rounded-xl border p-4"
                 >
                     <Heading
                         variant="small"

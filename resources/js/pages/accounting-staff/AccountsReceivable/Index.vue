@@ -245,6 +245,7 @@ function dueSubLine(row: AccountsReceivableRow): string {
                 :value="money(summaryFor(bracket).total)"
                 :tone="bracket === 'ninety_plus' ? 'attention' : 'default'"
                 :hint="entryCountLabel(summaryFor(bracket).count)"
+                ink="yellow"
             />
         </div>
 

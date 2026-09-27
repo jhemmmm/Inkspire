@@ -44,6 +44,11 @@
     --color-brand: var(--brand);
     --color-brand-foreground: var(--brand-foreground);
 
+    --color-ink-cyan: var(--ink-cyan);
+    --color-ink-magenta: var(--ink-magenta);
+    --color-ink-yellow: var(--ink-yellow);
+    --color-ink-key: var(--ink-key);
+
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -116,6 +121,26 @@
   Keep that split. Two near-identical reds are only safe while a red button
   can mean exactly one thing, and the moment a brand-red button ships next to
   a destructive-red one, neither reads.
+
+  The four `--ink-*` tokens are the shop's process colours -- cyan, magenta,
+  yellow, key -- used as accents on stat tiles, section marks and the colour
+  bar across each page header. Each carries a meaning so a colour reads the
+  same in every portal:
+
+      cyan    work in flow (queue, jobs, production, designs)
+      magenta people and decisions (staff, approvals)
+      yellow  money (outstanding, collected, expenses)
+      key     records and performance figures
+
+  Yellow is an ochre, not a true process yellow: real #ffec00 is 1.2:1 on
+  white and would vanish as an icon.
+
+  The sidebar is a deep navy frame in both themes. `--sidebar-primary` is the
+  brand red lifted for that navy ground (the logo red is 2.4:1 on it) and
+  only ever draws marks, never controls: the active-page rail and the
+  page-load bar. Never borrow a `--sidebar-*` token for page content -- they
+  are navy now, so a card border on `border-sidebar-border` turns slate.
+  Content borders use `--border`.
 */
 :root {
     --background: hsl(220 30% 98.5%);
@@ -144,16 +169,20 @@
     --chart-3: hsl(219.7 82.2% 64.7%);
     --chart-4: hsl(14 80% 57%);
     --chart-5: hsl(219.2 62% 76.3%);
+    --ink-cyan: hsl(191 88% 34%);
+    --ink-magenta: hsl(323 72% 44%);
+    --ink-yellow: hsl(36 95% 34%);
+    --ink-key: hsl(222 30% 18%);
     --radius: 0.75rem;
-    --sidebar-background: hsl(0 0% 100%);
-    --sidebar-foreground: hsl(225 12% 38%);
-    --sidebar-primary: hsl(223.6 69.2% 33.1%);
+    --sidebar-background: hsl(225 62% 15%);
+    --sidebar-foreground: hsl(222 35% 82%);
+    --sidebar-primary: hsl(0 85% 62%);
     --sidebar-primary-foreground: hsl(0 0% 100%);
-    --sidebar-accent: hsl(220 40% 96.5%);
-    --sidebar-accent-foreground: hsl(225 71.4% 27.5%);
-    --sidebar-border: hsl(220 20% 87%);
-    --sidebar-ring: hsl(223.6 69.2% 33.1%);
-    --sidebar: hsl(0 0% 100%);
+    --sidebar-accent: hsl(225 50% 23%);
+    --sidebar-accent-foreground: hsl(0 0% 100%);
+    --sidebar-border: hsl(225 45% 22%);
+    --sidebar-ring: hsl(189 80% 56%);
+    --sidebar: hsl(225 62% 15%);
 }
 
 /*
@@ -189,15 +218,19 @@
     --chart-3: hsl(255 70% 72%);
     --chart-4: hsl(172 60% 52%);
     --chart-5: hsl(43 84% 66%);
-    --sidebar-background: hsl(225 22% 9.5%);
-    --sidebar-foreground: hsl(222 16% 76%);
-    --sidebar-primary: hsl(224 76% 66%);
-    --sidebar-primary-foreground: hsl(225 40% 10%);
-    --sidebar-accent: hsl(225 18% 18%);
-    --sidebar-accent-foreground: hsl(220 25% 94%);
-    --sidebar-border: hsl(225 14% 21%);
-    --sidebar-ring: hsl(224 76% 66%);
-    --sidebar: hsl(225 22% 9.5%);
+    --ink-cyan: hsl(189 80% 56%);
+    --ink-magenta: hsl(322 78% 70%);
+    --ink-yellow: hsl(44 92% 60%);
+    --ink-key: hsl(220 18% 86%);
+    --sidebar-background: hsl(226 42% 10%);
+    --sidebar-foreground: hsl(222 25% 78%);
+    --sidebar-primary: hsl(0 79% 63%);
+    --sidebar-primary-foreground: hsl(0 0% 100%);
+    --sidebar-accent: hsl(226 38% 17%);
+    --sidebar-accent-foreground: hsl(220 25% 97%);
+    --sidebar-border: hsl(226 30% 18%);
+    --sidebar-ring: hsl(189 80% 56%);
+    --sidebar: hsl(226 42% 10%);
 }
 
 @layer base {

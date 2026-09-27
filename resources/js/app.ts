@@ -25,7 +25,9 @@ void createInertiaApp({
         }
     },
     progress: {
-        color: '#4B5563',
+        // The brand red lifted for the navy frame the bar crosses; Inertia
+        // interpolates this straight into CSS, so a token follows the theme.
+        color: 'var(--sidebar-primary)',
     },
 });
 

@@ -4,6 +4,8 @@ import type { Component, HTMLAttributes } from 'vue';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
+type Ink = 'cyan' | 'magenta' | 'yellow' | 'key';
+
 const props = withDefaults(
     defineProps<{
         label: string;
@@ -12,9 +14,42 @@ const props = withDefaults(
         icon?: Component;
         /** `attention` is for figures that are bad news when non-zero. */
         tone?: 'default' | 'attention';
+        /**
+         * The process colour for the icon chip, by what the figure counts —
+         * cyan work, magenta people and decisions, yellow money, key
+         * records. See the ink note in app.css.
+         */
+        ink?: Ink;
         class?: HTMLAttributes['class'];
     }>(),
-    { tone: 'default' },
+    { tone: 'default', ink: 'cyan' },
+);
+
+const INK_CLASSES: Record<Ink | 'attention', { chip: string; glow: string }> = {
+    cyan: {
+        chip: 'bg-ink-cyan/12 text-ink-cyan ring-ink-cyan/25',
+        glow: 'bg-ink-cyan/12',
+    },
+    magenta: {
+        chip: 'bg-ink-magenta/12 text-ink-magenta ring-ink-magenta/25',
+        glow: 'bg-ink-magenta/12',
+    },
+    yellow: {
+        chip: 'bg-ink-yellow/12 text-ink-yellow ring-ink-yellow/25',
+        glow: 'bg-ink-yellow/12',
+    },
+    key: {
+        chip: 'bg-ink-key/10 text-ink-key ring-ink-key/20',
+        glow: 'bg-ink-key/8',
+    },
+    attention: {
+        chip: 'bg-destructive/12 text-destructive ring-destructive/25',
+        glow: 'bg-destructive/14',
+    },
+};
+
+const inkClasses = computed(
+    () => INK_CLASSES[props.tone === 'attention' ? 'attention' : props.ink],
 );
 
 /**
@@ -48,13 +83,33 @@ const valueSizeClass = computed((): string => {
 </script>
 
 <template>
-    <Card :class="cn('h-full', props.class)">
-        <CardContent class="flex items-start gap-4">
+    <!--
+        Only a tile that is itself a link lifts on hover: a bare tile that
+        moved under the cursor would promise a click that does nothing.
+    -->
+    <Card
+        :class="
+            cn(
+                'relative h-full transition duration-200 motion-reduce:transition-none [a:hover>&]:shadow-md motion-safe:[a:hover>&]:-translate-y-0.5',
+                tone === 'attention'
+                    ? 'border-destructive/40 [a:hover>&]:border-destructive/60'
+                    : '[a:hover>&]:border-primary/40',
+                props.class,
+            )
+        "
+    >
+        <span
+            aria-hidden="true"
+            class="pointer-events-none absolute -top-12 -right-12 size-28 rounded-full blur-2xl print:hidden"
+            :class="inkClasses.glow"
+        />
+        <CardContent class="relative flex items-start gap-4">
             <span
                 v-if="icon"
-                class="bg-accent text-accent-foreground flex size-9 shrink-0 items-center justify-center rounded-lg"
+                class="flex size-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset"
+                :class="inkClasses.chip"
             >
-                <component :is="icon" class="size-[18px]" />
+                <component :is="icon" class="size-5" />
             </span>
             <div class="flex min-w-0 flex-col gap-1">
                 <!--

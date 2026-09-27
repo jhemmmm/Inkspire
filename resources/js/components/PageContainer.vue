@@ -17,11 +17,15 @@ const props = defineProps<{
         and no `overflow-x-auto`, because that made a wide table drag the
         page heading and filters sideways with it. Wide content scrolls
         inside its own box instead -- see DataTableCard.
+
+        Each page visit fades the content up into place. tw-animate's fill
+        mode is `none`, so no transform lingers after 300ms to trap a
+        sticky footer or a fixed child.
     -->
     <div
         :class="
             cn(
-                'mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8',
+                'animate-in fade-in slide-in-from-bottom-2 mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-6 p-4 duration-300 ease-out motion-reduce:animate-none sm:p-6 lg:p-8',
                 props.class,
             )
         "

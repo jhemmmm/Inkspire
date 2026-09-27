@@ -26,11 +26,17 @@ const { isCurrentUrl } = useCurrentUrl();
         </SidebarGroupLabel>
         <SidebarMenu>
             <SidebarMenuItem v-for="item in items" :key="item.title">
+                <!--
+                    The active page gets a brand-red rail that grows in from
+                    its centre -- a "you are here" mark, not a control fill,
+                    so it stays on the identity side of the brand/destructive
+                    split in app.css.
+                -->
                 <SidebarMenuButton
                     as-child
                     :is-active="isCurrentUrl(item.href)"
                     :tooltip="item.title"
-                    class="h-11 gap-3 px-3 text-[15px] font-medium [&>svg]:size-5"
+                    class="before:bg-sidebar-primary data-[active=true]:text-sidebar-accent-foreground relative h-11 gap-3 px-3 text-[15px] font-medium before:absolute before:inset-y-2 before:left-0 before:w-1 before:scale-y-0 before:rounded-r-full before:transition-transform before:duration-200 data-[active=true]:font-semibold data-[active=true]:before:scale-y-100 motion-reduce:before:transition-none [&>svg]:size-5"
                 >
                     <Link :href="item.href">
                         <component :is="item.icon" />

@@ -16,7 +16,7 @@ withDefaults(
 
 <template>
     <header
-        class="bg-card border-border flex h-16 shrink-0 items-center justify-between gap-2 border-b px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-14 md:px-4 print:hidden"
+        class="bg-card border-border flex h-16 shrink-0 items-center justify-between gap-2 border-b px-6 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-14 md:rounded-t-xl md:px-4 print:hidden"
     >
         <div class="flex min-w-0 items-center gap-2">
             <SidebarTrigger class="-ml-1" />

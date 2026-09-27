@@ -50,7 +50,7 @@ const navItems = computed(() => props.items ?? defaultNavItems);
             <NavMain :items="navItems" />
         </SidebarContent>
 
-        <SidebarFooter>
+        <SidebarFooter class="border-sidebar-border border-t">
             <NavUser />
         </SidebarFooter>
     </Sidebar>

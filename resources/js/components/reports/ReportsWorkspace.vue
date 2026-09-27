@@ -338,7 +338,7 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                     :class="
                         key === selected
                             ? 'border-primary'
-                            : 'border-sidebar-border/70 dark:border-sidebar-border'
+                            : 'border-border/70 dark:border-border'
                     "
                     @click="selectReport(key)"
                 >
@@ -548,7 +548,7 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
 
                     <template v-else>
                         <div
-                            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
+                            class="border-border/70 dark:border-border overflow-hidden rounded-xl border"
                         >
                             <Table>
                                 <TableHeader>

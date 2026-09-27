@@ -408,6 +408,7 @@ function artistStatusLabel(artistStatus: string): string {
                 :value="availableJobOrders.length"
                 hint="First to accept gets the job"
                 :icon="Inbox"
+                ink="magenta"
             />
             <StatCard
                 label="Rush"

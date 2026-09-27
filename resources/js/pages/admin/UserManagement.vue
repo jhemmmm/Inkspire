@@ -293,7 +293,7 @@ defineOptions({
                     <tr
                         v-for="user in users"
                         :key="user.id"
-                        class="border-sidebar-border/70 dark:border-sidebar-border border-t"
+                        class="border-border/70 dark:border-border border-t"
                     >
                         <td class="p-4">{{ user.name }}</td>
                         <td class="p-4">{{ user.email }}</td>
