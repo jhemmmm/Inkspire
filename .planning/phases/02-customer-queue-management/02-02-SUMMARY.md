@@ -6,54 +6,54 @@ tags: [laravel, eloquent, db-locking, pest, inertia, file-upload]
 
 # Dependency graph
 requires:
-  - phase: 02-customer-queue-management (plan 02-01)
-    provides: "customers table + Customer model, frontline-staff route group/portal shell, Form Request + Validation Concern trait pattern"
+    - phase: 02-customer-queue-management (plan 02-01)
+      provides: 'customers table + Customer model, frontline-staff route group/portal shell, Form Request + Validation Concern trait pattern'
 provides:
-  - "queue_entries/job_orders tables + QueueEntry/JobOrder models, enums (QueueStatus, JobOrderType, JobOrderStatus), and factories"
-  - "QueueEntry::currentBusinessDate()/nextForBusinessDay() — the single source of truth for the Asia/Manila business-day boundary and the concurrency-safe daily counter, reused by every later Phase 2 plan that needs 'today'"
-  - "QueueEntryController::store() — the transactional combined queue-number + job-order intake endpoint (frontline-staff.queue-entries.store)"
-  - "CustomerController::index()'s confirmedQueueEntry prop, ready for Plan 02-03's UI to render the post-save confirmation"
+    - 'queue_entries/job_orders tables + QueueEntry/JobOrder models, enums (QueueStatus, JobOrderType, JobOrderStatus), and factories'
+    - "QueueEntry::currentBusinessDate()/nextForBusinessDay() — the single source of truth for the Asia/Manila business-day boundary and the concurrency-safe daily counter, reused by every later Phase 2 plan that needs 'today'"
+    - 'QueueEntryController::store() — the transactional combined queue-number + job-order intake endpoint (frontline-staff.queue-entries.store)'
+    - "CustomerController::index()'s confirmedQueueEntry prop, ready for Plan 02-03's UI to render the post-save confirmation"
 affects: [02-03, 02-04, 02-05]
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "DB::transaction() + lockForUpdate() over an indexed date column for a concurrency-safe daily-reset counter, with a composite unique(queue_date, queue_number) index as defense-in-depth — no new table beyond the approved 12-table ERD"
-    - "whereDate() (not a plain where()) when comparing against a 'date'-cast Eloquent column in a raw query — the cast's fromDateTime() serializes with a time component ('Y-m-d H:i:s') on write, which SQLite (unlike MySQL's native DATE type) does not truncate back to a bare date on storage"
-    - "Nested-array Form Request validation with a wildcard-to-wildcard required_if (job_orders.*.file required_if job_orders.*.type,type_a), resolved per-row by Laravel's built-in dependentRules mechanism, no custom Rule/Validator::after() needed"
-    - "UploadedFile::store('job-orders', 'local') using the auto-hashed filename — never getClientOriginalName(), never the public disk"
+    added: []
+    patterns:
+        - 'DB::transaction() + lockForUpdate() over an indexed date column for a concurrency-safe daily-reset counter, with a composite unique(queue_date, queue_number) index as defense-in-depth — no new table beyond the approved 12-table ERD'
+        - "whereDate() (not a plain where()) when comparing against a 'date'-cast Eloquent column in a raw query — the cast's fromDateTime() serializes with a time component ('Y-m-d H:i:s') on write, which SQLite (unlike MySQL's native DATE type) does not truncate back to a bare date on storage"
+        - "Nested-array Form Request validation with a wildcard-to-wildcard required_if (job_orders.*.file required_if job_orders.*.type,type_a), resolved per-row by Laravel's built-in dependentRules mechanism, no custom Rule/Validator::after() needed"
+        - "UploadedFile::store('job-orders', 'local') using the auto-hashed filename — never getClientOriginalName(), never the public disk"
 
 key-files:
-  created:
-    - app/Enums/QueueStatus.php
-    - app/Enums/JobOrderType.php
-    - app/Enums/JobOrderStatus.php
-    - app/Models/QueueEntry.php
-    - app/Models/JobOrder.php
-    - database/factories/QueueEntryFactory.php
-    - database/factories/JobOrderFactory.php
-    - database/migrations/2026_09_01_154402_create_queue_entries_table.php
-    - database/migrations/2026_09_01_154403_create_job_orders_table.php
-    - app/Concerns/JobOrderValidationRules.php
-    - app/Http/Requests/FrontlineStaff/StoreQueueEntryRequest.php
-    - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
-    - tests/Feature/FrontlineStaff/QueueNumberGenerationTest.php
-    - tests/Feature/FrontlineStaff/QueueEntryIntakeTest.php
-    - tests/Feature/FrontlineStaff/JobOrderTypeValidationTest.php
-  modified:
-    - app/Models/Customer.php
-    - app/Http/Requests/FrontlineStaff/SearchCustomersRequest.php
-    - app/Http/Controllers/FrontlineStaff/CustomerController.php
-    - routes/portals.php
+    created:
+        - app/Enums/QueueStatus.php
+        - app/Enums/JobOrderType.php
+        - app/Enums/JobOrderStatus.php
+        - app/Models/QueueEntry.php
+        - app/Models/JobOrder.php
+        - database/factories/QueueEntryFactory.php
+        - database/factories/JobOrderFactory.php
+        - database/migrations/2026_09_01_154402_create_queue_entries_table.php
+        - database/migrations/2026_09_01_154403_create_job_orders_table.php
+        - app/Concerns/JobOrderValidationRules.php
+        - app/Http/Requests/FrontlineStaff/StoreQueueEntryRequest.php
+        - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
+        - tests/Feature/FrontlineStaff/QueueNumberGenerationTest.php
+        - tests/Feature/FrontlineStaff/QueueEntryIntakeTest.php
+        - tests/Feature/FrontlineStaff/JobOrderTypeValidationTest.php
+    modified:
+        - app/Models/Customer.php
+        - app/Http/Requests/FrontlineStaff/SearchCustomersRequest.php
+        - app/Http/Controllers/FrontlineStaff/CustomerController.php
+        - routes/portals.php
 
 key-decisions:
-  - "nextForBusinessDay() uses whereDate('queue_date', $businessDate) rather than a plain where() equality check — discovered during Task 1 verification that the plain form silently never matches on SQLite because the model's 'date' cast reformats the stored value to include a time component on write"
-  - "Added explicit BelongsTo<T, $this>/HasMany<T, $this> generic PHPDoc on all three new relation methods (QueueEntry::customer/jobOrders, JobOrder::queueEntry, Customer::queueEntries) so Larastan level 7 has zero findings on this plan's own files"
+    - "nextForBusinessDay() uses whereDate('queue_date', $businessDate) rather than a plain where() equality check — discovered during Task 1 verification that the plain form silently never matches on SQLite because the model's 'date' cast reformats the stored value to include a time component on write"
+    - "Added explicit BelongsTo<T, $this>/HasMany<T, $this> generic PHPDoc on all three new relation methods (QueueEntry::customer/jobOrders, JobOrder::queueEntry, Customer::queueEntries) so Larastan level 7 has zero findings on this plan's own files"
 
 patterns-established:
-  - "Pattern: QueueEntry::currentBusinessDate() is the one and only place the Asia/Manila business-day conversion happens — later plans (internal queue list, public display) must call this, not re-derive it"
-  - "Pattern: server-computed columns (queue_number, status) are never declared in a StoreXRequest::rules() array at all, so they can never appear in $request->validated() even if a client tries to submit them"
+    - 'Pattern: QueueEntry::currentBusinessDate() is the one and only place the Asia/Manila business-day conversion happens — later plans (internal queue list, public display) must call this, not re-derive it'
+    - 'Pattern: server-computed columns (queue_number, status) are never declared in a StoreXRequest::rules() array at all, so they can never appear in $request->validated() even if a client tries to submit them'
 
 requirements-completed: [QUEUE-03, QUEUE-04, QUEUE-05]
 
@@ -75,6 +75,7 @@ completed: 2026-09-01
 - **Files modified:** 19 (15 created, 4 modified)
 
 ## Accomplishments
+
 - `queue_entries`/`job_orders` tables with a composite `unique(queue_date, queue_number)` index and `job_orders.queue_entry_id` cascading on delete
 - `QueueEntry::currentBusinessDate()`/`::nextForBusinessDay()` — the concurrency-safe daily counter, scoped to Asia/Manila without touching global `config('app.timezone')` (D-16/D-17)
 - `QueueEntryController::store()` — one `DB::transaction()` creates the `QueueEntry` and every `JobOrder` row atomically; `queue_number`/`status` are always server-computed, never accepted from request input (T-02-05)
@@ -93,6 +94,7 @@ Each task was committed atomically:
 3. **Task 3: Transactional intake endpoint, routes & test coverage** - `5f6ed9b` (feat)
 
 ## Files Created/Modified
+
 - `app/Enums/QueueStatus.php`, `JobOrderType.php`, `JobOrderStatus.php` - backed enums (`Waiting|Serving|Done`, `TypeA|TypeB`, `Intake`), TitleCase/snake_case per `UserRole`'s pattern
 - `database/migrations/2026_09_01_154402_create_queue_entries_table.php` - `customer_id` FK (restrict on delete), `queue_date`, `queue_number`, `status`, composite unique index
 - `database/migrations/2026_09_01_154403_create_job_orders_table.php` - `queue_entry_id` FK (cascade on delete), `description`, `type`, `status`, nullable `file_path`
@@ -109,6 +111,7 @@ Each task was committed atomically:
 - `tests/Feature/FrontlineStaff/QueueNumberGenerationTest.php`, `QueueEntryIntakeTest.php`, `JobOrderTypeValidationTest.php` - sequential counter, atomic multi-row save + file storage + confirmation render + AUDIT-01 regression, per-row conditional file requirement
 
 ## Decisions Made
+
 - `nextForBusinessDay()` compares with `whereDate('queue_date', ...)` instead of a bare `where()` — the plan's literal code example used `where()`, but that silently never matches on SQLite (see Deviations).
 - Added generic type params to the three new relation methods for Larastan level 7 cleanliness, matching CLAUDE.md's static-analysis expectations even though the plan didn't call this out explicitly.
 
@@ -117,6 +120,7 @@ Each task was committed atomically:
 ### Auto-fixed Issues
 
 **1. [Rule 1 - Bug] `nextForBusinessDay()`'s plain `where('queue_date', ...)` never matched on SQLite**
+
 - **Found during:** Task 1, verification step (`php artisan tinker` manual check before committing)
 - **Issue:** The plan's code example used `->where('queue_date', $businessDate)`. `QueueEntry`'s `'queue_date' => 'date'` cast serializes the value via `fromDateTime()` (format `Y-m-d H:i:s`) on write; SQLite stores that exact string (unlike MySQL's native `DATE` column, which truncates the time portion at write time). Comparing that stored value against a bare `Y-m-d` business-date string with plain string equality never matched, so `max('queue_number')` always returned `null` and every call returned `1` — the counter never advanced.
 - **Fix:** Changed the comparison to `->whereDate('queue_date', $businessDate)`, which Laravel translates into a grammar-aware date-extraction comparison that works correctly regardless of the stored format, on both SQLite and MySQL.
@@ -125,6 +129,7 @@ Each task was committed atomically:
 - **Committed in:** `8d3ee39` (Task 1 commit)
 
 **2. [Rule 2 - Missing Critical] Larastan level 7 generic type params missing on new relation methods**
+
 - **Found during:** Task 3, running `vendor/bin/phpstan analyse` scoped to this plan's files (CLAUDE.md mandates Larastan level 7 compliance; this project's Pint/Larastan discipline is a standing convention, not optional)
 - **Issue:** `QueueEntry::customer()`/`::jobOrders()`, `JobOrder::queueEntry()`, and `Customer::queueEntries()` all returned `BelongsTo`/`HasMany` without their generic type parameters, producing 4 `missingType.generics` findings.
 - **Fix:** Added `@return BelongsTo<Target, $this>` / `@return HasMany<Target, $this>` PHPDoc to each of the four methods.
@@ -138,6 +143,7 @@ Each task was committed atomically:
 **Impact on plan:** Both fixes were necessary for correctness (the counter literally didn't work without #1) and for standing project conventions (#2). No scope creep — same files the plan already specified, just corrected/completed.
 
 ## Issues Encountered
+
 - Larastan's pre-existing `UpdateSystemConfigurationRequest.php:20` finding (logged in `deferred-items.md` by Plan 02-01) is unrelated to this plan and was not touched.
 - `resources/js/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController.ts` and the corresponding `resources/js/routes/frontline-staff/queue-entries/*` were regenerated via `php artisan wayfinder:generate --with-form --no-interaction` but are gitignored (`/resources/js/actions`, `/resources/js/routes`) — not committed, consistent with how 02-01's generated helpers were handled.
 
@@ -146,13 +152,15 @@ Each task was committed atomically:
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - `QueueEntryController::store()` and `QueueEntry::currentBusinessDate()`/`::nextForBusinessDay()` are live and tested — Plan 02-03 can build the "New Visit" UI (queue number generation + repeatable job-order rows) directly on top of this endpoint.
 - `CustomerController::index()`'s `confirmedQueueEntry` prop is in place and eager-loads `jobOrders`, ready for 02-03's post-save confirmation card.
 - No blockers. The SQLite-only concurrency-test-coverage gap for `lockForUpdate()` (documented in `QueueNumberGenerationTest.php`'s own comment and in RESEARCH.md Pattern 1) remains a known, accepted gap — true concurrent-write safety can only be verified against real MySQL, not this Pest/SQLite suite.
 
 ---
-*Phase: 02-customer-queue-management*
-*Completed: 2026-09-01*
+
+_Phase: 02-customer-queue-management_
+_Completed: 2026-09-01_
 
 ## Self-Check: PASSED
 

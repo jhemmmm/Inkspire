@@ -29,13 +29,14 @@ class CollectionLetterController extends Controller
     public function show(AccountsReceivable $accountsReceivable): Response
     {
         abort_unless($accountsReceivable->status === AccountsReceivableStatus::Active, 404);
-        abort_if(in_array($accountsReceivable->collection_status, [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true), 404);
 
         $accountsReceivable->loadMissing([
             'jobOrder:id,number,description,total_amount,queue_entry_id',
             'jobOrder.queueEntry.customer:id,name',
             'jobOrder.transactions:id,job_order_id,amount,status',
         ]);
+
+        abort_if(in_array($accountsReceivable->collectionStatus(), [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true), 404);
 
         $amountPaid = (float) $accountsReceivable->jobOrder->transactions->where('status', TransactionStatus::Completed->value)->sum('amount');
         $amountDue = $accountsReceivable->jobOrder->outstandingBalance();
@@ -68,16 +69,17 @@ class CollectionLetterController extends Controller
     public function pdf(AccountsReceivable $accountsReceivable): \Symfony\Component\HttpFoundation\Response
     {
         abort_unless($accountsReceivable->status === AccountsReceivableStatus::Active, 404);
-        abort_if(in_array($accountsReceivable->collection_status, [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true), 404);
-
-        $bracket = $accountsReceivable->agingBracket();
-        abort_if($bracket === AccountsReceivableAgingBracket::Current, 404);
 
         $accountsReceivable->loadMissing([
             'jobOrder:id,number,description,total_amount,queue_entry_id',
             'jobOrder.queueEntry.customer:id,name',
             'jobOrder.transactions:id,job_order_id,amount,status',
         ]);
+
+        abort_if(in_array($accountsReceivable->collectionStatus(), [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true), 404);
+
+        $bracket = $accountsReceivable->agingBracket();
+        abort_if($bracket === AccountsReceivableAgingBracket::Current, 404);
 
         $amountPaid = (float) $accountsReceivable->jobOrder->transactions->where('status', TransactionStatus::Completed->value)->sum('amount');
         $amountDue = $accountsReceivable->jobOrder->outstandingBalance();

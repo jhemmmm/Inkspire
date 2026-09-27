@@ -11,8 +11,8 @@ class UpdateJobOrderQueuePositionRequest extends FormRequest
      * Get the validation rules that apply to the request.
      *
      * Body-less — the target transition is implied by which named route was
-     * hit (next vs forward vs not-appear), not a client-supplied value.
-     * Reused across all three.
+     * hit (next vs forward), not a client-supplied value. Reused across
+     * both.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */

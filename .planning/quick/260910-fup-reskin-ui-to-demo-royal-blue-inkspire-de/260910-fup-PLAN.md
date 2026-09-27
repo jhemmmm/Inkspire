@@ -5,49 +5,49 @@ type: execute
 wave: 1
 depends_on: []
 files_modified:
-  - resources/css/app.css
-  - vite.config.ts
-  - resources/views/app.blade.php
-  - public/logo.png
-  - public/business_logo.png
-  - resources/js/layouts/auth/AuthBrandLayout.vue
-  - resources/js/layouts/AuthLayout.vue
-  - resources/js/pages/auth/Login.vue
+    - resources/css/app.css
+    - vite.config.ts
+    - resources/views/app.blade.php
+    - public/logo.png
+    - public/business_logo.png
+    - resources/js/layouts/auth/AuthBrandLayout.vue
+    - resources/js/layouts/AuthLayout.vue
+    - resources/js/pages/auth/Login.vue
 autonomous: true
 requirements:
-  - "Quick task 260910-fup: reskin UI to demo royal-blue Inkspire design system (retheme shadcn tokens, swap font, add brand logos, rebuild login as two-panel card) — see task description in orchestrator prompt"
+    - 'Quick task 260910-fup: reskin UI to demo royal-blue Inkspire design system (retheme shadcn tokens, swap font, add brand logos, rebuild login as two-panel card) — see task description in orchestrator prompt'
 
 must_haves:
-  truths:
-    - "Every shadcn-vue primitive across all 7 role portals renders in the royal-blue palette purely from resources/css/app.css token changes — zero edits under resources/js/components/ui/"
-    - "The login page renders as a two-panel card: white brand panel (logo, headline, 3 stats) on the left, royal-blue form panel (business logo, badge, form) on the right"
-    - "ForgotPassword.vue, ResetPassword.vue, and ConfirmPassword.vue still display their page-specific title and description text correctly inside the new layout"
-    - "Login still authenticates via the EMAIL field through the existing Wayfinder store.form() binding — no regression to the Fortify auth flow"
-    - "npm run build and npm run check both pass with the new theme, font, and layout"
-  artifacts:
-    - path: "resources/css/app.css"
-      provides: "Royal-blue shadcn token retheme (:root + .dark) and Plus Jakarta Sans font-sans"
-      contains: "--primary: hsl(223.6 69.2% 33.1%)"
-    - path: "resources/js/layouts/auth/AuthBrandLayout.vue"
-      provides: "Two-panel branded auth layout (single root element) consumed by AuthLayout.vue"
-      min_lines: 40
-    - path: "public/logo.png"
-      provides: "Inkspire wordmark for the left panel"
-    - path: "public/business_logo.png"
-      provides: "Squarefoot Graphics & Ads logo for the right panel"
-  key_links:
-    - from: "resources/js/layouts/AuthLayout.vue"
-      to: "resources/js/layouts/auth/AuthBrandLayout.vue"
-      via: "component import + render, replacing AuthSimpleLayout"
-      pattern: "AuthBrandLayout"
-    - from: "resources/js/pages/auth/Login.vue"
-      to: "public/logo.png / public/business_logo.png"
-      via: "img src inside AuthBrandLayout.vue"
-      pattern: "/logo.png|/business_logo.png"
-    - from: "resources/css/app.css"
-      to: "resources/js/components/ui/**"
-      via: "CSS custom properties consumed by every shadcn primitive (bg-primary, border-input, etc.)"
-      pattern: "var\\(--primary\\)"
+    truths:
+        - 'Every shadcn-vue primitive across all 7 role portals renders in the royal-blue palette purely from resources/css/app.css token changes — zero edits under resources/js/components/ui/'
+        - 'The login page renders as a two-panel card: white brand panel (logo, headline, 3 stats) on the left, royal-blue form panel (business logo, badge, form) on the right'
+        - 'ForgotPassword.vue, ResetPassword.vue, and ConfirmPassword.vue still display their page-specific title and description text correctly inside the new layout'
+        - 'Login still authenticates via the EMAIL field through the existing Wayfinder store.form() binding — no regression to the Fortify auth flow'
+        - 'npm run build and npm run check both pass with the new theme, font, and layout'
+    artifacts:
+        - path: 'resources/css/app.css'
+          provides: 'Royal-blue shadcn token retheme (:root + .dark) and Plus Jakarta Sans font-sans'
+          contains: '--primary: hsl(223.6 69.2% 33.1%)'
+        - path: 'resources/js/layouts/auth/AuthBrandLayout.vue'
+          provides: 'Two-panel branded auth layout (single root element) consumed by AuthLayout.vue'
+          min_lines: 40
+        - path: 'public/logo.png'
+          provides: 'Inkspire wordmark for the left panel'
+        - path: 'public/business_logo.png'
+          provides: 'Squarefoot Graphics & Ads logo for the right panel'
+    key_links:
+        - from: 'resources/js/layouts/AuthLayout.vue'
+          to: 'resources/js/layouts/auth/AuthBrandLayout.vue'
+          via: 'component import + render, replacing AuthSimpleLayout'
+          pattern: 'AuthBrandLayout'
+        - from: 'resources/js/pages/auth/Login.vue'
+          to: 'public/logo.png / public/business_logo.png'
+          via: 'img src inside AuthBrandLayout.vue'
+          pattern: '/logo.png|/business_logo.png'
+        - from: 'resources/css/app.css'
+          to: 'resources/js/components/ui/**'
+          via: 'CSS custom properties consumed by every shadcn primitive (bg-primary, border-input, etc.)'
+          pattern: "var\\(--primary\\)"
 ---
 
 <objective>
@@ -68,10 +68,12 @@ Output: Retheme resources/css/app.css (light + dark), Plus Jakarta Sans wired th
 @./CLAUDE.md
 
 # Design reference (read-only — do NOT port classes/JS from these files)
+
 @demo/style.css
 @demo/index.html
 
 # Files this plan edits
+
 @resources/css/app.css
 @vite.config.ts
 @resources/views/app.blade.php
@@ -101,11 +103,11 @@ In vite.config.ts, change the `bunny('Instrument Sans', { weights: [400, 500, 60
 In resources/views/app.blade.php, update the flash-of-wrong-theme inline `<style>` block: change `html { background-color: oklch(1 0 0); }` to `html { background-color: hsl(257.1 100% 98.6%); }` and `html.dark { background-color: oklch(0.145 0 0); }` to `html.dark { background-color: hsl(229.7 57.4% 12%); }` — these must match the new light/dark --background values exactly or the page will flash the old color before hydration.
 
 Finally, copy the two brand logo PNGs into public/ as tracked assets: `cp demo/logo.png public/logo.png` and `cp demo/business_logo.png public/business_logo.png`. Copy the files as-is, do not modify or re-encode them. Do NOT copy demo/style.css or demo/main.js anywhere in the app.
-  </action>
-  <verify>
-    <automated>test -f public/logo.png && test -f public/business_logo.png && grep -c "Plus Jakarta Sans" resources/css/app.css && grep -c "Plus Jakarta Sans" vite.config.ts && grep -c "223.6 69.2% 33.1%" resources/css/app.css</automated>
-  </verify>
-  <done>resources/css/app.css has the new light+dark royal-blue token values and Plus Jakarta Sans font-sans in both spots; vite.config.ts loads Plus Jakarta Sans at weights 400/500/600/700/800; app.blade.php's inline flash-prevention colors match the new --background values; public/logo.png and public/business_logo.png exist as new tracked files.</done>
+</action>
+<verify>
+<automated>test -f public/logo.png && test -f public/business_logo.png && grep -c "Plus Jakarta Sans" resources/css/app.css && grep -c "Plus Jakarta Sans" vite.config.ts && grep -c "223.6 69.2% 33.1%" resources/css/app.css</automated>
+</verify>
+<done>resources/css/app.css has the new light+dark royal-blue token values and Plus Jakarta Sans font-sans in both spots; vite.config.ts loads Plus Jakarta Sans at weights 400/500/600/700/800; app.blade.php's inline flash-prevention colors match the new --background values; public/logo.png and public/business_logo.png exist as new tracked files.</done>
 </task>
 
 <task type="auto">
@@ -117,6 +119,7 @@ Create resources/js/layouts/auth/AuthBrandLayout.vue as a new single-root-elemen
 Props: `title?: string` and `description?: string` (same shape as AuthSimpleLayout.vue, required because ForgotPassword.vue, ResetPassword.vue, and ConfirmPassword.vue pass these via `defineOptions({ layout: { title, description } })` and route through AuthLayout.vue).
 
 Structure, outer to inner:
+
 - Root wrapper: `min-h-screen flex items-center justify-center bg-muted p-6` (bg-muted resolves to the new --muted token, matching the demo's surface-container-low ground color).
 - Card: `flex flex-col md:flex-row w-full max-w-[860px] min-h-[520px] rounded-[20px] overflow-hidden shadow-[0_20px_60px_rgba(0,40,142,0.12),0_4px_16px_rgba(0,0,0,0.08)] max-[699px]:max-w-[420px]` — two columns by default, stacking to a single column with a narrower max-width under 700px via Tailwind v4's arbitrary `max-[699px]:` variant, matching demo/style.css's `@media (max-width: 700px)` block.
 - LEFT panel (branding), a `<div class="flex-1 bg-white flex flex-col justify-center p-[48px_44px]">` containing in order: (1) `<img src="/logo.png" alt="Inkspire" class="h-18 w-auto object-contain mb-5" />`; (2) a divider `<div class="w-10 h-[3px] rounded-full bg-primary mb-5" />`; (3) headline `<h2 class="text-[22px] font-extrabold leading-snug tracking-tight text-foreground mb-3">Your all-in-one<br />print shop portal.</h2>`; (4) sub-copy `<p class="text-[13px] leading-relaxed text-muted-foreground mb-8">Faster workflows, smarter order management, and real-time team coordination — built for Squarefoot Graphics &amp; Ads.</p>`; (5) a stats row `<div class="flex items-center gap-5">` containing three stat blocks separated by `<div class="w-px h-7 bg-border" />` dividers, each stat block a `<div>` with a number line `<div class="text-xl font-extrabold leading-none text-primary">` and a label line below it `<div class="mt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">`. Use exactly these three stats: "7" / "Staff Roles" (Inkspire has exactly 7 roles — the demo's markup says 6, which is wrong for this project; use 7), "24/7" / "Available", "Live" / "Queue Monitor".
@@ -125,11 +128,11 @@ Structure, outer to inner:
 This design means: when both title and description are empty (Login.vue will set them to '' in Task 3), the panel shows exactly the demo's static "Printing Management System" + "Staff Portal" look. When ForgotPassword/ResetPassword/ConfirmPassword pass their real title/description, those render above/in place of the static copy so those three pages still read correctly.
 
 Then update resources/js/layouts/AuthLayout.vue: change the import from `AuthSimpleLayout` to `AuthBrandLayout` (from `@/layouts/auth/AuthBrandLayout.vue`) and update the `<AuthLayout>` template usage accordingly, keeping the same `title`/`description` prop passthrough and `<slot />`. Do not delete AuthSimpleLayout.vue or AuthSplitLayout.vue — they are out of scope and may still be referenced elsewhere.
-  </action>
-  <verify>
-    <automated>grep -c "AuthBrandLayout" resources/js/layouts/AuthLayout.vue && grep -c "defineProps" resources/js/layouts/auth/AuthBrandLayout.vue && grep -c "<slot" resources/js/layouts/auth/AuthBrandLayout.vue</automated>
-  </verify>
-  <done>resources/js/layouts/auth/AuthBrandLayout.vue exists as a single-root SFC accepting title/description props and rendering the two-panel card with logo/business_logo image references, a slot for the form, and the fallback "Printing Management System"/"Staff Portal" copy; resources/js/layouts/AuthLayout.vue imports and renders AuthBrandLayout instead of AuthSimpleLayout.</done>
+</action>
+<verify>
+<automated>grep -c "AuthBrandLayout" resources/js/layouts/AuthLayout.vue && grep -c "defineProps" resources/js/layouts/auth/AuthBrandLayout.vue && grep -c "<slot" resources/js/layouts/auth/AuthBrandLayout.vue</automated>
+</verify>
+<done>resources/js/layouts/auth/AuthBrandLayout.vue exists as a single-root SFC accepting title/description props and rendering the two-panel card with logo/business_logo image references, a slot for the form, and the fallback "Printing Management System"/"Staff Portal" copy; resources/js/layouts/AuthLayout.vue imports and renders AuthBrandLayout instead of AuthSimpleLayout.</done>
 </task>
 
 <task type="auto" tdd="false">
@@ -155,33 +158,34 @@ Sign-in button: add a class to the existing `<Button type="submit" ... data-test
 Do not change the `<Form v-bind="store.form()" :reset-on-success="['password']" v-slot="{ errors, processing }">` wrapper, the `<InputError>` usages, or the overall `grid gap-6` / `flex flex-col gap-6` structure — only the classes and label content described above.
 
 After all edits, run the full verification: `npm run build` (must succeed, confirms Vite/Tailwind/Wayfinder compile cleanly with the new font, tokens, and layout) and `npm run check` (must pass — vue-tsc + lint/format checks across the changed files). Do not run `npm install` or `composer install/require` — no dependency changes are part of this plan.
-  </action>
-  <verify>
-    <automated>grep -c 'name="email"' resources/js/pages/auth/Login.vue && grep -c 'type="email"' resources/js/pages/auth/Login.vue && grep -c 'bg-white/12' resources/js/pages/auth/Login.vue && grep -c 'data-test="login-button"' resources/js/pages/auth/Login.vue && npm run build && npm run check
-  </automated>
-  </verify>
-  <done>resources/js/pages/auth/Login.vue keeps type="email"/name="email" and the Wayfinder Form binding, but every field label, input, checkbox, and button now reads correctly against the royal-blue right panel (white/translucent inputs, white labels/icons, white sign-in button); npm run build and npm run check both pass.</done>
+</action>
+<verify>
+<automated>grep -c 'name="email"' resources/js/pages/auth/Login.vue && grep -c 'type="email"' resources/js/pages/auth/Login.vue && grep -c 'bg-white/12' resources/js/pages/auth/Login.vue && grep -c 'data-test="login-button"' resources/js/pages/auth/Login.vue && npm run build && npm run check
+</automated>
+</verify>
+<done>resources/js/pages/auth/Login.vue keeps type="email"/name="email" and the Wayfinder Form binding, but every field label, input, checkbox, and button now reads correctly against the royal-blue right panel (white/translucent inputs, white labels/icons, white sign-in button); npm run build and npm run check both pass.</done>
 </task>
 
 </tasks>
 
 <threat_model>
+
 ## Trust Boundaries
 
-| Boundary | Description |
-|----------|--------------|
-| Browser to Bunny Fonts CDN | Plus Jakarta Sans font files are fetched from fonts.bunny.net at build/runtime via the existing `bunny()` helper -- same mechanism already used for Instrument Sans |
-| Static file server to public/ | public/logo.png and public/business_logo.png are new binary assets served directly, no server-side processing |
-| Browser to /login | Login form fields and their name attributes are visually restyled only -- no change to server-side validation, CSRF, or the Fortify auth pipeline |
+| Boundary                      | Description                                                                                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser to Bunny Fonts CDN    | Plus Jakarta Sans font files are fetched from fonts.bunny.net at build/runtime via the existing `bunny()` helper -- same mechanism already used for Instrument Sans |
+| Static file server to public/ | public/logo.png and public/business_logo.png are new binary assets served directly, no server-side processing                                                       |
+| Browser to /login             | Login form fields and their name attributes are visually restyled only -- no change to server-side validation, CSRF, or the Fortify auth pipeline                   |
 
 ## STRIDE Threat Register
 
-| Threat ID | Category | Component | Disposition | Mitigation Plan |
-|-----------|----------|-----------|-------------|-----------------|
-| T-quick260910fup-01 | Tampering | vite.config.ts `bunny('Plus Jakarta Sans', ...)` font source | accept | Uses the same `laravel-vite-plugin/fonts` `bunny()` helper already trusted for Instrument Sans in this project; no new CDN or trust surface introduced, font weights confirmed served (200 OK) during planning |
-| T-quick260910fup-02 | Tampering | public/logo.png, public/business_logo.png (new static assets) | accept | Static binary images copied verbatim from demo/ (already present in the repository, provided by the project owner); no executable content, no server-side processing |
-| T-quick260910fup-03 | Information Disclosure | resources/js/pages/auth/Login.vue email/password fields | mitigate | `type="email"`, `name="email"`, `name="password"`, `required`, `autocomplete` attributes and the Wayfinder `store.form()` binding are left byte-for-byte unchanged -- only CSS classes and label markup change, so no new data-exposure surface is introduced by the visual restyle |
-| T-quick260910fup-SC | Tampering | npm/composer package installs | n/a | This plan makes zero dependency changes (`npm install`/`composer install`/`require` are explicitly out of scope); no new packages are introduced, so the Package Legitimacy Gate does not apply |
+| Threat ID           | Category               | Component                                                     | Disposition | Mitigation Plan                                                                                                                                                                                                                                                                     |
+| ------------------- | ---------------------- | ------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T-quick260910fup-01 | Tampering              | vite.config.ts `bunny('Plus Jakarta Sans', ...)` font source  | accept      | Uses the same `laravel-vite-plugin/fonts` `bunny()` helper already trusted for Instrument Sans in this project; no new CDN or trust surface introduced, font weights confirmed served (200 OK) during planning                                                                      |
+| T-quick260910fup-02 | Tampering              | public/logo.png, public/business_logo.png (new static assets) | accept      | Static binary images copied verbatim from demo/ (already present in the repository, provided by the project owner); no executable content, no server-side processing                                                                                                                |
+| T-quick260910fup-03 | Information Disclosure | resources/js/pages/auth/Login.vue email/password fields       | mitigate    | `type="email"`, `name="email"`, `name="password"`, `required`, `autocomplete` attributes and the Wayfinder `store.form()` binding are left byte-for-byte unchanged -- only CSS classes and label markup change, so no new data-exposure surface is introduced by the visual restyle |
+| T-quick260910fup-SC | Tampering              | npm/composer package installs                                 | n/a         | This plan makes zero dependency changes (`npm install`/`composer install`/`require` are explicitly out of scope); no new packages are introduced, so the Package Legitimacy Gate does not apply                                                                                     |
 
 </threat_model>
 
@@ -195,6 +199,7 @@ After all edits, run the full verification: `npm run build` (must succeed, confi
 </verification>
 
 <success_criteria>
+
 - [ ] resources/css/app.css has the new light + dark royal-blue token values and Plus Jakarta Sans in both `--font-sans` spots
 - [ ] vite.config.ts loads Plus Jakarta Sans at weights 400/500/600/700/800
 - [ ] resources/views/app.blade.php's inline flash-prevention background colors match the new `--background` values
@@ -204,7 +209,7 @@ After all edits, run the full verification: `npm run build` (must succeed, confi
 - [ ] No file under resources/js/components/ui/ was modified
 - [ ] `npm run build` and `npm run check` both pass
 - [ ] Human has visually confirmed the two-panel login card and the royal-blue theme on an authenticated portal page
-</success_criteria>
+      </success_criteria>
 
 <output>
 Create `.planning/quick/260910-fup-reskin-ui-to-demo-royal-blue-inkspire-de/260910-fup-SUMMARY.md` when done

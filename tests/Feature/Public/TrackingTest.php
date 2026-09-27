@@ -150,12 +150,13 @@ test('the tracking response never leaks pricing, payment, or file data for a fou
 
     $response->assertOk();
     // Omitting ->etc() means the scope's own interacted() check fails if
-    // `result` carries anything beyond these three fields.
+    // `result` carries anything beyond these four fields.
     $response->assertInertia(fn (Assert $page) => $page
         ->has('result', fn (Assert $result) => $result
             ->where('found', true)
             ->has('number')
-            ->has('stage')));
+            ->has('stage')
+            ->has('stageStep')));
 
     $content = $response->getContent();
     expect($content)->not->toContain('total_amount');

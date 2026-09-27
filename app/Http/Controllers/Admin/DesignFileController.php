@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Owner;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Owner\UnlockDesignFileRequest;
+use App\Http\Requests\Admin\UnlockDesignFileRequest;
 use App\Models\DesignFile;
 use App\Models\JobOrder;
 use Illuminate\Http\RedirectResponse;
@@ -14,12 +14,12 @@ use Inertia\Response;
 class DesignFileController extends Controller
 {
     /**
-     * Show the Owner's Design Overrides list — job orders whose design file
+     * Show the Admin's Design Overrides list — job orders whose design file
      * is currently locked (JOB-07).
      */
     public function index(Request $request): Response
     {
-        return Inertia::render('owner/DesignOverrides', [
+        return Inertia::render('admin/DesignOverrides', [
             'jobOrders' => JobOrder::query()
                 ->whereHas('designFile', fn ($query) => $query->whereNotNull('locked_at'))
                 ->with(['designFile', 'assignedArtist:id,name', 'queueEntry.customer:id,name'])

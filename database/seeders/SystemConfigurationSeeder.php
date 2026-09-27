@@ -61,12 +61,12 @@ class SystemConfigurationSeeder extends Seeder
                 'description' => null,
             ],
             [
-                'key' => 'dpi_threshold_minimum',
+                'key' => 'large_format_minimum_dpi',
                 'group' => 'business_rules',
-                'value' => 300,
+                'value' => 100,
                 'type' => 'integer',
-                'label' => 'Minimum DPI threshold',
-                'description' => null,
+                'label' => 'Minimum effective DPI',
+                'description' => 'Pixels per printed inch a Type A file must reach for the ordered print size. Below this the job order goes to an artist for improvement instead of straight to production. 100 suits large-format viewing distances; raise it for small close-read work.',
             ],
             [
                 'key' => 'default_sla_days',

@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Owner;
+namespace App\Http\Controllers\Admin;
 
 use App\Enums\AccountsReceivableCollectionStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Owner\ApproveWriteOffRequest;
-use App\Http\Requests\Owner\RejectWriteOffRequest;
+use App\Http\Requests\Admin\ApproveWriteOffRequest;
+use App\Http\Requests\Admin\RejectWriteOffRequest;
 use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
 use Illuminate\Http\RedirectResponse;
@@ -18,8 +18,8 @@ use Inertia\Response;
 class WriteOffApprovalController extends Controller
 {
     /**
-     * Show the Owner's write-off approval queue (D-04/D-13). Admin can view
-     * this page (route-group `role:owner,admin` middleware), but only Owner
+     * Show the Admin's write-off approval queue (D-04/D-13). Admin can view
+     * this page (route-group `role:admin` middleware), but only Admin
      * can act on it -- enforced by AccountsReceivablePolicy.
      */
     public function index(Request $request): Response
@@ -33,7 +33,14 @@ class WriteOffApprovalController extends Controller
                 'jobOrder.transactions:id,job_order_id,amount,status',
                 'writeOffRequestedBy:id,name',
             ])
-            ->get(['id', 'job_order_id', 'balance', 'write_off_reason', 'write_off_requested_by', 'write_off_requested_at', 'due_at']);
+            ->get(['id', 'job_order_id', 'balance', 'collection_status', 'write_off_reason', 'write_off_requested_by', 'write_off_requested_at', 'due_at'])
+            // The SQL filter above only catches an entry whose STORED
+            // collection status is closed. Collection status is derived from
+            // aging now, so an entry settled since the request was raised
+            // reads Paid without that column ever being rewritten -- the
+            // derived value has to be re-checked in PHP. The transactions it
+            // needs are already eager-loaded for the balance figure below.
+            ->reject(fn (AccountsReceivable $accountsReceivable): bool => $accountsReceivable->isClosed());
 
         $writeOffRequests = $entries->map(function (AccountsReceivable $accountsReceivable): array {
             $balance = $accountsReceivable->jobOrder->outstandingBalance();
@@ -60,7 +67,7 @@ class WriteOffApprovalController extends Controller
             ];
         })->values();
 
-        return Inertia::render('owner/WriteOffRequests', [
+        return Inertia::render('admin/WriteOffRequests', [
             'writeOffRequests' => $writeOffRequests,
         ]);
     }
@@ -83,7 +90,7 @@ class WriteOffApprovalController extends Controller
      * balance check (`outstandingBalance`, computed identically to
      * `index()`) is the AUTHORITATIVE guard -- it re-reads the job order
      * under lock and sums its Completed transactions itself, so a real
-     * payment landing in the window between the Owner's page load and their
+     * payment landing in the window between the Admin's page load and their
      * approve click is still caught even though the lag-prone flag hasn't
      * caught up yet.
      */
@@ -94,7 +101,7 @@ class WriteOffApprovalController extends Controller
 
             abort_if($accountsReceivable->write_off_requested_at === null, 422, __('No write-off request is pending for this entry.'));
             abort_if(
-                in_array($accountsReceivable->collection_status, [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true),
+                in_array($accountsReceivable->collectionStatus(), [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true),
                 422,
                 __('This entry was settled or closed before the write-off could be approved.'),
             );
@@ -135,7 +142,7 @@ class WriteOffApprovalController extends Controller
 
             abort_if($accountsReceivable->write_off_requested_at === null, 422, __('No write-off request is pending for this entry.'));
             abort_if(
-                $accountsReceivable->collection_status === AccountsReceivableCollectionStatus::WrittenOff,
+                $accountsReceivable->collectionStatus() === AccountsReceivableCollectionStatus::WrittenOff,
                 422,
                 __('This write-off has already been approved and cannot be rejected.'),
             );

@@ -7,52 +7,52 @@ tags: [laravel, inertia, vue, accounts-receivable, write-off, owner-approval]
 
 # Dependency graph
 requires:
-  - phase: 07-accounts-receivable
-    plan: 01
-    provides: "PaymentStatus::WrittenOff terminal case, AccountsReceivableCollectionStatus enum, accounts_receivable write_off_* columns"
-  - phase: 07-accounts-receivable
-    plan: 02
-    provides: "AccountsReceivableController's Show.vue entry detail page with the 07-05 write-off-actions insertion-point HTML comment, accounts-receivable.show route"
-  - phase: 07-accounts-receivable
-    plan: 04
-    provides: "AccountsReceivableValidationRules trait, Show.vue's Collection Status panel and Actions card"
+    - phase: 07-accounts-receivable
+      plan: 01
+      provides: 'PaymentStatus::WrittenOff terminal case, AccountsReceivableCollectionStatus enum, accounts_receivable write_off_* columns'
+    - phase: 07-accounts-receivable
+      plan: 02
+      provides: "AccountsReceivableController's Show.vue entry detail page with the 07-05 write-off-actions insertion-point HTML comment, accounts-receivable.show route"
+    - phase: 07-accounts-receivable
+      plan: 04
+      provides: "AccountsReceivableValidationRules trait, Show.vue's Collection Status panel and Actions card"
 provides:
-  - "WriteOffRequestController::store() -- Accounting-side write-off request with mandatory reason, rejecting a non-Active or already-closed-by-collection_status entry (Blocker 2)"
-  - "AccountsReceivablePolicy::approveWriteOff()/rejectWriteOff() -- Owner only, matching approve()/reject()'s existing narrowing"
-  - "WriteOffApprovalController::index()/approve()/reject() -- Owner's write-off queue with a locked re-read re-checking collection_status inside the same transaction as the pending-request guard (Blocker 2 pending-window race)"
-  - "resources/js/pages/owner/WriteOffRequests.vue -- Owner's write-off approval queue, structurally a near-copy of CreditRequests.vue with inverted button polarity"
-  - "Show.vue's pending write-off Alert banner and Request Write-Off dialog"
+    - 'WriteOffRequestController::store() -- Accounting-side write-off request with mandatory reason, rejecting a non-Active or already-closed-by-collection_status entry (Blocker 2)'
+    - "AccountsReceivablePolicy::approveWriteOff()/rejectWriteOff() -- Owner only, matching approve()/reject()'s existing narrowing"
+    - "WriteOffApprovalController::index()/approve()/reject() -- Owner's write-off queue with a locked re-read re-checking collection_status inside the same transaction as the pending-request guard (Blocker 2 pending-window race)"
+    - "resources/js/pages/owner/WriteOffRequests.vue -- Owner's write-off approval queue, structurally a near-copy of CreditRequests.vue with inverted button polarity"
+    - "Show.vue's pending write-off Alert banner and Request Write-Off dialog"
 affects: []
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "Blocker-2-style double independent guard: the same closed-by-collection_status condition is checked both at request time (WriteOffRequestController::store()) and re-checked inside the approving transaction's locked re-read (WriteOffApprovalController::approve()), since collection_status and AccountsReceivableStatus are orthogonal (D-09) and a payment can settle the entry in the window between the two"
+    added: []
+    patterns:
+        - "Blocker-2-style double independent guard: the same closed-by-collection_status condition is checked both at request time (WriteOffRequestController::store()) and re-checked inside the approving transaction's locked re-read (WriteOffApprovalController::approve()), since collection_status and AccountsReceivableStatus are orthogonal (D-09) and a payment can settle the entry in the window between the two"
 
 key-files:
-  created:
-    - app/Http/Requests/AccountingStaff/RequestWriteOffRequest.php
-    - app/Http/Requests/Owner/ApproveWriteOffRequest.php
-    - app/Http/Requests/Owner/RejectWriteOffRequest.php
-    - app/Http/Controllers/AccountingStaff/WriteOffRequestController.php
-    - app/Http/Controllers/Owner/WriteOffApprovalController.php
-    - resources/js/pages/owner/WriteOffRequests.vue
-    - tests/Feature/AccountingStaff/WriteOffRequestTest.php
-    - tests/Feature/Owner/WriteOffApprovalTest.php
-  modified:
-    - app/Concerns/AccountsReceivableValidationRules.php
-    - app/Policies/AccountsReceivablePolicy.php
-    - app/Http/Controllers/AccountingStaff/AccountsReceivableController.php
-    - routes/portals.php
-    - routes/owner.php
-    - resources/js/config/nav/owner.ts
-    - resources/js/pages/accounting-staff/AccountsReceivable/Show.vue
+    created:
+        - app/Http/Requests/AccountingStaff/RequestWriteOffRequest.php
+        - app/Http/Requests/Owner/ApproveWriteOffRequest.php
+        - app/Http/Requests/Owner/RejectWriteOffRequest.php
+        - app/Http/Controllers/AccountingStaff/WriteOffRequestController.php
+        - app/Http/Controllers/Owner/WriteOffApprovalController.php
+        - resources/js/pages/owner/WriteOffRequests.vue
+        - tests/Feature/AccountingStaff/WriteOffRequestTest.php
+        - tests/Feature/Owner/WriteOffApprovalTest.php
+    modified:
+        - app/Concerns/AccountsReceivableValidationRules.php
+        - app/Policies/AccountsReceivablePolicy.php
+        - app/Http/Controllers/AccountingStaff/AccountsReceivableController.php
+        - routes/portals.php
+        - routes/owner.php
+        - resources/js/config/nav/owner.ts
+        - resources/js/pages/accounting-staff/AccountsReceivable/Show.vue
 
 key-decisions:
-  - "Added write_off_reason to AccountsReceivableController::deriveRow()'s shared row shape (select list + @phpstan-type) beyond what 07-02/07-04 needed, since Show.vue's pending write-off banner requires the reason text and no prior plan's controller instructions included it (Rule 2)"
-  - "WriteOffApprovalController::approve()'s collection_status re-check sits immediately after the existing write_off_requested_at guard, inside the same lockForUpdate() re-read, so both conditions are evaluated against the freshest possible row (Blocker 2)"
-  - "reject() has no collection_status re-check -- rejecting a settled entry is harmless since rejection never touches payment_status, only the three write-off columns"
+    - "Added write_off_reason to AccountsReceivableController::deriveRow()'s shared row shape (select list + @phpstan-type) beyond what 07-02/07-04 needed, since Show.vue's pending write-off banner requires the reason text and no prior plan's controller instructions included it (Rule 2)"
+    - "WriteOffApprovalController::approve()'s collection_status re-check sits immediately after the existing write_off_requested_at guard, inside the same lockForUpdate() re-read, so both conditions are evaluated against the freshest possible row (Blocker 2)"
+    - 'reject() has no collection_status re-check -- rejecting a settled entry is harmless since rejection never touches payment_status, only the three write-off columns'
 
 patterns-established: []
 
@@ -76,6 +76,7 @@ completed: 2026-09-08
 - **Files modified:** 15 (8 created, 7 modified)
 
 ## Accomplishments
+
 - `WriteOffRequestController::store()` rejects a non-Active entry, an already-`paid`/`written_off` entry (Blocker 2 -- checked before the pending-request guard), and a request against an entry with an already-pending write-off, before recording `write_off_reason`/`write_off_requested_by`/`write_off_requested_at`
 - `AccountsReceivablePolicy::approveWriteOff()`/`rejectWriteOff()` return `true` only for `UserRole::Owner`, verified against a non-Owner (Admin) actor
 - `WriteOffApprovalController::approve()` re-checks `collection_status` isn't already `paid`/`written_off` **inside** the same `lockForUpdate()` re-read that guards against a double-approve, so a payment landing in the window between the write-off request and the Owner's click is caught and never overwritten to Written Off (the exact race the checker flagged in Blocker 2)
@@ -97,6 +98,7 @@ Each task was committed atomically:
 _Both Task 1 and Task 2 are `tdd="true"`; test and implementation were committed together in a single commit each, following the identical precedent 07-03/07-04 already established for tasks whose `<action>`/`<behavior>` blocks specify test content and implementation together._
 
 ## Files Created/Modified
+
 - `app/Concerns/AccountsReceivableValidationRules.php` - `writeOffReasonRules()` added alongside the existing `collectionStatusRules()`
 - `app/Http/Requests/AccountingStaff/RequestWriteOffRequest.php` - route-group-gated FormRequest, mandatory `reason`
 - `app/Http/Requests/Owner/ApproveWriteOffRequest.php` / `RejectWriteOffRequest.php` - exact `ApproveCreditRequest`/`RejectCreditRequest` shape, gated via the new Policy abilities
@@ -113,6 +115,7 @@ _Both Task 1 and Task 2 are `tdd="true"`; test and implementation were committed
 - `tests/Feature/Owner/WriteOffApprovalTest.php` - 6 tests covering admin-forbidden, index scoping, approve/reject happy paths, no-pending-request guard, and the Blocker 2 pending-window race
 
 ## Decisions Made
+
 - Added `write_off_reason` to `AccountsReceivableController::deriveRow()`'s shared row shape (`@phpstan-type` alias, `index()`'s select list, and the returned array) since `Show.vue`'s UI-SPEC-mandated pending write-off banner ("Reason given: \"{reason}\"") needs it and no prior plan's controller instructions included it. This is shared by both `index()` and `show()` via the same `deriveRow()` helper, so `index()`'s query now selects one additional column it doesn't render -- a negligible cost for keeping the two methods' row shape identical.
 - `WriteOffApprovalController::approve()`'s `collection_status` re-check sits immediately after the existing `write_off_requested_at` guard, inside the same `lockForUpdate()`-protected closure, so a payment that lands in the instant between the Owner's page load and their click is still caught (Blocker 2, the checker-identified race).
 - `reject()` deliberately has no `collection_status` re-check -- rejecting an already-settled entry is harmless since rejection only nulls the three write-off columns and never touches `payment_status`, matching the plan's own reasoning.
@@ -122,6 +125,7 @@ _Both Task 1 and Task 2 are `tdd="true"`; test and implementation were committed
 ### Auto-fixed Issues
 
 **1. [Rule 2 - Missing critical functionality] Added `write_off_reason` to `AccountsReceivableController`'s row shape**
+
 - **Found during:** Task 3 (building `Show.vue`'s pending write-off banner against the approved UI-SPEC Copywriting Contract)
 - **Issue:** The banner's required copy — "Reason given: \"{reason}\"" — has no data source; `deriveRow()` only exposed `write_off_requested_at`, not the reason text itself, and no prior plan (07-02/07-04) needed it.
 - **Fix:** Added `write_off_reason` to the `@phpstan-type AccountsReceivableRow` alias, `index()`'s column select list, and the returned array in `deriveRow()`; added the matching field to `Show.vue`'s `AccountsReceivableDetail` TypeScript interface.
@@ -135,6 +139,7 @@ _Both Task 1 and Task 2 are `tdd="true"`; test and implementation were committed
 **Impact on plan:** Necessary for correctness against the approved, binding UI-SPEC Copywriting Contract. No scope creep -- the only file touched beyond this plan's own instructions is the one controller already central to the phase's Show.vue page, and the change is purely additive (one more field on an existing shared row shape).
 
 ## Issues Encountered
+
 - This worktree's HEAD was on a stale single "init" commit rather than the phase's `06921af` tracking commit at spawn time -- corrected via `git reset --hard 06921af` (clean working tree, nothing lost) per the mandatory `<worktree_branch_check>` step before any file was read.
 - This worktree had no `vendor/`, `node_modules/`, `.env`, SQLite database, or built frontend assets -- ran `composer install`, `cp .env.example .env`, `php artisan key:generate`, `touch database/database.sqlite`, `php artisan migrate:fresh`, `npm install`, `npm run build`, mirroring every prior Phase 7 plan's identical documented bootstrap gap. `npm install` again briefly renamed `package-lock.json`'s `name` field; reverted with `git checkout -- package-lock.json` before any commit, per 07-01 through 07-04's documented precedent.
 - Task 2's `WriteOffApprovalTest`'s two `index()`-rendering tests (admin-can-view, index-scoping) initially failed with a `ViteException: Unable to locate file in Vite manifest` because `owner/WriteOffRequests.vue` (Task 3) didn't exist yet at the point Task 2 was committed -- this app's `app.blade.php` does `@vite([..., "resources/js/pages/{$page['component']}.vue"])`, so a full-page GET requires the specific Vue file to already be built. Confirmed via `git show a1b5549:...` that 07-02 hit this exact same coupling (Task 1's controller/tests committed before Task 2's Vue pages existed). Followed the same established resolution: committed Task 2's backend+tests as planned, then completed Task 3 and rebuilt assets, after which the full `WriteOffApprovalTest.php` file (6/6) and the full suite (`php artisan test --compact`, 439 tests, 436 passed, 3 skipped, 0 failed) both went green.
@@ -153,13 +158,15 @@ None -- the plan's own `<threat_model>` fully covers this plan's surface: T-07-0
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - Phase 7 (Accounts Receivable) is now complete: aging substrate (07-01), aging list/entry detail (07-02), reminder command (07-03), collection status/letter (07-04), and write-off request/approval (07-05) all ship and are tested end to end.
 - The one pre-existing Larastan gap (3 files, unrelated to Phase 7) remains out of scope and should get its own small fix plan.
 - No blockers for Phase 8.
 
 ---
-*Phase: 07-accounts-receivable*
-*Completed: 2026-09-08*
+
+_Phase: 07-accounts-receivable_
+_Completed: 2026-09-08_
 
 ## Self-Check: PASSED
 

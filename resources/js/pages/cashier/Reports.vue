@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import ReportsWorkspace from '@/components/reports/ReportsWorkspace.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { cashierNavItems } from '@/config/nav/cashier';
 import {
     pdf as reportsExportPdf,
@@ -30,6 +32,7 @@ const props = defineProps<{
     columns: string[];
     rows: Record<string, unknown>[];
     rowsTotal: number;
+    rowsAmountTotal: number | null;
     summary: FinancialSummary | null;
     filters: { from: string; to: string };
 }>();
@@ -57,16 +60,11 @@ function exportXlsxUrl(key: string): string {
 <template>
     <Head title="Reports" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4"
-    >
-        <div class="flex flex-col gap-1">
-            <h1 class="text-[28px] leading-[1.2] font-semibold">Reports</h1>
-            <p class="text-muted-foreground text-sm">
-                Sales and cancellations at the counter, over any date range you
-                choose.
-            </p>
-        </div>
+    <PageContainer>
+        <PageHeader
+            title="Reports"
+            description="Sales and cancellations at the counter, over any date range you choose. Export to PDF or Excel."
+        />
 
         <ReportsWorkspace
             v-bind="props"
@@ -74,5 +72,5 @@ function exportXlsxUrl(key: string): string {
             :export-pdf-url="exportPdfUrl"
             :export-xlsx-url="exportXlsxUrl"
         />
-    </div>
+    </PageContainer>
 </template>

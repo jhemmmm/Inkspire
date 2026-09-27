@@ -22,13 +22,13 @@ This phase builds **four new surfaces** (Accounting aging list, Accounting entry
 
 ## Design System
 
-| Property | Value |
-|----------|-------|
-| Tool | shadcn-vue (already initialized — reused from Phase 1-6, no re-init) |
-| Preset | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none |
-| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge |
-| Icon library | lucide (`@lucide/vue`) |
-| Font | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
+| Property          | Value                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| Tool              | shadcn-vue (already initialized — reused from Phase 1-6, no re-init)                       |
+| Preset            | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none             |
+| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge                       |
+| Icon library      | lucide (`@lucide/vue`)                                                                     |
+| Font              | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
 
 Existing installed `ui/` primitives cover this phase in full — **no `npx shadcn-vue add` calls required** (verified against `resources/js/components/ui/`):
 
@@ -51,15 +51,15 @@ No npm or Composer package is added. `07-RESEARCH.md` confirms every capability 
 
 Unchanged from Phase 1-6 — reused as-is:
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| xs | 4px | Icon-to-label gaps, badge inline padding, the gap between a due date and its "past due" sub-line |
-| sm | 8px | Compact form field gaps, gap between Approve and Reject buttons in a row, gap between the status `Select` and its Update button |
-| md | 16px | Default element spacing, card padding, table cell padding, gap between the six bracket cards, gap between letter paragraphs |
-| lg | 24px | Section padding within a portal page, gap between the summary card row / filter tabs / aging table, gap between entry-detail panels |
-| xl | 32px | Layout gaps between major page regions; the collection letter's gap between letterhead, body, and signature block |
-| 2xl | 48px | Major section breaks |
-| 3xl | 64px | Page-level spacing |
+| Token | Value | Usage                                                                                                                               |
+| ----- | ----- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| xs    | 4px   | Icon-to-label gaps, badge inline padding, the gap between a due date and its "past due" sub-line                                    |
+| sm    | 8px   | Compact form field gaps, gap between Approve and Reject buttons in a row, gap between the status `Select` and its Update button     |
+| md    | 16px  | Default element spacing, card padding, table cell padding, gap between the six bracket cards, gap between letter paragraphs         |
+| lg    | 24px  | Section padding within a portal page, gap between the summary card row / filter tabs / aging table, gap between entry-detail panels |
+| xl    | 32px  | Layout gaps between major page regions; the collection letter's gap between letterhead, body, and signature block                   |
+| 2xl   | 48px  | Major section breaks                                                                                                                |
+| 3xl   | 64px  | Page-level spacing                                                                                                                  |
 
 Exceptions: **none.** Every value this phase needs already exists in the scale.
 
@@ -71,12 +71,12 @@ Non-spacing fixed dimensions introduced (component widths, not layout spacing �
 
 Unchanged 4-role scale from Phase 1-6 — reused as-is. **No fifth size, no third weight:**
 
-| Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
-| Body | 14px | 400 (regular) | 1.5 |
-| Label | 14px | 600 (semibold) | 1.4 |
-| Heading | 20px | 600 (semibold) | 1.2 |
-| Display | 28px | 600 (semibold) | 1.2 |
+| Role    | Size | Weight         | Line Height |
+| ------- | ---- | -------------- | ----------- |
+| Body    | 14px | 400 (regular)  | 1.5         |
+| Label   | 14px | 600 (semibold) | 1.4         |
+| Heading | 20px | 600 (semibold) | 1.2         |
+| Display | 28px | 600 (semibold) | 1.2         |
 
 - **Body** — aging table cell values, due dates and their past-due sub-lines, activity log entries, dialog body copy, collection letter body paragraphs, reminder email body lines.
 - **Label** — table column headers, bracket summary card captions, "Collection Status" / "Reason" field labels, all badge text, filter tab labels, entry-detail field captions ("Approved On", "Due Date", "Days Past Due").
@@ -95,25 +95,25 @@ Display is applied to the money figure that the surface exists to communicate �
 
 Extends, does not replace, the Phase 1-6 contract. No new CSS custom properties, no new hex values in `resources/css/app.css`, no theme change. Every treatment below is either an existing token (`--primary`, `--secondary`, `--destructive`, `--muted-foreground`) or one of the two already-established Tailwind utility overrides (green success from Phase 3-5, amber attention from Phase 6).
 
-| Role | Value | Usage |
-|------|-------|-------|
-| Dominant (60%) | `--background` | Page background — unchanged |
-| Secondary (30%) | `--card` / `--muted` | Bracket summary cards, entry-detail panels, table header/zebra, collection letter card — unchanged |
-| Accent (10%) | `--primary` | Reserved for: existing Phase 1-6 list, **plus** the three primary submit buttons this phase introduces ("Update Status", "Submit Request" inside the write-off dialog, "Reject Request" confirm in the Owner queue), the active bracket filter tab, and the "Collections" collection-status badge (the existing "needs attention" badge tier from Phase 5). Never a decorative fill. |
-| Destructive | `--destructive` | Reserved for: existing Phase 1-6 list, **plus** the "90+ Days" aging badge and the Owner's "Approve Write-Off" trigger + confirm button. Nothing else in this phase. |
+| Role            | Value                | Usage                                                                                                                                                                                                                                                                                                                                                                                |
+| --------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Dominant (60%)  | `--background`       | Page background — unchanged                                                                                                                                                                                                                                                                                                                                                          |
+| Secondary (30%) | `--card` / `--muted` | Bracket summary cards, entry-detail panels, table header/zebra, collection letter card — unchanged                                                                                                                                                                                                                                                                                   |
+| Accent (10%)    | `--primary`          | Reserved for: existing Phase 1-6 list, **plus** the three primary submit buttons this phase introduces ("Update Status", "Submit Request" inside the write-off dialog, "Reject Request" confirm in the Owner queue), the active bracket filter tab, and the "Collections" collection-status badge (the existing "needs attention" badge tier from Phase 5). Never a decorative fill. |
+| Destructive     | `--destructive`      | Reserved for: existing Phase 1-6 list, **plus** the "90+ Days" aging badge and the Owner's "Approve Write-Off" trigger + confirm button. Nothing else in this phase.                                                                                                                                                                                                                 |
 
 ### Aging bracket palette (AR-01) — the one new colour axis
 
 Six brackets cannot each get a colour without turning the table into a rainbow. The rule is **three semantic tiers over six brackets**, reusing treatments that already exist:
 
-| Bracket | Display label | Badge treatment | Why this tier |
-|---|---|---|---|
-| `Current` | "Current" | `class="text-green-600 dark:text-green-400"` (no `variant` prop — the existing "Paid" / "Done" success precedent) | Not yet due. Nothing is wrong. |
-| `1–15` | "1–15 Days" | `variant="secondary"` | Past due, being worked. Same "in progress" tier as `in_consultation` / `pending_confirmation`. |
-| `16–30` | "16–30 Days" | `variant="secondary"` | Same tier, distinguished by label text only. |
-| `31–60` | "31–60 Days" | `variant="outline" class="text-amber-600 dark:text-amber-400 border-amber-600/40"` | Needs attention now — reuses Phase 6's amber urgency utility verbatim. |
-| `61–90` | "61–90 Days" | Same amber treatment | Same tier, distinguished by label text only. |
-| `90+` | "90+ Days" | `variant="destructive"` | The write-off candidate. This is the only bracket where the system itself asks for a decision (D-06's final escalation), so it is the only one that earns `--destructive`. |
+| Bracket   | Display label | Badge treatment                                                                                                   | Why this tier                                                                                                                                                              |
+| --------- | ------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Current` | "Current"     | `class="text-green-600 dark:text-green-400"` (no `variant` prop — the existing "Paid" / "Done" success precedent) | Not yet due. Nothing is wrong.                                                                                                                                             |
+| `1–15`    | "1–15 Days"   | `variant="secondary"`                                                                                             | Past due, being worked. Same "in progress" tier as `in_consultation` / `pending_confirmation`.                                                                             |
+| `16–30`   | "16–30 Days"  | `variant="secondary"`                                                                                             | Same tier, distinguished by label text only.                                                                                                                               |
+| `31–60`   | "31–60 Days"  | `variant="outline" class="text-amber-600 dark:text-amber-400 border-amber-600/40"`                                | Needs attention now — reuses Phase 6's amber urgency utility verbatim.                                                                                                     |
+| `61–90`   | "61–90 Days"  | Same amber treatment                                                                                              | Same tier, distinguished by label text only.                                                                                                                               |
+| `90+`     | "90+ Days"    | `variant="destructive"`                                                                                           | The write-off candidate. This is the only bracket where the system itself asks for a decision (D-06's final escalation), so it is the only one that earns `--destructive`. |
 
 **No collision with Phase 6's urgency axis.** Phase 6 warned that green/amber on a production card would fight the Rush/Normal meaning. The AR surfaces carry no urgency axis at all — there is no Rush badge, no due-date SLA colour, and no production data on any Phase 7 page — so amber and green are free to mean "attention" and "fine" here without ambiguity.
 
@@ -125,14 +125,14 @@ The demo gives collection status its own five-colour palette (`acStatusBadge`: n
 
 **Resolution (this UI pass's call): aging owns colour; collection status is monochrome, with two exceptions for terminal states that carry no aging meaning at all.**
 
-| `collection_status` value | Display label | Badge treatment | Meaning |
-|---|---|---|---|
-| `pending` | "Pending" | `variant="outline"` | Nobody has worked it yet — mirrors "Unpaid" / "Awaiting Assignment" |
-| `follow_up` | "Follow-up" | `variant="secondary"` | Being worked |
-| `warning_sent` | "Warning Sent" | `variant="secondary"` | Being worked, distinguished by label text only |
-| `collections` | "Collections" | `variant="default"` | Needs attention now — the Phase 5 "needs attention" badge tier (`--primary` fill) |
-| `paid` | "Paid" | `class="text-green-600 dark:text-green-400"` | Terminal, system-set (D-10) |
-| `written_off` | "Written Off" | `variant="outline" class="text-muted-foreground"` | Terminal, system-set. Closed and inert — not an error, so **never `variant="destructive"`**. The muted foreground is what distinguishes it from plain `outline` "Pending". |
+| `collection_status` value | Display label  | Badge treatment                                   | Meaning                                                                                                                                                                    |
+| ------------------------- | -------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pending`                 | "Pending"      | `variant="outline"`                               | Nobody has worked it yet — mirrors "Unpaid" / "Awaiting Assignment"                                                                                                        |
+| `follow_up`               | "Follow-up"    | `variant="secondary"`                             | Being worked                                                                                                                                                               |
+| `warning_sent`            | "Warning Sent" | `variant="secondary"`                             | Being worked, distinguished by label text only                                                                                                                             |
+| `collections`             | "Collections"  | `variant="default"`                               | Needs attention now — the Phase 5 "needs attention" badge tier (`--primary` fill)                                                                                          |
+| `paid`                    | "Paid"         | `class="text-green-600 dark:text-green-400"`      | Terminal, system-set (D-10)                                                                                                                                                |
+| `written_off`             | "Written Off"  | `variant="outline" class="text-muted-foreground"` | Terminal, system-set. Closed and inert — not an error, so **never `variant="destructive"`**. The muted foreground is what distinguishes it from plain `outline` "Pending". |
 
 **Demo behaviour explicitly rejected:** `acRenderDashboard` dims written-off rows with `opacity:0.55`. Opacity dimming pushes body text below WCAG contrast and is not reused — the muted badge plus the "Closed" tab (§1) carry that meaning without degrading legibility.
 
@@ -142,9 +142,9 @@ The demo gives collection status its own five-colour palette (`acStatusBadge`: n
 
 Extends Phase 5's table. Every other `payment_status` mapping stays exactly as `05-UI-SPEC.md` defined it.
 
-| `PaymentStatus` value | Display label | Badge treatment | Meaning |
-|---|---|---|---|
-| `written_off` (new) | "Written Off" | `variant="outline" class="text-muted-foreground"` | Terminal closed state — the balance was forgiven, not collected. Identical treatment to the `collection_status` badge of the same name, so the two agree on sight. |
+| `PaymentStatus` value | Display label | Badge treatment                                   | Meaning                                                                                                                                                            |
+| --------------------- | ------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `written_off` (new)   | "Written Off" | `variant="outline" class="text-muted-foreground"` | Terminal closed state — the balance was forgiven, not collected. Identical treatment to the `collection_status` badge of the same name, so the two agree on sight. |
 
 **Regression rule (binding, per `07-RESEARCH.md` Pitfall 4):** `resources/js/pages/cashier/Dashboard.vue` and `resources/js/pages/frontline-staff/Dashboard.vue` both branch on `payment_status` through an exhaustive `v-if` / `v-else-if` chain with **no `v-else` fallback**, and their `paymentStatusLabel()` switches have no reachable `default`. Both must gain a `written_off` branch and label in the same commit that adds the enum case. A written-off order rendering a blank payment cell is a Phase 7 defect, not a Phase 5 one.
 
@@ -156,111 +156,111 @@ Extends Phase 5's table. Every other `payment_status` mapping stays exactly as `
 
 ### Accounts Receivable aging list (Accounting Staff)
 
-| Element | Copy |
-|---------|------|
-| Page title / `<Head>` | "Accounts Receivable" |
-| Nav item | "Accounts Receivable" |
-| H1 | "Accounts Receivable" |
-| Sub-copy under H1 | "Owner-approved credit balances, grouped by how far past due they are." |
-| Bracket card captions | "Current", "1–15 Days", "16–30 Days", "31–60 Days", "61–90 Days", "90+ Days" |
-| Bracket card sub-line | "{n} entries" / "1 entry" |
-| Filter tabs | "All", "Current", "1–15 Days", "16–30 Days", "31–60 Days", "61–90 Days", "90+ Days", "Closed" |
-| Table column headers | "Job Order", "Customer", "Total", "Paid", "Outstanding", "Due", "Aging", "Collection Status", "Actions" |
-| Due cell — value | "May 11, 2026" (`en-PH`, matching `QueueDisplay.vue`) |
-| Due cell — sub-line, past due | "{n} days past due" (Body, `text-muted-foreground`, beneath the date) |
-| Due cell — sub-line, not yet due | "Due in {n} days" (Body, `text-muted-foreground`) |
-| Outstanding cell — settled | "Settled" (`text-green-600 dark:text-green-400`, replacing "₱0.00") |
-| Row indicator — write-off pending | `Badge variant="secondary"` with lucide `Clock`: "Write-Off Pending" (rendered beneath the collection status badge, not as a new column) |
-| Row action | "View Entry" |
-| Empty state — no receivables at all | Heading: "No outstanding receivables" · Body: "Balances appear here once an Owner approves an On-Credit request at the counter." |
-| Empty state — a bracket tab with no rows | "Nothing in {bracket}." (e.g. "Nothing in 90+ Days.") |
-| Empty state — the Closed tab with no rows | "No settled or written-off entries yet." |
+| Element                                   | Copy                                                                                                                                     |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Page title / `<Head>`                     | "Accounts Receivable"                                                                                                                    |
+| Nav item                                  | "Accounts Receivable"                                                                                                                    |
+| H1                                        | "Accounts Receivable"                                                                                                                    |
+| Sub-copy under H1                         | "Owner-approved credit balances, grouped by how far past due they are."                                                                  |
+| Bracket card captions                     | "Current", "1–15 Days", "16–30 Days", "31–60 Days", "61–90 Days", "90+ Days"                                                             |
+| Bracket card sub-line                     | "{n} entries" / "1 entry"                                                                                                                |
+| Filter tabs                               | "All", "Current", "1–15 Days", "16–30 Days", "31–60 Days", "61–90 Days", "90+ Days", "Closed"                                            |
+| Table column headers                      | "Job Order", "Customer", "Total", "Paid", "Outstanding", "Due", "Aging", "Collection Status", "Actions"                                  |
+| Due cell — value                          | "May 11, 2026" (`en-PH`, matching `QueueDisplay.vue`)                                                                                    |
+| Due cell — sub-line, past due             | "{n} days past due" (Body, `text-muted-foreground`, beneath the date)                                                                    |
+| Due cell — sub-line, not yet due          | "Due in {n} days" (Body, `text-muted-foreground`)                                                                                        |
+| Outstanding cell — settled                | "Settled" (`text-green-600 dark:text-green-400`, replacing "₱0.00")                                                                      |
+| Row indicator — write-off pending         | `Badge variant="secondary"` with lucide `Clock`: "Write-Off Pending" (rendered beneath the collection status badge, not as a new column) |
+| Row action                                | "View Entry"                                                                                                                             |
+| Empty state — no receivables at all       | Heading: "No outstanding receivables" · Body: "Balances appear here once an Owner approves an On-Credit request at the counter."         |
+| Empty state — a bracket tab with no rows  | "Nothing in {bracket}." (e.g. "Nothing in 90+ Days.")                                                                                    |
+| Empty state — the Closed tab with no rows | "No settled or written-off entries yet."                                                                                                 |
 
 ### AR entry detail (Accounting Staff)
 
-| Element | Copy |
-|---------|------|
-| Page title / `<Head>` | "{JO number} — Accounts Receivable" |
-| H1 | "{JO number}" |
-| Sub-line under H1 | "{Customer name} · {job order description}" (Body, `text-muted-foreground`) |
-| Panel heading — amounts | "Amounts" |
-| Amount field captions | "Credit Extended", "Job Order Total", "Amount Paid", "Outstanding Balance" |
-| Amounts panel footnote | "Outstanding is the job order total less every completed payment. Payments are recorded at the Cashier counter." |
-| Panel heading — details | "Account Details" |
-| Detail field captions | "Approved On", "Due Date", "Days Past Due", "Aging Bracket", "Last Reminder Sent" |
-| "Last Reminder Sent" — never sent | "None sent yet" (`text-muted-foreground`) |
-| "Days Past Due" — not yet due | "Not yet due" (`text-muted-foreground`) |
-| Panel heading — collection status | "Collection Status" |
-| Status field label | "Collection Status" |
-| Status options | "Pending", "Follow-up", "Warning Sent", "Collections" |
-| Status primary CTA | "Update Status" |
-| Status helper text | "Record where this account stands. This does not stop reminder emails — only payment or an approved write-off does." |
-| Status control — terminal entry | Control is not rendered. In its place: "This entry is closed ({status}). Its collection status is set by the system and can't be changed." (Body, `text-muted-foreground`) |
-| Secondary action — letter | "Print Collection Letter" |
-| Letter action — entry not yet due | Button not rendered. In its place: "A collection letter becomes available once this balance is past due." (Body, `text-muted-foreground`) |
-| Secondary action — write-off | "Request Write-Off" |
-| Panel heading — activity | "Activity" |
-| Activity row | "{action} · {actor name} · {date}" — newest first |
-| Activity empty state | "No activity recorded yet." |
-| Pending write-off banner heading | "Write-off request submitted" |
-| Pending write-off banner body | "₱{outstanding} is awaiting Owner approval. Reminder emails continue until it's approved. Reason given: \"{reason}\"" |
+| Element                           | Copy                                                                                                                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page title / `<Head>`             | "{JO number} — Accounts Receivable"                                                                                                                                        |
+| H1                                | "{JO number}"                                                                                                                                                              |
+| Sub-line under H1                 | "{Customer name} · {job order description}" (Body, `text-muted-foreground`)                                                                                                |
+| Panel heading — amounts           | "Amounts"                                                                                                                                                                  |
+| Amount field captions             | "Credit Extended", "Job Order Total", "Amount Paid", "Outstanding Balance"                                                                                                 |
+| Amounts panel footnote            | "Outstanding is the job order total less every completed payment. Payments are recorded at the Cashier counter."                                                           |
+| Panel heading — details           | "Account Details"                                                                                                                                                          |
+| Detail field captions             | "Approved On", "Due Date", "Days Past Due", "Aging Bracket", "Last Reminder Sent"                                                                                          |
+| "Last Reminder Sent" — never sent | "None sent yet" (`text-muted-foreground`)                                                                                                                                  |
+| "Days Past Due" — not yet due     | "Not yet due" (`text-muted-foreground`)                                                                                                                                    |
+| Panel heading — collection status | "Collection Status"                                                                                                                                                        |
+| Status field label                | "Collection Status"                                                                                                                                                        |
+| Status options                    | "Pending", "Follow-up", "Warning Sent", "Collections"                                                                                                                      |
+| Status primary CTA                | "Update Status"                                                                                                                                                            |
+| Status helper text                | "Record where this account stands. This does not stop reminder emails — only payment or an approved write-off does."                                                       |
+| Status control — terminal entry   | Control is not rendered. In its place: "This entry is closed ({status}). Its collection status is set by the system and can't be changed." (Body, `text-muted-foreground`) |
+| Secondary action — letter         | "Print Collection Letter"                                                                                                                                                  |
+| Letter action — entry not yet due | Button not rendered. In its place: "A collection letter becomes available once this balance is past due." (Body, `text-muted-foreground`)                                  |
+| Secondary action — write-off      | "Request Write-Off"                                                                                                                                                        |
+| Panel heading — activity          | "Activity"                                                                                                                                                                 |
+| Activity row                      | "{action} · {actor name} · {date}" — newest first                                                                                                                          |
+| Activity empty state              | "No activity recorded yet."                                                                                                                                                |
+| Pending write-off banner heading  | "Write-off request submitted"                                                                                                                                              |
+| Pending write-off banner body     | "₱{outstanding} is awaiting Owner approval. Reminder emails continue until it's approved. Reason given: \"{reason}\""                                                      |
 
 ### Write-off request dialog (Accounting Staff)
 
-| Element | Copy |
-|---------|------|
-| Dialog title | "Request a write-off for ₱{outstanding}?" |
-| Dialog body | "An Owner reviews every write-off. Until they approve it, this balance stays active and keeps aging." |
-| Reason field label | "Reason" |
-| Reason placeholder | "e.g. Business closed permanently — three collection attempts returned undeliverable" |
-| Reason helper text | "The Owner sees this reason when deciding. It's recorded in the audit trail." |
-| Confirm button | "Submit Request" |
-| Cancel button | "Cancel" |
-| Error — reason missing | "Enter a reason before submitting this write-off request." (field-level, via `InputError`) |
-| Error — request already pending | "A write-off request is already pending for this entry." |
+| Element                         | Copy                                                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Dialog title                    | "Request a write-off for ₱{outstanding}?"                                                             |
+| Dialog body                     | "An Owner reviews every write-off. Until they approve it, this balance stays active and keeps aging." |
+| Reason field label              | "Reason"                                                                                              |
+| Reason placeholder              | "e.g. Business closed permanently — three collection attempts returned undeliverable"                 |
+| Reason helper text              | "The Owner sees this reason when deciding. It's recorded in the audit trail."                         |
+| Confirm button                  | "Submit Request"                                                                                      |
+| Cancel button                   | "Cancel"                                                                                              |
+| Error — reason missing          | "Enter a reason before submitting this write-off request." (field-level, via `InputError`)            |
+| Error — request already pending | "A write-off request is already pending for this entry."                                              |
 
 ### Owner write-off queue
 
-| Element | Copy |
-|---------|------|
-| Page title / `<Head>` | "Write-Off Requests" |
-| Nav item | "Write-Off Requests" |
-| H1 | "Write-Off Requests" |
-| Table column headers | "Job Order", "Customer", "Outstanding", "Days Past Due", "Reason", "Requested By", "Requested At", "Actions" |
-| Approve trigger | "Approve Write-Off" |
-| Reject trigger | "Reject Request" |
-| Approve dialog title | "Write off ₱{outstanding} for {JO number}?" |
-| Approve dialog body | "This closes the receivable as a loss and marks the job order Written Off. Reminder emails stop. The job order's original total stays on the books for reporting. This can't be undone." |
-| Approve confirm button | "Approve Write-Off" |
-| Reject dialog title | "Reject this write-off request?" |
-| Reject dialog body | "The balance stays active, keeps aging, and reminder emails continue. Accounting can request a write-off again later." |
-| Reject confirm button | "Reject Request" |
-| Cancel button (both dialogs) | "Cancel" |
-| Empty state | Heading: "No write-off requests" · Body: "Requests appear here when Accounting Staff asks to write off a balance they can't collect." |
-| Error — already resolved | "This write-off request has already been resolved. The queue has refreshed — check its current state before trying again." |
+| Element                      | Copy                                                                                                                                                                                     |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page title / `<Head>`        | "Write-Off Requests"                                                                                                                                                                     |
+| Nav item                     | "Write-Off Requests"                                                                                                                                                                     |
+| H1                           | "Write-Off Requests"                                                                                                                                                                     |
+| Table column headers         | "Job Order", "Customer", "Outstanding", "Days Past Due", "Reason", "Requested By", "Requested At", "Actions"                                                                             |
+| Approve trigger              | "Approve Write-Off"                                                                                                                                                                      |
+| Reject trigger               | "Reject Request"                                                                                                                                                                         |
+| Approve dialog title         | "Write off ₱{outstanding} for {JO number}?"                                                                                                                                              |
+| Approve dialog body          | "This closes the receivable as a loss and marks the job order Written Off. Reminder emails stop. The job order's original total stays on the books for reporting. This can't be undone." |
+| Approve confirm button       | "Approve Write-Off"                                                                                                                                                                      |
+| Reject dialog title          | "Reject this write-off request?"                                                                                                                                                         |
+| Reject dialog body           | "The balance stays active, keeps aging, and reminder emails continue. Accounting can request a write-off again later."                                                                   |
+| Reject confirm button        | "Reject Request"                                                                                                                                                                         |
+| Cancel button (both dialogs) | "Cancel"                                                                                                                                                                                 |
+| Empty state                  | Heading: "No write-off requests" · Body: "Requests appear here when Accounting Staff asks to write off a balance they can't collect."                                                    |
+| Error — already resolved     | "This write-off request has already been resolved. The queue has refreshed — check its current state before trying again."                                                               |
 
 ### Collection letter (printed, customer-facing)
 
-| Element | Copy |
-|---------|------|
-| Page title / `<Head>` | "Collection Letter — {JO number}" |
-| Print button (screen only) | "Print Letter" |
-| Letterhead | The shared `name` Inertia prop (`config('app.name')`) — **never a hardcoded shop name** |
-| Document title | "Statement of Account" |
-| Date line | "{today, e.g. September 8, 2026}" |
-| Addressee line | "To: {customer name}" |
-| Reference line | "Re: Job Order {JO number} — {job order description}" |
-| Amount table captions | "Credit Extended", "Amount Paid", "Amount Due" |
-| Due date line | "Due Date: {due date} · {n} days past due" |
-| Body — 1–15 days (polite) | "This is a friendly reminder that the balance below became due on {due date} and is still open as of today. If you have already sent your payment, thank you — please disregard this notice. Otherwise, we would appreciate settlement at your earliest convenience." |
-| Body — 16–30 days (firmer) | "Our records show the balance below has been outstanding for {n} days past its due date of {due date}. We ask that you settle this amount within seven (7) days of this notice. If there is a problem with this account, please contact us so we can work it out with you." |
-| Body — 31–60 days (formal demand) | "The balance below is now {n} days past its due date of {due date}. We are formally requesting full settlement within seven (7) days of this notice. Continued non-payment will affect your eligibility for credit terms with us on future orders." |
-| Body — 61–90 and 90+ days (final notice) | "This is a final notice. The balance below is {n} days past its due date of {due date} and remains unsettled despite our earlier reminders. Please settle it in full within seven (7) days of this notice. If we do not hear from you, this account will be endorsed for collection and may be written off as a loss, which ends your credit terms with us." |
-| Payment instruction line | "Payments are accepted at our counter during business hours. Please bring this notice or quote Job Order {JO number}." |
-| Closing | "Sincerely," |
-| Signature block | Blank rule, then "Accounts Receivable" / "{app name}" |
-| Footer (print) | "Printed {today} · Job Order {JO number}" (Body, `text-muted-foreground`) |
-| Not-yet-due guard (if the page is reached directly) | Heading: "This balance isn't past due yet" · Body: "A collection letter is only printed once the due date has passed. Go back to the entry to check its due date." |
+| Element                                             | Copy                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page title / `<Head>`                               | "Collection Letter — {JO number}"                                                                                                                                                                                                                                                                                                                            |
+| Print button (screen only)                          | "Print Letter"                                                                                                                                                                                                                                                                                                                                               |
+| Letterhead                                          | The shared `name` Inertia prop (`config('app.name')`) — **never a hardcoded shop name**                                                                                                                                                                                                                                                                      |
+| Document title                                      | "Statement of Account"                                                                                                                                                                                                                                                                                                                                       |
+| Date line                                           | "{today, e.g. September 8, 2026}"                                                                                                                                                                                                                                                                                                                            |
+| Addressee line                                      | "To: {customer name}"                                                                                                                                                                                                                                                                                                                                        |
+| Reference line                                      | "Re: Job Order {JO number} — {job order description}"                                                                                                                                                                                                                                                                                                        |
+| Amount table captions                               | "Credit Extended", "Amount Paid", "Amount Due"                                                                                                                                                                                                                                                                                                               |
+| Due date line                                       | "Due Date: {due date} · {n} days past due"                                                                                                                                                                                                                                                                                                                   |
+| Body — 1–15 days (polite)                           | "This is a friendly reminder that the balance below became due on {due date} and is still open as of today. If you have already sent your payment, thank you — please disregard this notice. Otherwise, we would appreciate settlement at your earliest convenience."                                                                                        |
+| Body — 16–30 days (firmer)                          | "Our records show the balance below has been outstanding for {n} days past its due date of {due date}. We ask that you settle this amount within seven (7) days of this notice. If there is a problem with this account, please contact us so we can work it out with you."                                                                                  |
+| Body — 31–60 days (formal demand)                   | "The balance below is now {n} days past its due date of {due date}. We are formally requesting full settlement within seven (7) days of this notice. Continued non-payment will affect your eligibility for credit terms with us on future orders."                                                                                                          |
+| Body — 61–90 and 90+ days (final notice)            | "This is a final notice. The balance below is {n} days past its due date of {due date} and remains unsettled despite our earlier reminders. Please settle it in full within seven (7) days of this notice. If we do not hear from you, this account will be endorsed for collection and may be written off as a loss, which ends your credit terms with us." |
+| Payment instruction line                            | "Payments are accepted at our counter during business hours. Please bring this notice or quote Job Order {JO number}."                                                                                                                                                                                                                                       |
+| Closing                                             | "Sincerely,"                                                                                                                                                                                                                                                                                                                                                 |
+| Signature block                                     | Blank rule, then "Accounts Receivable" / "{app name}"                                                                                                                                                                                                                                                                                                        |
+| Footer (print)                                      | "Printed {today} · Job Order {JO number}" (Body, `text-muted-foreground`)                                                                                                                                                                                                                                                                                    |
+| Not-yet-due guard (if the page is reached directly) | Heading: "This balance isn't past due yet" · Body: "A collection letter is only printed once the due date has passed. Go back to the entry to check its due date."                                                                                                                                                                                           |
 
 ### Reminder emails (AR-02 — internal, Accounting Staff + Owner, never the customer)
 
@@ -268,34 +268,34 @@ Extends Phase 5's table. Every other `payment_status` mapping stays exactly as `
 
 **Binding rule: no customer contact details in the email body.** Customer name and job order number only — the debtor's phone number and email address stay in the system.
 
-| Bracket | Subject line |
-|---|---|
-| 1–15 days | "AR notice — {JO number} is {n} days past due" |
-| 16–30 days | "Urgent — {JO number} is {n} days past due" |
-| 31–60 days | "Escalation — {JO number} is {n} days past due" |
-| 90+ days | "Final notice — {JO number} is {n} days past due, write-off decision needed" |
+| Bracket    | Subject line                                                                 |
+| ---------- | ---------------------------------------------------------------------------- |
+| 1–15 days  | "AR notice — {JO number} is {n} days past due"                               |
+| 16–30 days | "Urgent — {JO number} is {n} days past due"                                  |
+| 31–60 days | "Escalation — {JO number} is {n} days past due"                              |
+| 90+ days   | "Final notice — {JO number} is {n} days past due, write-off decision needed" |
 
 Shared body structure (one Markdown mail view, bracket-driven lead paragraph):
 
-| Element | Copy |
-|---------|------|
-| Lead — 1–15 | "A credit balance has passed its due date." |
-| Lead — 16–30 | "A credit balance is now more than two weeks overdue and needs follow-up." |
-| Lead — 31–60 | "A credit balance is now more than a month overdue. Earlier reminders have not been settled." |
-| Lead — 90+ | "A credit balance is more than 90 days overdue. This account should be collected or written off." |
-| Detail block captions | "Customer", "Job Order", "Outstanding Balance", "Due Date", "Days Past Due", "Collection Status" |
-| Closing — 1–15 through 31–60 | "Accounting Staff: open Accounts Receivable in {app name} to update the collection status or print a collection letter." |
-| Closing — 90+ | "Accounting Staff: print a final collection letter, or submit a write-off request from the entry. Owner: approved write-off requests are actioned under Write-Off Requests." |
-| Sign-off | "{app name} — automated accounts receivable notice. No reply is needed." |
+| Element                      | Copy                                                                                                                                                                         |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lead — 1–15                  | "A credit balance has passed its due date."                                                                                                                                  |
+| Lead — 16–30                 | "A credit balance is now more than two weeks overdue and needs follow-up."                                                                                                   |
+| Lead — 31–60                 | "A credit balance is now more than a month overdue. Earlier reminders have not been settled."                                                                                |
+| Lead — 90+                   | "A credit balance is more than 90 days overdue. This account should be collected or written off."                                                                            |
+| Detail block captions        | "Customer", "Job Order", "Outstanding Balance", "Due Date", "Days Past Due", "Collection Status"                                                                             |
+| Closing — 1–15 through 31–60 | "Accounting Staff: open Accounts Receivable in {app name} to update the collection status or print a collection letter."                                                     |
+| Closing — 90+                | "Accounting Staff: print a final collection letter, or submit a write-off request from the entry. Owner: approved write-off requests are actioned under Write-Off Requests." |
+| Sign-off                     | "{app name} — automated accounts receivable notice. No reply is needed."                                                                                                     |
 
 ### Toasts (`Inertia::flash('toast', …)` — existing convention)
 
-| Trigger | Copy |
-|---------|------|
-| Collection status updated | "Collection status updated to {status}." |
-| Write-off requested | "Write-off requested. Awaiting Owner approval." |
-| Write-off approved | "Write-off approved. {JO number} is now marked Written Off." |
-| Write-off rejected | "Write-off request rejected. This balance keeps aging." |
+| Trigger                   | Copy                                                         |
+| ------------------------- | ------------------------------------------------------------ |
+| Collection status updated | "Collection status updated to {status}."                     |
+| Write-off requested       | "Write-off requested. Awaiting Owner approval."              |
+| Write-off approved        | "Write-off approved. {JO number} is now marked Written Off." |
+| Write-off rejected        | "Write-off request rejected. This balance keeps aging."      |
 
 ### Destructive confirmation
 
@@ -311,8 +311,8 @@ Shared body structure (one Markdown mail view, bracket-driven lead paragraph):
 
 ## Registry Safety
 
-| Registry | Blocks Used | Safety Gate |
-|----------|-------------|-------------|
+| Registry                     | Blocks Used                                                                                                                                                                                                                | Safety Gate  |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | shadcn official (shadcn-vue) | none new — `table`, `card`, `tabs`, `badge`, `select`, `dialog`, `textarea`, `label`, `alert-dialog`, `alert`, `button`, `separator` all already installed from Phase 1-6 (verified against `resources/js/components/ui/`) | not required |
 
 No third-party shadcn registries are declared for this phase, so the `npx shadcn view --registry` vetting gate does not apply.
@@ -339,7 +339,7 @@ Page structure, top to bottom, `lg` (24px) gaps:
 - **Six bracket `Card`s** in `grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6`. Caption at Label, peso total at Display, "{n} entries" at Body muted. **Cards are display-only, not clickable** — the tabs are the single filter affordance, and two competing filter mechanisms on one page is a worse problem than one extra click.
 - **Bracket filter `Tabs`** — `TabsList` carries `class="h-auto flex-wrap"` so eight triggers wrap instead of overflowing on a laptop. **Client-side filtering over the already-fetched array** (a single-location shop's Active AR count is dozens, per PROJECT.md's scale framing): no query param, no server round-trip.
 - **Aging `Table`** — columns per the Copywriting Contract. Default sort: most overdue first (`due_at` ascending), then by outstanding amount descending. Money columns (`Total`, `Paid`, `Outstanding`) are right-aligned `tabular-nums`. `TableEmpty` for every empty state.
-  - **Actions cell** — one `variant="outline" size="sm"` "View Entry" button linking to §2. **Rows are not clickable.** The demo makes the entire `<tr>` an `onclick` target with a hover tint; that is unreachable by keyboard and unannounced by screen readers, and no existing page in this app does it.
+    - **Actions cell** — one `variant="outline" size="sm"` "View Entry" button linking to §2. **Rows are not clickable.** The demo makes the entire `<tr>` an `onclick` target with a hover tint; that is unreachable by keyboard and unannounced by screen readers, and no existing page in this app does it.
 - **No polling.** Phase 6's `usePoll(5000)` is deliberately **not** carried over — aging brackets advance once a day at most, and reminders are sent by a scheduled command, not by anyone watching this page. A 5-second poll here would be pure noise.
 
 **The "Closed" tab, and what the bracket cards count (this UI pass's call — CONTEXT.md left it open).** D-01 filters the list to `status = Active`, but D-14 leaves a written-off entry at `status = Active` with `collection_status = Written Off`. Read literally, a written-off balance would keep inflating the 90+ card, which would make the aging report overstate what the shop can actually collect — the exact opposite of AR-01's purpose.
@@ -447,5 +447,5 @@ Add the `written_off` label and badge treatment from the Color section to **ever
 **Carried to the planner (three UI-pass calls that change server-side work, not just markup):**
 
 1. **§1's open/closed split** — bracket cards and tabs must exclude `collection_status` in (`paid`, `written_off`) in the **controller query**, with a separate "Closed" set. A client-side-only filter would leave the card totals wrong.
-2. **§3 settles `07-RESEARCH.md` Open Question 2** — the collection letter quotes the *current derived outstanding balance*, so `CollectionLetterController` needs the same completed-transactions derivation as the aging list, not the raw `accounts_receivable.balance` column.
+2. **§3 settles `07-RESEARCH.md` Open Question 2** — the collection letter quotes the _current derived outstanding balance_, so `CollectionLetterController` needs the same completed-transactions derivation as the aging list, not the raw `accounts_receivable.balance` column.
 3. **§5 settles `07-RESEARCH.md` Open Question 3** — all four subject lines and the shared email body are fixed above. `07-RESEARCH.md` Open Question 1 (whether the 90+ reminder repeats daily) is a **backend behaviour question and is deliberately NOT answered here** — no UI surface in this phase changes either way, beyond the "Last Reminder Sent" field on §2 rendering whatever the backend last stamped.

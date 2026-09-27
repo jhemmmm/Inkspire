@@ -14,6 +14,7 @@ test('the frontline dashboard shows every job order ready for pickup', function 
     $jobOrder = JobOrder::factory()->create([
         'status' => JobOrderStatus::ReadyForPickup->value,
         'description' => 'Tarpaulin, 3x5ft',
+        'quoted_amount' => 288,
     ])->refresh();
 
     $response = $this->actingAs($staff)->get(route('frontline-staff.dashboard'));
@@ -28,7 +29,9 @@ test('the frontline dashboard shows every job order ready for pickup', function 
         ->where('readyForPickup.0.payment_status', $jobOrder->payment_status->value)
         ->where('readyForPickup.0.queue_entry_id', $jobOrder->queue_entry_id)
         ->has('readyForPickup.0.updated_at')
-        ->where('readyForPickup.0.queue_entry.customer.name', $jobOrder->queueEntry->customer->name));
+        ->where('readyForPickup.0.queue_entry.customer.name', $jobOrder->queueEntry->customer->name)
+        ->where('readyForPickup.0.display_total', 288)
+        ->has('readyForPickup.0.amount_paid'));
 });
 
 test('ready since and the dashboard ordering come from the logged ready_for_pickup transition, not updated_at', function () {
@@ -66,19 +69,21 @@ test('ready since and the dashboard ordering come from the logged ready_for_pick
 
 test('the ready_at aggregate does not widen the dashboard payload beyond its column list', function () {
     // withAggregate() falls back to selecting job_orders.* when no columns
-    // are set before it runs, which would silently expose pricing data.
+    // are set before it runs, which would silently expose pricing data not
+    // on the explicit select() list — total_amount/quoted_amount/is_rush
+    // ARE intentionally selected (they power the Total/Balance columns),
+    // so base_price_snapshot (never selected here) is the canary instead.
     $staff = User::factory()->frontlineStaff()->create();
     JobOrder::factory()->create([
         'status' => JobOrderStatus::ReadyForPickup->value,
         'total_amount' => 1234.56,
+        'base_price_snapshot' => 999.99,
     ]);
 
     $response = $this->actingAs($staff)->get(route('frontline-staff.dashboard'));
 
     $response->assertOk();
-    $content = $response->getContent();
-    expect($content)->not->toContain('total_amount');
-    expect($content)->not->toContain('base_price_snapshot');
+    expect($response->getContent())->not->toContain('base_price_snapshot');
 });
 
 test('the queue page summary orders by the logged ready_for_pickup transition, not updated_at', function () {

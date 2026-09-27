@@ -22,13 +22,13 @@ This phase builds **three new surfaces** and makes **three bounded extensions** 
 
 ## Design System
 
-| Property | Value |
-|----------|-------|
-| Tool | shadcn-vue (already initialized — reused from Phase 1-5, no re-init) |
-| Preset | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none |
-| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge |
-| Icon library | lucide (`@lucide/vue`) |
-| Font | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
+| Property          | Value                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| Tool              | shadcn-vue (already initialized — reused from Phase 1-5, no re-init)                       |
+| Preset            | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none             |
+| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge                       |
+| Icon library      | lucide (`@lucide/vue`)                                                                     |
+| Font              | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
 
 Existing installed `ui/` primitives cover this phase in full — **no `npx shadcn-vue add` calls required**:
 
@@ -56,15 +56,15 @@ Already-installed npm packages reused as-is:
 
 Unchanged from Phase 1-5 — reused as-is:
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| xs | 4px | Icon-to-label gaps, badge inline padding, urgency-dot to label gap |
-| sm | 8px | Compact form field gaps, gap between Advance and Send Back buttons in a row |
-| md | 16px | Default element spacing, card padding, table cell padding, gap between the four stat cards |
-| lg | 24px | Section padding within a portal page, gap between the stat row / filter tabs / board table, public tracking card internal padding |
-| xl | 32px | Layout gaps between major page regions |
-| 2xl | 48px | Major section breaks |
-| 3xl | 64px | Page-level spacing; vertical padding of the public tracking page's centred column |
+| Token | Value | Usage                                                                                                                             |
+| ----- | ----- | --------------------------------------------------------------------------------------------------------------------------------- |
+| xs    | 4px   | Icon-to-label gaps, badge inline padding, urgency-dot to label gap                                                                |
+| sm    | 8px   | Compact form field gaps, gap between Advance and Send Back buttons in a row                                                       |
+| md    | 16px  | Default element spacing, card padding, table cell padding, gap between the four stat cards                                        |
+| lg    | 24px  | Section padding within a portal page, gap between the stat row / filter tabs / board table, public tracking card internal padding |
+| xl    | 32px  | Layout gaps between major page regions                                                                                            |
+| 2xl   | 48px  | Major section breaks                                                                                                              |
+| 3xl   | 64px  | Page-level spacing; vertical padding of the public tracking page's centred column                                                 |
 
 Exceptions: **none.** Every value this phase needs already exists in the scale.
 
@@ -76,12 +76,12 @@ Non-spacing fixed dimensions introduced (component sizes, not layout spacing —
 
 Unchanged 4-role scale from Phase 1-5 — reused as-is. **No fifth size, no third weight:**
 
-| Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
-| Body | 14px | 400 (regular) | 1.5 |
-| Label | 14px | 600 (semibold) | 1.4 |
-| Heading | 20px | 600 (semibold) | 1.2 |
-| Display | 28px | 600 (semibold) | 1.2 |
+| Role    | Size | Weight         | Line Height |
+| ------- | ---- | -------------- | ----------- |
+| Body    | 14px | 400 (regular)  | 1.5         |
+| Label   | 14px | 600 (semibold) | 1.4         |
+| Heading | 20px | 600 (semibold) | 1.2         |
+| Display | 28px | 600 (semibold) | 1.2         |
 
 - **Body** — board table cell values (customer, description, due date), rework dialog body copy, public tracking helper text, receipt QR caption.
 - **Label** — board table column headers, stat-card captions ("For Production", "Printing", "Quality Check", "Ready for Pickup"), "Job Order Number" input label, all badge text, filter tab labels.
@@ -96,21 +96,21 @@ Unchanged 4-role scale from Phase 1-5 — reused as-is. **No fifth size, no thir
 
 Extends, does not replace, the Phase 1-5 contract. No new CSS custom properties, no new hex values in `resources/css/app.css`, no theme change.
 
-| Role | Value | Usage |
-|------|-------|-------|
-| Dominant (60%) | `--background` | Page background — unchanged |
-| Secondary (30%) | `--card` / `--muted` | Stat cards, board table header/zebra, public tracking card, receipt card — unchanged |
-| Accent (10%) | `--primary` | Reserved for: existing Phase 1-5 list, **plus** the three action buttons this phase introduces ("Advance to {stage}", "Release to Customer" as already specified in 05-UI-SPEC §6, "Check Status" on the public lookup form), and the active stage filter tab. Never a decorative fill. |
-| Destructive | `--destructive` | Reserved for: existing Phase 1-5 list. **This phase adds nothing** — it introduces no destructive action (see Copywriting Contract). |
+| Role            | Value                | Usage                                                                                                                                                                                                                                                                                   |
+| --------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dominant (60%)  | `--background`       | Page background — unchanged                                                                                                                                                                                                                                                             |
+| Secondary (30%) | `--card` / `--muted` | Stat cards, board table header/zebra, public tracking card, receipt card — unchanged                                                                                                                                                                                                    |
+| Accent (10%)    | `--primary`          | Reserved for: existing Phase 1-5 list, **plus** the three action buttons this phase introduces ("Advance to {stage}", "Release to Customer" as already specified in 05-UI-SPEC §6, "Check Status" on the public lookup form), and the active stage filter tab. Never a decorative fill. |
+| Destructive     | `--destructive`      | Reserved for: existing Phase 1-5 list. **This phase adds nothing** — it introduces no destructive action (see Copywriting Contract).                                                                                                                                                    |
 
 ### Urgency palette (PROD-01) — the one genuinely new colour axis
 
 PROD-01 locks two colours by name: **Green = Normal, Amber = Rush**. The neutral theme has no such tokens, so this phase declares them as Tailwind utility pairs in the exact shape of the existing `text-green-600 dark:text-green-400` success override already used for "Done" / "Ready for Production" / "Design Approved" / "Paid". These are **semantic data encodings on one axis only** — not decoration, not a theme change.
 
-| Urgency | Rule (D-05 / D-07) | Badge | Row treatment |
-|---|---|---|---|
-| **Normal** | `due_at` is after today | `<Badge variant="outline" class="text-green-600 dark:text-green-400 border-green-600/40">Normal</Badge>` | none |
-| **Rush** | `due_at` is today or in the past | `<Badge variant="outline" class="text-amber-600 dark:text-amber-400 border-amber-600/40">Rush</Badge>` | `class="bg-amber-50 dark:bg-amber-950/20"` on the `TableRow` — a secondary scan cue only (the demo's MINOR-3 row tint) |
+| Urgency    | Rule (D-05 / D-07)               | Badge                                                                                                    | Row treatment                                                                                                          |
+| ---------- | -------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Normal** | `due_at` is after today          | `<Badge variant="outline" class="text-green-600 dark:text-green-400 border-green-600/40">Normal</Badge>` | none                                                                                                                   |
+| **Rush**   | `due_at` is today or in the past | `<Badge variant="outline" class="text-amber-600 dark:text-amber-400 border-amber-600/40">Rush</Badge>`   | `class="bg-amber-50 dark:bg-amber-950/20"` on the `TableRow` — a secondary scan cue only (the demo's MINOR-3 row tint) |
 
 **Accessibility rule (binding):** urgency is **never encoded by colour alone**. The badge always carries the literal word "Rush" or "Normal", and Rush additionally carries a lucide `Zap` icon at `xs` (4px) gap. A colour-blind or greyscale-printing user reads the word. The row tint is redundant reinforcement, never the sole signal.
 
@@ -120,12 +120,12 @@ CONTEXT.md `<specifics>` flagged the collision directly: the demo gives For Prod
 
 **Resolution (this is the UI pass's call, as CONTEXT.md delegated): urgency owns colour; stage does not.** Stage badges are monochrome, distinguished by label text only — the same rule Phase 4 already set for `in_consultation` vs `in_design` ("distinguished by label text only, not color"). The demo's violet/blue values are decoration and are not reused.
 
-| `JobOrderStatus` value | Display label | Badge treatment | Meaning |
-|---|---|---|---|
-| `for_production` | "For Production" | `variant="outline"` | On the board, not started — mirrors "Waiting" / "Awaiting Assignment" |
-| `printing` | "Printing" | `variant="secondary"` | In progress — same tier as `in_design` |
-| `quality_check` | "Quality Check" | `variant="secondary"` | In progress — distinguished by label text only |
-| `ready_for_pickup` | "Ready for Pickup" | `class="text-green-600 dark:text-green-400"` (no `variant` prop, matching the existing "Done" / "Paid" success precedent exactly) | Production complete; awaiting Frontline release |
+| `JobOrderStatus` value | Display label      | Badge treatment                                                                                                                   | Meaning                                                               |
+| ---------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `for_production`       | "For Production"   | `variant="outline"`                                                                                                               | On the board, not started — mirrors "Waiting" / "Awaiting Assignment" |
+| `printing`             | "Printing"         | `variant="secondary"`                                                                                                             | In progress — same tier as `in_design`                                |
+| `quality_check`        | "Quality Check"    | `variant="secondary"`                                                                                                             | In progress — distinguished by label text only                        |
+| `ready_for_pickup`     | "Ready for Pickup" | `class="text-green-600 dark:text-green-400"` (no `variant` prop, matching the existing "Done" / "Paid" success precedent exactly) | Production complete; awaiting Frontline release                       |
 
 Phase 3/4/5's existing badge mappings (`intake`, `ready_for_production`, `assigned`, `in_consultation`, `in_design`, `pending_review`, `design_approved`, `validation_failed`, and every `payment_status` badge) stay **exactly** as their specs defined them. Lifecycle status and payment status remain two separate badges and must never be merged.
 
@@ -141,97 +141,97 @@ The public page inherits `QueueDisplay.vue` / `DesignReview.vue`'s forced-dark p
 
 ### Production Board (Production Staff)
 
-| Element | Copy |
-|---------|------|
-| Page title | "Production Board" |
-| Nav item | "Production Board" |
-| Stat card captions | "For Production", "Printing", "Quality Check", "Ready for Pickup" |
-| Stage filter tabs | "All", "Rush", "For Production", "Printing", "Quality Check", "Ready for Pickup" |
-| Table column headers | "Urgency", "Job Order", "Customer", "Description", "Stage", "Due", "Actions" |
-| Due cell — normal | "Today, 2:14 PM" / "Tomorrow, 9:00 AM" / "Sep 8, 5:00 PM" (`en-PH` locale, matching `QueueDisplay.vue`) |
-| Due cell — overdue suffix | "Overdue" (Body, `text-amber-600 dark:text-amber-400`, beneath the date) |
-| Rush banner heading (when Rush count > 0) | "{n} rush order{s} on the board" |
-| Rush banner body | "{JO-A} (due {time}), {JO-B} (due {time}) and {n} more. Work these first." (names the first two, matching the demo's rush-alert copy shape; drops the "and n more" clause when ≤ 2) |
-| Primary CTA — advance (label names the destination, never a generic "Advance") | "Advance to Printing" / "Advance to Quality Check" / "Advance to Ready for Pickup" |
-| Terminal-row text (at Ready for Pickup) | "Awaiting release" (Body, `text-muted-foreground`, in place of an advance button) |
-| Secondary action — rework | "Send Back to {previous stage}" (e.g. "Send Back to Printing") — names its destination for symmetry with "Advance to {stage}", so both directions are legible from the row without opening the dialog |
-| Send Back dialog title | "Send back to {previous stage}?" |
-| Send Back dialog body | "This is recorded on the production log with your name and the reason below." |
-| Send Back reason field label | "Reason" |
-| Send Back reason placeholder | "e.g. Colour banding on the second pass — needs a reprint" |
-| Send Back confirm button | "Send Back" |
-| Send Back cancel button | "Cancel" |
-| Empty state — board, nothing in production | Heading: "Nothing in production" · Body: "Job orders appear here automatically once a file is validated or a design is approved." |
-| Empty state — a stage filter with no rows | "No job orders in {stage}." |
-| Empty state — the Rush filter with no rows | "No rush orders right now." |
-| Error — advance/send-back rejected because the order already moved | "This job order already moved on. The board has refreshed — check its current stage before trying again." |
-| Error — reason missing on Send Back | "Enter a reason before sending this job order back." (field-level, via `InputError`) |
-| Toast — advanced | "{JO number} moved to {stage}." |
-| Toast — sent back | "{JO number} sent back to {stage}." |
+| Element                                                                        | Copy                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page title                                                                     | "Production Board"                                                                                                                                                                                    |
+| Nav item                                                                       | "Production Board"                                                                                                                                                                                    |
+| Stat card captions                                                             | "For Production", "Printing", "Quality Check", "Ready for Pickup"                                                                                                                                     |
+| Stage filter tabs                                                              | "All", "Rush", "For Production", "Printing", "Quality Check", "Ready for Pickup"                                                                                                                      |
+| Table column headers                                                           | "Urgency", "Job Order", "Customer", "Description", "Stage", "Due", "Actions"                                                                                                                          |
+| Due cell — normal                                                              | "Today, 2:14 PM" / "Tomorrow, 9:00 AM" / "Sep 8, 5:00 PM" (`en-PH` locale, matching `QueueDisplay.vue`)                                                                                               |
+| Due cell — overdue suffix                                                      | "Overdue" (Body, `text-amber-600 dark:text-amber-400`, beneath the date)                                                                                                                              |
+| Rush banner heading (when Rush count > 0)                                      | "{n} rush order{s} on the board"                                                                                                                                                                      |
+| Rush banner body                                                               | "{JO-A} (due {time}), {JO-B} (due {time}) and {n} more. Work these first." (names the first two, matching the demo's rush-alert copy shape; drops the "and n more" clause when ≤ 2)                   |
+| Primary CTA — advance (label names the destination, never a generic "Advance") | "Advance to Printing" / "Advance to Quality Check" / "Advance to Ready for Pickup"                                                                                                                    |
+| Terminal-row text (at Ready for Pickup)                                        | "Awaiting release" (Body, `text-muted-foreground`, in place of an advance button)                                                                                                                     |
+| Secondary action — rework                                                      | "Send Back to {previous stage}" (e.g. "Send Back to Printing") — names its destination for symmetry with "Advance to {stage}", so both directions are legible from the row without opening the dialog |
+| Send Back dialog title                                                         | "Send back to {previous stage}?"                                                                                                                                                                      |
+| Send Back dialog body                                                          | "This is recorded on the production log with your name and the reason below."                                                                                                                         |
+| Send Back reason field label                                                   | "Reason"                                                                                                                                                                                              |
+| Send Back reason placeholder                                                   | "e.g. Colour banding on the second pass — needs a reprint"                                                                                                                                            |
+| Send Back confirm button                                                       | "Send Back"                                                                                                                                                                                           |
+| Send Back cancel button                                                        | "Cancel"                                                                                                                                                                                              |
+| Empty state — board, nothing in production                                     | Heading: "Nothing in production" · Body: "Job orders appear here automatically once a file is validated or a design is approved."                                                                     |
+| Empty state — a stage filter with no rows                                      | "No job orders in {stage}."                                                                                                                                                                           |
+| Empty state — the Rush filter with no rows                                     | "No rush orders right now."                                                                                                                                                                           |
+| Error — advance/send-back rejected because the order already moved             | "This job order already moved on. The board has refreshed — check its current stage before trying again."                                                                                             |
+| Error — reason missing on Send Back                                            | "Enter a reason before sending this job order back." (field-level, via `InputError`)                                                                                                                  |
+| Toast — advanced                                                               | "{JO number} moved to {stage}."                                                                                                                                                                       |
+| Toast — sent back                                                              | "{JO number} sent back to {stage}."                                                                                                                                                                   |
 
 ### Frontline Ready-for-Pickup alert (PROD-03)
 
-| Element | Copy |
-|---------|------|
-| Page title (replaces the Frontline placeholder dashboard) | "Frontline Dashboard" |
-| Section heading | "Ready for Pickup" |
-| Section sub-copy | "Job orders waiting on the shelf for the customer to collect." |
-| Table column headers | "Job Order", "Customer", "Description", "Ready Since", "Payment", "Actions" |
-| Ready Since cell | "12 minutes ago" / "2 hours ago" / "Yesterday, 4:30 PM" |
-| Primary CTA | "Release to Customer" (the **existing** Phase 5 action — see 05-UI-SPEC §6; never re-implemented) |
-| Release blocked — unpaid | "This job order isn't fully paid yet. Send the customer to Cashier before releasing it." (verbatim from 05-UI-SPEC — do not reword) |
-| Release blocked — credit pending | "This job order's On-Credit request is still pending Owner approval. Send the customer to Cashier." (verbatim from 05-UI-SPEC) |
-| Toast — released | "Released to customer." (verbatim from 05-UI-SPEC) |
-| Empty state | Heading: "Nothing ready for pickup" · Body: "Job orders appear here the moment Production marks them Ready for Pickup." |
-| Banner on the Queue page — heading | "{n} job order{s} ready for pickup" |
-| Banner on the Queue page — body | "{JO-A}, {JO-B} and {n} more are waiting on the shelf." (names the first two; drops the trailing clause when ≤ 2) |
-| Banner on the Queue page — link | "View ready orders" |
+| Element                                                   | Copy                                                                                                                                |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Page title (replaces the Frontline placeholder dashboard) | "Frontline Dashboard"                                                                                                               |
+| Section heading                                           | "Ready for Pickup"                                                                                                                  |
+| Section sub-copy                                          | "Job orders waiting on the shelf for the customer to collect."                                                                      |
+| Table column headers                                      | "Job Order", "Customer", "Description", "Ready Since", "Payment", "Actions"                                                         |
+| Ready Since cell                                          | "12 minutes ago" / "2 hours ago" / "Yesterday, 4:30 PM"                                                                             |
+| Primary CTA                                               | "Release to Customer" (the **existing** Phase 5 action — see 05-UI-SPEC §6; never re-implemented)                                   |
+| Release blocked — unpaid                                  | "This job order isn't fully paid yet. Send the customer to Cashier before releasing it." (verbatim from 05-UI-SPEC — do not reword) |
+| Release blocked — credit pending                          | "This job order's On-Credit request is still pending Owner approval. Send the customer to Cashier." (verbatim from 05-UI-SPEC)      |
+| Toast — released                                          | "Released to customer." (verbatim from 05-UI-SPEC)                                                                                  |
+| Empty state                                               | Heading: "Nothing ready for pickup" · Body: "Job orders appear here the moment Production marks them Ready for Pickup."             |
+| Banner on the Queue page — heading                        | "{n} job order{s} ready for pickup"                                                                                                 |
+| Banner on the Queue page — body                           | "{JO-A}, {JO-B} and {n} more are waiting on the shelf." (names the first two; drops the trailing clause when ≤ 2)                   |
+| Banner on the Queue page — link                           | "View ready orders"                                                                                                                 |
 
 ### Public tracking page (TRACK-01, TRACK-02)
 
-| Element | Copy |
-|---------|------|
-| Page title / `<Head>` | "Track Your Order" |
-| Lookup heading | "Track Your Order" |
-| Lookup sub-copy | "Enter the job order number printed on your receipt." |
-| Input label | "Job Order Number" |
-| Input placeholder | "JO-2026-0001" |
-| Primary CTA | "Check Status" |
-| Result — number echo | "Job Order {JO number}" (Heading, `text-muted-foreground`) |
-| Result — stage label | The mapped public status (Display) — see the mapping table in Phase-Specific UI Notes §5 |
-| Result — live-refresh note | "This page updates automatically." (Body, `text-muted-foreground`) |
-| Result — check-another link | "Check another order" |
-| Error — not found | Heading: "We couldn't find that order" · Body: "Check the job order number on your receipt and try again." |
-| Error — malformed input | "Enter a job order number like JO-2026-0001." (field-level, via `InputError`) |
-| Error — rate limited (`throttle:60,1`) | "Too many lookups. Wait a minute and try again." |
+| Element                                | Copy                                                                                                       |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Page title / `<Head>`                  | "Track Your Order"                                                                                         |
+| Lookup heading                         | "Track Your Order"                                                                                         |
+| Lookup sub-copy                        | "Enter the job order number printed on your receipt."                                                      |
+| Input label                            | "Job Order Number"                                                                                         |
+| Input placeholder                      | "JO-2026-0001"                                                                                             |
+| Primary CTA                            | "Check Status"                                                                                             |
+| Result — number echo                   | "Job Order {JO number}" (Heading, `text-muted-foreground`)                                                 |
+| Result — stage label                   | The mapped public status (Display) — see the mapping table in Phase-Specific UI Notes §5                   |
+| Result — live-refresh note             | "This page updates automatically." (Body, `text-muted-foreground`)                                         |
+| Result — check-another link            | "Check another order"                                                                                      |
+| Error — not found                      | Heading: "We couldn't find that order" · Body: "Check the job order number on your receipt and try again." |
+| Error — malformed input                | "Enter a job order number like JO-2026-0001." (field-level, via `InputError`)                              |
+| Error — rate limited (`throttle:60,1`) | "Too many lookups. Wait a minute and try again."                                                           |
 
 ### Receipt QR (D-03)
 
-| Element | Copy |
-|---------|------|
-| QR caption | "Scan to track your order" |
-| QR typed fallback | "Or visit {app_url}/track and enter {JO number}." |
-| Receipt header row (new) | "Job Order No." → `{JO number}` |
+| Element                  | Copy                                              |
+| ------------------------ | ------------------------------------------------- |
+| QR caption               | "Scan to track your order"                        |
+| QR typed fallback        | "Or visit {app_url}/track and enter {JO number}." |
+| Receipt header row (new) | "Job Order No." → `{JO number}`                   |
 
 ### Destructive confirmation
 
 **This phase introduces no destructive action.** `alert-dialog` is **not** used anywhere in Phase 6, and no new `--destructive` mapping is added.
 
 - **"Advance to {stage}"** — a plain `Button` inside an Inertia `<Form>`, no confirmation. Routine, forward-only, and reversible via Send Back — the same treatment as "Call Next" / "Mark Done" / "Save Consultation Notes".
-- **"Send Back"** — a plain `Dialog` (not `AlertDialog`), because it is a *corrective* action that needs an input field, not an irreversible one. This follows Phase 1's explicit precedent: "Reactivate button has no AlertDialog confirmation (non-destructive, corrective action)". The dialog exists to collect D-11's mandatory reason, not to warn. Its confirm button uses default (`--primary`) styling, never `variant="destructive"`.
+- **"Send Back"** — a plain `Dialog` (not `AlertDialog`), because it is a _corrective_ action that needs an input field, not an irreversible one. This follows Phase 1's explicit precedent: "Reactivate button has no AlertDialog confirmation (non-destructive, corrective action)". The dialog exists to collect D-11's mandatory reason, not to warn. Its confirm button uses default (`--primary`) styling, never `variant="destructive"`.
 - **"Release to Customer"** — unchanged from 05-UI-SPEC: plain toast, no dialog.
 
 ---
 
 ## Registry Safety
 
-| Registry | Blocks Used | Safety Gate |
-|----------|-------------|-------------|
+| Registry                     | Blocks Used                                                                                                                                                                                             | Safety Gate  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | shadcn official (shadcn-vue) | none new — `table`, `badge`, `card`, `alert`, `dialog`, `textarea`, `input`, `label`, `tabs`, `button`, `spinner` all already installed from Phase 1-5 (verified against `resources/js/components/ui/`) | not required |
 
 No third-party shadcn registries are declared for this phase, so the `npx shadcn view --registry` vetting gate does not apply.
 
-**Dependency note (informational, not a registry-gate item):** this phase adds **no npm and no Composer package**. `qrcode.vue@3.10.0` — the only third-party code newly *used* here — was installed, audited and approved during Phase 5 (`05-RESEARCH.md` Package Legitimacy Audit). It renders entirely client-side from a string this application itself constructs (the tracking URL), performs no network access, and reads no environment. CONTEXT.md D-03's dependency-approval gate is therefore satisfied with nothing left to approve.
+**Dependency note (informational, not a registry-gate item):** this phase adds **no npm and no Composer package**. `qrcode.vue@3.10.0` — the only third-party code newly _used_ here — was installed, audited and approved during Phase 5 (`05-RESEARCH.md` Package Legitimacy Audit). It renders entirely client-side from a string this application itself constructs (the tracking URL), performs no network access, and reads no environment. CONTEXT.md D-03's dependency-approval gate is therefore satisfied with nothing left to approve.
 
 ---
 
@@ -243,9 +243,9 @@ No third-party shadcn registries are declared for this phase, so the `npx shadcn
 
 **Layout decision (CONTEXT.md delegated this to the UI pass): a single urgency-sorted table with stage filter tabs — not a kanban.** Reasons, in order of weight:
 
-1. **PROD-02 safety.** A kanban's affordance is drag-anywhere; D-10 forbids skipping stages. A table row whose only forward control is one button *named after the single legal next stage* makes skipping unrepresentable in the UI, rather than merely rejected by the server.
+1. **PROD-02 safety.** A kanban's affordance is drag-anywhere; D-10 forbids skipping stages. A table row whose only forward control is one button _named after the single legal next stage_ makes skipping unrepresentable in the UI, rather than merely rejected by the server.
 2. **No new dependency.** Kanban drag-and-drop needs a DnD library; PROJECT.md gates every dependency change on approval, and this phase otherwise adds none.
-3. **Urgency is the primary sort axis** (PROD-01), and urgency cuts *across* stages. A kanban forces stage to be the primary organiser and buries the rush order in column three.
+3. **Urgency is the primary sort axis** (PROD-01), and urgency cuts _across_ stages. A kanban forces stage to be the primary organiser and buries the rush order in column three.
 4. **House consistency.** Every internal list surface in this app is a shadcn `Table` (`QueueList.vue`, `AuditTrail.vue`, `DesignOverrides.vue`, `CreditRequests.vue`, cashier `Dashboard.vue`). The demo's own production queue is a table too.
 
 Page structure, top to bottom, `lg` (24px) gaps:
@@ -255,11 +255,11 @@ Page structure, top to bottom, `lg` (24px) gaps:
 - **Four stat `Card`s** in a responsive row (`grid grid-cols-2 gap-4 md:grid-cols-4`): count at Display size, caption at Label size, matching the four stage names.
 - **Stage filter `Tabs`** — `TabsList` with `TabsTrigger`s "All" / "Rush" / the four stage names. **Client-side filtering over the already-polled array** (a day's production is tens of rows, not thousands): no query param, no server round-trip, and the selection therefore survives every 5-second poll without any extra work. Active tab uses `--primary`.
 - **Board `Table`** — columns per the Copywriting Contract. Default sort: Rush first, then by `due_at` ascending, then by job order number. Rush rows carry the tint from the Color section.
-  - **Actions cell** — up to two `size="sm"` buttons, `sm` (8px) gap:
-    - Forward: one `--primary` button labelled with the destination stage. Absent at `ready_for_pickup`, replaced by the muted "Awaiting release" text.
-    - Backward: `variant="outline"` "Send Back to {previous stage}", opening the reason `Dialog`. Absent at `for_production` (nothing precedes it).
-    - **No stage `<Select>`.** The demo's `pd-status-select` lets a user jump from For Production straight to Ready for Pickup; that directly violates PROD-02 and is explicitly not reused.
-  - Empty states per the Copywriting Contract, rendered via `TableEmpty`.
+    - **Actions cell** — up to two `size="sm"` buttons, `sm` (8px) gap:
+        - Forward: one `--primary` button labelled with the destination stage. Absent at `ready_for_pickup`, replaced by the muted "Awaiting release" text.
+        - Backward: `variant="outline"` "Send Back to {previous stage}", opening the reason `Dialog`. Absent at `for_production` (nothing precedes it).
+        - **No stage `<Select>`.** The demo's `pd-status-select` lets a user jump from For Production straight to Ready for Pickup; that directly violates PROD-02 and is explicitly not reused.
+    - Empty states per the Copywriting Contract, rendered via `TableEmpty`.
 - **Polling** — `usePoll(5000, { only: [...] })` per D-14, mirroring `QueueDisplay.vue`'s exact pattern.
 
 **Stale-advance handling (real risk: two production staff, one board, a 5-second poll).** The server is authoritative on the sequence rule. When it rejects a move because the row already changed, surface the "already moved on" `Alert` from the Copywriting Contract inline above the table — never a silent no-op, and never a client-side-only guard.
@@ -302,16 +302,16 @@ Lives under the `public/` page namespace, so `resources/js/app.ts`'s existing `n
 
 ### 5. Public status mapping — TRACK-02's PII boundary, expressed as a UI contract
 
-**Binding contract: the browser payload for the public tracking page contains exactly two fields — the job order number the customer just typed, and a pre-mapped public status *string*.** The raw `JobOrderStatus` enum value never reaches the client, and no other column ever joins the payload. This is the same explicit-allowlist discipline `QueueDisplayController` documents, applied one level stricter: the mapping happens server-side so that even the internal status vocabulary stays inside the server.
+**Binding contract: the browser payload for the public tracking page contains exactly two fields — the job order number the customer just typed, and a pre-mapped public status _string_.** The raw `JobOrderStatus` enum value never reaches the client, and no other column ever joins the payload. This is the same explicit-allowlist discipline `QueueDisplayController` documents, applied one level stricter: the mapping happens server-side so that even the internal status vocabulary stays inside the server.
 
-| Internal state | Public label shown |
-|---|---|
-| `intake`, `validation_failed`, `ready_for_production`, `assigned`, `in_consultation`, `in_design`, `pending_review`, `design_approved` | "In Progress" |
-| `for_production` | "For Production" |
-| `printing` | "Printing" |
-| `quality_check` | "Quality Check" |
-| `ready_for_pickup` (with `released_at` null) | "Ready for Pickup" |
-| any status with `released_at` set | "Completed" |
+| Internal state                                                                                                                         | Public label shown |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `intake`, `validation_failed`, `ready_for_production`, `assigned`, `in_consultation`, `in_design`, `pending_review`, `design_approved` | "In Progress"      |
+| `for_production`                                                                                                                       | "For Production"   |
+| `printing`                                                                                                                             | "Printing"         |
+| `quality_check`                                                                                                                        | "Quality Check"    |
+| `ready_for_pickup` (with `released_at` null)                                                                                           | "Ready for Pickup" |
+| any status with `released_at` set                                                                                                      | "Completed"        |
 
 Collapsing every pre-production state into "In Progress" is deliberate: it answers the customer's actual question, and it prevents the public page leaking that a file failed validation or that a design is sitting in review — internal states the customer has no context for and TRACK-02's spirit excludes.
 
@@ -335,7 +335,7 @@ Add a new thin wrapper `resources/js/components/TrackingQrCode.vue` (props: `tra
 - Renders `<QrcodeVue :value="trackingUrl" :size="160" render-as="svg" level="M" />`. **SVG, not canvas**: the receipt's whole purpose is `window.print()`, and an SVG QR prints crisply at any printer DPI while a canvas QR is a fixed-resolution raster that browsers can drop from print output entirely.
 - Placed in its own bordered block at the bottom of the Receipt `Card` (`border-t pt-4`, matching the card's existing section dividers), centred, with the caption at Body size in `text-muted-foreground` beneath it, then the typed fallback line beneath that.
 - **Must not carry `print:hidden`** — it is the single most important thing on the printed receipt for this phase. The existing `print:hidden` on the "Print Receipt" button is unchanged.
-- The QR encodes the deep link to *that* order's status, so scanning lands on the result state directly with nothing to type (D-03). The typed fallback exists for a torn or smudged receipt.
+- The QR encodes the deep link to _that_ order's status, so scanning lands on the result state directly with nothing to type (D-03). The typed fallback exists for a torn or smudged receipt.
 
 ### Out of scope for this UI-SPEC (confirmed against 06-CONTEXT.md's domain boundary)
 

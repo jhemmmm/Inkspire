@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
-use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\JobOrder;
 use App\Models\SystemConfiguration;
@@ -48,7 +47,7 @@ class DashboardController extends Controller
                     JobOrderStatus::ReadyForPickup->value,
                 ])
                 ->whereNull('cancelled_at')
-                ->withSum(['transactions as amount_paid' => fn ($query) => $query->where('status', TransactionStatus::Completed->value)], 'amount')
+                ->withAmountPaid()
                 ->with([
                     'queueEntry.customer:id,name',
                     // Surfaced so the cancellation dialog can warn the
@@ -61,19 +60,12 @@ class DashboardController extends Controller
                         ->select(['id', 'job_order_id', 'balance', 'status']),
                 ])
                 ->orderBy('created_at')
-                ->get(['id', 'number', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount', 'is_rush'])
-                // withSum's raw SQL aggregate arrives from PDO as a numeric
-                // string (or null with no completed transactions), unlike
-                // every other money value this phase passes to Inertia
-                // (CR-04) — cast it here to match that convention so the
-                // frontend never has to guess the runtime type.
-                ->each(fn (JobOrder $jobOrder) => $jobOrder->amount_paid = $jobOrder->amount_paid !== null
-                    ? (float) $jobOrder->amount_paid
-                    : null)
+                ->get(['id', 'number', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount', 'quoted_amount', 'is_rush'])
                 ->reject(fn (JobOrder $jobOrder) => $jobOrder->total_amount !== null
                     && $jobOrder->amount_paid !== null
                     && (float) $jobOrder->amount_paid >= (float) $jobOrder->total_amount - 0.005)
-                ->values(),
+                ->values()
+                ->append('display_total'),
             // Mirrors the exact server-authoritative value CancellationController
             // reads, so the pre-confirmation dialog body (D-04/D-05) matches
             // what actually gets charged (informational display only).

@@ -9,8 +9,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 function roleBoundaryPortals(): array
 {
     return [
-        ['owner', 'owner.dashboard'],
-        ['admin', 'owner.dashboard'],
+        ['admin', 'admin.dashboard'],
         ['frontlineStaff', 'frontline-staff.dashboard'],
         ['artist', 'artist.dashboard'],
         ['cashier', 'cashier.dashboard'],
@@ -19,21 +18,21 @@ function roleBoundaryPortals(): array
     ];
 }
 
-test('owner logging in lands on the owner dashboard', function () {
-    $user = User::factory()->owner()->create();
+test('admin logging in lands on the admin dashboard', function () {
+    $user = User::factory()->admin()->create();
 
     $response = $this->post(route('login.store'), [
         'email' => $user->email,
         'password' => 'password',
     ]);
 
-    $response->assertRedirect(route('owner.dashboard', absolute: false));
+    $response->assertRedirect(route('admin.dashboard', absolute: false));
 });
 
-test('a non owner/admin role is blocked from the owner portal with a 403', function () {
+test('a staff role is blocked from the admin portal with a 403', function () {
     $user = User::factory()->create(['role' => 'cashier']);
 
-    $response = $this->actingAs($user)->get(route('owner.dashboard'));
+    $response = $this->actingAs($user)->get(route('admin.dashboard'));
 
     $response->assertForbidden();
     $response->assertInertia(fn (Assert $page) => $page->component('errors/Forbidden'));
@@ -42,7 +41,7 @@ test('a non owner/admin role is blocked from the owner portal with a 403', funct
 test('the 403 forbidden page links to the signed-in user\'s own portal, not the generic dashboard', function () {
     $user = User::factory()->create(['role' => 'cashier']);
 
-    $response = $this->actingAs($user)->get(route('owner.dashboard'));
+    $response = $this->actingAs($user)->get(route('admin.dashboard'));
 
     $response->assertForbidden();
     $response->assertInertia(fn (Assert $page) => $page

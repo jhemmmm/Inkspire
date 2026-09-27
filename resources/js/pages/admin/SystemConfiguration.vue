@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
 import { computed, reactive } from 'vue';
-import SystemConfigurationController from '@/actions/App/Http/Controllers/Owner/SystemConfigurationController';
+import SystemConfigurationController from '@/actions/App/Http/Controllers/Admin/SystemConfigurationController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ownerNavItems } from '@/config/nav/owner';
-import { edit as systemConfigurationEditRoute } from '@/routes/owner/system-configuration';
+import { adminNavItems } from '@/config/nav/admin';
+import { edit as systemConfigurationEditRoute } from '@/routes/admin/system-configuration';
 
 interface ConfigurationRow {
     key: string;
@@ -31,7 +33,7 @@ const props = defineProps<Props>();
 
 defineOptions({
     layout: {
-        navItems: ownerNavItems,
+        navItems: adminNavItems,
         breadcrumbs: [
             {
                 title: 'System Configuration',
@@ -99,12 +101,11 @@ function scalarValue(value: unknown): string | number {
 <template>
     <Head title="System Configuration" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            System Configuration
-        </h1>
+    <PageContainer>
+        <PageHeader
+            title="System Configuration"
+            description="Business rules, security limits and file handling. Changes take effect on the next read, with no deploy."
+        />
 
         <Tabs default-value="security" class="w-full">
             <TabsList>
@@ -197,5 +198,5 @@ function scalarValue(value: unknown): string | number {
                 </div>
             </TabsContent>
         </Tabs>
-    </div>
+    </PageContainer>
 </template>

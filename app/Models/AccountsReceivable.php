@@ -51,6 +51,18 @@ class AccountsReceivable extends Model
     protected $table = 'accounts_receivable';
 
     /**
+     * The collection statuses that close an entry. Each is written by the
+     * system at the moment the debt stops being chaseable, and none can be
+     * re-derived from the calendar, so a stored one always wins over the
+     * aging-derived value in collectionStatus().
+     */
+    private const array TERMINAL_COLLECTION_STATUSES = [
+        AccountsReceivableCollectionStatus::Paid,
+        AccountsReceivableCollectionStatus::WrittenOff,
+        AccountsReceivableCollectionStatus::Cancelled,
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -91,7 +103,7 @@ class AccountsReceivable extends Model
     }
 
     /**
-     * The Owner who approved or rejected this credit request.
+     * The Admin who approved or rejected this credit request.
      *
      * @return BelongsTo<User, $this>
      */
@@ -130,6 +142,58 @@ class AccountsReceivable extends Model
             $daysPastDue <= 90 => AccountsReceivableAgingBracket::SixtyOneToNinety,
             default => AccountsReceivableAgingBracket::NinetyPlus,
         };
+    }
+
+    /**
+     * The effective collection status (D-09/D-10), derived from how far
+     * past due the balance is rather than hand-set by Accounting.
+     *
+     * A stored value only ever wins when it is one of the three terminal
+     * states the system itself writes — Paid (settled), WrittenOff (an
+     * Admin-approved loss) and Cancelled (the print job was voided). Those
+     * are facts about what happened to the debt and cannot be recovered
+     * from the calendar; everything else is just "how far along is the
+     * chasing", which the aging bracket already answers.
+     *
+     * Deriving rather than storing is deliberate. Aging advances with the
+     * clock, not with an event, so a stored chase status is stale the
+     * moment nothing happens to the row — which is exactly the state an
+     * overdue receivable spends most of its life in.
+     *
+     * Reads the job order's outstanding balance, so callers listing many
+     * entries must eager-load `jobOrder.transactions` (Pitfall 3) — every
+     * caller in this codebase already does.
+     */
+    public function collectionStatus(): AccountsReceivableCollectionStatus
+    {
+        if (in_array($this->collection_status, self::TERMINAL_COLLECTION_STATUSES, true)) {
+            return $this->collection_status;
+        }
+
+        // `total_amount` guards the settlement check: outstandingBalance()
+        // returns 0.0 for an unpriced job order, which would otherwise read
+        // as "settled in full" and quietly close a debt nobody has paid.
+        if ($this->jobOrder->total_amount !== null && $this->jobOrder->outstandingBalance() <= 0.0) {
+            return AccountsReceivableCollectionStatus::Paid;
+        }
+
+        return match ($this->agingBracket()) {
+            AccountsReceivableAgingBracket::Current,
+            AccountsReceivableAgingBracket::OneToFifteen => AccountsReceivableCollectionStatus::Pending,
+            AccountsReceivableAgingBracket::SixteenToThirty => AccountsReceivableCollectionStatus::FollowUp,
+            AccountsReceivableAgingBracket::ThirtyOneToSixty,
+            AccountsReceivableAgingBracket::SixtyOneToNinety => AccountsReceivableCollectionStatus::WarningSent,
+            AccountsReceivableAgingBracket::NinetyPlus => AccountsReceivableCollectionStatus::Collections,
+        };
+    }
+
+    /**
+     * Whether this entry is finished — settled, written off or cancelled —
+     * and so belongs in the closed list rather than the aging buckets.
+     */
+    public function isClosed(): bool
+    {
+        return in_array($this->collectionStatus(), self::TERMINAL_COLLECTION_STATUSES, true);
     }
 
     /**

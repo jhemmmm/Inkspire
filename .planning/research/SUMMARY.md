@@ -20,6 +20,7 @@ The primary risks are concentrated in three areas, all flagged as MUST-avoid in 
 The core scaffold (Laravel 13.29.0, Inertia 3.3.1, Vue 3.5.13, MySQL, Fortify 1.39.0) is already correctly locked in and requires no changes. Domain gaps are filled by mature, narrowly-scoped packages rather than heavier alternatives — notably pinning `maatwebsite/excel` to the `^3.1` line (not the just-released, weeks-old `4.0.x`) and building PayMongo integration as a custom service rather than depending on an effectively-abandoned SDK. The design editor (TOAST UI Image Editor) is confirmed functional but upstream-unmaintained since 2022; the recommendation is to keep it (no actively-maintained equivalent-feature alternative exists) but import the core library directly rather than the archived official Vue wrapper.
 
 **Core technologies:**
+
 - Laravel 13 + Inertia v3 + Vue 3.5 (already scaffolded) — server-driven SPA bridge whose v3 polling/deferred-props/partial-reload features directly serve this project's "real-time-ish without websockets" and progressive-loading (design previews, production board) needs
 - MySQL (Laravel Cloud managed) — matches the 12-table ERD's relational/transactional needs (AR aging, audit trail, FK integrity) far better than SQLite
 - `barryvdh/laravel-dompdf:^3.1` + `maatwebsite/excel:^3.1` — PDF/Excel report and collection-letter export, both verified Laravel 13-compatible
@@ -32,6 +33,7 @@ The core scaffold (Laravel 13.29.0, Inertia 3.3.1, Vue 3.5.13, MySQL, Fortify 1.
 Feature research (MEDIUM confidence — industry-pattern research from print-MIS vendor content, no formal domain spec) confirms the locked scope matches or exceeds table stakes for print-shop management software, while correctly excluding common but inappropriate scope-creep for a single-location shop.
 
 **Must have (table stakes):**
+
 - Job/order tracking through clear production stages, tied to a customer record
 - File/artwork attachment with preflight-style validation (DPI/format/size) on upload
 - Proofing/design approval workflow with revision history
@@ -39,6 +41,7 @@ Feature research (MEDIUM confidence — industry-pattern research from print-MIS
 - Basic role-scoped reporting, RBAC, customer-facing order status visibility, AR/running-tab tracking, audit trail
 
 **Should have (competitive differentiators — worth extra roadmap attention):**
+
 - Built-in web design editor (TOAST UI) rather than upload-PDF-and-approve — real complexity driver, closer to a design tool than a typical MIS
 - Automated escalating AR reminder pipeline with aging brackets — more sophisticated than the domain norm (most shops handle overdue accounts manually)
 - Formal On-Credit Owner-approval gate before a credit sale posts to AR
@@ -46,6 +49,7 @@ Feature research (MEDIUM confidence — industry-pattern research from print-MIS
 - 7 fully separate role portals (not one adaptive UI) — client-confirmed, but multiplies front-end surface area across every cross-role feature; size phases accordingly
 
 **Defer (explicitly out of scope for this milestone):**
+
 - Materials/inventory management, quote-to-order workflow, multi-branch support, loyalty/marketing features, full offset-print preflight (bleed/CMYK/fonts), customer-facing self-service ordering — all confirmed anti-features for this shop's size and paper-replacement mandate
 
 ### Architecture Approach
@@ -53,6 +57,7 @@ Feature research (MEDIUM confidence — industry-pattern research from print-MIS
 A monolithic Laravel + Inertia app with 7 role-scoped route-group/controller/layout/page trees (plus a structurally separate guest tracking surface and webhook endpoint), thin controllers delegating to single-purpose `Actions/` classes for business operations, native Policies/Gates for authorization (no Spatie permissions package needed for a single fixed `role` column), and Observer-driven audit logging so append-only trail writes are a structural consequence of mutation rather than an opt-in call site.
 
 **Major components:**
+
 1. **Role portals (7) + public tracking surface** — dedicated `resources/js/layouts/{role}/` and `pages/{role}/` trees, gated by `EnsureRole` middleware per route group; tracking and webhook routes live structurally outside any `EnsureRole` group to prevent accidental auth/data leakage
 2. **Actions layer** (`app/Actions/{Domain}/`) — single-purpose, independently testable classes for state transitions (job order status, payment capture, AR posting, design lock, queue assignment), replacing both fat controllers and a monolithic god-service
 3. **Domain models + Observers** — `job_orders` as the central hub referenced by 5+ other tables; Observers write append-only `AuditTrail` rows on every mutating Eloquent event, kept structurally separate from feature code
@@ -74,18 +79,21 @@ Suggested build order (dependency-driven, per ARCHITECTURE.md): foundational RBA
 Based on combined research, suggested phase structure (aligned with ARCHITECTURE.md's dependency-driven build order and FEATURES.md's P1/P2 prioritization):
 
 ### Phase 1: Foundation — RBAC, Audit Trail, System Configuration
+
 **Rationale:** Every other phase depends on role-gated routing existing, and audit-trail infrastructure must exist before the first mutating feature is built — retrofitting audit hooks later is explicitly flagged as an anti-pattern. This is also where the login-hardening/lockout security work belongs, since it's cheap to do early and risky to defer.
 **Delivers:** `role` column + `EnsureRole` middleware + Policy scaffolding, `system_configurations` table + Owner settings UI, `audit_trail` table with Observer infrastructure and (pending Laravel Cloud verification) DB-level append-only enforcement, Fortify lockout hardening with IP-aware rate limiting.
 **Addresses:** RBAC (table stakes), audit trail (table stakes), login hardening (P1-P2 in FEATURES.md).
 **Avoids:** Pitfalls 4, 6, 7 (audit trail not structurally append-only; RBAC UI-only; lockout DoS against employees).
 
 ### Phase 2: Portal Shells + Customers/Queue Management
+
 **Rationale:** Proves the 7-portal routing/layout convention with minimal domain risk before real features build on it; queue management is the lowest-complexity vertical slice that still exercises RBAC + audit end-to-end.
 **Delivers:** Empty dashboards for all 7 roles + tracking layout wired to correct middleware; customer registration and search; queue-number generation with concurrency-safe locking.
 **Addresses:** Customer registration, queueing (table stakes).
 **Avoids:** Pitfall 8 (queue-number races) — build the locking pattern here, it's cheap at this scale.
 
 ### Phase 3: Job Orders Core (Central Entity)
+
 **Rationale:** `job_orders` is referenced by 5+ downstream tables (Artist, POS, Production, Tracking) — nothing else can be built until it exists. Pricing database must be seeded here too, since POS pricing reads from it.
 **Delivers:** Type A/B intake, `pricing_database`, DPI/format/size auto-validation reading `system_configurations` thresholds.
 **Addresses:** Job Order intake (table stakes, P1).
@@ -93,6 +101,7 @@ Based on combined research, suggested phase structure (aligned with ARCHITECTURE
 **Research flag:** Confirm `ext-imagick`/Ghostscript availability on Laravel Cloud before locking Type A scope for vector formats (PDF/AI/EPS).
 
 ### Phase 4: Artist Workflow, POS/Payments, Public Tracking (parallelizable)
+
 **Rationale:** All three depend only on Job Orders existing (Phase 3) and are otherwise independent of each other — architecture research confirms these can be built in parallel or interleaved once the central entity is in place.
 **Delivers:** TOAST UI design editor integration, revision logging, design lock/Owner override; Cash/Bank Transfer synchronous POS path first, then PayMongo webhook-driven GCash/Maya path with signature verification + idempotency + manual reconciliation; read-only public QR tracking portal structurally isolated from staff routes.
 **Uses:** `tui-image-editor` (hand-wrapped), custom `PayMongoService`, `endroid/qr-code`.
@@ -101,12 +110,14 @@ Based on combined research, suggested phase structure (aligned with ARCHITECTURE
 **Research flag:** Needs deeper research during planning — PayMongo Payment Intent specifics, webhook retry/reconciliation edge cases.
 
 ### Phase 5: Production Monitoring + On-Credit/Accounts Receivable
+
 **Rationale:** Production status transitions depend on Job Orders (Phase 3) and benefit from POS existing (Phase 4) if any payment-gating rules apply. On-Credit/AR strictly depends on the POS On-Credit path from Phase 4 producing rows to operate on — do not build AR aging before the posting path exists.
 **Delivers:** Sequential production status board with guarded transitions (no skipped stages), color-coded urgency; On-Credit Owner-approval gate; AR aging brackets with nightly scheduled recompute and escalating reminder notifications; collection letters, write-offs.
 **Addresses:** Production Monitoring (table stakes), On-Credit + AR (P2, genuine differentiator per FEATURES.md).
 **Avoids:** Pitfall 8's status-transition half (skipped stages under concurrent staff action) — enforce the state machine server-side, never trust client-submitted "next" actions.
 
 ### Phase 6: Expenses + Reporting
+
 **Rationale:** Expense tracking is operationally independent and can slot in anywhere after Phase 1; full reporting is deliberately last because it aggregates data from every other module — building it earlier means building against incomplete/fake data.
 **Delivers:** Expense tracking module; role-scoped Daily/Monthly Sales, Production Status, Financial, Artist Performance reports with PDF (`laravel-dompdf`) and Excel (`maatwebsite/excel`) export.
 **Uses:** `barryvdh/laravel-dompdf`, `maatwebsite/excel:^3.1`.
@@ -122,23 +133,25 @@ Based on combined research, suggested phase structure (aligned with ARCHITECTURE
 ### Research Flags
 
 Phases likely needing deeper research during planning (`/gsd-plan-phase --research-phase <N>`):
+
 - **Phase 4 (Artist/POS/Payments/Tracking):** PayMongo Payment Intent API specifics, webhook retry/idempotency edge cases, and TOAST UI's post-edit DPI-metadata-stripping behavior are all flagged MEDIUM/LOW confidence in the underlying research and warrant direct verification before implementation.
 - **Phase 3 (Job Orders Core):** Ghostscript/Imagick availability on Laravel Cloud's actual PHP 8.4 runtime is unverified (LOW confidence) and gates the Type A vector-format validation scope decision.
 - **Phase 1 (Foundation):** Laravel Cloud's managed-MySQL support for a restricted-privilege DB user/connection (for audit-trail DB-grant enforcement) is unverified (LOW confidence) — needs direct verification against Laravel Cloud docs/dashboard before committing to that enforcement mechanism vs. a trigger-based fallback.
 
 Phases with standard, well-documented patterns (skip research-phase):
+
 - **Phase 2 (Portal Shells/Queue):** Standard Laravel route-group/middleware/Policy patterns, HIGH confidence throughout.
 - **Phase 5 (Production/AR):** Guarded Action-class state transitions and scheduled-job patterns are standard Laravel mechanics, HIGH confidence.
 - **Phase 6 (Reporting/Expenses):** Both PDF/Excel packages are mature, well-documented, HIGH confidence on compatibility.
 
 ## Confidence Assessment
 
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Stack | HIGH for framework-adjacent packages (verified directly against Packagist/GitHub/npm metadata); LOW for Laravel Cloud's Imagick/Ghostscript support (WebSearch-derived, unverified against Laravel Cloud's own docs) |
-| Features | MEDIUM — no formal print-shop-MIS spec exists to verify against; WebSearch-derived from print-MIS vendor sites, cross-checked across 3+ independent sources per claim |
-| Architecture | HIGH for Laravel/Inertia framework mechanics and RBAC/Actions patterns; MEDIUM for PayMongo webhook specifics and third-party package choices |
-| Pitfalls | MEDIUM-HIGH — PayMongo specifics and Laravel mechanics verified against official docs and multiple sources; DPI/print-production conventions and some Laravel Cloud specifics are MEDIUM/LOW, flagged explicitly |
+| Area         | Confidence                                                                                                                                                                                                           | Notes |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| Stack        | HIGH for framework-adjacent packages (verified directly against Packagist/GitHub/npm metadata); LOW for Laravel Cloud's Imagick/Ghostscript support (WebSearch-derived, unverified against Laravel Cloud's own docs) |
+| Features     | MEDIUM — no formal print-shop-MIS spec exists to verify against; WebSearch-derived from print-MIS vendor sites, cross-checked across 3+ independent sources per claim                                                |
+| Architecture | HIGH for Laravel/Inertia framework mechanics and RBAC/Actions patterns; MEDIUM for PayMongo webhook specifics and third-party package choices                                                                        |
+| Pitfalls     | MEDIUM-HIGH — PayMongo specifics and Laravel mechanics verified against official docs and multiple sources; DPI/print-production conventions and some Laravel Cloud specifics are MEDIUM/LOW, flagged explicitly     |
 
 **Overall confidence:** MEDIUM-HIGH
 
@@ -153,6 +166,7 @@ Phases with standard, well-documented patterns (skip research-phase):
 ## Sources
 
 ### Primary (HIGH confidence)
+
 - Packagist API (`packagist.org/packages/*.json`) — direct version/require-block verification for PDF, Excel, QR, image packages
 - GitHub REST API (`api.github.com/repos/*`) — staleness/archive verification for `tui-image-editor` and `paymongo/paymongo-php`
 - npm registry API — `tui-image-editor` last-publish-date verification
@@ -161,6 +175,7 @@ Phases with standard, well-documented patterns (skip research-phase):
 - `.planning/codebase/STACK.md`, `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/STRUCTURE.md`, `.planning/PROJECT.md` — existing scaffold and locked-scope ground truth
 
 ### Secondary (MEDIUM confidence)
+
 - Print-MIS vendor feature content (ShopVOX, Printavo, PrintSmith Vision comparisons) — table-stakes/differentiator feature landscape
 - Queue-management vendor content (Qwaiting, ScanQueue, Waitwhile) — customer-facing status/queue pattern comparison
 - Print-production/DPI convention sources (Catdi, Templated, ImResizer, Printcart) — effective-DPI-vs-metadata-tag industry convention, converging across multiple independent vendors
@@ -168,10 +183,12 @@ Phases with standard, well-documented patterns (skip research-phase):
 - Webhook idempotency/deduplication guides (Hookdeck, Hooklistener) — cross-provider idempotency pattern corroboration
 
 ### Tertiary (LOW confidence, needs validation)
+
 - WebSearch on Laravel Cloud PHP extension support — Imagick confirmed present, Ghostscript/system-binary support unconfirmed
 - WebSearch on Laravel Cloud managed-MySQL multi-user/grant provisioning — unconfirmed, needs direct verification against Laravel Cloud docs before Phase 1 audit-trail enforcement design
 - Single-author blog posts on Laravel audit-trail Observer patterns and pessimistic locking — cross-checked against generic/official guidance but not independently corroborated
 
 ---
-*Research completed: 2026-08-31*
-*Ready for roadmap: yes*
+
+_Research completed: 2026-08-31_
+_Ready for roadmap: yes_

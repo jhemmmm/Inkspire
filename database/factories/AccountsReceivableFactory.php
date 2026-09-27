@@ -42,7 +42,7 @@ class AccountsReceivableFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => AccountsReceivableStatus::Active->value,
         ])->afterCreating(fn (AccountsReceivable $accountsReceivable) => $accountsReceivable->forceFill([
-            'approved_by' => User::factory()->owner()->create()->id,
+            'approved_by' => User::factory()->admin()->create()->id,
             'approved_at' => now(),
             'due_at' => now()->addDays(30),
         ])->save());
@@ -79,7 +79,7 @@ class AccountsReceivableFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => AccountsReceivableStatus::Rejected->value,
         ])->afterCreating(fn (AccountsReceivable $accountsReceivable) => $accountsReceivable->forceFill([
-            'approved_by' => User::factory()->owner()->create()->id,
+            'approved_by' => User::factory()->admin()->create()->id,
             'approved_at' => now(),
         ])->save());
     }

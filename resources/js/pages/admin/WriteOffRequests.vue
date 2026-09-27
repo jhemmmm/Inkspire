@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import WriteOffApprovalController from '@/actions/App/Http/Controllers/Owner/WriteOffApprovalController';
+import WriteOffApprovalController from '@/actions/App/Http/Controllers/Admin/WriteOffApprovalController';
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -11,6 +11,10 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -21,8 +25,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { ownerNavItems } from '@/config/nav/owner';
-import { index as writeOffRequestsIndex } from '@/routes/owner/write-off-requests';
+import { adminNavItems } from '@/config/nav/admin';
+import { index as writeOffRequestsIndex } from '@/routes/admin/write-off-requests';
 
 interface WriteOffRequest {
     id: number;
@@ -45,7 +49,7 @@ defineProps<{
 
 defineOptions({
     layout: {
-        navItems: ownerNavItems,
+        navItems: adminNavItems,
         breadcrumbs: [
             {
                 title: 'Write-Off Requests',
@@ -66,14 +70,13 @@ function money(value: number): string {
 <template>
     <Head title="Write-Off Requests" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">Write-Off Requests</h1>
+    <PageContainer>
+        <PageHeader
+            title="Write-Off Requests"
+            description="Receivables staff consider uncollectable. Approving one writes off the balance for good."
+        />
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -88,16 +91,14 @@ function money(value: number): string {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <TableEmpty v-if="writeOffRequests.length === 0" :colspan="8">
-                        <div
-                            class="flex flex-col items-center gap-1 text-center"
-                        >
-                            <p class="font-semibold">No write-off requests</p>
-                            <p class="text-muted-foreground">
-                                Requests appear here when Accounting Staff asks
-                                to write off a balance they can't collect.
-                            </p>
-                        </div>
+                    <TableEmpty
+                        v-if="writeOffRequests.length === 0"
+                        :colspan="8"
+                    >
+                        <EmptyState
+                            title="No write-off requests"
+                            description="Requests appear here when Accounting Staff asks to write off a balance they can't collect."
+                        />
                     </TableEmpty>
                     <TableRow
                         v-for="writeOffRequest in writeOffRequests"
@@ -135,7 +136,10 @@ function money(value: number): string {
                             }}</span>
                         </TableCell>
                         <TableCell>
-                            {{ writeOffRequest.write_off_requested_by.name ?? '—' }}
+                            {{
+                                writeOffRequest.write_off_requested_by.name ??
+                                '—'
+                            }}
                         </TableCell>
                         <TableCell>
                             {{
@@ -158,17 +162,30 @@ function money(value: number): string {
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>
-                                                Write off {{
-                                                    money(writeOffRequest.balance)
-                                                }} for {{
-                                                    writeOffRequest.job_order.number ?? '—'
+                                                Write off
+                                                {{
+                                                    money(
+                                                        writeOffRequest.balance,
+                                                    )
+                                                }}
+                                                for
+                                                {{
+                                                    writeOffRequest.job_order
+                                                        .number ?? '—'
                                                 }}?
                                             </AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                This closes the receivable as a loss and marks the job order Written Off. Reminder emails stop. The job order's original total stays on the books for reporting. This can't be undone.
+                                                This closes the receivable as a
+                                                loss and marks the job order
+                                                Written Off. Reminder emails
+                                                stop. The job order's original
+                                                total stays on the books for
+                                                reporting. This can't be undone.
                                                 <br />
                                                 <br />
-                                                Reason: "{{ writeOffRequest.write_off_reason }}"
+                                                Reason: "{{
+                                                    writeOffRequest.write_off_reason
+                                                }}"
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -214,7 +231,10 @@ function money(value: number): string {
                                                 Reject this write-off request?
                                             </AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                The balance stays active, keeps aging, and reminder emails continue. Accounting can request a write-off again later.
+                                                The balance stays active, keeps
+                                                aging, and reminder emails
+                                                continue. Accounting can request
+                                                a write-off again later.
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -248,6 +268,6 @@ function money(value: number): string {
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
-    </div>
+        </DataTableCard>
+    </PageContainer>
 </template>

@@ -60,6 +60,7 @@ completed: 2026-09-05
 - **Files modified:** 9 (2 created migrations, 1 created model, 1 created factory, 2 created test files, 2 modified models/factories, 1 modified enum)
 
 ## Accomplishments
+
 - Every `job_orders` row (existing and future) now has a unique, human-readable `JO-{year}-{seq}` number — verified against real pre-existing multi-year data, not just an empty table
 - `production_logs` exists as a full ERD table + Eloquent model, audit-observed, with a nullable `recorded_by` supporting D-09's system-authored first row
 - `JobOrderStatus` recognizes all four PROD-02 production stages
@@ -73,6 +74,7 @@ Each task was committed atomically (Task 2 used TDD: test → feat):
 2. **Task 2: ProductionLog model + JobOrder number generator + tests** - `a11bf3c` (test, RED) → `00a60a4` (feat, GREEN)
 
 ## Files Created/Modified
+
 - `database/migrations/2026_09_05_120000_add_number_and_due_at_to_job_orders_table.php` - adds `number`/`due_at`, backfills every existing row
 - `database/migrations/2026_09_05_120100_create_production_logs_table.php` - new `production_logs` table
 - `app/Enums/JobOrderStatus.php` - appends `ForProduction`, `Printing`, `QualityCheck`, `ReadyForPickup`
@@ -84,6 +86,7 @@ Each task was committed atomically (Task 2 used TDD: test → feat):
 - `tests/Feature/JobOrder/ProductionLogModelTest.php` - audit-trail write, null round-trip, relation resolution
 
 ## Decisions Made
+
 - Explicit `dropUnique(['number'])` before `dropColumn()` in the new migration's `down()` — see Deviations below.
 - `'number'` is Fillable on `JobOrder` (matches `queue_number` precedent on `QueueEntry`); `due_at` deliberately stays out of Fillable, system-only via `forceFill()` in a later plan.
 
@@ -92,6 +95,7 @@ Each task was committed atomically (Task 2 used TDD: test → feat):
 ### Auto-fixed Issues
 
 **1. [Rule 1 - Bug] Fixed a dishonest migration `down()` that corrupted subsequent inserts on SQLite**
+
 - **Found during:** Task 1, while manually verifying the backfill logic against real pre-existing multi-year data (rollback → seed rows across two years → re-migrate → assert correct `JO-{year}-{seq}` assignment)
 - **Issue:** This repo's local SQLite (3.31.1) predates native `ALTER TABLE DROP COLUMN` (added in 3.35). Laravel's SQLite grammar falls back to recreating the table, but the plan's original `down()` (`dropColumn(['number', 'due_at'])` alone) left the `job_orders_number_unique` index behind, still pointing at the now-gone column. The very next `JobOrder` insert after a rollback failed with `UNIQUE constraint failed: index 'job_orders_number_unique'` even though the column referenced didn't exist anymore.
 - **Fix:** Added `$table->dropUnique(['number']);` immediately before `dropColumn()` in `down()`. Verified by rolling back, inserting three job orders across two different years, re-running the migration, and confirming correct backfilled numbers (`JO-2025-0001`, `JO-2025-0002`, `JO-2026-0001`) with no constraint errors.
@@ -99,6 +103,7 @@ Each task was committed atomically (Task 2 used TDD: test → feat):
 - **Committed in:** `c94a58e` (Task 1 commit)
 
 **2. [Rule 3 - Blocking] Bootstrapped the fresh worktree's build/runtime environment**
+
 - **Found during:** Start of Task 1 verification — `vendor/bin/pint`/`vendor/bin/pest`/`php artisan migrate` all failed because this worktree had no `vendor/`, no `.env`, and no SQLite database file (all gitignored, never checked out into a fresh worktree)
 - **Issue:** Nothing in the plan's scope, but every acceptance-criteria command was blocked without it
 - **Fix:** `composer install`, `cp .env.example .env`, `php artisan key:generate`, created `database/database.sqlite`. Later, full-suite verification also required `npm ci` + `npm run build` (the Vite manifest was missing, causing 86 unrelated Inertia-rendering tests to fail with `ViteManifestNotFoundException` before the build — confirmed via a scoped rerun that these were 100% pre-existing render-path failures, not caused by this plan's changes, and resolved cleanly once assets were built)
@@ -113,18 +118,20 @@ Each task was committed atomically (Task 2 used TDD: test → feat):
 ## Issues Encountered
 
 - **Pre-existing Larastan failures unrelated to this plan** (logged to `deferred-items.md`, not fixed, per scope-boundary rule):
-  - `app/Http/Controllers/FrontlineStaff/QueueEntryController.php:181` — a `match ($jobOrder->status)` expression was already non-exhaustive before this plan (missing `InConsultation`/`InDesign`/`PendingReview`/`DesignApproved` arms; confirmed by re-running phpstan against the pre-Phase-6 enum). This plan's four new `JobOrderStatus` cases add four more unhandled arms to the same already-broken match — belongs to whichever later plan owns Frontline status copy.
-  - `app/Http/Requests/Cashier/CreateCreditRequestRequest.php`, `app/Http/Requests/Cashier/SavePricingAndPaymentRequest.php`, `app/Http/Requests/Owner/UpdateSystemConfigurationRequest.php` — pre-existing Phase 5 `property.notFound`/`method.notFound` errors, verified unrelated to any file this plan touches.
-  - `composer types:check` run project-wide still reports these 6 pre-existing errors (unchanged in nature/count from before this plan, aside from the QueueEntryController match gaining more unhandled arms as described above); scoped to just this plan's two edited/created model files (`app/Models/JobOrder.php`, `app/Models/ProductionLog.php`), Larastan is clean.
+    - `app/Http/Controllers/FrontlineStaff/QueueEntryController.php:181` — a `match ($jobOrder->status)` expression was already non-exhaustive before this plan (missing `InConsultation`/`InDesign`/`PendingReview`/`DesignApproved` arms; confirmed by re-running phpstan against the pre-Phase-6 enum). This plan's four new `JobOrderStatus` cases add four more unhandled arms to the same already-broken match — belongs to whichever later plan owns Frontline status copy.
+    - `app/Http/Requests/Cashier/CreateCreditRequestRequest.php`, `app/Http/Requests/Cashier/SavePricingAndPaymentRequest.php`, `app/Http/Requests/Owner/UpdateSystemConfigurationRequest.php` — pre-existing Phase 5 `property.notFound`/`method.notFound` errors, verified unrelated to any file this plan touches.
+    - `composer types:check` run project-wide still reports these 6 pre-existing errors (unchanged in nature/count from before this plan, aside from the QueueEntryController match gaining more unhandled arms as described above); scoped to just this plan's two edited/created model files (`app/Models/JobOrder.php`, `app/Models/ProductionLog.php`), Larastan is clean.
 
 ## User Setup Required
 
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - Every downstream Phase 6 plan (production board, tracking page, Frontline alert, receipt QR) can now rely on: a real `number` to look up, `due_at` to stamp, `production_logs` to write, and all four `JobOrderStatus` production-stage cases to sequence through.
 - The Larastan `match.unhandled` gap in `QueueEntryController` should be picked up by whichever plan next touches Frontline intake-outcome messaging, since it now has more unhandled arms than before this plan.
 
 ---
-*Phase: 06-production-monitoring-public-tracking*
-*Completed: 2026-09-05*
+
+_Phase: 06-production-monitoring-public-tracking_
+_Completed: 2026-09-05_

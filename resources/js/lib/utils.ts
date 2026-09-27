@@ -12,11 +12,13 @@ export function toUrl(href: NonNullable<InertiaLinkProps['href']>) {
 }
 
 /**
- * The queue number as the shop writes it on the ticket: 001, not 1.
+ * The ticket as the shop writes it: R-001 for a rush visit, A-001 for a
+ * regular one. The two lanes number independently, so the prefix is part of
+ * the identity, not decoration.
  *
  * Mirrors QueueEntry::paddedNumber() on the server, which formats the same
- * number for toasts. Keep the two in step.
+ * ticket for toasts. Keep the two in step.
  */
-export function queueNumberLabel(queueNumber: number): string {
-    return String(queueNumber).padStart(3, '0');
+export function queueNumberLabel(prefix: string, queueNumber: number): string {
+    return `${prefix}-${String(queueNumber).padStart(3, '0')}`;
 }

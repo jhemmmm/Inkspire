@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import PageContainer from '@/components/PageContainer.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -71,7 +72,7 @@ function printLetter(): void {
 <template>
     <Head :title="`Collection Letter — ${jobOrderNumber ?? '—'}`" />
 
-    <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+    <PageContainer>
         <template v-if="!pastDue">
             <Card class="mx-auto w-full max-w-2xl">
                 <CardContent class="flex flex-col gap-2">
@@ -80,8 +81,7 @@ function printLetter(): void {
                     </h1>
                     <p class="text-muted-foreground text-sm">
                         A collection letter is only printed once the due date
-                        has passed. Go back to the entry to check its due
-                        date.
+                        has passed. Go back to the entry to check its due date.
                     </p>
                 </CardContent>
             </Card>
@@ -96,10 +96,12 @@ function printLetter(): void {
                 Print Letter
             </Button>
 
-            <Card class="mx-auto w-full max-w-2xl print:border-0 print:shadow-none">
+            <Card
+                class="mx-auto w-full max-w-2xl print:border-0 print:shadow-none"
+            >
                 <CardContent class="flex flex-col gap-8">
                     <div class="flex flex-col gap-1">
-                        <span class="text-[28px] leading-[1.2] font-semibold">
+                        <span class="text-3xl leading-[1.2] font-bold">
                             {{ appName }}
                         </span>
                         <div class="border-t pt-2">
@@ -122,28 +124,35 @@ function printLetter(): void {
                         <div class="flex flex-col gap-1 border-t pt-4">
                             <div class="flex items-center justify-between">
                                 <span>Credit Extended</span>
-                                <span class="tabular-nums">{{ money(creditExtended) }}</span>
+                                <span class="tabular-nums">{{
+                                    money(creditExtended)
+                                }}</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span>Amount Paid</span>
-                                <span class="tabular-nums">{{ money(amountPaid) }}</span>
+                                <span class="tabular-nums">{{
+                                    money(amountPaid)
+                                }}</span>
                             </div>
                             <div
-                                class="flex items-center justify-between pt-2 text-[28px] leading-[1.2] font-semibold"
+                                class="flex items-center justify-between pt-2 text-3xl leading-[1.2] font-bold"
                             >
                                 <span>Amount Due</span>
-                                <span class="tabular-nums">{{ money(amountDue) }}</span>
+                                <span class="tabular-nums">{{
+                                    money(amountDue)
+                                }}</span>
                             </div>
                         </div>
 
                         <p class="text-muted-foreground text-sm">
-                            Due Date: {{ dueDateLabel }} · {{ daysPastDue ?? 0 }} days past due
+                            Due Date: {{ dueDateLabel }} ·
+                            {{ daysPastDue ?? 0 }} days past due
                         </p>
 
                         <p>
-                            Payments are accepted at our counter during
-                            business hours. Please bring this notice or quote
-                            Job Order {{ jobOrderNumber ?? '—' }}.
+                            Payments are accepted at our counter during business
+                            hours. Please bring this notice or quote Job Order
+                            {{ jobOrderNumber ?? '—' }}.
                         </p>
                     </div>
 
@@ -156,10 +165,11 @@ function printLetter(): void {
                     </div>
 
                     <p class="text-muted-foreground text-sm">
-                        Printed {{ today }} · Job Order {{ jobOrderNumber ?? '—' }}
+                        Printed {{ today }} · Job Order
+                        {{ jobOrderNumber ?? '—' }}
                     </p>
                 </CardContent>
             </Card>
         </template>
-    </div>
+    </PageContainer>
 </template>

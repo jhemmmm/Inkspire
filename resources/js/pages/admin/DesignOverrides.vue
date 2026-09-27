@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
-import DesignFileController from '@/actions/App/Http/Controllers/Owner/DesignFileController';
+import DesignFileController from '@/actions/App/Http/Controllers/Admin/DesignFileController';
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -11,6 +11,10 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -21,8 +25,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { ownerNavItems } from '@/config/nav/owner';
-import { index as designOverridesIndex } from '@/routes/owner/design-overrides';
+import { adminNavItems } from '@/config/nav/admin';
+import { index as designOverridesIndex } from '@/routes/admin/design-overrides';
 
 interface LockedJobOrder {
     id: number;
@@ -38,7 +42,7 @@ defineProps<{
 
 defineOptions({
     layout: {
-        navItems: ownerNavItems,
+        navItems: adminNavItems,
         breadcrumbs: [
             {
                 title: 'Design Overrides',
@@ -52,16 +56,13 @@ defineOptions({
 <template>
     <Head title="Design Overrides" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            Design Overrides
-        </h1>
+    <PageContainer>
+        <PageHeader
+            title="Design Overrides"
+            description="Design files locked after approval. Unlocking one lets an artist edit it again."
+        />
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -74,15 +75,10 @@ defineOptions({
                 </TableHeader>
                 <TableBody>
                     <TableEmpty v-if="jobOrders.length === 0" :colspan="5">
-                        <div
-                            class="flex flex-col items-center gap-1 text-center"
-                        >
-                            <p class="font-semibold">No locked designs</p>
-                            <p class="text-muted-foreground">
-                                Design files appear here once a job order
-                                reaches Design Approved.
-                            </p>
-                        </div>
+                        <EmptyState
+                            title="No locked designs"
+                            description="Design files appear here once a job order reaches Design Approved."
+                        />
                     </TableEmpty>
                     <TableRow
                         v-for="jobOrder in jobOrders"
@@ -158,6 +154,6 @@ defineOptions({
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
-    </div>
+        </DataTableCard>
+    </PageContainer>
 </template>

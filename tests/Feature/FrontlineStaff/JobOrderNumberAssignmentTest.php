@@ -83,8 +83,8 @@ test('the Cashier Dashboard response includes each job order\'s number', functio
     );
 });
 
-test('the Owner Credit Requests response includes the job order\'s number', function () {
-    $owner = User::factory()->owner()->create();
+test('the Admin Credit Requests response includes the job order\'s number', function () {
+    $admin = User::factory()->admin()->create();
     $jobOrder = JobOrder::factory()->readyForProduction()->create([
         'number' => 'JO-2026-0099',
         'total_amount' => 1000,
@@ -95,7 +95,7 @@ test('the Owner Credit Requests response includes the job order\'s number', func
         'status' => AccountsReceivableStatus::PendingApproval->value,
     ]);
 
-    $response = $this->actingAs($owner)->get(route('owner.credit-requests.index'));
+    $response = $this->actingAs($admin)->get(route('admin.credit-requests.index'));
 
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page

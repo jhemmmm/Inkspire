@@ -17,6 +17,7 @@ boundary rules ("Only auto-fix issues DIRECTLY caused by the current task's
 changes"), these are logged here rather than fixed.
 
 **Verification performed instead:**
+
 - `npx vp check --fix` was run scoped only to this plan's touched files
   (`resources/css/app.css`, `vite.config.ts`, `resources/views/app.blade.php`,
   `resources/js/layouts/AuthLayout.vue`,

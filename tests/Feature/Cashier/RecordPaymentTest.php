@@ -5,6 +5,7 @@ use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use App\Models\JobOrder;
 use App\Models\PricingEntry;
+use App\Models\SystemConfiguration;
 use App\Models\Transaction;
 use App\Models\User;
 use Luigel\Paymongo\Facades\Paymongo;
@@ -275,7 +276,7 @@ test('a job order with a pending credit request cannot be paid directly (CR-01)'
     ], ['Accept' => 'application/json']);
 
     $response->assertStatus(422);
-    $response->assertJsonFragment(['message' => 'This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.']);
+    $response->assertJsonFragment(['message' => 'This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.']);
     expect(Transaction::count())->toBe(0);
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::CreditPendingApproval);
 });
@@ -330,6 +331,93 @@ test('the rush fee toggle submits as the string 0 or 1, matching the payment for
     'switch off (hidden field only)' => ['0', false],
     'switch on (explicit value)' => ['1', true],
 ]);
+
+test('a gcash payment charges edited pricing on a totalled, transaction-less order (bug 2)', function () {
+    SystemConfiguration::create([
+        'key' => 'rush_fee_percentage',
+        'group' => 'business_rules',
+        'value' => 10,
+        'type' => 'decimal',
+        'label' => 'Rush fee (%)',
+    ]);
+
+    $fakeIntent = (new PaymentIntent)->setData([
+        'id' => 'pi_test123',
+        'type' => 'payment_intent',
+        'attributes' => ['amount' => 100000, 'status' => 'awaiting_payment_method'],
+    ]);
+    $fakePaymentMethod = (new PaymongoPaymentMethod)->setData([
+        'id' => 'pm_test456',
+        'type' => 'payment_method',
+        'attributes' => ['type' => 'gcash'],
+    ]);
+    $fakeAttached = (new PaymentIntent)->setData([
+        'id' => 'pi_test123',
+        'type' => 'payment_intent',
+        'attributes' => [
+            'status' => 'awaiting_next_action',
+            'next_action' => [
+                'type' => 'redirect',
+                'redirect' => ['url' => 'https://paymongo.test/checkout/pi_test123'],
+            ],
+        ],
+    ]);
+
+    Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
+    Paymongo::shouldReceive('paymentMethod')->once()->andReturnSelf();
+    Paymongo::shouldReceive('create')->twice()->andReturn($fakeIntent, $fakePaymentMethod);
+    Paymongo::shouldReceive('attach')->once()->andReturn($fakeAttached);
+
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create([
+        'total_amount' => 1000,
+        'base_price_snapshot' => 1000,
+        'rush_fee_amount' => 0,
+    ]);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 1000,
+        'rush_fee_applied' => true,
+        'payment_method' => 'gcash',
+        'payment_type' => 'full',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+
+    $jobOrder->refresh();
+    expect((float) $jobOrder->rush_fee_amount)->toBe(100.0)
+        ->and((float) $jobOrder->total_amount)->toBe(1100.0);
+
+    $transaction = $jobOrder->transactions()->first();
+    expect((float) $transaction->amount)->toBe(1100.0);
+});
+
+test('a cash payment against an on-credit order leaves its approved total untouched (bug 1)', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create([
+        'payment_status' => 'on_credit',
+        'total_amount' => 1000,
+        'base_price_snapshot' => 1000,
+        'rush_fee_amount' => 0,
+    ]);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'pricing_entry_id' => 1,
+        'line_amount' => 5000,
+        'rush_fee_applied' => true,
+        'payment_method' => 'cash',
+        'payment_type' => 'full',
+        'amount_tendered' => 1000,
+    ]);
+
+    $response->assertRedirect();
+
+    $jobOrder->refresh();
+    expect((float) $jobOrder->total_amount)->toBe(1000.0);
+    expect($jobOrder->payment_status)->toBe(PaymentStatus::Paid);
+});
 
 test('omitting rush_fee_applied entirely is still rejected, so a broken form fails loudly', function () {
     $cashier = User::factory()->cashier()->create();

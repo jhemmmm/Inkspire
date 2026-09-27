@@ -2,6 +2,7 @@
 import { Head, usePoll } from '@inertiajs/vue3';
 import { AlertCircle, PencilRuler } from '@lucide/vue';
 import { watch } from 'vue';
+import OrderProgress from '@/components/OrderProgress.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
@@ -11,6 +12,7 @@ interface TrackingTokenResult {
     found: boolean;
     number?: string;
     stage?: string;
+    stageStep?: number | null;
     reviewUrl?: string | null;
 }
 
@@ -60,15 +62,14 @@ watch(
                             Your Order
                         </h1>
                         <p class="text-muted-foreground max-w-prose text-sm">
-                            This is the live status of the order on your slip.
-                            Nothing to type — keep the slip and scan it again
-                            any time.
+                            Here is where your order is right now. Nothing to
+                            type — keep the slip and scan it again any time.
                         </p>
                     </div>
 
                     <div class="flex flex-col items-center gap-3 text-center">
                         <p
-                            class="text-muted-foreground text-lg font-semibold tabular-nums"
+                            class="text-muted-foreground text-sm font-semibold tabular-nums"
                             data-test="tracking-token-number"
                         >
                             Job Order {{ result.number }}
@@ -80,10 +81,14 @@ watch(
                         >
                             {{ result.stage }}
                         </Badge>
-                        <p class="text-muted-foreground text-sm">
-                            This page updates automatically.
-                        </p>
                     </div>
+
+                    <OrderProgress :step="result.stageStep ?? null" />
+
+                    <p class="text-muted-foreground text-center text-sm">
+                        This page updates on its own — leave it open and it will
+                        keep up.
+                    </p>
 
                     <div
                         v-if="result.reviewUrl"

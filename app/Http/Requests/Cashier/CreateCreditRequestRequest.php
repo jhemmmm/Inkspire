@@ -14,7 +14,7 @@ class CreateCreditRequestRequest extends FormRequest
      * Determine if the user is authorized to make this request.
      *
      * Open-eligibility per D-08 — any Cashier can request credit for any
-     * eligible job order; the real gate is entirely on the Owner-approval
+     * eligible job order; the real gate is entirely on the Admin-approval
      * side, matching CancelJobOrderRequest's simpler-but-analogous pattern.
      */
     public function authorize(): bool
@@ -30,15 +30,15 @@ class CreateCreditRequestRequest extends FormRequest
      * are only validated when On-Credit is the very first pricing/payment
      * action taken on the job order, mirroring
      * SavePricingAndPaymentRequest::rules()'s identical branch — once
-     * total_amount is already snapshotted, pricing input must never be
-     * accepted from this route again (CR-01).
+     * pricing is no longer editable (JobOrder::pricingIsEditable()),
+     * pricing input must never be accepted from this route again (CR-01).
      *
      * @return array<string, ValidationRule|array<mixed>|string|\Closure>
      */
     public function rules(): array
     {
-        return $this->route('jobOrder')->total_amount !== null
-            ? []
-            : $this->pricingRules();
+        return $this->route('jobOrder')->pricingIsEditable()
+            ? $this->pricingRules()
+            : [];
     }
 }

@@ -53,6 +53,7 @@ completed: 2026-09-06
 - **Files modified:** 7 (1 created test, 3 modified controllers, 3 modified Vue pages)
 
 ## Accomplishments
+
 - Every job order created through the Frontline intake flow (`store()`, one-or-many job orders per visit) or added mid-visit (`addJobOrder()`) now gets a real, sequential, per-year `JO-{year}-####` number at the moment of creation — proven by a dedicated test that submits two job orders in one visit and asserts distinct sequential numbers, and a second test that continues the sequence correctly from a pre-existing highest number.
 - The Frontline Queue, Cashier Dashboard, and Owner Credit Requests pages all render the number in a `tabular-nums` span next to the description they already showed, with zero existing information removed.
 - Confirmed via a scoped Larastan run that no new static-analysis issues were introduced by this plan's controller/model-adjacent files.
@@ -65,6 +66,7 @@ Each task was committed atomically (Task 1 used TDD: test → feat):
 2. **Task 2: Display the job order number on Queue, Cashier Dashboard, and Owner Credit Requests** - `8147870` (feat)
 
 ## Files Created/Modified
+
 - `tests/Feature/FrontlineStaff/JobOrderNumberAssignmentTest.php` - covers sequential number assignment on `store()`/`addJobOrder()`, and number exposure on the Cashier Dashboard and Owner Credit Requests Inertia responses
 - `app/Http/Controllers/FrontlineStaff/QueueEntryController.php` - `store()`/`addJobOrder()` now pass `'number' => JobOrder::nextNumberForYear(JobOrder::currentNumberingYear())` into each job order's `create()` array; `index()`'s eager-loaded `jobOrders` column list now includes `number`
 - `app/Http/Controllers/Cashier/DashboardController.php` - `index()`'s `get([...])` column list now includes `number` (see key-decisions re: this being a documented no-op today)
@@ -74,9 +76,10 @@ Each task was committed atomically (Task 1 used TDD: test → feat):
 - `resources/js/pages/owner/CreditRequests.vue` - `CreditRequest.job_order.number: string | null`; identical two-line stack applied to the Job Order cell
 
 ## Decisions Made
+
 - Kept the explicit `'number'` addition to `DashboardController::index()`'s column allowlist even though it has no observable effect today, per the plan's literal instruction and to guard against a future refactor removing `withSum()` (see key-decisions above for the full mechanism).
 - No new database queries, indexes, or schema changes — this plan is purely wiring an existing generator (06-01) into existing create-paths and existing eager-loads/`get()` calls.
-- **Left `REQUIREMENTS.md`'s TRACK-01 checkbox unmarked.** TRACK-01's actual text is "A customer can enter a job order number on a public, unauthenticated page and see the order's current status" — the public tracking page itself. This plan only assigns/displays the number on *internal, authenticated* staff surfaces (Frontline Queue, Cashier Dashboard, Owner Credit Requests); it builds none of the public-facing lookup page. The `requirements: [TRACK-01]` in this plan's frontmatter (and `requirements-completed` below, per the summary template's mechanical instruction to copy that field) reflects that this plan is a *necessary prerequisite* for TRACK-01 (a customer can't look up a number that was never assigned), not that TRACK-01 is fully satisfied. Ran `requirements mark-complete TRACK-01` once, saw it flip the checkbox, recognized the mismatch against the actual requirement text, and reverted via `git checkout -- .planning/REQUIREMENTS.md` before staging anything — the checkbox should be flipped by whichever later Phase 6 plan actually ships the public tracking page.
+- **Left `REQUIREMENTS.md`'s TRACK-01 checkbox unmarked.** TRACK-01's actual text is "A customer can enter a job order number on a public, unauthenticated page and see the order's current status" — the public tracking page itself. This plan only assigns/displays the number on _internal, authenticated_ staff surfaces (Frontline Queue, Cashier Dashboard, Owner Credit Requests); it builds none of the public-facing lookup page. The `requirements: [TRACK-01]` in this plan's frontmatter (and `requirements-completed` below, per the summary template's mechanical instruction to copy that field) reflects that this plan is a _necessary prerequisite_ for TRACK-01 (a customer can't look up a number that was never assigned), not that TRACK-01 is fully satisfied. Ran `requirements mark-complete TRACK-01` once, saw it flip the checkbox, recognized the mismatch against the actual requirement text, and reverted via `git checkout -- .planning/REQUIREMENTS.md` before staging anything — the checkbox should be flipped by whichever later Phase 6 plan actually ships the public tracking page.
 
 ## Deviations from Plan
 
@@ -93,12 +96,14 @@ None — plan executed exactly as written. One noteworthy (non-deviation) findin
 None — no external service configuration required.
 
 ## Next Phase Readiness
+
 - Job orders created from this point forward always carry a real `number`, satisfying the substrate every remaining Phase 6 plan (production board, public tracking page, receipt QR) needs to look one up by.
 - The Larastan `match.unhandled` gap in `QueueEntryController::jobOrderOutcomeToastMessage()` remains open and unowned — still flagged (per Wave 1's note) for whichever plan next touches Frontline intake-outcome messaging or production-stage status copy.
 
 ---
-*Phase: 06-production-monitoring-public-tracking*
-*Completed: 2026-09-06*
+
+_Phase: 06-production-monitoring-public-tracking_
+_Completed: 2026-09-06_
 
 ## Self-Check: PASSED
 

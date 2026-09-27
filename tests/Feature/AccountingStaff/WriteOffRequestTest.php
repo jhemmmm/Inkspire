@@ -85,13 +85,13 @@ test('requesting a write-off for an Active entry already closed by collection_st
     expect($accountsReceivable->write_off_requested_at)->toBeNull();
 });
 
-test('AccountsReceivablePolicy approveWriteOff/rejectWriteOff return true only for Owner', function () {
-    $owner = User::factory()->owner()->create();
+test('AccountsReceivablePolicy approveWriteOff/rejectWriteOff return true only for Admin', function () {
     $admin = User::factory()->admin()->create();
+    $accountingStaff = User::factory()->accountingStaff()->create();
     $accountsReceivable = AccountsReceivable::factory()->atBracket(AccountsReceivableAgingBracket::NinetyPlus)->for(JobOrder::factory()->create(['total_amount' => 1000]))->create();
 
-    expect($owner->can('approveWriteOff', $accountsReceivable))->toBeTrue();
-    expect($owner->can('rejectWriteOff', $accountsReceivable))->toBeTrue();
-    expect($admin->can('approveWriteOff', $accountsReceivable))->toBeFalse();
-    expect($admin->can('rejectWriteOff', $accountsReceivable))->toBeFalse();
+    expect($admin->can('approveWriteOff', $accountsReceivable))->toBeTrue();
+    expect($admin->can('rejectWriteOff', $accountsReceivable))->toBeTrue();
+    expect($accountingStaff->can('approveWriteOff', $accountsReceivable))->toBeFalse();
+    expect($accountingStaff->can('rejectWriteOff', $accountsReceivable))->toBeFalse();
 });

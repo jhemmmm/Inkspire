@@ -2,57 +2,58 @@
 phase: 05-pos-payments
 plan: 06
 subsystem: payments
-tags: [laravel, inertia, vue3, pest, accounts-receivable, on-credit, policy, rbac]
+tags:
+    [laravel, inertia, vue3, pest, accounts-receivable, on-credit, policy, rbac]
 
 # Dependency graph
 requires:
-  - phase: 05-pos-payments (05-01)
-    provides: job_orders payment columns, Transaction/PaymentStatus enums, ComputeJobOrderPrice, Cashier Job Order Payment page
-  - phase: 05-pos-payments (05-05)
-    provides: JobOrderPayment.vue's established Cashier submission conventions, cancelled_at eligibility precedent
+    - phase: 05-pos-payments (05-01)
+      provides: job_orders payment columns, Transaction/PaymentStatus enums, ComputeJobOrderPrice, Cashier Job Order Payment page
+    - phase: 05-pos-payments (05-05)
+      provides: JobOrderPayment.vue's established Cashier submission conventions, cancelled_at eligibility precedent
 provides:
-  - accounts_receivable table + AccountsReceivable model/factory (balance-only, no due date/term per D-09)
-  - AccountsReceivableStatus enum (pending_approval/active/rejected)
-  - AccountsReceivablePolicy — this codebase's second Owner-exclusive-not-Admin authorization check (after DesignFilePolicy::unlock)
-  - Cashier On-Credit request flow (CreditRequestController) and Owner Credit Requests approval queue (CreditApprovalController)
-  - JobOrder::accountsReceivable() HasOne relation
+    - accounts_receivable table + AccountsReceivable model/factory (balance-only, no due date/term per D-09)
+    - AccountsReceivableStatus enum (pending_approval/active/rejected)
+    - AccountsReceivablePolicy — this codebase's second Owner-exclusive-not-Admin authorization check (after DesignFilePolicy::unlock)
+    - Cashier On-Credit request flow (CreditRequestController) and Owner Credit Requests approval queue (CreditApprovalController)
+    - JobOrder::accountsReceivable() HasOne relation
 affects: [05-07, 07-accounts-receivable]
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "Owner-exclusive-not-Admin Policy gate matching DesignFilePolicy::unlock()'s shape: route-group middleware stays role:owner,admin for page visibility, FormRequest::authorize() narrows the mutation to Owner only via Policy::can()"
-    - "On-Credit request reads pricing-snapshot input via $request->input() (not validated()) when total_amount is null, since CreateCreditRequestRequest::rules() is deliberately empty per D-08's open-eligibility model"
+    added: []
+    patterns:
+        - "Owner-exclusive-not-Admin Policy gate matching DesignFilePolicy::unlock()'s shape: route-group middleware stays role:owner,admin for page visibility, FormRequest::authorize() narrows the mutation to Owner only via Policy::can()"
+        - "On-Credit request reads pricing-snapshot input via $request->input() (not validated()) when total_amount is null, since CreateCreditRequestRequest::rules() is deliberately empty per D-08's open-eligibility model"
 
 key-files:
-  created:
-    - database/migrations/2026_09_04_100000_create_accounts_receivable_table.php
-    - app/Enums/AccountsReceivableStatus.php
-    - app/Models/AccountsReceivable.php
-    - database/factories/AccountsReceivableFactory.php
-    - app/Policies/AccountsReceivablePolicy.php
-    - app/Http/Controllers/Cashier/CreditRequestController.php
-    - app/Http/Controllers/Owner/CreditApprovalController.php
-    - app/Http/Requests/Cashier/CreateCreditRequestRequest.php
-    - app/Http/Requests/Owner/ApproveCreditRequest.php
-    - app/Http/Requests/Owner/RejectCreditRequest.php
-    - tests/Feature/Owner/CreditApprovalTest.php
-    - resources/js/pages/owner/CreditRequests.vue
-  modified:
-    - app/Models/JobOrder.php
-    - routes/portals.php
-    - routes/owner.php
-    - resources/js/pages/cashier/JobOrderPayment.vue
-    - resources/js/config/nav/owner.ts
+    created:
+        - database/migrations/2026_09_04_100000_create_accounts_receivable_table.php
+        - app/Enums/AccountsReceivableStatus.php
+        - app/Models/AccountsReceivable.php
+        - database/factories/AccountsReceivableFactory.php
+        - app/Policies/AccountsReceivablePolicy.php
+        - app/Http/Controllers/Cashier/CreditRequestController.php
+        - app/Http/Controllers/Owner/CreditApprovalController.php
+        - app/Http/Requests/Cashier/CreateCreditRequestRequest.php
+        - app/Http/Requests/Owner/ApproveCreditRequest.php
+        - app/Http/Requests/Owner/RejectCreditRequest.php
+        - tests/Feature/Owner/CreditApprovalTest.php
+        - resources/js/pages/owner/CreditRequests.vue
+    modified:
+        - app/Models/JobOrder.php
+        - routes/portals.php
+        - routes/owner.php
+        - resources/js/pages/cashier/JobOrderPayment.vue
+        - resources/js/config/nav/owner.ts
 
 key-decisions:
-  - "Added protected $table = 'accounts_receivable' to the model — Eloquent's default pluralization guesses accounts_receivables, but the migration/ERD both use the singular accounts_receivable"
-  - "CreditRequestController::store redirects via to_route('cashier.dashboard') instead of back(), since the submitting <Form> lives on the Job Order Payment page itself — back() would return there (now stale), not the Dashboard UI-SPEC specifies"
-  - "On Credit's AlertDialog confirm button calls router.post() directly (not a nested <Form>) since it sits inside the page's single outer Pricing+Payment <Form>, matching the existing checkPaymentStatus() precedent for HTML's no-nested-forms rule"
+    - "Added protected $table = 'accounts_receivable' to the model — Eloquent's default pluralization guesses accounts_receivables, but the migration/ERD both use the singular accounts_receivable"
+    - "CreditRequestController::store redirects via to_route('cashier.dashboard') instead of back(), since the submitting <Form> lives on the Job Order Payment page itself — back() would return there (now stale), not the Dashboard UI-SPEC specifies"
+    - "On Credit's AlertDialog confirm button calls router.post() directly (not a nested <Form>) since it sits inside the page's single outer Pricing+Payment <Form>, matching the existing checkPaymentStatus() precedent for HTML's no-nested-forms rule"
 
 patterns-established:
-  - "Pattern: an AlertDialog-gated action embedded inside a larger single-page <Form> submits via router.post() from its confirm button's @click handler, not a nested <Form>, collecting the needed field values from the same refs the outer form's inputs are bound to"
+    - "Pattern: an AlertDialog-gated action embedded inside a larger single-page <Form> submits via router.post() from its confirm button's @click handler, not a nested <Form>, collecting the needed field values from the same refs the outer form's inputs are bound to"
 
 requirements-completed: [POS-08]
 
@@ -74,9 +75,10 @@ completed: 2026-09-05
 - **Files modified:** 17 (12 created, 5 modified)
 
 ## Accomplishments
+
 - `accounts_receivable` table, `AccountsReceivableStatus` enum, `AccountsReceivable` model/factory — balance-only, no due date/term column (Phase 7's job to add)
 - `AccountsReceivablePolicy::approve()`/`reject()` — this codebase's second Owner-exclusive-not-Admin authorization check, directly matching `DesignFilePolicy::unlock()`'s shape
-- `CreditRequestController@store` — open-eligibility On-Credit request (D-08), posts the correct *remaining* outstanding balance (not the original total) when a down payment already exists
+- `CreditRequestController@store` — open-eligibility On-Credit request (D-08), posts the correct _remaining_ outstanding balance (not the original total) when a down payment already exists
 - `CreditApprovalController@index/approve/reject` — Admin can view the queue, only Owner can mutate it; approval/rejection both wrapped in `DB::transaction()` per the Money-Moving precedent
 - Cashier's Job Order Payment page gained a fifth "On Credit" payment method with its own `AlertDialog` confirmation; Owner gained a full Credit Requests approval queue reachable from the nav
 
@@ -93,6 +95,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ## Files Created/Modified
 
 **Task 1 (schema/models):**
+
 - `database/migrations/2026_09_04_100000_create_accounts_receivable_table.php` - balance-only AR table
 - `app/Enums/AccountsReceivableStatus.php` - `PendingApproval`/`Active`/`Rejected`
 - `app/Models/AccountsReceivable.php` - explicit `$table`, casts, `jobOrder()`/`requestedBy()`/`approvedBy()` relations
@@ -101,6 +104,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - `app/Models/JobOrder.php` - `accountsReceivable(): HasOne`
 
 **Task 2 (backend):**
+
 - `app/Http/Controllers/Cashier/CreditRequestController.php`
 - `app/Http/Controllers/Owner/CreditApprovalController.php`
 - `app/Http/Requests/Cashier/CreateCreditRequestRequest.php`, `app/Http/Requests/Owner/{Approve,Reject}CreditRequest.php`
@@ -108,6 +112,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - `tests/Feature/Owner/CreditApprovalTest.php` - 5 cases (admin-forbidden, owner-approve, owner-reject, cashier-request, duplicate-request-blocked)
 
 **Task 3 (frontend):**
+
 - `resources/js/pages/cashier/JobOrderPayment.vue` - "On Credit" `RadioGroupItem` + `AlertDialog` confirm flow
 - `resources/js/pages/owner/CreditRequests.vue` - approval queue (new)
 - `resources/js/config/nav/owner.ts` - "Credit Requests" nav entry
@@ -123,6 +128,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Added explicit `$table` property to `AccountsReceivable`**
+
 - **Found during:** Task 2 (running the new feature tests)
 - **Issue:** `AccountsReceivable::create()` failed with `SQLSTATE[HY000]: no such table: accounts_receivables` — Eloquent's default snake_case-plural table-name convention resolves `AccountsReceivable` to `accounts_receivables`, but the migration (and the approved 12-table ERD) both use the singular `accounts_receivable`
 - **Fix:** Added `protected $table = 'accounts_receivable';` to the model with a PHPDoc explaining the mismatch
@@ -147,8 +153,8 @@ Running `npm run check:fix` (project's documented auto-fix command, per `CLAUDE.
 
 ## Threat Flags
 
-| Flag | File | Description |
-|------|------|--------------|
+| Flag                   | File                                                       | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | threat_flag: Tampering | `app/Http/Controllers/Cashier/CreditRequestController.php` | When `total_amount` is null, the controller reads pricing-snapshot inputs (`line_amount`, `rush_fee_applied`, `discount_type`, `discount_value`) via `$request->input()` with no `FormRequest` validation, since `CreateCreditRequestRequest::rules()` is deliberately empty per the plan's literal D-08 instruction. Unlike `PaymentController::store()`'s equivalent branch (validated via `PricingValidationRules::pricingRules()` — required/numeric/min/discount-cap checks), a malformed or negative `line_amount` here is only cast to `float`/`bool`, not range-checked, before flowing into `ComputeJobOrderPrice` and being persisted as the job order's price snapshot. The AR `balance` itself remains fully server-computed and untamperable (T-05-15's actual mitigation target), but the upstream pricing snapshot it derives from has weaker input validation than the equivalent non-credit path. Left as specified since the plan explicitly calls for an empty `rules()`; flagging for a follow-up plan to decide whether to extend `CreateCreditRequestRequest` with the same `PricingValidationRules` trait used elsewhere. |
 
 ## Next Phase Readiness
@@ -158,8 +164,9 @@ Running `npm run check:fix` (project's documented auto-fix command, per `CLAUDE.
 - No blockers.
 
 ---
-*Phase: 05-pos-payments*
-*Completed: 2026-09-05*
+
+_Phase: 05-pos-payments_
+_Completed: 2026-09-05_
 
 ## Self-Check: PASSED
 

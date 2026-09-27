@@ -4,7 +4,6 @@ namespace App\Enums;
 
 enum UserRole: string
 {
-    case Owner = 'owner';
     case Admin = 'admin';
     case FrontlineStaff = 'frontline_staff';
     case Artist = 'artist';
@@ -18,7 +17,7 @@ enum UserRole: string
     public function portalRoute(): string
     {
         return match ($this) {
-            self::Owner, self::Admin => 'owner.dashboard',
+            self::Admin => 'admin.dashboard',
             self::FrontlineStaff => 'frontline-staff.dashboard',
             self::Artist => 'artist.dashboard',
             self::Cashier => 'cashier.dashboard',

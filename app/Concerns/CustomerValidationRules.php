@@ -17,6 +17,7 @@ trait CustomerValidationRules
     {
         return [
             'name' => $this->customerNameRules(),
+            'organization' => $this->organizationRules(),
             'contact_number' => $this->contactNumberRules(),
             'email' => $this->customerEmailRules(),
             'address' => $this->addressRules(),
@@ -31,6 +32,20 @@ trait CustomerValidationRules
     protected function customerNameRules(): array
     {
         return ['required', 'string', 'max:255'];
+    }
+
+    /**
+     * Get the validation rules used to validate the organization a customer
+     * is buying on behalf of.
+     *
+     * Optional: most walk-ins are private individuals, and requiring it would
+     * force staff to invent a value for them.
+     *
+     * @return array<int, ValidationRule|array<mixed>|string>
+     */
+    protected function organizationRules(): array
+    {
+        return ['nullable', 'string', 'max:255'];
     }
 
     /**

@@ -94,3 +94,47 @@ test('accounting staff requesting production-status gets a 403', function () {
 
     $this->actingAs($accountingStaff)->get(route('accounting-staff.reports.index', ['report' => 'production-status']))->assertForbidden();
 });
+
+test('the sales report carries a money total covering every row in the range, not just the first hundred', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+
+    Transaction::factory()->count(101)->create([
+        'amount' => 10,
+        'type' => TransactionType::FullPayment->value,
+        'confirmed_at' => now(),
+    ]);
+
+    $response = $this->actingAs($accountingStaff)
+        ->withHeaders(accountingReportHeaders())
+        ->get(route('accounting-staff.reports.index', ['report' => 'sales']));
+
+    $response->assertOk();
+    expect($response->json('props.rows'))->toHaveCount(100)
+        ->and($response->json('props.rowsTotal'))->toBe(101)
+        ->and((float) $response->json('props.rowsAmountTotal'))->toBe(1010.0);
+});
+
+test('the expenses report total leaves out voided rows, matching the financial summary', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+
+    Expense::factory()->create(['amount' => 100, 'expense_date' => now()]);
+    Expense::factory()->voided()->create(['amount' => 50, 'expense_date' => now()]);
+
+    $response = $this->actingAs($accountingStaff)
+        ->withHeaders(accountingReportHeaders())
+        ->get(route('accounting-staff.reports.index', ['report' => 'expenses']));
+
+    $response->assertOk();
+    expect((float) $response->json('props.rowsAmountTotal'))->toBe(100.0);
+});
+
+test('a report with no money column gets no total rather than a meaningless zero', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)
+        ->withHeaders(accountingReportHeaders())
+        ->get(route('admin.reports.index', ['report' => 'production-status']));
+
+    $response->assertOk();
+    expect($response->json('props.rowsAmountTotal'))->toBeNull();
+});

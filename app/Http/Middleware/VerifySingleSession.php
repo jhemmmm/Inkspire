@@ -24,7 +24,7 @@ class VerifySingleSession
 
                 return redirect()->route('login')->with(
                     'sessionMessage',
-                    __("You were signed out because this account logged in from another device. If this wasn't you, contact your Owner or Admin.")
+                    __("You were signed out because this account logged in from another device. If this wasn't you, contact your Admin.")
                 );
             }
         }

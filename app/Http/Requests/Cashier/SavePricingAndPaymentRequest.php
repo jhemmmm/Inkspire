@@ -27,19 +27,30 @@ class SavePricingAndPaymentRequest extends FormRequest
     }
 
     /**
+     * Whether this submission is still allowed to set the job order's price.
+     *
+     * Delegates to JobOrder::pricingIsEditable(), the single shared
+     * definition now used by PaymentController and CreditRequestController
+     * too, so the three can never drift apart again.
+     */
+    private function pricingIsStillEditable(): bool
+    {
+        return $this->route('jobOrder')->pricingIsEditable();
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
-     * Pricing fields are only validated on the first pricing/payment save.
-     * Once a job order's total_amount is already set (a balance/follow-up
-     * payment visit), pricing fields must be entirely ignored rather than
-     * re-validated — the price was already snapshotted and must never
-     * change after money has moved (RESEARCH.md Pattern 3).
+     * Pricing fields are only validated while the price is still editable.
+     * Once money has moved against the job order, pricing fields must be
+     * entirely ignored rather than re-validated — the price was already
+     * snapshotted and must never change afterwards (RESEARCH.md Pattern 3).
      *
      * @return array<string, ValidationRule|array<mixed>|string|\Closure>
      */
     public function rules(): array
     {
-        if ($this->route('jobOrder')->total_amount !== null) {
+        if (! $this->pricingIsStillEditable()) {
             return $this->paymentRules();
         }
 
@@ -65,11 +76,12 @@ class SavePricingAndPaymentRequest extends FormRequest
                 ->where('status', TransactionStatus::Completed->value)
                 ->sum('amount');
 
-            if ($jobOrder->total_amount !== null) {
+            if (! $this->pricingIsStillEditable()) {
                 $remainingBalance = $jobOrder->outstandingBalance();
             } else {
-                // First pricing/payment visit (WR-01) — no total_amount
-                // snapshot exists yet to check the down payment against.
+                // First pricing/payment visit (WR-01) — the total this down
+                // payment is checked against is the one being submitted right
+                // now, not whatever the job order happens to be carrying.
                 // If the pricing fields themselves already failed their own
                 // rules, skip this check entirely rather than compute a
                 // meaningless total from invalid/missing input; those

@@ -4,7 +4,11 @@ import { Zap } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ProductionStageController from '@/actions/App/Http/Controllers/ProductionStaff/ProductionStageController';
 import AlertError from '@/components/AlertError.vue';
+import DataTableCard from '@/components/DataTableCard.vue';
 import InputError from '@/components/InputError.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatCard from '@/components/StatCard.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -265,12 +269,11 @@ onUnmounted(() => {
 <template>
     <Head title="Production Board" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            Production Board
-        </h1>
+    <PageContainer>
+        <PageHeader
+            title="Production Board"
+            description="Everything on the press, by stage. Rush jobs are flagged in the Urgency column."
+        />
 
         <Alert v-if="rushJobOrders.length > 0" variant="default">
             <Zap class="size-4 text-amber-600 dark:text-amber-400" />
@@ -289,14 +292,12 @@ onUnmounted(() => {
         />
 
         <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <Card v-for="stage in stages" :key="stage.value">
-                <CardContent class="flex flex-col gap-1">
-                    <span class="text-[28px] leading-[1.2] font-semibold">
-                        {{ stageCounts[stage.value] }}
-                    </span>
-                    <span class="text-sm font-semibold">{{ stage.label }}</span>
-                </CardContent>
-            </Card>
+            <StatCard
+                v-for="stage in stages"
+                :key="stage.value"
+                :value="stageCounts[stage.value]"
+                :label="stage.label"
+            />
         </div>
 
         <Tabs :model-value="activeFilter" @update:model-value="onTabChange">
@@ -313,9 +314,7 @@ onUnmounted(() => {
             </TabsList>
         </Tabs>
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -361,7 +360,7 @@ onUnmounted(() => {
                             <Badge
                                 v-if="jobOrder.is_rush"
                                 variant="outline"
-                                class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                class="border-brand/40 text-brand"
                             >
                                 <Zap class="size-3" />
                                 Rush
@@ -542,6 +541,6 @@ onUnmounted(() => {
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
-    </div>
+        </DataTableCard>
+    </PageContainer>
 </template>

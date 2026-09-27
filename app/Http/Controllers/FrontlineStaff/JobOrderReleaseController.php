@@ -41,7 +41,7 @@ class JobOrderReleaseController extends Controller
             in_array($jobOrder->payment_status, [PaymentStatus::Paid, PaymentStatus::OnCredit], true),
             422,
             match ($jobOrder->payment_status) {
-                PaymentStatus::CreditPendingApproval => __("This job order's On-Credit request is still pending Owner approval. Send the customer to Cashier."),
+                PaymentStatus::CreditPendingApproval => __("This job order's On-Credit request is still pending Admin approval. Send the customer to Cashier."),
                 default => __("This job order isn't fully paid yet. Send the customer to Cashier before releasing it."),
             },
         );

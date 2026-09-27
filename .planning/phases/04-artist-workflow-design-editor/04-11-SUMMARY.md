@@ -6,45 +6,45 @@ tags: [inertia, resend, mail, signed-routes, laravel, vue]
 
 # Dependency graph
 requires:
-  - phase: 04-artist-workflow-design-editor (04-03, 04-05)
-    provides: DesignEditorController's approve()/requestChanges() in-person review flow and RecordDesignRevision action, which this plan extends without modifying
+    - phase: 04-artist-workflow-design-editor (04-03, 04-05)
+      provides: DesignEditorController's approve()/requestChanges() in-person review flow and RecordDesignRevision action, which this plan extends without modifying
 provides:
-  - "A second, unauthenticated way for a client to record a design verdict: an emailed, signed link (D-17 through D-21)"
-  - "App\\Http\\Controllers\\Public\\DesignReviewController with show/approve/requestChanges reaching the same two outcomes as DesignEditorController, through entirely independent code"
-  - "App\\Mail\\DesignReviewRequested, dispatched after RecordDesignRevision commits its transaction"
-  - "resources/js/pages/public/DesignReview.vue rendering active/stale/closed/expired states"
-  - "InvalidSignatureException handled in bootstrap/app.php with a friendly expired-link page"
+    - 'A second, unauthenticated way for a client to record a design verdict: an emailed, signed link (D-17 through D-21)'
+    - "App\\Http\\Controllers\\Public\\DesignReviewController with show/approve/requestChanges reaching the same two outcomes as DesignEditorController, through entirely independent code"
+    - "App\\Mail\\DesignReviewRequested, dispatched after RecordDesignRevision commits its transaction"
+    - 'resources/js/pages/public/DesignReview.vue rendering active/stale/closed/expired states'
+    - 'InvalidSignatureException handled in bootstrap/app.php with a friendly expired-link page'
 affects: [phase-05-pos-payments]
 
 # Tech tracking
 tech-stack:
-  added: [resend/resend-php v1.12.0]
-  patterns:
-    - "Public, unauthenticated controller mirrors an authenticated controller's outcomes via a shared status/outcome guard (isActionable), never by importing or calling the authenticated controller"
-    - "Mail dispatch strictly after DB::transaction() commits, never inside it, so a rollback can never be followed by an email pointing at a phantom record"
-    - "Inertia Form component with plain :action string + method prop (not Wayfinder .form()) for routes carrying a runtime HMAC query string"
+    added: [resend/resend-php v1.12.0]
+    patterns:
+        - "Public, unauthenticated controller mirrors an authenticated controller's outcomes via a shared status/outcome guard (isActionable), never by importing or calling the authenticated controller"
+        - 'Mail dispatch strictly after DB::transaction() commits, never inside it, so a rollback can never be followed by an email pointing at a phantom record'
+        - 'Inertia Form component with plain :action string + method prop (not Wayfinder .form()) for routes carrying a runtime HMAC query string'
 
 key-files:
-  created:
-    - app/Http/Controllers/Public/DesignReviewController.php
-    - resources/js/pages/public/DesignReview.vue
-    - tests/Feature/Public/DesignReviewTest.php
-    - app/Mail/DesignReviewRequested.php
-    - resources/views/mail/design-review-requested.blade.php
-  modified:
-    - routes/web.php
-    - bootstrap/app.php
-    - app/Actions/JobOrder/RecordDesignRevision.php
-    - composer.json
-    - composer.lock
-    - .env.example
+    created:
+        - app/Http/Controllers/Public/DesignReviewController.php
+        - resources/js/pages/public/DesignReview.vue
+        - tests/Feature/Public/DesignReviewTest.php
+        - app/Mail/DesignReviewRequested.php
+        - resources/views/mail/design-review-requested.blade.php
+    modified:
+        - routes/web.php
+        - bootstrap/app.php
+        - app/Actions/JobOrder/RecordDesignRevision.php
+        - composer.json
+        - composer.lock
+        - .env.example
 
 key-decisions:
-  - "Route names written as full literal strings (->name('public.design-review.show') etc.) per route, instead of a group-level ->name('public.design-review.') prefix, to satisfy the plan's own acceptance-criteria grep count while producing identical route names"
-  - "resend/resend-php approved via a manual legitimacy checkpoint (Packagist downloads, official repo, slopcheck scan) since 04-RESEARCH.md predates this feature"
+    - "Route names written as full literal strings (->name('public.design-review.show') etc.) per route, instead of a group-level ->name('public.design-review.') prefix, to satisfy the plan's own acceptance-criteria grep count while producing identical route names"
+    - 'resend/resend-php approved via a manual legitimacy checkpoint (Packagist downloads, official repo, slopcheck scan) since 04-RESEARCH.md predates this feature'
 
 patterns-established:
-  - "Public/unauthenticated review-link controllers implement their own first-verdict-wins guard rather than reusing an authenticated controller's guard code, keeping the authenticated path provably untouched"
+    - "Public/unauthenticated review-link controllers implement their own first-verdict-wins guard rather than reusing an authenticated controller's guard code, keeping the authenticated path provably untouched"
 
 requirements-completed: [JOB-06]
 
@@ -109,6 +109,7 @@ None beyond the environment setup above.
 ## User Setup Required
 
 **External service requires manual configuration.** Per this plan's `user_setup` frontmatter:
+
 - Sign up for Resend (https://resend.com) if not already done
 - Add `RESEND_API_KEY` to the real, gitignored `.env` (source: Resend Dashboard -> API Keys)
 - Set `MAIL_MAILER=resend` in the real `.env` once the key is configured (already defaulted in `.env.example`)
@@ -123,12 +124,14 @@ Until this is configured, the developer's local `.env` should stay on `MAIL_MAIL
 - No blockers for subsequent Phase 4 plans.
 
 ---
-*Phase: 04-artist-workflow-design-editor*
-*Completed: 2026-09-03*
+
+_Phase: 04-artist-workflow-design-editor_
+_Completed: 2026-09-03_
 
 ## Self-Check: PASSED
 
 All created files verified present on disk:
+
 - FOUND: app/Http/Controllers/Public/DesignReviewController.php
 - FOUND: resources/js/pages/public/DesignReview.vue
 - FOUND: tests/Feature/Public/DesignReviewTest.php
@@ -137,6 +140,7 @@ All created files verified present on disk:
 - FOUND: .planning/phases/04-artist-workflow-design-editor/04-11-SUMMARY.md
 
 All task commits verified present in `git log`:
+
 - FOUND: 4a58b4e (Task 2)
 - FOUND: 0a95e8a (Task 3)
 - FOUND: e052a6e (this summary)

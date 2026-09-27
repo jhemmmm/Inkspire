@@ -8,15 +8,22 @@ import {
     UserRound,
     Zap,
 } from '@lucide/vue';
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
+import { toast } from 'vue-sonner';
 import JobOrderReleaseController from '@/actions/App/Http/Controllers/FrontlineStaff/JobOrderReleaseController';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
+import JobOrderTotal from '@/components/JobOrderTotal.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import InputError from '@/components/InputError.vue';
+import JobOrderPriceFields, {
+    type JobOrderPriceRow,
+} from '@/components/JobOrderPriceFields.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
+import { type SearchableOption } from '@/components/SearchableSelect.vue';
+import SectionHeading from '@/components/SectionHeading.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -46,6 +53,8 @@ import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { dashboard, newVisit } from '@/routes/frontline-staff';
 import { index as queueEntriesIndex } from '@/routes/frontline-staff/queue-entries';
 import { queueNumberLabel } from '@/lib/utils';
+import { jobOrderTypeLabel, money } from '@/lib/jobOrders';
+import { show as jobOrderShow } from '@/routes/frontline-staff/job-orders';
 
 interface QueueEntryCustomer {
     id: number;
@@ -66,11 +75,15 @@ interface JobOrderRecord {
     } | null;
     payment_status: string;
     released_at: string | null;
+    total_amount: number | null;
+    display_total: number | null;
+    is_rush: boolean;
 }
 
 interface QueueEntryRecord {
     id: number;
     customer_id: number;
+    queue_prefix: string;
     queue_number: number;
     status: 'waiting' | 'serving' | 'done';
     customer: QueueEntryCustomer;
@@ -82,10 +95,31 @@ interface ReadyForPickupSummary {
     items: Array<{ number: string | null }>;
 }
 
+interface PricingEntryOption {
+    id: number;
+    name: string;
+    base_price: string;
+    unit: string | null;
+}
+
 const props = defineProps<{
     queueEntries: QueueEntryRecord[];
     readyForPickup: ReadyForPickupSummary;
+    pricingEntries: PricingEntryOption[];
+    specificationOptions: Record<string, string[]>;
+    printSizeDimensions: Record<
+        string,
+        { width_inches: number | null; height_inches: number | null }
+    >;
+    rushFeePercentage: number;
 }>();
+
+const printSizeOptions = computed<SearchableOption[]>(() =>
+    (props.specificationOptions.print_size ?? []).map((size: string) => ({
+        value: size,
+        label: size,
+    })),
+);
 
 defineOptions({
     layout: {
@@ -98,6 +132,36 @@ defineOptions({
         ],
     },
 });
+
+/**
+ * The two lanes, shown as two tables.
+ *
+ * The lane is already baked into the queue number — R-001 is rush, A-001 is
+ * regular (QueueEntry::RUSH_PREFIX) — so this splits on the prefix rather
+ * than re-deriving it from the job orders hanging off the entry. A visit
+ * containing any rush job order was given an R number at intake, and that
+ * number is what the customer is holding.
+ */
+const queueGroups = computed(() => [
+    {
+        key: 'rush',
+        title: 'Rush Lane',
+        description: 'R numbers. Called before the regular lane.',
+        rows: props.queueEntries.filter((entry) => entry.queue_prefix === 'R'),
+        emptyTitle: 'No rush visits today',
+        emptyDescription:
+            'A visit gets an R number when any of its job orders is marked Rush Print.',
+    },
+    {
+        key: 'regular',
+        title: 'Regular Lane',
+        description: 'A numbers, in the order they arrived.',
+        rows: props.queueEntries.filter((entry) => entry.queue_prefix !== 'R'),
+        emptyTitle: 'No queue entries yet today',
+        emptyDescription:
+            'Queue numbers reset each business day. Start a visit to create the first one.',
+    },
+]);
 
 // D-13/D-14: the same derived, self-correcting ready-for-pickup alert as the
 // Frontline Dashboard, surfaced here so staff already on this page see it
@@ -171,8 +235,38 @@ function setJobOrderType(entryId: number, value: unknown): void {
     jobOrderTypeByEntry[entryId] = value === 'type_b' ? 'type_b' : 'type_a';
 }
 
-function jobOrderTypeLabel(type: string): string {
-    return type === 'type_a' ? 'Type A' : 'Type B';
+function emptyJobOrderPriceRow(): JobOrderPriceRow {
+    return {
+        pricing_entry_id: '',
+        description: '',
+        print_size: '',
+        width_ft: '',
+        height_ft: '',
+        quantity: '',
+        quoted_amount: '',
+        quoted_amount_overridden: false,
+        is_rush: false,
+    };
+}
+
+// The Add Job Order dialog's price fields, tracked locally per row (keyed
+// by queue entry id) so `JobOrderPriceFields`'s direct-mutation contract
+// stays reactive across re-renders. `priceRow()` lazily initializes and
+// always returns the SAME object reference for a given entry.
+const jobOrderPriceState = reactive<Record<number, JobOrderPriceRow>>({});
+
+function priceRow(entryId: number): JobOrderPriceRow {
+    return (jobOrderPriceState[entryId] ??= emptyJobOrderPriceRow());
+}
+
+/**
+ * Closes the dialog and clears its price state after a successful submit,
+ * so reopening the dialog for the same entry doesn't show stale values
+ * from the last job order added.
+ */
+function handleJobOrderAdded(entryId: number): void {
+    setJobOrderDialog(entryId, false);
+    delete jobOrderPriceState[entryId];
 }
 
 // The four stages that actually mean "on the press". Enumerated rather
@@ -205,6 +299,14 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
         jobOrder.released_at === null
     );
 }
+
+/** The visit-level total: the sum of every job order's display_total. */
+function visitTotal(entry: QueueEntryRecord): number {
+    return entry.job_orders.reduce(
+        (sum, jobOrder) => sum + (jobOrder.display_total ?? 0),
+        0,
+    );
+}
 </script>
 
 <template>
@@ -230,315 +332,354 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
             </AlertDescription>
         </Alert>
 
-        <DataTableCard>
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Queue Number</TableHead>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Job Orders</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead class="text-right">Actions</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    <TableEmpty v-if="queueEntries.length === 0" :colspan="5">
-                        <EmptyState
-                            :icon="Ticket"
-                            title="No queue entries yet today"
-                            description="Queue numbers reset each business day. Start a visit to create the first one."
+        <template v-for="group in queueGroups" :key="group.key">
+            <SectionHeading
+                :title="group.title"
+                :description="group.description"
+            />
+
+            <DataTableCard>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Queue Number</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Job Orders</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead class="text-right">Total</TableHead>
+                            <TableHead class="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableEmpty v-if="group.rows.length === 0" :colspan="6">
+                            <EmptyState
+                                :icon="Ticket"
+                                :title="group.emptyTitle"
+                                :description="group.emptyDescription"
+                            >
+                                <template #actions>
+                                    <Link
+                                        :href="newVisit()"
+                                        :class="buttonVariants({ size: 'sm' })"
+                                    >
+                                        New Visit
+                                    </Link>
+                                </template>
+                            </EmptyState>
+                        </TableEmpty>
+                        <TableRow
+                            v-for="entry in group.rows"
+                            v-else
+                            :key="entry.id"
                         >
-                            <template #actions>
-                                <Link
-                                    :href="newVisit()"
-                                    :class="buttonVariants({ size: 'sm' })"
+                            <TableCell>
+                                <span
+                                    class="bg-secondary text-secondary-foreground inline-flex size-9 items-center justify-center rounded-lg text-base font-bold tabular-nums"
                                 >
-                                    New Visit
-                                </Link>
-                            </template>
-                        </EmptyState>
-                    </TableEmpty>
-                    <TableRow
-                        v-for="entry in queueEntries"
-                        v-else
-                        :key="entry.id"
-                    >
-                        <TableCell>
-                            <span
-                                class="bg-secondary text-secondary-foreground inline-flex size-9 items-center justify-center rounded-lg text-base font-bold tabular-nums"
-                            >
-                                {{ queueNumberLabel(entry.queue_number) }}
-                            </span>
-                        </TableCell>
-                        <TableCell>{{ entry.customer.name }}</TableCell>
-                        <TableCell>
-                            <div class="flex flex-col gap-1">
-                                <div
-                                    v-for="jobOrder in entry.job_orders"
-                                    :key="jobOrder.id"
-                                    class="flex flex-wrap items-center gap-2"
-                                >
-                                    <span
-                                        class="text-muted-foreground tabular-nums"
-                                        >{{ jobOrder.number ?? '—' }}</span
+                                    {{
+                                        queueNumberLabel(
+                                            entry.queue_prefix,
+                                            entry.queue_number,
+                                        )
+                                    }}
+                                </span>
+                            </TableCell>
+                            <TableCell>{{ entry.customer.name }}</TableCell>
+                            <TableCell>
+                                <div class="flex flex-col gap-1">
+                                    <div
+                                        v-for="jobOrder in entry.job_orders"
+                                        :key="jobOrder.id"
+                                        class="flex flex-wrap items-center gap-2"
                                     >
-                                    <span>{{ jobOrder.description }}</span>
-                                    <Badge variant="outline">
-                                        {{ jobOrderTypeLabel(jobOrder.type) }}
-                                    </Badge>
-                                    <Badge
-                                        v-if="jobOrder.status === 'intake'"
-                                        variant="outline"
-                                    >
-                                        Waiting for an Artist
-                                    </Badge>
-                                    <Badge
-                                        v-else-if="
-                                            jobOrder.status ===
-                                            'ready_for_production'
-                                        "
-                                        class="text-green-600 dark:text-green-400"
-                                    >
-                                        Ready for Production
-                                    </Badge>
-                                    <Badge
-                                        v-else-if="
-                                            jobOrder.status === 'assigned' ||
-                                            jobOrder.status ===
-                                                'in_consultation'
-                                        "
-                                        variant="default"
-                                        :data-test="`job-order-${jobOrder.id}-artist-badge`"
-                                    >
-                                        <UserRound class="size-3" />
-                                        {{ artistDestination(jobOrder) }}
-                                    </Badge>
-                                    <Badge
-                                        v-else-if="
-                                            jobOrder.status ===
-                                            'validation_failed'
-                                        "
-                                        variant="destructive"
-                                    >
-                                        Validation Failed
-                                    </Badge>
-                                    <Badge
-                                        v-else-if="
-                                            jobOrder.released_at !== null
-                                        "
-                                        class="text-green-600 dark:text-green-400"
-                                    >
-                                        Released
-                                    </Badge>
-                                    <Badge
-                                        v-else-if="
-                                            isInProduction(jobOrder.status)
-                                        "
-                                        variant="secondary"
-                                    >
-                                        In Production
-                                    </Badge>
-                                    <Badge v-else variant="secondary">
-                                        In Design
-                                    </Badge>
-                                    <ReplaceJobOrderFileDialog
-                                        v-if="
-                                            jobOrder.status ===
-                                            'validation_failed'
-                                        "
-                                        :job-order-id="jobOrder.id"
-                                    >
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            data-test="replace-file-button"
+                                        <Link
+                                            :href="jobOrderShow(jobOrder.id)"
+                                            class="text-primary font-medium tabular-nums underline-offset-4 hover:underline"
+                                            :data-test="`queue-job-order-${jobOrder.id}-link`"
                                         >
-                                            <RefreshCw class="size-4" />
-                                            <span class="sr-only">
-                                                Replace File
-                                            </span>
-                                        </Button>
-                                    </ReplaceJobOrderFileDialog>
-                                    <Form
-                                        v-if="isReleaseEligible(jobOrder)"
-                                        v-bind="
-                                            JobOrderReleaseController.store.form(
-                                                jobOrder.id,
-                                            )
-                                        "
-                                        :options="{ preserveScroll: true }"
-                                        v-slot="{ processing }"
-                                    >
-                                        <Button
-                                            type="submit"
+                                            {{ jobOrder.number ?? '—' }}
+                                        </Link>
+                                        <span>{{ jobOrder.description }}</span>
+                                        <JobOrderTotal
+                                            :job-order="jobOrder"
+                                            class="text-muted-foreground text-sm"
+                                        />
+                                        <Badge variant="outline">
+                                            {{
+                                                jobOrderTypeLabel(jobOrder.type)
+                                            }}
+                                        </Badge>
+                                        <Badge
+                                            v-if="jobOrder.status === 'intake'"
                                             variant="outline"
-                                            :disabled="processing"
-                                            :data-test="`release-job-order-${jobOrder.id}-button`"
                                         >
-                                            Release to Customer
-                                        </Button>
-                                    </Form>
-                                </div>
-                            </div>
-                        </TableCell>
-                        <TableCell>
-                            <Badge
-                                v-if="entry.status === 'waiting'"
-                                variant="outline"
-                            >
-                                Waiting
-                            </Badge>
-                            <Badge
-                                v-else-if="entry.status === 'serving'"
-                                variant="default"
-                            >
-                                Serving
-                            </Badge>
-                            <Badge
-                                v-else-if="entry.status === 'done'"
-                                class="text-green-600 dark:text-green-400"
-                            >
-                                Done
-                            </Badge>
-                        </TableCell>
-                        <TableCell>
-                            <div class="flex items-center justify-end gap-2">
-                                <Dialog
-                                    :open="openJobOrderDialog === entry.id"
-                                    @update:open="
-                                        (open) =>
-                                            setJobOrderDialog(entry.id, open)
-                                    "
-                                >
-                                    <DialogTrigger as-child>
-                                        <Button
-                                            variant="outline"
-                                            :data-test="`add-job-order-${entry.id}-button`"
+                                            Waiting for an Artist
+                                        </Badge>
+                                        <Badge
+                                            v-else-if="
+                                                jobOrder.status ===
+                                                'ready_for_production'
+                                            "
+                                            class="text-green-600 dark:text-green-400"
                                         >
-                                            <Plus class="size-4" />
-                                            Add Job Order
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
+                                            Ready for Production
+                                        </Badge>
+                                        <Badge
+                                            v-else-if="
+                                                jobOrder.status ===
+                                                    'assigned' ||
+                                                jobOrder.status ===
+                                                    'in_consultation'
+                                            "
+                                            variant="default"
+                                            :data-test="`job-order-${jobOrder.id}-artist-badge`"
+                                        >
+                                            <UserRound class="size-3" />
+                                            {{ artistDestination(jobOrder) }}
+                                        </Badge>
+                                        <Badge
+                                            v-else-if="
+                                                jobOrder.status ===
+                                                'validation_failed'
+                                            "
+                                            variant="destructive"
+                                        >
+                                            Validation Failed
+                                        </Badge>
+                                        <Badge
+                                            v-else-if="
+                                                jobOrder.released_at !== null
+                                            "
+                                            class="text-green-600 dark:text-green-400"
+                                        >
+                                            Released
+                                        </Badge>
+                                        <Badge
+                                            v-else-if="
+                                                isInProduction(jobOrder.status)
+                                            "
+                                            variant="secondary"
+                                        >
+                                            In Production
+                                        </Badge>
+                                        <Badge v-else variant="secondary">
+                                            In Design
+                                        </Badge>
+                                        <ReplaceJobOrderFileDialog
+                                            v-if="
+                                                jobOrder.status ===
+                                                'validation_failed'
+                                            "
+                                            :job-order-id="jobOrder.id"
+                                        >
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                data-test="replace-file-button"
+                                            >
+                                                <RefreshCw class="size-4" />
+                                                <span class="sr-only">
+                                                    Replace File
+                                                </span>
+                                            </Button>
+                                        </ReplaceJobOrderFileDialog>
                                         <Form
+                                            v-if="isReleaseEligible(jobOrder)"
                                             v-bind="
-                                                QueueEntryController.addJobOrder.form(
-                                                    entry.id,
+                                                JobOrderReleaseController.store.form(
+                                                    jobOrder.id,
                                                 )
                                             "
-                                            :options="{
-                                                preserveScroll: true,
-                                            }"
-                                            @success="
+                                            :options="{ preserveScroll: true }"
+                                            v-slot="{ processing }"
+                                        >
+                                            <Button
+                                                type="submit"
+                                                variant="outline"
+                                                :disabled="processing"
+                                                :data-test="`release-job-order-${jobOrder.id}-button`"
+                                            >
+                                                Release to Customer
+                                            </Button>
+                                        </Form>
+                                    </div>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                <Badge
+                                    v-if="entry.status === 'waiting'"
+                                    variant="outline"
+                                >
+                                    Waiting
+                                </Badge>
+                                <Badge
+                                    v-else-if="entry.status === 'serving'"
+                                    variant="default"
+                                >
+                                    Serving
+                                </Badge>
+                                <Badge
+                                    v-else-if="entry.status === 'done'"
+                                    class="text-green-600 dark:text-green-400"
+                                >
+                                    Done
+                                </Badge>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                {{ money(visitTotal(entry)) }}
+                            </TableCell>
+                            <TableCell>
+                                <div
+                                    class="flex items-center justify-end gap-2"
+                                >
+                                    <Dialog
+                                        :open="openJobOrderDialog === entry.id"
+                                        @update:open="
+                                            (open) =>
                                                 setJobOrderDialog(
                                                     entry.id,
-                                                    false,
+                                                    open,
                                                 )
-                                            "
-                                            class="space-y-6"
-                                            v-slot="{ errors, processing }"
-                                        >
-                                            <DialogHeader>
-                                                <DialogTitle>
-                                                    Add Job Order
-                                                </DialogTitle>
-                                            </DialogHeader>
-
-                                            <div class="grid gap-2">
-                                                <Label
-                                                    :for="`add-job-order-description-${entry.id}`"
-                                                >
-                                                    Product / Service
-                                                </Label>
-                                                <Input
-                                                    :id="`add-job-order-description-${entry.id}`"
-                                                    name="description"
-                                                    required
-                                                    placeholder="Tarpaulin, 3x5ft"
-                                                />
-                                                <InputError
-                                                    :message="
-                                                        errors.description
-                                                    "
-                                                />
-                                            </div>
-
-                                            <div class="grid gap-2">
-                                                <Label>Job Order Type</Label>
-                                                <RadioGroup
-                                                    name="type"
-                                                    :model-value="
-                                                        jobOrderType(entry.id)
-                                                    "
-                                                    @update:model-value="
-                                                        (value) =>
-                                                            setJobOrderType(
-                                                                entry.id,
-                                                                value,
-                                                            )
-                                                    "
-                                                >
-                                                    <div
-                                                        class="flex items-center gap-2"
-                                                    >
-                                                        <RadioGroupItem
-                                                            :id="`add-job-order-type-a-${entry.id}`"
-                                                            value="type_a"
-                                                        />
-                                                        <Label
-                                                            :for="`add-job-order-type-a-${entry.id}`"
-                                                        >
-                                                            Type A — Print-ready
-                                                            file
-                                                        </Label>
-                                                    </div>
-                                                    <div
-                                                        class="flex items-center gap-2"
-                                                    >
-                                                        <RadioGroupItem
-                                                            :id="`add-job-order-type-b-${entry.id}`"
-                                                            value="type_b"
-                                                        />
-                                                        <Label
-                                                            :for="`add-job-order-type-b-${entry.id}`"
-                                                        >
-                                                            Type B — Needs
-                                                            consultation
-                                                        </Label>
-                                                    </div>
-                                                </RadioGroup>
-                                                <InputError
-                                                    :message="errors.type"
-                                                />
-                                            </div>
-
-                                            <div
-                                                v-if="
-                                                    jobOrderType(entry.id) ===
-                                                    'type_a'
-                                                "
-                                                class="grid gap-2"
+                                        "
+                                    >
+                                        <DialogTrigger as-child>
+                                            <Button
+                                                variant="outline"
+                                                :data-test="`add-job-order-${entry.id}-button`"
                                             >
-                                                <Label
-                                                    :for="`add-job-order-file-${entry.id}`"
-                                                >
-                                                    Attach File
-                                                </Label>
-                                                <Input
-                                                    :id="`add-job-order-file-${entry.id}`"
-                                                    type="file"
-                                                    name="file"
-                                                />
-                                                <InputError
-                                                    :message="errors.file"
-                                                />
-                                            </div>
+                                                <Plus class="size-4" />
+                                                Add Job Order
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <Form
+                                                v-bind="
+                                                    QueueEntryController.addJobOrder.form(
+                                                        entry.id,
+                                                    )
+                                                "
+                                                :options="{
+                                                    preserveScroll: true,
+                                                }"
+                                                @success="
+                                                    handleJobOrderAdded(
+                                                        entry.id,
+                                                    )
+                                                "
+                                                @error="
+                                                    toast.error(
+                                                        'The job order was not added. Fix the highlighted fields and try again.',
+                                                    )
+                                                "
+                                                class="space-y-6"
+                                                v-slot="{ errors, processing }"
+                                            >
+                                                <DialogHeader>
+                                                    <DialogTitle>
+                                                        Add Job Order
+                                                    </DialogTitle>
+                                                </DialogHeader>
 
-                                            <div class="grid gap-2">
+                                                <JobOrderPriceFields
+                                                    :row="priceRow(entry.id)"
+                                                    native-names
+                                                    :pricing-entries="
+                                                        pricingEntries
+                                                    "
+                                                    :print-size-options="
+                                                        printSizeOptions
+                                                    "
+                                                    :print-size-dimensions="
+                                                        printSizeDimensions
+                                                    "
+                                                    :rush-fee-percentage="
+                                                        rushFeePercentage
+                                                    "
+                                                    :id-prefix="`add-job-order-${entry.id}`"
+                                                    :errors="errors"
+                                                />
+
+                                                <div class="grid gap-2">
+                                                    <Label
+                                                        >Job Order Type</Label
+                                                    >
+                                                    <RadioGroup
+                                                        name="type"
+                                                        :model-value="
+                                                            jobOrderType(
+                                                                entry.id,
+                                                            )
+                                                        "
+                                                        @update:model-value="
+                                                            (value) =>
+                                                                setJobOrderType(
+                                                                    entry.id,
+                                                                    value,
+                                                                )
+                                                        "
+                                                    >
+                                                        <div
+                                                            class="flex items-center gap-2"
+                                                        >
+                                                            <RadioGroupItem
+                                                                :id="`add-job-order-type-a-${entry.id}`"
+                                                                value="type_a"
+                                                            />
+                                                            <Label
+                                                                :for="`add-job-order-type-a-${entry.id}`"
+                                                            >
+                                                                Type A —
+                                                                Print-ready file
+                                                            </Label>
+                                                        </div>
+                                                        <div
+                                                            class="flex items-center gap-2"
+                                                        >
+                                                            <RadioGroupItem
+                                                                :id="`add-job-order-type-b-${entry.id}`"
+                                                                value="type_b"
+                                                            />
+                                                            <Label
+                                                                :for="`add-job-order-type-b-${entry.id}`"
+                                                            >
+                                                                Type B — Needs
+                                                                consultation
+                                                            </Label>
+                                                        </div>
+                                                    </RadioGroup>
+                                                    <InputError
+                                                        :message="errors.type"
+                                                    />
+                                                </div>
+
                                                 <div
-                                                    class="flex items-center gap-3"
+                                                    v-if="
+                                                        jobOrderType(
+                                                            entry.id,
+                                                        ) === 'type_a'
+                                                    "
+                                                    class="grid gap-2"
                                                 >
-                                                    <!--
+                                                    <Label
+                                                        :for="`add-job-order-file-${entry.id}`"
+                                                    >
+                                                        Attach File
+                                                    </Label>
+                                                    <Input
+                                                        :id="`add-job-order-file-${entry.id}`"
+                                                        type="file"
+                                                        name="file"
+                                                    />
+                                                    <InputError
+                                                        :message="errors.file"
+                                                    />
+                                                </div>
+
+                                                <div class="grid gap-2">
+                                                    <div
+                                                        class="flex items-center gap-3"
+                                                    >
+                                                        <!--
                                                         This Form is
                                                         uncontrolled, so the
                                                         name/value pair IS the
@@ -550,57 +691,68 @@ function isReleaseEligible(jobOrder: JobOrderRecord): boolean {
                                                         which fails Laravel's
                                                         boolean rule.
                                                     -->
-                                                    <Switch
-                                                        :id="`add-job-order-rush-${entry.id}`"
-                                                        name="is_rush"
-                                                        value="1"
-                                                        :data-test="`add-job-order-rush-${entry.id}-switch`"
+                                                        <Switch
+                                                            :id="`add-job-order-rush-${entry.id}`"
+                                                            v-model="
+                                                                priceRow(
+                                                                    entry.id,
+                                                                ).is_rush
+                                                            "
+                                                            name="is_rush"
+                                                            value="1"
+                                                            :data-test="`add-job-order-rush-${entry.id}-switch`"
+                                                        />
+                                                        <Label
+                                                            :for="`add-job-order-rush-${entry.id}`"
+                                                            class="flex items-center gap-2"
+                                                        >
+                                                            <Zap
+                                                                class="size-4"
+                                                            />
+                                                            Rush Print
+                                                        </Label>
+                                                    </div>
+                                                    <p
+                                                        class="text-muted-foreground text-sm"
+                                                    >
+                                                        Prioritised in
+                                                        production. The Cashier
+                                                        decides whether the rush
+                                                        fee is charged.
+                                                    </p>
+                                                    <InputError
+                                                        :message="
+                                                            errors.is_rush
+                                                        "
                                                     />
-                                                    <Label
-                                                        :for="`add-job-order-rush-${entry.id}`"
-                                                        class="flex items-center gap-2"
-                                                    >
-                                                        <Zap class="size-4" />
-                                                        Rush Order
-                                                    </Label>
                                                 </div>
-                                                <p
-                                                    class="text-muted-foreground text-sm"
-                                                >
-                                                    Prioritised in production.
-                                                    The Cashier decides whether
-                                                    the rush fee is charged.
-                                                </p>
-                                                <InputError
-                                                    :message="errors.is_rush"
-                                                />
-                                            </div>
 
-                                            <DialogFooter class="gap-2">
-                                                <DialogClose as-child>
+                                                <DialogFooter class="gap-2">
+                                                    <DialogClose as-child>
+                                                        <Button
+                                                            type="button"
+                                                            variant="secondary"
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    </DialogClose>
                                                     <Button
-                                                        type="button"
-                                                        variant="secondary"
+                                                        type="submit"
+                                                        :disabled="processing"
+                                                        :data-test="`submit-add-job-order-${entry.id}-button`"
                                                     >
-                                                        Cancel
+                                                        Add Job Order
                                                     </Button>
-                                                </DialogClose>
-                                                <Button
-                                                    type="submit"
-                                                    :disabled="processing"
-                                                    :data-test="`submit-add-job-order-${entry.id}-button`"
-                                                >
-                                                    Add Job Order
-                                                </Button>
-                                            </DialogFooter>
-                                        </Form>
-                                    </DialogContent>
-                                </Dialog>
-                            </div>
-                        </TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
-        </DataTableCard>
+                                                </DialogFooter>
+                                            </Form>
+                                        </DialogContent>
+                                    </Dialog>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </DataTableCard>
+        </template>
     </PageContainer>
 </template>

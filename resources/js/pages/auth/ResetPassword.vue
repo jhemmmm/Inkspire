@@ -7,6 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    authErrorClass,
+    authInputClass,
+    authSubmitClass,
+} from '@/layouts/auth/fields';
 import { update } from '@/routes/password';
 
 defineOptions({
@@ -43,10 +48,13 @@ const inputEmail = ref(props.email);
                     name="email"
                     autocomplete="email"
                     v-model="inputEmail"
-                    class="mt-1 block w-full"
+                    :class="[authInputClass, 'mt-1 block w-full']"
                     readonly
                 />
-                <InputError :message="errors.email" class="mt-2" />
+                <InputError
+                    :message="errors.email"
+                    :class="[authErrorClass, 'mt-2']"
+                />
             </div>
 
             <div class="grid gap-2">
@@ -55,12 +63,15 @@ const inputEmail = ref(props.email);
                     id="password"
                     name="password"
                     autocomplete="new-password"
-                    class="mt-1 block w-full"
+                    :class="[authInputClass, 'mt-1 block w-full']"
                     autofocus
                     placeholder="Password"
                     :passwordrules="passwordRules"
                 />
-                <InputError :message="errors.password" />
+                <InputError
+                    :message="errors.password"
+                    :class="authErrorClass"
+                />
             </div>
 
             <div class="grid gap-2">
@@ -69,16 +80,19 @@ const inputEmail = ref(props.email);
                     id="password_confirmation"
                     name="password_confirmation"
                     autocomplete="new-password"
-                    class="mt-1 block w-full"
+                    :class="[authInputClass, 'mt-1 block w-full']"
                     placeholder="Confirm password"
                     :passwordrules="passwordRules"
                 />
-                <InputError :message="errors.password_confirmation" />
+                <InputError
+                    :message="errors.password_confirmation"
+                    :class="authErrorClass"
+                />
             </div>
 
             <Button
                 type="submit"
-                class="mt-4 w-full"
+                :class="[authSubmitClass, 'mt-4']"
                 :disabled="processing"
                 data-test="reset-password-button"
             >

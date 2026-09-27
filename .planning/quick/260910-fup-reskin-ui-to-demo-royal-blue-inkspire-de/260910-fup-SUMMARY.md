@@ -7,41 +7,41 @@ tags: [tailwindcss-v4, shadcn-vue, inertia-vue, design-tokens, fonts]
 # Dependency graph
 requires: []
 provides:
-  - "Royal-blue shadcn-vue token retheme (resources/css/app.css :root + .dark) that recolors every primitive across all 7 role portals with zero component edits"
-  - "Plus Jakarta Sans app-wide font (vite.config.ts bunny loader + app.css --font-sans)"
-  - "public/logo.png and public/business_logo.png tracked brand assets"
-  - "resources/js/layouts/auth/AuthBrandLayout.vue two-panel branded auth layout, wired into AuthLayout.vue"
-  - "Redesigned Login.vue matching the blue-panel form"
+    - 'Royal-blue shadcn-vue token retheme (resources/css/app.css :root + .dark) that recolors every primitive across all 7 role portals with zero component edits'
+    - 'Plus Jakarta Sans app-wide font (vite.config.ts bunny loader + app.css --font-sans)'
+    - 'public/logo.png and public/business_logo.png tracked brand assets'
+    - 'resources/js/layouts/auth/AuthBrandLayout.vue two-panel branded auth layout, wired into AuthLayout.vue'
+    - 'Redesigned Login.vue matching the blue-panel form'
 affects: [ui, auth-pages, all-role-portals]
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "Two-panel auth layout (AuthBrandLayout.vue) with title/description prop passthrough and fallback static copy when both are empty strings"
+    added: []
+    patterns:
+        - 'Two-panel auth layout (AuthBrandLayout.vue) with title/description prop passthrough and fallback static copy when both are empty strings'
 
 key-files:
-  created:
-    - resources/js/layouts/auth/AuthBrandLayout.vue
-    - public/logo.png
-    - public/business_logo.png
-    - .planning/quick/260910-fup-reskin-ui-to-demo-royal-blue-inkspire-de/deferred-items.md
-  modified:
-    - resources/css/app.css
-    - vite.config.ts
-    - resources/views/app.blade.php
-    - resources/js/layouts/AuthLayout.vue
-    - resources/js/pages/auth/Login.vue
+    created:
+        - resources/js/layouts/auth/AuthBrandLayout.vue
+        - public/logo.png
+        - public/business_logo.png
+        - .planning/quick/260910-fup-reskin-ui-to-demo-royal-blue-inkspire-de/deferred-items.md
+    modified:
+        - resources/css/app.css
+        - vite.config.ts
+        - resources/views/app.blade.php
+        - resources/js/layouts/AuthLayout.vue
+        - resources/js/pages/auth/Login.vue
 
 key-decisions:
-  - "Excluded demo/** from vite.config.ts lint/fmt ignorePatterns (Rule 3 blocking-issue auto-fix) since demo/index.html's malformed HTML aborted vp check's formatter before any other file could be analyzed"
-  - "Ran vp check --fix scoped only to this plan's touched files rather than the repo-wide npm run check:fix, to avoid rewriting 228 pre-existing unrelated files (docs, skills, out-of-scope Vue pages)"
+    - "Excluded demo/** from vite.config.ts lint/fmt ignorePatterns (Rule 3 blocking-issue auto-fix) since demo/index.html's malformed HTML aborted vp check's formatter before any other file could be analyzed"
+    - "Ran vp check --fix scoped only to this plan's touched files rather than the repo-wide npm run check:fix, to avoid rewriting 228 pre-existing unrelated files (docs, skills, out-of-scope Vue pages)"
 
 patterns-established:
-  - "AuthBrandLayout.vue: title/description props default to empty strings; when both are empty the right panel falls back to static 'Printing Management System' sub-copy and 'Staff Portal' badge, otherwise page-specific title/description render in their place"
+    - "AuthBrandLayout.vue: title/description props default to empty strings; when both are empty the right panel falls back to static 'Printing Management System' sub-copy and 'Staff Portal' badge, otherwise page-specific title/description render in their place"
 
 requirements-completed:
-  - "Quick task 260910-fup: reskin UI to demo royal-blue Inkspire design system (retheme shadcn tokens, swap font, add brand logos, rebuild login as two-panel card) — see task description in orchestrator prompt"
+    - 'Quick task 260910-fup: reskin UI to demo royal-blue Inkspire design system (retheme shadcn tokens, swap font, add brand logos, rebuild login as two-panel card) — see task description in orchestrator prompt'
 
 duration: 20min
 completed: 2026-09-10
@@ -96,6 +96,7 @@ Each task was committed atomically:
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Excluded demo/ from vp check's lint/fmt scope**
+
 - **Found during:** Task 3 (final `npm run check` verification)
 - **Issue:** `npm run check` failed outright — not with formatting warnings, but a hard `SyntaxError` while parsing `demo/index.html` (untracked, large reference-only HTML file present for this task's design reference), aborting the formatter before any other file in the repo could be analyzed.
 - **Fix:** Added `'demo/**'` to both `lint.ignorePatterns` and `fmt.ignorePatterns` in `vite.config.ts`.
@@ -104,6 +105,7 @@ Each task was committed atomically:
 - **Committed in:** `63578cf` (Task 3 commit)
 
 **2. [Scope boundary] Pre-existing repo-wide formatting drift left untouched**
+
 - **Found during:** Task 3 (final `npm run check` verification)
 - **Issue:** After unblocking the formatter, `npm run check` still reports 228 files with formatting issues — all pre-existing and unrelated to this task (`.planning/**/*.md`, `.claude/skills/**/*.md`, `CLAUDE.md`, `README.md`, `boost.json`, and 6 out-of-scope Vue pages: `AccountsReceivable/Index.vue`, `AccountsReceivable/Show.vue`, `CollectionLetter.vue`, `Forbidden.vue`, `AuditTrail.vue`, `WriteOffRequests.vue`).
 - **Fix:** Not fixed — out of scope per the executor's scope-boundary rule ("Only auto-fix issues DIRECTLY caused by the current task's changes"). Instead ran `npx vp check --fix` scoped to just this plan's 6 touched files, which now format cleanly, and logged the repo-wide drift to `deferred-items.md`.
@@ -132,8 +134,9 @@ None - no external service configuration required. Font is served via the existi
 - No blockers for future UI work — `components/ui/` primitives were not touched (`git diff --name-only | grep "components/ui/"` returns empty).
 
 ---
-*Phase: quick-260910-fup*
-*Completed: 2026-09-10*
+
+_Phase: quick-260910-fup_
+_Completed: 2026-09-10_
 
 ## Self-Check: PASSED
 

@@ -6,36 +6,36 @@ tags: [laravel, inertia, eloquent, aggregation, reporting, pest]
 
 # Dependency graph
 requires:
-  - phase: 04-artist-workflow-design-editor (04-03)
-    provides: RevisionLog model/table, JobOrder.revisionLogs() relation
-  - phase: 04-artist-workflow-design-editor (04-07)
-    provides: artist. route group additions this plan appends alongside
+    - phase: 04-artist-workflow-design-editor (04-03)
+      provides: RevisionLog model/table, JobOrder.revisionLogs() relation
+    - phase: 04-artist-workflow-design-editor (04-07)
+      provides: artist. route group additions this plan appends alongside
 provides:
-  - "GET artist.performance-report.index route + PerformanceReportController::index (JOB-10 aggregation: jobs completed, average revisions per job, SLA adherence)"
-  - "PerformanceReportFilterRequest (from/to nullable date filters, mirrors FilterAuditTrailRequest)"
-  - "Generated Wayfinder TS action for PerformanceReportController"
+    - 'GET artist.performance-report.index route + PerformanceReportController::index (JOB-10 aggregation: jobs completed, average revisions per job, SLA adherence)'
+    - 'PerformanceReportFilterRequest (from/to nullable date filters, mirrors FilterAuditTrailRequest)'
+    - 'Generated Wayfinder TS action for PerformanceReportController'
 affects: [04-10-artist-workflow-design-editor]
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "Collection-based date-range filtering over an eager-loaded latest-approved-revision relation, instead of a correlated SQL subquery, for shop-scale aggregation reports"
+    added: []
+    patterns:
+        - 'Collection-based date-range filtering over an eager-loaded latest-approved-revision relation, instead of a correlated SQL subquery, for shop-scale aggregation reports'
 
 key-files:
-  created:
-    - app/Http/Controllers/Artist/PerformanceReportController.php
-    - app/Http/Requests/Artist/PerformanceReportFilterRequest.php
-    - tests/Feature/Artist/PerformanceReportTest.php
-  modified:
-    - routes/portals.php
+    created:
+        - app/Http/Controllers/Artist/PerformanceReportController.php
+        - app/Http/Requests/Artist/PerformanceReportFilterRequest.php
+        - tests/Feature/Artist/PerformanceReportTest.php
+    modified:
+        - routes/portals.php
 
 key-decisions:
-  - "Completion/SLA date is the approving revision_logs row's reviewed_at, not job_orders.created_at, per D-16"
-  - "SLA adherence reuses SystemConfiguration::getInt('default_sla_days', 3) — no new config key introduced"
+    - "Completion/SLA date is the approving revision_logs row's reviewed_at, not job_orders.created_at, per D-16"
+    - "SLA adherence reuses SystemConfiguration::getInt('default_sla_days', 3) — no new config key introduced"
 
 patterns-established:
-  - "Report controllers scoped strictly to $request->user()->id with no route parameter, so the endpoint structurally cannot leak another user's aggregates"
+    - "Report controllers scoped strictly to $request->user()->id with no route parameter, so the endpoint structurally cannot leak another user's aggregates"
 
 requirements-completed: [JOB-10]
 
@@ -87,6 +87,7 @@ Each task was committed atomically:
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Skipped Inertia's page-file-exists check for the not-yet-created Vue page**
+
 - **Found during:** Task 1 (test execution)
 - **Issue:** `PerformanceReport.vue` is Plan 04-10's deliverable (confirmed via `04-10-PLAN.md`'s `files_modified`), not this plan's. Inertia's `AssertableInertia::component()` test helper defaults to verifying the page file exists on disk, so calling `.component('artist/PerformanceReport')` failed with "Inertia page component file [artist/PerformanceReport] does not exist" — this is expected wave-sequencing behavior (04-09 is backend-only; 04-10 builds the Vue page), not a bug in the controller.
 - **Fix:** Passed `.component('artist/PerformanceReport', false)` to skip the file-existence check while still asserting the correct component name is rendered.
@@ -94,6 +95,7 @@ Each task was committed atomically:
 - **Committed in:** `abc84a1` (Task 1 commit)
 
 **2. [Rule 1 - Bug] Fixed a strict-float test assertion broken by JSON's whole-number float serialization**
+
 - **Found during:** Task 1 (test execution)
 - **Issue:** `->where('stats.avgRevisions', 2.0)` uses `assertSame` (strict `===`) internally. PHP's `json_encode` (used by Inertia's response) drops the trailing zero from a whole-number float (`2.0` serializes as `"2"`), so the decoded prop was `int(2)`, which is not identical to the test's literal `float(2.0)`.
 - **Fix:** Switched to a closure predicate (`fn ($value) => $value == 2.0`, loose comparison) for that one assertion, verifying the numeric value without depending on PHP/JSON's int-vs-float round-trip quirk. The controller's `round(..., 1)` computation itself is unchanged and correct.
@@ -119,5 +121,6 @@ None - no external service configuration required.
 - No blockers.
 
 ---
-*Phase: 04-artist-workflow-design-editor*
-*Completed: 2026-09-02*
+
+_Phase: 04-artist-workflow-design-editor_
+_Completed: 2026-09-02_

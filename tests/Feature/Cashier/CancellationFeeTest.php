@@ -274,7 +274,7 @@ test('cancelling an On-Credit job order closes its receivable so the voided debt
     expect($jobOrder->cancelled_at)->not->toBeNull();
     // Cancelling voids the print-job debt — only the fee stands. The
     // receivable must be closed, and closed as Cancelled rather than
-    // WrittenOff so it is never reported as an Owner-approved loss.
+    // WrittenOff so it is never reported as an Admin-approved loss.
     expect($receivable->collection_status)->toBe(AccountsReceivableCollectionStatus::Cancelled);
     expect($receivable->status)->toBe(AccountsReceivableStatus::Active);
 });

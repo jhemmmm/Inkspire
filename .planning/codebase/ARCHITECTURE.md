@@ -1,4 +1,5 @@
 <!-- refreshed: 2026-08-31 -->
+
 # Architecture
 
 **Analysis Date:** 2026-08-31
@@ -48,28 +49,29 @@
 
 ## Component Responsibilities
 
-| Component | Responsibility | File |
-|-----------|----------------|------|
-| Inertia SPA bootstrap | Registers layout-resolution rules and app-wide plugins (theme, flash toasts) | `resources/js/app.ts` |
-| Root Blade template | Single HTML shell Inertia hydrates into; sets appearance class from cookie | `resources/views/app.blade.php` |
-| `HandleInertiaRequests` | Shares global props (`auth.user`, `name`, `sidebarOpen`) with every Inertia response | `app/Http/Middleware/HandleInertiaRequests.php` |
-| `HandleAppearance` | Shares light/dark/system cookie value with Blade views | `app/Http/Middleware/HandleAppearance.php` |
-| Web routes | Public/dashboard pages rendered directly via `Route::inertia()` | `routes/web.php` |
-| Settings routes | CRUD-style routes for profile/security backed by controllers | `routes/settings.php` |
-| Settings controllers | Handle profile update/delete and password update, return Inertia responses | `app/Http/Controllers/Settings/ProfileController.php`, `app/Http/Controllers/Settings/SecurityController.php` |
-| Fortify service provider | Wires custom Inertia views for Fortify's built-in auth routes (login, reset password, confirm password) and login rate limiting | `app/Providers/FortifyServiceProvider.php` |
-| Form Requests | Authorize + validate settings input, delegate rule sets to `Concerns` traits | `app/Http/Requests/Settings/*.php` |
-| Validation concerns | Reusable validation rule builders shared across requests | `app/Concerns/ProfileValidationRules.php`, `app/Concerns/PasswordValidationRules.php` |
-| `User` model | Sole domain model; auth, factory, casts, fillable/hidden via PHP attributes | `app/Models/User.php` |
-| Wayfinder-generated actions/routes | Type-safe TS wrappers around Laravel routes/controllers, regenerated from PHP | `resources/js/actions/**`, `resources/js/routes/**` |
-| UI component library | Reusable shadcn/reka-ui-based primitives (button, dialog, sidebar, etc.) | `resources/js/components/ui/**` |
-| Layouts | Compose page chrome (sidebar/header shell, auth split screen, settings sub-nav) around page components | `resources/js/layouts/**` |
+| Component                          | Responsibility                                                                                                                  | File                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Inertia SPA bootstrap              | Registers layout-resolution rules and app-wide plugins (theme, flash toasts)                                                    | `resources/js/app.ts`                                                                                         |
+| Root Blade template                | Single HTML shell Inertia hydrates into; sets appearance class from cookie                                                      | `resources/views/app.blade.php`                                                                               |
+| `HandleInertiaRequests`            | Shares global props (`auth.user`, `name`, `sidebarOpen`) with every Inertia response                                            | `app/Http/Middleware/HandleInertiaRequests.php`                                                               |
+| `HandleAppearance`                 | Shares light/dark/system cookie value with Blade views                                                                          | `app/Http/Middleware/HandleAppearance.php`                                                                    |
+| Web routes                         | Public/dashboard pages rendered directly via `Route::inertia()`                                                                 | `routes/web.php`                                                                                              |
+| Settings routes                    | CRUD-style routes for profile/security backed by controllers                                                                    | `routes/settings.php`                                                                                         |
+| Settings controllers               | Handle profile update/delete and password update, return Inertia responses                                                      | `app/Http/Controllers/Settings/ProfileController.php`, `app/Http/Controllers/Settings/SecurityController.php` |
+| Fortify service provider           | Wires custom Inertia views for Fortify's built-in auth routes (login, reset password, confirm password) and login rate limiting | `app/Providers/FortifyServiceProvider.php`                                                                    |
+| Form Requests                      | Authorize + validate settings input, delegate rule sets to `Concerns` traits                                                    | `app/Http/Requests/Settings/*.php`                                                                            |
+| Validation concerns                | Reusable validation rule builders shared across requests                                                                        | `app/Concerns/ProfileValidationRules.php`, `app/Concerns/PasswordValidationRules.php`                         |
+| `User` model                       | Sole domain model; auth, factory, casts, fillable/hidden via PHP attributes                                                     | `app/Models/User.php`                                                                                         |
+| Wayfinder-generated actions/routes | Type-safe TS wrappers around Laravel routes/controllers, regenerated from PHP                                                   | `resources/js/actions/**`, `resources/js/routes/**`                                                           |
+| UI component library               | Reusable shadcn/reka-ui-based primitives (button, dialog, sidebar, etc.)                                                        | `resources/js/components/ui/**`                                                                               |
+| Layouts                            | Compose page chrome (sidebar/header shell, auth split screen, settings sub-nav) around page components                          | `resources/js/layouts/**`                                                                                     |
 
 ## Pattern Overview
 
 **Overall:** Server-driven SPA (Laravel + Inertia.js + Vue 3) — "modular monolith" with no separate REST/JSON API layer. Laravel Fortify supplies authentication backend logic; the app only customizes Fortify's rendered views and rate limits.
 
 **Key Characteristics:**
+
 - No traditional Blade views for pages — one root Blade template (`resources/views/app.blade.php`) hosts the Vue SPA; all page content is Vue components under `resources/js/pages/`.
 - Controllers return `Inertia::render()` responses instead of JSON API payloads; there is no `app/Http/Controllers/Api` namespace.
 - Authentication (login, password reset, password confirmation, 2FA scaffolding) is delegated to `laravel/fortify`; the app only supplies views and one custom action (`ResetUserPassword`).
@@ -79,6 +81,7 @@
 ## Layers
 
 **Presentation (Vue/Inertia):**
+
 - Purpose: Render pages, handle client-side interactivity, form submission via Inertia
 - Location: `resources/js/pages/`, `resources/js/layouts/`, `resources/js/components/`
 - Contains: `.vue` single-file components, composables (`resources/js/composables/`), small client-side libs (`resources/js/lib/`)
@@ -86,6 +89,7 @@
 - Used by: Browser only (SSR is configured but optional — see `build:ssr` script)
 
 **HTTP / Routing:**
+
 - Purpose: Map URLs to controllers or direct Inertia renders
 - Location: `routes/web.php`, `routes/settings.php`, `routes/console.php`
 - Contains: Route definitions, route groups with `auth`/`verified`/`throttle` middleware
@@ -93,6 +97,7 @@
 - Used by: Incoming HTTP requests
 
 **Application (Controllers / Actions / Form Requests):**
+
 - Purpose: Orchestrate request handling — validate input, mutate models, return Inertia responses/redirects
 - Location: `app/Http/Controllers/`, `app/Http/Requests/`, `app/Actions/Fortify/`
 - Contains: Controller classes (thin — one `edit`/`update`/`destroy` per resource), `FormRequest` subclasses for authorization+validation, Fortify action classes
@@ -100,6 +105,7 @@
 - Used by: Routes
 
 **Domain (Models):**
+
 - Purpose: Persistence and domain rules
 - Location: `app/Models/`
 - Contains: `User.php` (only model currently) using PHP 8 attributes (`#[Fillable]`, `#[Hidden]`) instead of legacy `$fillable`/`$hidden` properties
@@ -107,6 +113,7 @@
 - Used by: Controllers, Fortify actions
 
 **Cross-cutting (Providers/Middleware):**
+
 - Purpose: Bootstrap app-wide config, share request-scoped data, configure security defaults
 - Location: `app/Providers/`, `app/Http/Middleware/`
 - Contains: `AppServiceProvider` (date immutability, destructive-command guard, password policy), `FortifyServiceProvider` (custom views, rate limiting), `HandleInertiaRequests`, `HandleAppearance`
@@ -140,22 +147,26 @@
 4. Password reset uses a custom action, `ResetUserPassword` (`app/Actions/Fortify/ResetUserPassword.php`), registered via `Fortify::resetUserPasswordsUsing()`.
 
 **State Management:**
+
 - No client-side global store (no Pinia/Vuex). State is server-driven: Inertia props per page plus small composables (`useAppearance`, `useInitials`, `useCurrentUrl`) for local/UI-only concerns.
 - Theme/appearance persisted via cookie, read on both server (`HandleAppearance` → Blade) and client (`useAppearance.ts`) to avoid flash-of-wrong-theme.
 
 ## Key Abstractions
 
 **Form Request + Validation Concern pair:**
+
 - Purpose: Separate reusable validation rule sets from the request classes that use them, so rules can be shared across multiple requests (e.g. profile update vs. delete needing the same email rules).
 - Examples: `app/Http/Requests/Settings/ProfileUpdateRequest.php` uses `app/Concerns/ProfileValidationRules.php`; `app/Http/Requests/Settings/PasswordUpdateRequest.php` likely uses `app/Concerns/PasswordValidationRules.php`.
 - Pattern: `FormRequest` class `use`s a `Concerns` trait and calls a `*Rules()` method inside `rules()`.
 
 **Wayfinder-generated route/action wrappers:**
+
 - Purpose: Give the Vue frontend typed, refactor-safe references to Laravel routes and controller methods, generated from the PHP route table.
 - Examples: `resources/js/actions/App/Http/Controllers/Settings/ProfileController.ts`, `resources/js/routes/index.ts`
 - Pattern: Do not hand-edit these files — they are generated (see `.claude/skills/wayfinder-development`). Regenerate via the Wayfinder Vite plugin/Artisan command when routes/controllers change.
 
 **Inertia page + layout resolution by naming convention:**
+
 - Purpose: Automatically wrap pages in the correct chrome without per-page boilerplate.
 - Examples: `app.ts:12-23` — pages under `auth/*` get `AuthLayout`, pages under `settings/*` get `[AppLayout, SettingsLayout]` nested layouts, `Welcome` gets no layout, everything else gets `AppLayout`.
 - Pattern: New pages must be placed under the correct `resources/js/pages/<namespace>/` subfolder to inherit the intended layout automatically.
@@ -163,16 +174,19 @@
 ## Entry Points
 
 **HTTP entry point:**
+
 - Location: `public/index.php` (standard Laravel front controller, not modified)
 - Triggers: All web requests
 - Responsibilities: Bootstraps `bootstrap/app.php`, dispatches through the HTTP kernel/middleware stack defined there
 
 **Frontend entry point:**
+
 - Location: `resources/js/app.ts`
 - Triggers: Loaded by `resources/views/app.blade.php` via Vite
 - Responsibilities: Initializes Inertia app, layout resolution, theme, and flash-toast listener
 
 **Console entry point:**
+
 - Location: `artisan` (root), routes registered in `routes/console.php`
 - Triggers: CLI (`php artisan ...`)
 - Responsibilities: Artisan commands; only a demo `inspire` command currently defined
@@ -190,6 +204,7 @@
 ### N/A — no anti-patterns identified
 
 This is a fresh, minimal starter-kit codebase (Laravel + Inertia + Vue "vue-starter-kit"). It closely follows Laravel/Inertia/Fortify conventions with no accumulated deviations. As features are added, watch for:
+
 - Fat controllers (currently controllers are thin — 1-3 methods, delegate validation to Form Requests).
 - Business logic creeping into Vue components instead of composables/backend.
 
@@ -198,6 +213,7 @@ This is a fresh, minimal starter-kit codebase (Laravel + Inertia + Vue "vue-star
 **Strategy:** Laravel's default exception handling, customized only to force JSON responses for `api/*` paths or XHR-expecting requests (`bootstrap/app.php:26-29`). Validation errors flow through Inertia's standard mechanism (422 responses become `errors` props automatically re-rendered by Inertia client).
 
 **Patterns:**
+
 - Form Requests (`app/Http/Requests/**`) centralize authorization + validation; controllers assume valid input.
 - Frontend error display uses `resources/js/components/InputError.vue` and `resources/js/components/AlertError.vue` for consistent field/form-level error rendering.
 
@@ -209,4 +225,4 @@ This is a fresh, minimal starter-kit codebase (Laravel + Inertia + Vue "vue-star
 
 ---
 
-*Architecture analysis: 2026-08-31*
+_Architecture analysis: 2026-08-31_

@@ -4,48 +4,48 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('owner can view the audit trail', function () {
-    $owner = User::factory()->owner()->create();
+test('admin can view the audit trail', function () {
+    $admin = User::factory()->admin()->create();
 
     DB::table('audit_trail')->insert([
-        'user_id' => $owner->id,
+        'user_id' => $admin->id,
         'action' => 'login',
         'auditable_type' => User::class,
-        'auditable_id' => $owner->id,
+        'auditable_id' => $admin->id,
         'ip_address' => '127.0.0.1',
         'created_at' => now(),
     ]);
 
-    $response = $this->actingAs($owner)->get(route('owner.audit-trail.index'));
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.index'));
 
     $response->assertOk();
-    $response->assertInertia(fn (Assert $page) => $page->component('owner/AuditTrail'));
+    $response->assertInertia(fn (Assert $page) => $page->component('admin/AuditTrail'));
 });
 
 test('audit trail returns a validation error instead of a 500 for a malformed from date', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
 
-    $response = $this->actingAs($owner)->get(route('owner.audit-trail.index', ['from' => 'not-a-date']));
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.index', ['from' => 'not-a-date']));
 
     $response->assertSessionHasErrors('from');
 });
 
 test('audit trail returns a validation error instead of a 500 for a malformed to date', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
 
-    $response = $this->actingAs($owner)->get(route('owner.audit-trail.index', ['to' => 'not-a-date']));
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.index', ['to' => 'not-a-date']));
 
     $response->assertSessionHasErrors('to');
 });
 
 test('audit trail can be filtered by action', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
 
     DB::table('audit_trail')->insert([
-        'user_id' => $owner->id,
+        'user_id' => $admin->id,
         'action' => 'login',
         'auditable_type' => User::class,
-        'auditable_id' => $owner->id,
+        'auditable_id' => $admin->id,
         'ip_address' => '127.0.0.1',
         'created_at' => now(),
     ]);
@@ -59,33 +59,33 @@ test('audit trail can be filtered by action', function () {
         'created_at' => now(),
     ]);
 
-    $response = $this->actingAs($owner)->get(route('owner.audit-trail.index', ['action' => 'lockout']));
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.index', ['action' => 'lockout']));
 
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
-        ->component('owner/AuditTrail')
+        ->component('admin/AuditTrail')
         ->has('entries.data', 1)
         ->where('entries.data.0.action', 'lockout')
     );
 });
 
 test('audit trail entries preserve the D-03 before/after value shape', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
     $target = User::factory()->create();
 
-    $this->actingAs($owner)->patch(route('owner.users.deactivate', $target));
+    $this->actingAs($admin)->patch(route('admin.users.deactivate', $target));
 
-    $response = $this->actingAs($owner)->get(route('owner.audit-trail.index', ['action' => 'updated']));
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.index', ['action' => 'updated']));
 
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
-        ->component('owner/AuditTrail')
+        ->component('admin/AuditTrail')
         ->where('entries.data.0.new_values.is_active', false)
     );
 });
 
 test('creating a user does not leak the password hash or remember token into the audit trail', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
     $target = User::factory()->create();
 
     $row = DB::table('audit_trail')
@@ -105,18 +105,18 @@ test('creating a user does not leak the password hash or remember token into the
         ->not->toHaveKey('two_factor_recovery_codes')
         ->toHaveKey('email');
 
-    $response = $this->actingAs($owner)->get(route('owner.audit-trail.index', ['action' => 'created']));
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.index', ['action' => 'created']));
 
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
-        ->component('owner/AuditTrail')
+        ->component('admin/AuditTrail')
         ->missing('entries.data.0.new_values.password')
         ->missing('entries.data.0.new_values.remember_token')
     );
 });
 
 test('deleting a user does not leak the password hash into the audit trail', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
     $target = User::factory()->create();
     $targetId = $target->id;
 

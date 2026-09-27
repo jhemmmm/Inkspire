@@ -36,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserHasRole::class,
         ]);
 
+        $middleware->trustProxies(at: '*');
+
         // PayMongo's servers POST here with no session/CSRF token available
         // (POS-03) — signature-verified instead, see routes/web.php.
         $middleware->validateCsrfTokens(except: [

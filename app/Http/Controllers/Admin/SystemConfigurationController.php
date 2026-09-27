@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Owner;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Owner\UpdateSystemConfigurationRequest;
+use App\Http\Requests\Admin\UpdateSystemConfigurationRequest;
 use App\Models\SystemConfiguration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,11 +13,11 @@ use Inertia\Response;
 class SystemConfigurationController extends Controller
 {
     /**
-     * Show the Owner/Admin system configuration screen, grouped by tab.
+     * Show the Admin system configuration screen, grouped by tab.
      */
     public function edit(Request $request): Response
     {
-        return Inertia::render('owner/SystemConfiguration', [
+        return Inertia::render('admin/SystemConfiguration', [
             'configurations' => SystemConfiguration::query()
                 ->orderBy('group')
                 ->orderBy('label')

@@ -6,40 +6,40 @@ tags: [laravel, inertia, vue3, pest, release-gate, rbac]
 
 # Dependency graph
 requires:
-  - phase: 05-pos-payments (05-01)
-    provides: job_orders.payment_status column, PaymentStatus enum
-  - phase: 05-pos-payments (05-06)
-    provides: PaymentStatus::OnCredit as a release-eligible active-credit state
+    - phase: 05-pos-payments (05-01)
+      provides: job_orders.payment_status column, PaymentStatus enum
+    - phase: 05-pos-payments (05-06)
+      provides: PaymentStatus::OnCredit as a release-eligible active-credit state
 provides:
-  - job_orders.released_at nullable timestamp column
-  - JobOrderReleaseController — the single server-enforced gate deciding whether a job order can be handed to the customer
-  - Release to Customer action on Frontline Staff's Queue List
+    - job_orders.released_at nullable timestamp column
+    - JobOrderReleaseController — the single server-enforced gate deciding whether a job order can be handed to the customer
+    - Release to Customer action on Frontline Staff's Queue List
 affects: []
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "Release-gate controller re-validates payment_status server-side on every request via abort_if/abort_unless, matching RBAC-02's established 'not just hidden navigation' precedent — the UI predicate that decides whether to render a button is a pure convenience mirror of the same rule the controller enforces independently"
+    added: []
+    patterns:
+        - "Release-gate controller re-validates payment_status server-side on every request via abort_if/abort_unless, matching RBAC-02's established 'not just hidden navigation' precedent — the UI predicate that decides whether to render a button is a pure convenience mirror of the same rule the controller enforces independently"
 
 key-files:
-  created:
-    - database/migrations/2026_09_04_110000_add_released_at_to_job_orders_table.php
-    - app/Http/Controllers/FrontlineStaff/JobOrderReleaseController.php
-    - app/Http/Requests/FrontlineStaff/ReleaseJobOrderRequest.php
-    - tests/Feature/FrontlineStaff/ReleaseGateTest.php
-  modified:
-    - app/Models/JobOrder.php
-    - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
-    - resources/js/pages/frontline-staff/QueueList.vue
-    - routes/portals.php
+    created:
+        - database/migrations/2026_09_04_110000_add_released_at_to_job_orders_table.php
+        - app/Http/Controllers/FrontlineStaff/JobOrderReleaseController.php
+        - app/Http/Requests/FrontlineStaff/ReleaseJobOrderRequest.php
+        - tests/Feature/FrontlineStaff/ReleaseGateTest.php
+    modified:
+        - app/Models/JobOrder.php
+        - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
+        - resources/js/pages/frontline-staff/QueueList.vue
+        - routes/portals.php
 
 key-decisions:
-  - "Renamed the generated migration's auto-timestamp filename to the plan's specified 2026_09_04_110000 prefix, keeping it sequenced correctly among the phase's other payment-related migrations"
-  - "Blocked-message branching implemented as a single abort_unless with a match() expression selecting the CreditPendingApproval-specific copy vs. the generic 'not fully paid' copy, both routed through bootstrap/app.php's existing 422-to-flashed-toast exception bridge — no bespoke response mechanism introduced"
+    - "Renamed the generated migration's auto-timestamp filename to the plan's specified 2026_09_04_110000 prefix, keeping it sequenced correctly among the phase's other payment-related migrations"
+    - "Blocked-message branching implemented as a single abort_unless with a match() expression selecting the CreditPendingApproval-specific copy vs. the generic 'not fully paid' copy, both routed through bootstrap/app.php's existing 422-to-flashed-toast exception bridge — no bespoke response mechanism introduced"
 
 patterns-established:
-  - "Pattern: a release/hand-over gate is implemented as its own single-purpose controller (not folded into an existing controller), re-checking the authoritative model state independently of any UI-side eligibility check"
+    - 'Pattern: a release/hand-over gate is implemented as its own single-purpose controller (not folded into an existing controller), re-checking the authoritative model state independently of any UI-side eligibility check'
 
 requirements-completed: [POS-09]
 
@@ -79,6 +79,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ## Files Created/Modified
 
 **Task 1 (backend):**
+
 - `database/migrations/2026_09_04_110000_add_released_at_to_job_orders_table.php` - nullable `released_at` timestamp
 - `app/Models/JobOrder.php` - `released_at` cast + `@property` annotation
 - `app/Http/Requests/FrontlineStaff/ReleaseJobOrderRequest.php` - `authorize()` returns `true` (role-gated by route middleware), empty `rules()`
@@ -87,6 +88,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - `tests/Feature/FrontlineStaff/ReleaseGateTest.php` - 9 cases: Paid succeeds, OnCredit succeeds, every blocked status (parameterized) returns 422 with `released_at` left null, a direct-POST bypass attempt, double-release rejection
 
 **Task 2 (frontend):**
+
 - `app/Http/Controllers/FrontlineStaff/QueueEntryController.php` - `jobOrders` eager-load now selects `payment_status`/`released_at`
 - `resources/js/pages/frontline-staff/QueueList.vue` - "Release to Customer" `Button`/`Form`, `isReleaseEligible()` render predicate
 
@@ -111,8 +113,9 @@ None — plan executed exactly as written. `php artisan wayfinder:generate --wit
 - No blockers.
 
 ---
-*Phase: 05-pos-payments*
-*Completed: 2026-09-05*
+
+_Phase: 05-pos-payments_
+_Completed: 2026-09-05_
 
 ## Self-Check: PASSED
 

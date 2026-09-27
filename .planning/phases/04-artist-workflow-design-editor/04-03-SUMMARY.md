@@ -6,52 +6,52 @@ tags: [laravel, eloquent, migrations, inertia, storage, design-workflow]
 
 # Dependency graph
 requires:
-  - phase: 04-artist-workflow-design-editor
-    provides: "Plan 04-01's artist dashboard/queue controls, JobOrderWorkspaceController::show(), and the assignedTo() job-order factory state"
+    - phase: 04-artist-workflow-design-editor
+      provides: "Plan 04-01's artist dashboard/queue controls, JobOrderWorkspaceController::show(), and the assignedTo() job-order factory state"
 provides:
-  - "design_files/revision_logs schema (D-08's single-row/many-row split)"
-  - "InDesign/PendingReview/DesignApproved JobOrderStatus cases (D-06's full cycle)"
-  - "RecordDesignRevision atomic action"
-  - "DesignEditorController::startDesign/sendForReview endpoints with lock + resubmission guards"
-  - "JobOrderWorkspaceController::show() design.initialImageUrl/design.canEdit props"
-affects: ["04-04 (TOAST UI design editor)", "04-05 (review/lock/override)"]
+    - "design_files/revision_logs schema (D-08's single-row/many-row split)"
+    - "InDesign/PendingReview/DesignApproved JobOrderStatus cases (D-06's full cycle)"
+    - 'RecordDesignRevision atomic action'
+    - 'DesignEditorController::startDesign/sendForReview endpoints with lock + resubmission guards'
+    - 'JobOrderWorkspaceController::show() design.initialImageUrl/design.canEdit props'
+affects: ['04-04 (TOAST UI design editor)', '04-05 (review/lock/override)']
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "locked_at on design_files, not job_orders.status, is the sole lock-authority column (Open Question #2) so Plan 04-05's unlock override is a one-column change"
-    - "RecordDesignRevision wraps store+upsert+insert+status-advance in a single DB::transaction(), mirroring AssignArtistToJobOrder's action shape"
+    added: []
+    patterns:
+        - "locked_at on design_files, not job_orders.status, is the sole lock-authority column (Open Question #2) so Plan 04-05's unlock override is a one-column change"
+        - "RecordDesignRevision wraps store+upsert+insert+status-advance in a single DB::transaction(), mirroring AssignArtistToJobOrder's action shape"
 
 key-files:
-  created:
-    - database/migrations/2026_09_02_084148_create_design_files_table.php
-    - database/migrations/2026_09_02_084149_create_revision_logs_table.php
-    - app/Models/DesignFile.php
-    - app/Models/RevisionLog.php
-    - database/factories/DesignFileFactory.php
-    - database/factories/RevisionLogFactory.php
-    - app/Actions/JobOrder/RecordDesignRevision.php
-    - app/Http/Controllers/Artist/DesignEditorController.php
-    - app/Http/Requests/Artist/SendForReviewRequest.php
-    - app/Http/Requests/Artist/StartDesignRequest.php
-    - tests/Feature/Artist/SendForReviewTest.php
-    - tests/Feature/Artist/DesignLockTest.php
-    - tests/Feature/Artist/DesignEditorTest.php
-  modified:
-    - app/Enums/JobOrderStatus.php
-    - app/Models/JobOrder.php
-    - app/Http/Controllers/Artist/JobOrderWorkspaceController.php
-    - routes/portals.php
+    created:
+        - database/migrations/2026_09_02_084148_create_design_files_table.php
+        - database/migrations/2026_09_02_084149_create_revision_logs_table.php
+        - app/Models/DesignFile.php
+        - app/Models/RevisionLog.php
+        - database/factories/DesignFileFactory.php
+        - database/factories/RevisionLogFactory.php
+        - app/Actions/JobOrder/RecordDesignRevision.php
+        - app/Http/Controllers/Artist/DesignEditorController.php
+        - app/Http/Requests/Artist/SendForReviewRequest.php
+        - app/Http/Requests/Artist/StartDesignRequest.php
+        - tests/Feature/Artist/SendForReviewTest.php
+        - tests/Feature/Artist/DesignLockTest.php
+        - tests/Feature/Artist/DesignEditorTest.php
+    modified:
+        - app/Enums/JobOrderStatus.php
+        - app/Models/JobOrder.php
+        - app/Http/Controllers/Artist/JobOrderWorkspaceController.php
+        - routes/portals.php
 
 key-decisions:
-  - "design_files.job_order_id is unique at the DB level, enforcing D-08's single-current-row rule structurally, not just by convention"
-  - "sendForReview's lock guard reads optional($jobOrder->designFile)->locked_at, never $jobOrder->status, so Plan 04-05's Owner unlock only has to flip one column"
-  - "Added an explicit pending_review resubmission guard (T-04-16) beyond what the plan's action text literally described, to prevent a second Send for Review from orphaning an earlier unreviewed revision_logs row"
+    - "design_files.job_order_id is unique at the DB level, enforcing D-08's single-current-row rule structurally, not just by convention"
+    - "sendForReview's lock guard reads optional($jobOrder->designFile)->locked_at, never $jobOrder->status, so Plan 04-05's Owner unlock only has to flip one column"
+    - "Added an explicit pending_review resubmission guard (T-04-16) beyond what the plan's action text literally described, to prevent a second Send for Review from orphaning an earlier unreviewed revision_logs row"
 
 patterns-established:
-  - "Body-less FormRequests (StartDesignRequest) for transitions implied entirely by route, matching UpdateQueueEntryStatusRequest's precedent"
-  - "SendForReviewRequest tightens to ['required','file','image','mimes:png'] since its only legitimate producer is the app's own canvas export, not an arbitrary upload"
+    - "Body-less FormRequests (StartDesignRequest) for transitions implied entirely by route, matching UpdateQueueEntryStatusRequest's precedent"
+    - "SendForReviewRequest tightens to ['required','file','image','mimes:png'] since its only legitimate producer is the app's own canvas export, not an arbitrary upload"
 
 requirements-completed: [JOB-04, JOB-05]
 
@@ -71,6 +71,7 @@ completed: 2026-09-02
 - **Files modified:** 17 (13 created, 4 modified)
 
 ## Accomplishments
+
 - `design_files` (unique `job_order_id`, `file_path`, `locked_at`) and `revision_logs` (many-per-job-order history trail) tables, plus `DesignFile`/`RevisionLog` models and factories
 - Three new `JobOrderStatus` cases (`InDesign`, `PendingReview`, `DesignApproved`) giving D-06's full review cycle a real home in the enum, added together so Plan 04-05 never needs to touch this file again
 - `RecordDesignRevision` atomically stores the export, overwrites the single `design_files` row, unconditionally logs a `revision_logs` row, and advances the job order to `pending_review`
@@ -88,6 +89,7 @@ Each task was committed atomically:
 **Plan metadata:** pending (this commit)
 
 ## Files Created/Modified
+
 - `database/migrations/2026_09_02_084148_create_design_files_table.php` - design_files table, unique job_order_id
 - `database/migrations/2026_09_02_084149_create_revision_logs_table.php` - revision_logs table, many-per-job-order
 - `app/Enums/JobOrderStatus.php` - added InDesign/PendingReview/DesignApproved
@@ -107,6 +109,7 @@ Each task was committed atomically:
 - `tests/Feature/Artist/DesignEditorTest.php` - 4 cases
 
 ## Decisions Made
+
 - Kept the lock guard keyed on `design_files.locked_at` exclusively (never `job_orders.status`), per 04-RESEARCH.md's Open Question #2, so Plan 04-05's Owner unlock override stays a one-column change
 - Added a `PendingReview` resubmission guard in `sendForReview` (checker-fix behavior called out explicitly in the plan text) so a second Send for Review while an earlier submission is outstanding is rejected with 422 rather than silently orphaning the earlier `revision_logs` row
 
@@ -115,6 +118,7 @@ Each task was committed atomically:
 None - plan executed exactly as written, including the two checker-fix guards (pending_review resubmission block, lock check keyed on `designFile.locked_at`) that were already spelled out in the plan's action text.
 
 ## Issues Encountered
+
 - This worktree had no `vendor/`, `node_modules/`, `.env`, `database/database.sqlite`, or `public/build/` — none are tracked in git. Symlinking `vendor/` initially broke autoloading (composer's generated `autoload_psr4.php`/`autoload_static.php` resolve `__DIR__` through the symlink back to the main repo's `app/`, so worktree-local classes were invisible to the framework). Fixed by copying `vendor/` into the worktree and running `composer dump-autoload` locally, copying `.env` from the main repo, creating a fresh `database/database.sqlite`, and copying the main repo's built `public/build/` (Vite manifest) so 403/422 error-page rendering in feature tests doesn't hit a `ViteManifestNotFoundException`. All of this is gitignored dev/build infrastructure, not application code — no plan files were affected.
 
 ## Requirements Note
@@ -122,13 +126,15 @@ None - plan executed exactly as written, including the two checker-fix guards (p
 JOB-04/JOB-05 are declared in both this plan's and Plan 04-04's frontmatter — a deliberate split where this plan lays the backend contract and 04-04 builds the TOAST UI editor that actually makes them user-deliverable. Not marked complete in REQUIREMENTS.md here, matching the 04-01 precedent (only JOB-03/JOB-09 were marked there, since those were fully deliverable within that plan). Plan 04-04 should mark JOB-04/JOB-05 complete once the editor ships.
 
 ## Next Phase Readiness
+
 - Plan 04-04 (TOAST UI design editor) can mount directly against `design.initialImageUrl`/`design.canEdit`, POST to `artist.job-orders.design.send-for-review`, and PATCH `artist.job-orders.design.start`
 - Plan 04-05 (review/lock/override) can append a `review` key to `JobOrderWorkspaceController::show()`'s existing props array and only needs to flip `design_files.locked_at` for its unlock override — no other file in this plan needs revisiting
 - No blockers
 
 ---
-*Phase: 04-artist-workflow-design-editor*
-*Completed: 2026-09-02*
+
+_Phase: 04-artist-workflow-design-editor_
+_Completed: 2026-09-02_
 
 ## Self-Check: PASSED
 

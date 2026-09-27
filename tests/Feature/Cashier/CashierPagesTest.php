@@ -7,7 +7,10 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 test('the cashier dashboard lists eligible job orders', function () {
     $cashier = User::factory()->cashier()->create();
-    $eligible = JobOrder::factory()->readyForProduction()->create(['description' => 'Eligible Job Order']);
+    $eligible = JobOrder::factory()->readyForProduction()->create([
+        'description' => 'Eligible Job Order',
+        'quoted_amount' => 288,
+    ]);
     JobOrder::factory()->create(['status' => 'intake', 'description' => 'Not Eligible']);
 
     $response = $this->actingAs($cashier)->get(route('cashier.dashboard'));
@@ -17,6 +20,8 @@ test('the cashier dashboard lists eligible job orders', function () {
         ->component('cashier/Dashboard')
         ->has('jobOrders', 1)
         ->where('jobOrders.0.id', $eligible->id)
+        ->where('jobOrders.0.display_total', 288)
+        ->has('jobOrders.0.amount_paid')
     );
 });
 
@@ -32,9 +37,30 @@ test('the job order payment page renders the pricing catalog and system config f
     $response->assertInertia(fn (Assert $page) => $page
         ->component('cashier/JobOrderPayment')
         ->has('pricingEntries', 1)
-        ->where('hasExistingTransactions', false)
+        ->where('pricingLocked', false)
         ->where('remainingBalance', null)
     );
+});
+
+test('the job order payment page prefills from the intake quote and total_amount stays null until the cashier saves', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create([
+        'quoted_amount' => 288,
+        'total_amount' => null,
+    ]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.job-orders.payment.edit', $jobOrder));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('cashier/JobOrderPayment')
+        ->where('jobOrder.quoted_amount', '288.00')
+        ->where('jobOrder.total_amount', null)
+    );
+
+    // The PayMongo/credit-eligibility sentinel — intake must never have
+    // written total_amount, only the Cashier's own store() call may.
+    expect($jobOrder->fresh()->total_amount)->toBeNull();
 });
 
 test('the job order payment page is not reachable for a job order still in intake', function () {
@@ -80,5 +106,8 @@ test('the payment page is reachable for an on_credit job order (CR-02)', functio
     $response = $this->actingAs($cashier)->get(route('cashier.job-orders.payment.edit', $jobOrder));
 
     $response->assertOk();
-    $response->assertInertia(fn (Assert $page) => $page->component('cashier/JobOrderPayment'));
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('cashier/JobOrderPayment')
+        ->where('pricingLocked', true)
+    );
 });

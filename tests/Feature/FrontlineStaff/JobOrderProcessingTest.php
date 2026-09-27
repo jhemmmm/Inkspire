@@ -27,43 +27,44 @@ test('a type a addJobOrder post with a valid pdf reaches for_production', functi
     expect($jobOrder->validation_failure_reason)->toBeNull();
 });
 
-test('a type a addJobOrder post with an unsupported extension reaches validation_failed', function () {
+test('a type a addJobOrder post with an unsupported extension is rejected before a job order is created', function () {
     Storage::fake('local');
 
     $staff = User::factory()->frontlineStaff()->create();
     $queueEntry = QueueEntry::factory()->create();
 
-    $this->actingAs($staff)->post(route('frontline-staff.queue-entries.job-orders.store', $queueEntry), [
+    $response = $this->actingAs($staff)->post(route('frontline-staff.queue-entries.job-orders.store', $queueEntry), [
         'description' => 'Tarpaulin, 3x5ft',
         'type' => 'type_a',
         'file' => UploadedFile::fake()->create('design.xyz', 500),
     ]);
 
-    $jobOrder = $queueEntry->jobOrders()->firstOrFail();
-    expect($jobOrder->status)->toBe(JobOrderStatus::ValidationFailed);
-    expect($jobOrder->validation_failure_reason)->toContain('isn\'t accepted');
+    $response->assertSessionHasErrors(['file' => 'File format ".xyz" isn\'t accepted. Accepted formats: pdf, ai, eps, jpg, png. Ask the customer for a supported format.']);
+    expect($queueEntry->jobOrders()->exists())->toBeFalse();
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
 });
 
-test('a type a addJobOrder post with an oversized file reaches validation_failed', function () {
+test('a type a addJobOrder post with an oversized file is rejected before a job order is created', function () {
     Storage::fake('local');
 
     $staff = User::factory()->frontlineStaff()->create();
     $queueEntry = QueueEntry::factory()->create();
 
-    $this->actingAs($staff)->post(route('frontline-staff.queue-entries.job-orders.store', $queueEntry), [
+    $response = $this->actingAs($staff)->post(route('frontline-staff.queue-entries.job-orders.store', $queueEntry), [
         'description' => 'Tarpaulin, 3x5ft',
         'type' => 'type_a',
         'file' => UploadedFile::fake()->create('design.pdf', 60000),
     ]);
 
-    $jobOrder = $queueEntry->jobOrders()->firstOrFail();
-    expect($jobOrder->status)->toBe(JobOrderStatus::ValidationFailed);
-    expect($jobOrder->validation_failure_reason)->toContain('exceeds');
+    $response->assertSessionHasErrors('file');
+    expect(session('errors')->first('file'))->toContain('exceeds');
+    expect($queueEntry->jobOrders()->exists())->toBeFalse();
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
 });
 
-test('a type b addJobOrder post auto-assigns to the sole available artist', function () {
+test('a type b addJobOrder post leaves the job order in the unclaimed pool even when an artist is available', function () {
     $staff = User::factory()->frontlineStaff()->create();
-    $artist = User::factory()->artist()->create(['is_available' => true]);
+    User::factory()->artist()->create(['is_available' => true]);
     $queueEntry = QueueEntry::factory()->create();
 
     $this->actingAs($staff)->post(route('frontline-staff.queue-entries.job-orders.store', $queueEntry), [
@@ -71,9 +72,11 @@ test('a type b addJobOrder post auto-assigns to the sole available artist', func
         'type' => 'type_b',
     ]);
 
+    // Intake never pushes work onto an artist -- an available Artist has
+    // to accept it out of the shared pool.
     $jobOrder = $queueEntry->jobOrders()->firstOrFail();
-    expect($jobOrder->status)->toBe(JobOrderStatus::Assigned);
-    expect($jobOrder->assigned_artist_id)->toBe($artist->id);
+    expect($jobOrder->status)->toBe(JobOrderStatus::Intake);
+    expect($jobOrder->assigned_artist_id)->toBeNull();
 });
 
 test('a type b addJobOrder post with zero available artists leaves the job order unassigned', function () {
@@ -207,7 +210,7 @@ test('a store post with one type a row and one type b row applies both outcomes 
     Storage::fake('local');
 
     $staff = User::factory()->frontlineStaff()->create();
-    $artist = User::factory()->artist()->create(['is_available' => true]);
+    User::factory()->artist()->create(['is_available' => true]);
     $customer = Customer::factory()->create();
 
     $this->actingAs($staff)->post(route('frontline-staff.queue-entries.store'), [
@@ -229,6 +232,6 @@ test('a store post with one type a row and one type b row applies both outcomes 
     $typeBRow = JobOrder::where('type', 'type_b')->firstOrFail();
 
     expect($typeARow->status)->toBe(JobOrderStatus::ForProduction);
-    expect($typeBRow->status)->toBe(JobOrderStatus::Assigned);
-    expect($typeBRow->assigned_artist_id)->toBe($artist->id);
+    expect($typeBRow->status)->toBe(JobOrderStatus::Intake);
+    expect($typeBRow->assigned_artist_id)->toBeNull();
 });

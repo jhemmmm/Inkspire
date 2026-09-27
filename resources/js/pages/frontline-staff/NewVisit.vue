@@ -3,9 +3,9 @@ import { Form, Head, Link, router, useForm } from '@inertiajs/vue3';
 import {
     CalendarDays,
     Check,
+    CircleAlert,
     CloudUpload,
     FileText,
-    Hash,
     PencilRuler,
     Plus,
     Printer,
@@ -18,18 +18,18 @@ import {
     Zap,
 } from '@lucide/vue';
 import { computed, nextTick, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 import CustomerController from '@/actions/App/Http/Controllers/FrontlineStaff/CustomerController';
 import QueueEntryController from '@/actions/App/Http/Controllers/FrontlineStaff/QueueEntryController';
 import AlertError from '@/components/AlertError.vue';
 import InputError from '@/components/InputError.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import JobOrderPriceFields from '@/components/JobOrderPriceFields.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
-import SearchableSelect, {
-    type SearchableOption,
-} from '@/components/SearchableSelect.vue';
+import { type SearchableOption } from '@/components/SearchableSelect.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
 import TrackingQrCode from '@/components/TrackingQrCode.vue';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +51,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { newVisit } from '@/routes/frontline-staff';
 import { queueNumberLabel } from '@/lib/utils';
+import { jobOrderTypeLabel, money, rowLineAmount } from '@/lib/jobOrders';
+import { show as jobOrderShow } from '@/routes/frontline-staff/job-orders';
 
 interface CustomerRecord {
     id: number;
@@ -74,8 +76,11 @@ interface JobOrderRow {
     client_notes: string;
     type: 'type_a' | 'type_b';
     print_size: string;
-    material: string;
+    width_ft: string;
+    height_ft: string;
     quantity: string;
+    quoted_amount: string;
+    quoted_amount_overridden: boolean;
     deadline: string;
     is_rush: boolean;
     file: File | null;
@@ -104,6 +109,7 @@ interface CustomerJobOrder {
 
 interface ConfirmedQueueEntry {
     id: number;
+    queue_prefix: string;
     queue_number: number;
     status: string;
     job_orders: ConfirmedJobOrder[];
@@ -113,11 +119,17 @@ const props = defineProps<{
     customers: CustomerRecord[];
     specificationOptions: Record<string, string[]>;
     pricingEntries: PricingEntry[];
+    printSizeDimensions: Record<
+        string,
+        { width_inches: number | null; height_inches: number | null }
+    >;
+    rushFeePercentage: number;
     filters: { q?: string };
     selectedCustomer: CustomerRecord | null;
     customerJobOrders: CustomerJobOrder[];
     confirmedQueueEntry: ConfirmedQueueEntry | null;
     trackingBaseUrl: string;
+    acceptedFileFormats: string[];
 }>();
 
 defineOptions({
@@ -249,8 +261,11 @@ function emptyJobOrderRow(): JobOrderRow {
         client_notes: '',
         type: 'type_a',
         print_size: '',
-        material: '',
+        width_ft: '',
+        height_ft: '',
         quantity: '',
+        quoted_amount: '',
+        quoted_amount_overridden: false,
         deadline: '',
         is_rush: false,
         file: null,
@@ -259,7 +274,6 @@ function emptyJobOrderRow(): JobOrderRow {
 }
 
 const printSizes = computed(() => props.specificationOptions.print_size ?? []);
-const materials = computed(() => props.specificationOptions.material ?? []);
 
 // Today, in the browser's own timezone -- `toISOString()` would render the
 // UTC date and let a Manila-evening walk-in pick "today" only to have the
@@ -274,45 +288,21 @@ const earliestDeadline = computed(() => {
     ].join('-');
 });
 
-const ACCEPTED_FILE_TYPES = '.pdf,.ai,.psd,.png,.jpg,.jpeg,.cdr';
-
 /**
- * Selecting a service sets the catalog id *and* mirrors its name into
- * `description`. The id is what the Cashier's pricing step reads; the name is
- * what every existing screen -- queue list, production board, receipt --
- * already displays.
+ * Built from the same `accepted_file_formats` setting the server's Type A file
+ * check reads, so the picker never offers a format that will be rejected.
  */
-function selectService(row: JobOrderRow, value: unknown): void {
-    const id = String(value ?? '');
-    row.pricing_entry_id = id;
-    row.description =
-        props.pricingEntries.find((entry) => String(entry.id) === id)?.name ??
-        '';
-}
-
-const serviceOptions = computed<SearchableOption[]>(() =>
-    props.pricingEntries.map((entry) => ({
-        value: String(entry.id),
-        label: entry.name,
-        hint: servicePriceLabel(entry),
-    })),
+const acceptedFileTypes = computed(() =>
+    props.acceptedFileFormats.map((format) => `.${format}`).join(','),
+);
+const acceptedFileHint = computed(
+    () =>
+        `Accepted: ${props.acceptedFileFormats.map((format) => format.toUpperCase()).join(', ')}`,
 );
 
 const printSizeOptions = computed<SearchableOption[]>(() =>
     printSizes.value.map((size) => ({ value: size, label: size })),
 );
-
-const materialOptions = computed<SearchableOption[]>(() =>
-    materials.value.map((material) => ({ value: material, label: material })),
-);
-
-function servicePriceLabel(entry: PricingEntry): string {
-    const price = Number(entry.base_price).toLocaleString('en-PH', {
-        minimumFractionDigits: 2,
-    });
-
-    return entry.unit ? `₱${price} / ${entry.unit}` : `₱${price}`;
-}
 
 const jobOrderTypeOptions = [
     {
@@ -379,11 +369,49 @@ function selectJobOrderType(row: JobOrderRow, value: unknown): void {
     }
 }
 
+/**
+ * Slice this row's prefixed validation errors into the bare field-name keys
+ * `JobOrderPriceFields` reads — the component has no prefix knowledge of
+ * its own.
+ */
+function jobOrderRowErrors(index: number): Record<string, string | undefined> {
+    const prefix = `job_orders.${index}.`;
+    const sliced: Record<string, string | undefined> = {};
+
+    for (const [key, value] of Object.entries(intakeForm.errors)) {
+        if (key.startsWith(prefix)) {
+            sliced[key.slice(prefix.length)] = value as string | undefined;
+        }
+    }
+
+    return sliced;
+}
+
+/**
+ * The visit-level estimate the sticky footer shows: the sum of every row's
+ * displayed total (its explicit override if set, otherwise the computed
+ * quote) — a live client-side preview only, recomputed server-side on
+ * submit.
+ */
+const estimatedTotal = computed(() =>
+    intakeForm.job_orders.reduce(
+        (sum: number, row: JobOrderRow) =>
+            sum + (rowLineAmount(row, props.pricingEntries) ?? 0),
+        0,
+    ),
+);
+
 function submitIntake(): void {
     intakeForm.post(QueueEntryController.store().url, {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => intakeForm.reset(),
+        // The form is long, so a field error can sit well off-screen. The
+        // toast says something needs fixing; the inline error says what.
+        onError: () =>
+            toast.error(
+                'Nothing was saved. Fix the highlighted fields and try again.',
+            ),
     });
 }
 
@@ -434,10 +462,6 @@ function formatSlipDate(value: string): string {
         month: 'short',
         day: '2-digit',
     });
-}
-
-function jobOrderTypeLabel(type: string): string {
-    return type === 'type_a' ? 'Type A' : 'Type B';
 }
 
 // The four stages that actually mean "on the press". Enumerated rather
@@ -776,7 +800,12 @@ function jobOrderStatusLabel(status: string): string {
                     <p
                         class="bg-primary text-primary-foreground flex size-20 shrink-0 items-center justify-center rounded-2xl text-4xl leading-none font-extrabold tabular-nums"
                     >
-                        {{ queueNumberLabel(confirmedQueueEntry.queue_number) }}
+                        {{
+                            queueNumberLabel(
+                                confirmedQueueEntry.queue_prefix,
+                                confirmedQueueEntry.queue_number,
+                            )
+                        }}
                     </p>
                     <div class="flex min-w-0 flex-col gap-1">
                         <p class="font-semibold">
@@ -851,6 +880,42 @@ function jobOrderStatusLabel(status: string): string {
                             Assigned to
                             {{ jobOrder.assigned_artist?.name }}
                         </p>
+                        <!--
+                            The scanner's third verdict. `validation_failed`
+                            below means "unusable, ask for another file";
+                            this one means "real artwork, just not to print
+                            standard", and the job order has already been put
+                            in front of the artists. Without this the row
+                            reads only "Waiting for an Artist", which does not
+                            tell the customer why their print-ready file is
+                            not printing.
+                        -->
+                        <div
+                            v-if="
+                                jobOrder.status === 'intake' &&
+                                jobOrder.validation_failure_reason
+                            "
+                            class="border-brand/40 bg-brand/5 flex items-start gap-3 rounded-lg border p-3"
+                            :data-test="`needs-artist-notice-${jobOrder.id}`"
+                        >
+                            <CircleAlert
+                                class="text-brand mt-0.5 size-4 shrink-0"
+                            />
+                            <div class="flex flex-col gap-1">
+                                <p class="text-sm font-semibold">
+                                    Not approved for printing — sent to an
+                                    artist
+                                </p>
+                                <p class="text-muted-foreground text-sm">
+                                    {{ jobOrder.validation_failure_reason }}
+                                </p>
+                                <p class="text-muted-foreground text-sm">
+                                    An artist will pick this up and fix the
+                                    artwork before it goes to production.
+                                </p>
+                            </div>
+                        </div>
+
                         <template
                             v-if="jobOrder.status === 'validation_failed'"
                         >
@@ -958,7 +1023,13 @@ function jobOrderStatusLabel(status: string): string {
                         <TableRow
                             v-for="jobOrder in customerJobOrders"
                             :key="jobOrder.id"
+                            class="hover:bg-accent/50 cursor-pointer"
+                            tabindex="0"
                             :data-test="`customer-job-order-${jobOrder.id}-row`"
+                            @click="router.visit(jobOrderShow(jobOrder.id))"
+                            @keyup.enter="
+                                router.visit(jobOrderShow(jobOrder.id))
+                            "
                         >
                             <TableCell class="tabular-nums">
                                 {{ jobOrder.number ?? '—' }}
@@ -981,22 +1052,6 @@ function jobOrderStatusLabel(status: string): string {
                     </TableBody>
                 </Table>
             </DataTableCard>
-
-            <!--
-                Repeated below the table so the primary action is never a
-                screen away once a customer has a long history.
-            -->
-            <div class="flex">
-                <Button
-                    size="lg"
-                    type="button"
-                    data-test="new-job-order-below-button"
-                    @click="newJobOrderRequested = true"
-                >
-                    <Plus class="size-4" />
-                    New Job Order
-                </Button>
-            </div>
         </template>
 
         <template v-if="selected && !confirmedQueueEntry && showJobOrderForm">
@@ -1018,32 +1073,6 @@ function jobOrderStatusLabel(status: string): string {
                     </div>
                 </CardHeader>
                 <CardContent class="grid gap-6">
-                    <div class="grid gap-2">
-                        <Label :for="`job-order-service-${index}`">
-                            Product / Service
-                        </Label>
-                        <SearchableSelect
-                            :id="`job-order-service-${index}`"
-                            :model-value="row.pricing_entry_id"
-                            :options="serviceOptions"
-                            placeholder="Search the price list…"
-                            empty-text="No service matches that search."
-                            @update:model-value="
-                                (value) => selectService(row, value)
-                            "
-                        />
-                        <InputError
-                            :message="
-                                intakeForm.errors[
-                                    `job_orders.${index}.description`
-                                ] ??
-                                intakeForm.errors[
-                                    `job_orders.${index}.pricing_entry_id`
-                                ]
-                            "
-                        />
-                    </div>
-
                     <fieldset class="grid gap-2">
                         <legend class="sr-only">Job Order Type</legend>
                         <p class="text-sm font-medium">Job Order Type</p>
@@ -1116,69 +1145,15 @@ function jobOrderStatusLabel(status: string): string {
                         </div>
 
                         <div class="grid gap-6 p-6 md:grid-cols-2">
-                            <div class="grid gap-2">
-                                <Label :for="`job-order-print-size-${index}`">
-                                    Print Size
-                                </Label>
-                                <SearchableSelect
-                                    :id="`job-order-print-size-${index}`"
-                                    v-model="row.print_size"
-                                    :options="printSizeOptions"
-                                    placeholder="Search print sizes…"
-                                    empty-text="No print size matches that search."
-                                />
-                                <InputError
-                                    :message="
-                                        intakeForm.errors[
-                                            `job_orders.${index}.print_size`
-                                        ]
-                                    "
-                                />
-                            </div>
-
-                            <div class="grid gap-2">
-                                <Label :for="`job-order-quantity-${index}`">
-                                    Quantity
-                                </Label>
-                                <div class="relative">
-                                    <Hash
-                                        class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-                                    />
-                                    <Input
-                                        :id="`job-order-quantity-${index}`"
-                                        v-model="row.quantity"
-                                        type="number"
-                                        min="1"
-                                        class="pl-9"
-                                        placeholder="Quantity"
-                                    />
-                                </div>
-                                <InputError
-                                    :message="
-                                        intakeForm.errors[
-                                            `job_orders.${index}.quantity`
-                                        ]
-                                    "
-                                />
-                            </div>
-
-                            <div class="grid gap-2">
-                                <Label :for="`job-order-material-${index}`">
-                                    Material
-                                </Label>
-                                <SearchableSelect
-                                    :id="`job-order-material-${index}`"
-                                    v-model="row.material"
-                                    :options="materialOptions"
-                                    placeholder="Search materials…"
-                                    empty-text="No material matches that search."
-                                />
-                                <InputError
-                                    :message="
-                                        intakeForm.errors[
-                                            `job_orders.${index}.material`
-                                        ]
-                                    "
+                            <div class="md:col-span-2">
+                                <JobOrderPriceFields
+                                    :row="row"
+                                    :pricing-entries="pricingEntries"
+                                    :print-size-options="printSizeOptions"
+                                    :print-size-dimensions="printSizeDimensions"
+                                    :rush-fee-percentage="rushFeePercentage"
+                                    :id-prefix="`job-order-${index}`"
+                                    :errors="jobOrderRowErrors(index)"
                                 />
                             </div>
 
@@ -1219,7 +1194,7 @@ function jobOrderStatusLabel(status: string): string {
                                         class="flex items-center gap-2"
                                     >
                                         <Zap class="size-4" />
-                                        Rush Order
+                                        Rush Print
                                     </Label>
                                 </div>
                                 <p class="text-muted-foreground text-sm">
@@ -1293,7 +1268,7 @@ function jobOrderStatusLabel(status: string): string {
                                         :id="`job-order-file-${index}`"
                                         type="file"
                                         class="sr-only"
-                                        :accept="ACCEPTED_FILE_TYPES"
+                                        :accept="acceptedFileTypes"
                                         @change="onFileChange(row, $event)"
                                     />
                                     <CloudUpload
@@ -1310,7 +1285,7 @@ function jobOrderStatusLabel(status: string): string {
                                         {{
                                             row.file
                                                 ? formatFileSize(row.file.size)
-                                                : 'Accepted: PDF, AI, PSD, PNG, JPG, CDR'
+                                                : acceptedFileHint
                                         }}
                                     </span>
                                     <span
@@ -1352,20 +1327,31 @@ function jobOrderStatusLabel(status: string): string {
                     <Plus class="size-4" />
                     Add Another Job Order
                 </Button>
-                <Button
-                    type="button"
-                    size="lg"
-                    :disabled="intakeForm.processing"
-                    data-test="add-to-queue-button"
-                    @click="submitIntake"
-                >
-                    <Ticket class="size-4" />
-                    {{
-                        intakeForm.processing
-                            ? 'Adding to queue…'
-                            : 'Add to Queue'
-                    }}
-                </Button>
+                <div class="flex items-center gap-4">
+                    <p
+                        class="text-muted-foreground text-sm tabular-nums"
+                        data-test="intake-estimated-total"
+                    >
+                        {{ intakeForm.job_orders.length }} job order{{
+                            intakeForm.job_orders.length === 1 ? '' : 's'
+                        }}
+                        · Estimated total {{ money(estimatedTotal) }}
+                    </p>
+                    <Button
+                        type="button"
+                        size="lg"
+                        :disabled="intakeForm.processing"
+                        data-test="add-to-queue-button"
+                        @click="submitIntake"
+                    >
+                        <Ticket class="size-4" />
+                        {{
+                            intakeForm.processing
+                                ? 'Adding to queue…'
+                                : 'Add to Queue'
+                        }}
+                    </Button>
+                </div>
             </div>
         </template>
     </PageContainer>

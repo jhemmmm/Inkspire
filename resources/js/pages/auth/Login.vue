@@ -8,6 +8,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    authErrorClass,
+    authInputClass,
+    authSubmitClass,
+} from '@/layouts/auth/fields';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
@@ -56,9 +61,9 @@ defineProps<{
                     :tabindex="1"
                     autocomplete="email"
                     placeholder="email@example.com"
-                    class="h-11 rounded-[10px] border-[1.5px] border-white/20 bg-white/12 px-3.5 text-white selection:bg-white/25 selection:text-white placeholder:text-white/35 focus-visible:border-white/70 focus-visible:ring-[3px] focus-visible:ring-white/20 dark:border-white/20 dark:bg-white/12 dark:text-white"
+                    :class="authInputClass"
                 />
-                <InputError :message="errors.email" />
+                <InputError :message="errors.email" :class="authErrorClass" />
             </div>
 
             <div class="grid gap-2">
@@ -84,9 +89,12 @@ defineProps<{
                     :tabindex="2"
                     autocomplete="current-password"
                     placeholder="Password"
-                    class="h-11 rounded-[10px] border-[1.5px] border-white/20 bg-white/12 px-3.5 text-white selection:bg-white/25 selection:text-white placeholder:text-white/35 focus-visible:border-white/70 focus-visible:ring-[3px] focus-visible:ring-white/20 dark:border-white/20 dark:bg-white/12 dark:text-white"
+                    :class="authInputClass"
                 />
-                <InputError :message="errors.password" />
+                <InputError
+                    :message="errors.password"
+                    :class="authErrorClass"
+                />
             </div>
 
             <div class="flex items-center justify-between">
@@ -106,7 +114,7 @@ defineProps<{
 
             <Button
                 type="submit"
-                class="text-primary mt-4 w-full bg-white hover:bg-white/90 focus-visible:ring-white/40"
+                :class="[authSubmitClass, 'mt-4']"
                 :tabindex="4"
                 :disabled="processing"
                 data-test="login-button"

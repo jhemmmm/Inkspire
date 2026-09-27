@@ -21,7 +21,7 @@ class CreditRequestController extends Controller
     /**
      * Request On-Credit approval for a job order's full outstanding
      * balance (POS-08/D-06). Open-eligibility per D-08 — any Cashier can
-     * request credit; the real gate is the Owner-only approval step.
+     * request credit; the real gate is the Admin-only approval step.
      */
     public function store(CreateCreditRequestRequest $request, JobOrder $jobOrder): RedirectResponse
     {
@@ -63,7 +63,7 @@ class CreditRequestController extends Controller
                 'This job order already has a payment action pending.',
             );
 
-            if ($jobOrder->total_amount === null) {
+            if ($jobOrder->pricingIsEditable()) {
                 // On Credit can be the very first payment action taken for a
                 // job order (D-08 needs no prior pricing step), but the
                 // Pricing card is still shown/submitted alongside per
@@ -103,7 +103,7 @@ class CreditRequestController extends Controller
             $jobOrder->forceFill(['payment_status' => PaymentStatus::CreditPendingApproval])->save();
         });
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('On-Credit requested. Awaiting Owner approval.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('On-Credit requested. Awaiting Admin approval.')]);
 
         // Explicit route rather than back() — the submitting <Form> lives on
         // this same Job Order Payment page, so back() would return here

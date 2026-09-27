@@ -16,6 +16,7 @@ status: all_fixed
 **Iteration:** 1
 
 **Summary:**
+
 - Findings in scope: 10 (5 Critical, 5 Warning — the 2 Info findings, IN-01 and IN-02, are out of scope for this fix pass per `fix_scope: critical_warning`)
 - Fixed: 10
 - Skipped: 0
@@ -29,13 +30,14 @@ model's existing convention — filed under CR-04 since it's direct fallout
 from that fix, not a new finding.
 
 **Full verification performed beyond the standard 3-tier strategy:**
+
 - `php artisan test --compact` — 261 passed, 3 skipped (same 3 pre-existing
   skips present on the unmodified `main` baseline), 0 failed.
 - `npm run types:check` (`vue-tsc --noEmit`) — 0 errors.
 - `composer types:check` (Larastan level 7) — same pre-existing baseline
   errors as `main` (5, all in files this pass did not touch or touched
   only to mirror an already-accepted pattern — see note under CR-01/CR-04
-  below), 0 *new* errors after the JobOrder docblock follow-up commit.
+  below), 0 _new_ errors after the JobOrder docblock follow-up commit.
 - For CR-02, CR-04, WR-01, and WR-05, the exact new test was additionally
   run against the pre-fix code (via `git stash` of just that commit's
   source diff) to confirm it fails without the fix and passes with it —
@@ -75,7 +77,7 @@ from that fix, not a new finding.
 **Files modified:** `app/Http/Controllers/Owner/CreditApprovalController.php`, `tests/Feature/Owner/CreditApprovalTest.php`
 **Commit:** `7e94d85`
 **Applied fix:** `approve()`/`reject()` now open a `DB::transaction()`, lock-and-re-read the `AccountsReceivable` row (`lockForUpdate()`), and `abort_unless($accountsReceivable->status === PendingApproval, 422, ...)` before mutating — mirroring `ConfirmPaymentIntent`'s own idempotency boundary, which the review's Issue text explicitly cites as the precedent this controller lacked. Added 3 tests: approving an already-active receivable, rejecting an already-active one, and approving an already-rejected one — all now correctly rejected with 422 and no state change.
-**Status note:** marked `fixed: requires human verification` for the *locking* guarantee specifically. The precondition-check behavior itself (an already-resolved receivable gets a 422) is directly tested and passing. The `lockForUpdate()` race-prevention mechanism — protecting against two *simultaneous* approve/reject requests — cannot be exercised by a sequential single-process Pest test; a human (or a real concurrency/load test) should confirm this behaves correctly under genuine concurrent load before this is fully trusted in production.
+**Status note:** marked `fixed: requires human verification` for the _locking_ guarantee specifically. The precondition-check behavior itself (an already-resolved receivable gets a 422) is directly tested and passing. The `lockForUpdate()` race-prevention mechanism — protecting against two _simultaneous_ approve/reject requests — cannot be exercised by a sequential single-process Pest test; a human (or a real concurrency/load test) should confirm this behaves correctly under genuine concurrent load before this is fully trusted in production.
 
 ## Warnings
 
@@ -103,7 +105,7 @@ from that fix, not a new finding.
 **Files modified:** `database/migrations/2026_09_04_120000_add_unique_index_to_accounts_receivable_job_order_id.php` (new), `app/Http/Controllers/Cashier/CreditRequestController.php`, `tests/Feature/Owner/CreditApprovalTest.php`
 **Commit:** `1d3dc8a`
 **Applied fix:** Applied both remedies the review suggested: a new migration adds a unique index on `job_order_id` (enforcing at the DB level what `JobOrder::accountsReceivable()`'s own docblock already claimed as a rule), and `CreditRequestController::store()` now locks the job order row (`lockForUpdate()`) and re-checks `cancelled_at`/`payment_status` against the locked read inside the transaction, before creating the receivable. Added a test proving the DB-level unique constraint (`AccountsReceivable::factory()->create()` twice for the same job order throws `QueryException`).
-**Status note:** marked `fixed: requires human verification` for the same reason as CR-05 — the `lockForUpdate()` race-prevention mechanism cannot be exercised by a sequential test. The DB-level unique constraint (the stronger, always-correct backstop) *is* directly tested and passing regardless of the locking behavior, so a race would at worst surface as a `QueryException` rather than a silent duplicate row even if the lock somehow failed to prevent it.
+**Status note:** marked `fixed: requires human verification` for the same reason as CR-05 — the `lockForUpdate()` race-prevention mechanism cannot be exercised by a sequential test. The DB-level unique constraint (the stronger, always-correct backstop) _is_ directly tested and passing regardless of the locking behavior, so a race would at worst surface as a `QueryException` rather than a silent duplicate row even if the lock somehow failed to prevent it.
 
 ### WR-05: Cancelling an On-Credit job order leaves its AccountsReceivable balance outstanding
 

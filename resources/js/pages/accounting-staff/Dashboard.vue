@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import SectionHeading from '@/components/SectionHeading.vue';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -84,16 +89,18 @@ function money(value: number | null): string {
 <template>
     <Head title="Accounting Staff Dashboard" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            Accounting Dashboard
-        </h1>
+    <PageContainer>
+        <PageHeader
+            title="Accounting Dashboard"
+            description="Payments taken at the counter that still need your confirmation."
+        />
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
+        <SectionHeading
+            title="Awaiting Confirmation"
+            description="Reconcile each payment against the bank or gateway record before confirming."
+        />
+
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -107,17 +114,10 @@ function money(value: number | null): string {
                 </TableHeader>
                 <TableBody>
                     <TableEmpty v-if="jobOrders.length === 0" :colspan="6">
-                        <div
-                            class="flex flex-col items-center gap-1 text-center"
-                        >
-                            <p class="font-semibold">
-                                No payments awaiting confirmation
-                            </p>
-                            <p class="text-muted-foreground">
-                                GCash and Maya payments will appear here while
-                                waiting on PayMongo.
-                            </p>
-                        </div>
+                        <EmptyState
+                            title="No payments awaiting confirmation"
+                            description="GCash and Maya payments will appear here while waiting on PayMongo."
+                        />
                     </TableEmpty>
                     <TableRow
                         v-for="jobOrder in jobOrders"
@@ -128,7 +128,7 @@ function money(value: number | null): string {
                         <TableCell>
                             {{ jobOrder.queue_entry.customer.name }}
                         </TableCell>
-                        <TableCell>
+                        <TableCell class="tabular-nums">
                             {{ money(jobOrder.total_amount) }}
                         </TableCell>
                         <TableCell>
@@ -153,6 +153,6 @@ function money(value: number | null): string {
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
-    </div>
+        </DataTableCard>
+    </PageContainer>
 </template>

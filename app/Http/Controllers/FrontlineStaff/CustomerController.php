@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\FrontlineStaff;
 
+use App\Actions\JobOrder\ValidateJobOrderFile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FrontlineStaff\SearchCustomersRequest;
 use App\Http\Requests\FrontlineStaff\StoreCustomerRequest;
@@ -10,6 +11,7 @@ use App\Models\JobOrder;
 use App\Models\PricingEntry;
 use App\Models\QueueEntry;
 use App\Models\SpecificationOption;
+use App\Models\SystemConfiguration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -43,6 +45,13 @@ class CustomerController extends Controller
         return Inertia::render('frontline-staff/NewVisit', [
             'customers' => $customers,
             'specificationOptions' => SpecificationOption::activeLabelsByCategory(),
+            'printSizeDimensions' => SpecificationOption::printSizeDimensionsByLabel(),
+            // Display-only hint for the price strip's rush estimate — never
+            // authoritative; the Cashier's own rate is what actually applies.
+            'rushFeePercentage' => SystemConfiguration::getFloat('rush_fee_percentage', 0.0),
+            // Drives the file picker's `accept` list and hint, so staff are
+            // only offered formats the Type A file check will let through.
+            'acceptedFileFormats' => ValidateJobOrderFile::acceptedFormats(),
             'pricingEntries' => PricingEntry::query()
                 ->where('is_active', true)
                 ->orderBy('name')

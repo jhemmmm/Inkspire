@@ -26,7 +26,7 @@
             }
 
             html.dark {
-                background-color: hsl(229.7 57.4% 12%);
+                background-color: hsl(225 24% 7.5%);
             }
         </style>
 

@@ -6,12 +6,12 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
 
-test('owner can unlock a locked design file, clearing locked_at and writing an updated audit_trail row', function () {
-    $owner = User::factory()->owner()->create();
+test('admin can unlock a locked design file, clearing locked_at and writing an updated audit_trail row', function () {
+    $admin = User::factory()->admin()->create();
     $jobOrder = JobOrder::factory()->create();
     $designFile = DesignFile::factory()->for($jobOrder)->locked()->create();
 
-    $response = $this->actingAs($owner)->patch(route('owner.design-files.unlock', $designFile));
+    $response = $this->actingAs($admin)->patch(route('admin.design-files.unlock', $designFile));
 
     $response->assertRedirect();
     expect($designFile->fresh()->locked_at)->toBeNull();
@@ -25,26 +25,26 @@ test('owner can unlock a locked design file, clearing locked_at and writing an u
     )->toBeTrue();
 });
 
-test('an admin is forbidden from unlocking a design file', function () {
-    $admin = User::factory()->admin()->create();
+test('an artist is forbidden from unlocking their own design file', function () {
+    $artist = User::factory()->artist()->create();
     $jobOrder = JobOrder::factory()->create();
     $designFile = DesignFile::factory()->for($jobOrder)->locked()->create();
 
-    $response = $this->actingAs($admin)->patch(route('owner.design-files.unlock', $designFile));
+    $response = $this->actingAs($artist)->patch(route('admin.design-files.unlock', $designFile));
 
     $response->assertForbidden();
 });
 
-test('a non-owner/admin role is forbidden from the design-overrides index route entirely', function () {
+test('a non-admin role is forbidden from the design-overrides index route entirely', function () {
     $artist = User::factory()->artist()->create();
 
-    $response = $this->actingAs($artist)->get(route('owner.design-overrides.index'));
+    $response = $this->actingAs($artist)->get(route('admin.design-overrides.index'));
 
     $response->assertForbidden();
 });
 
 test('the design overrides index lists only job orders whose design file is currently locked', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
 
     $lockedJobOrder = JobOrder::factory()->create();
     DesignFile::factory()->for($lockedJobOrder)->locked()->create();
@@ -52,11 +52,11 @@ test('the design overrides index lists only job orders whose design file is curr
     $unlockedJobOrder = JobOrder::factory()->create();
     DesignFile::factory()->for($unlockedJobOrder)->create();
 
-    $response = $this->actingAs($owner)->get(route('owner.design-overrides.index'));
+    $response = $this->actingAs($admin)->get(route('admin.design-overrides.index'));
 
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
-        ->component('owner/DesignOverrides')
+        ->component('admin/DesignOverrides')
         ->has('jobOrders', 1)
         ->where('jobOrders.0.id', $lockedJobOrder->id)
     );

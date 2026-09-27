@@ -17,6 +17,7 @@ use App\Models\Expense;
 use App\Models\JobOrder;
 use App\Models\ProductionLog;
 use App\Models\QueueEntry;
+use App\Models\SystemConfiguration;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\CarbonInterface;
@@ -72,7 +73,6 @@ class DemoDataSeeder extends Seeder
     private function seedRoleAccounts(): void
     {
         $definitions = [
-            'owner' => ['name' => 'Demo Owner', 'email' => 'owner@inkspire.test', 'role' => UserRole::Owner],
             'admin' => ['name' => 'Demo Admin', 'email' => 'admin@inkspire.test', 'role' => UserRole::Admin],
             'frontline' => ['name' => 'Demo Frontline Staff', 'email' => 'frontline@inkspire.test', 'role' => UserRole::FrontlineStaff],
             'artist' => ['name' => 'Demo Artist', 'email' => 'artist@inkspire.test', 'role' => UserRole::Artist],
@@ -474,10 +474,36 @@ class DemoDataSeeder extends Seeder
             'queue_date' => $day->toDateString(),
         ]);
 
-        return JobOrder::factory()->create(array_merge([
+        $attributes = array_merge([
             'queue_entry_id' => $queueEntry->id,
             'type' => JobOrderType::TypeB->value,
-        ], $jobOrderAttributes));
+        ], $jobOrderAttributes);
+
+        // A priced job order always carries its pricing breakdown: the real
+        // POS path snapshots all four columns together, and the receipt
+        // prints them. Seeding `total_amount` alone produced receipts
+        // reading "Base Price P0.00" above a P3,000 total.
+        if (isset($attributes['total_amount']) && ! isset($attributes['base_price_snapshot'])) {
+            $total = (float) $attributes['total_amount'];
+
+            // A rush job order is charged the configured rush percentage, so
+            // its receipt shows a real fee rather than a waived one. Working
+            // backwards from the total keeps `total_amount` -- which other
+            // seeded figures (payments, AR balances) are built from -- exactly
+            // as written: base + fee still sums to it.
+            $rushPercentage = ($attributes['is_rush'] ?? false)
+                ? SystemConfiguration::getFloat('rush_fee_percentage', 0.0)
+                : 0.0;
+
+            $base = round($total / (1 + ($rushPercentage / 100)), 2);
+
+            $attributes['base_price_snapshot'] = $base;
+            $attributes['rush_fee_applied'] = $rushPercentage > 0;
+            $attributes['rush_fee_amount'] = round($total - $base, 2);
+            $attributes['discount_amount'] = $attributes['discount_amount'] ?? 0;
+        }
+
+        return JobOrder::factory()->create($attributes);
     }
 
     /**

@@ -202,21 +202,21 @@ test('creating, updating, and voiding an expense each produce exactly one new au
 });
 
 test('a user with a role other than Accounting Staff gets a 403 on every expense route', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
     $expense = Expense::factory()->create();
 
-    $this->actingAs($owner)->get(route('accounting-staff.expenses.index'))->assertForbidden();
-    $this->actingAs($owner)->post(route('accounting-staff.expenses.store'), [
+    $this->actingAs($admin)->get(route('accounting-staff.expenses.index'))->assertForbidden();
+    $this->actingAs($admin)->post(route('accounting-staff.expenses.store'), [
         'category' => 'Utilities',
         'amount' => 100,
         'expense_date' => now()->toDateString(),
     ])->assertForbidden();
-    $this->actingAs($owner)->patch(route('accounting-staff.expenses.update', $expense), [
+    $this->actingAs($admin)->patch(route('accounting-staff.expenses.update', $expense), [
         'category' => 'Supplies',
         'amount' => 200,
         'expense_date' => now()->toDateString(),
     ])->assertForbidden();
-    $this->actingAs($owner)->patch(route('accounting-staff.expenses.void', $expense), [
+    $this->actingAs($admin)->patch(route('accounting-staff.expenses.void', $expense), [
         'reason' => 'Some reason',
     ])->assertForbidden();
 });

@@ -2,60 +2,70 @@
 phase: 03-job-order-intake-auto-assignment
 plan: 01
 subsystem: api
-tags: [laravel, pest, eloquent, job-orders, rbac, audit-trail, file-validation, round-robin]
+tags:
+    [
+        laravel,
+        pest,
+        eloquent,
+        job-orders,
+        rbac,
+        audit-trail,
+        file-validation,
+        round-robin,
+    ]
 
 # Dependency graph
 requires:
-  - phase: 02-customer-queue-management
-    provides: QueueEntryController::addJobOrder()/store() creating unvalidated Intake job orders with a stored-but-unchecked file_path
-  - phase: 01-foundation-rbac-auth-hardening-audit-trail
-    provides: SystemConfiguration threshold storage, AuditObserver auto-wiring via #[ObservedBy], role:frontline_staff middleware
+    - phase: 02-customer-queue-management
+      provides: QueueEntryController::addJobOrder()/store() creating unvalidated Intake job orders with a stored-but-unchecked file_path
+    - phase: 01-foundation-rbac-auth-hardening-audit-trail
+      provides: SystemConfiguration threshold storage, AuditObserver auto-wiring via #[ObservedBy], role:frontline_staff middleware
 provides:
-  - "ValidateJobOrderFile action: DPI/format/size validation for Type A job orders, thresholds from SystemConfiguration, no new Composer dependency"
-  - "AssignArtistToJobOrder action: locked oldest-or-null round-robin artist selection for Type B job orders, plus claimOldestUnassigned() for Phase 4"
-  - "JobOrderStatus gains ValidationFailed/ReadyForProduction/Assigned resting states"
-  - "job_orders.assigned_artist_id / validation_failure_reason and users.is_available / last_assigned_at columns"
-  - "JobOrderController::replaceFile() endpoint for re-validating a Type A file in one save"
-  - "QueueEntryController::index()/CustomerController::index() eager-loading every field Plan 03-02's frontend needs"
+    - 'ValidateJobOrderFile action: DPI/format/size validation for Type A job orders, thresholds from SystemConfiguration, no new Composer dependency'
+    - 'AssignArtistToJobOrder action: locked oldest-or-null round-robin artist selection for Type B job orders, plus claimOldestUnassigned() for Phase 4'
+    - 'JobOrderStatus gains ValidationFailed/ReadyForProduction/Assigned resting states'
+    - 'job_orders.assigned_artist_id / validation_failure_reason and users.is_available / last_assigned_at columns'
+    - 'JobOrderController::replaceFile() endpoint for re-validating a Type A file in one save'
+    - "QueueEntryController::index()/CustomerController::index() eager-loading every field Plan 03-02's frontend needs"
 affects: [03-02-job-order-intake-ui, 04-artist-workflow-design-editor]
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "Invokable single-purpose Action classes under App\\Actions\\{Domain} (extends the existing App\\Actions\\Fortify convention into App\\Actions\\JobOrder)"
-    - "DB::transaction()+lockForUpdate() for atomic fair-selection under concurrency (mirrors QueueEntry::nextForBusinessDay())"
-    - "forceFill()+saveQuietly() for routine bookkeeping columns kept outside #[Fillable] and outside the audit trail (mirrors last_activity_at)"
-    - "forceFill()+afterCreating() factory states for columns outside #[Fillable] (mirrors UserFactory::locked()/deactivated())"
+    added: []
+    patterns:
+        - "Invokable single-purpose Action classes under App\\Actions\\{Domain} (extends the existing App\\Actions\\Fortify convention into App\\Actions\\JobOrder)"
+        - 'DB::transaction()+lockForUpdate() for atomic fair-selection under concurrency (mirrors QueueEntry::nextForBusinessDay())'
+        - 'forceFill()+saveQuietly() for routine bookkeeping columns kept outside #[Fillable] and outside the audit trail (mirrors last_activity_at)'
+        - 'forceFill()+afterCreating() factory states for columns outside #[Fillable] (mirrors UserFactory::locked()/deactivated())'
 
 key-files:
-  created:
-    - app/Actions/JobOrder/ValidateJobOrderFile.php
-    - app/Actions/JobOrder/AssignArtistToJobOrder.php
-    - app/Http/Controllers/FrontlineStaff/JobOrderController.php
-    - app/Http/Requests/FrontlineStaff/ReplaceJobOrderFileRequest.php
-    - tests/Feature/JobOrder/FactoryStatesTest.php
-    - tests/Feature/JobOrder/ValidateJobOrderFileTest.php
-    - tests/Feature/JobOrder/AssignArtistToJobOrderTest.php
-    - tests/Feature/FrontlineStaff/JobOrderProcessingTest.php
-  modified:
-    - app/Enums/JobOrderStatus.php
-    - app/Models/JobOrder.php
-    - app/Models/User.php
-    - database/factories/JobOrderFactory.php
-    - database/factories/UserFactory.php
-    - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
-    - app/Http/Controllers/FrontlineStaff/CustomerController.php
-    - routes/portals.php
+    created:
+        - app/Actions/JobOrder/ValidateJobOrderFile.php
+        - app/Actions/JobOrder/AssignArtistToJobOrder.php
+        - app/Http/Controllers/FrontlineStaff/JobOrderController.php
+        - app/Http/Requests/FrontlineStaff/ReplaceJobOrderFileRequest.php
+        - tests/Feature/JobOrder/FactoryStatesTest.php
+        - tests/Feature/JobOrder/ValidateJobOrderFileTest.php
+        - tests/Feature/JobOrder/AssignArtistToJobOrderTest.php
+        - tests/Feature/FrontlineStaff/JobOrderProcessingTest.php
+    modified:
+        - app/Enums/JobOrderStatus.php
+        - app/Models/JobOrder.php
+        - app/Models/User.php
+        - database/factories/JobOrderFactory.php
+        - database/factories/UserFactory.php
+        - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
+        - app/Http/Controllers/FrontlineStaff/CustomerController.php
+        - routes/portals.php
 
 key-decisions:
-  - "DPI validation is raster-only (jpg/png via getimagesize()/exif_read_data()); pdf/ai/eps skip DPI and validate format+size only (D-01)"
-  - "assigned_artist_id/validation_failure_reason/is_available/last_assigned_at all sit outside their models' #[Fillable] lists, written only via forceFill() from action/controller code"
-  - "last_assigned_at bookkeeping uses saveQuietly() (silenced from audit trail); the job order's own status/assigned_artist_id write uses a normal save() (fully audited)"
-  - "Zero available artists leaves the Type B job order at its already-created Intake status with a null assigned_artist_id — no fallback (D-07)"
+    - 'DPI validation is raster-only (jpg/png via getimagesize()/exif_read_data()); pdf/ai/eps skip DPI and validate format+size only (D-01)'
+    - "assigned_artist_id/validation_failure_reason/is_available/last_assigned_at all sit outside their models' #[Fillable] lists, written only via forceFill() from action/controller code"
+    - "last_assigned_at bookkeeping uses saveQuietly() (silenced from audit trail); the job order's own status/assigned_artist_id write uses a normal save() (fully audited)"
+    - 'Zero available artists leaves the Type B job order at its already-created Intake status with a null assigned_artist_id — no fallback (D-07)'
 
 patterns-established:
-  - "applyIntakeOutcome()/jobOrderOutcomeToastMessage() private controller methods branch on JobOrderType to dispatch to the correct action and render the exact Copywriting Contract toast"
+    - 'applyIntakeOutcome()/jobOrderOutcomeToastMessage() private controller methods branch on JobOrderType to dispatch to the correct action and render the exact Copywriting Contract toast'
 
 requirements-completed: [JOB-01, JOB-02]
 
@@ -77,6 +87,7 @@ completed: 2026-09-02
 - **Files modified:** 18
 
 ## Accomplishments
+
 - `ValidateJobOrderFile` action correctly separates format/size/DPI failure reasons using only PHP's built-in image-metadata functions, reading every threshold from `SystemConfiguration` (never hardcoded)
 - `AssignArtistToJobOrder` action implements the locked "oldest-or-null" round-robin selection (D-06) and the zero-artist no-op case (D-07), plus a fully-tested `claimOldestUnassigned()` entry point ready for Phase 4
 - `QueueEntryController::addJobOrder()`/`store()` now call both actions from the exact same intake flow and render outcome-specific toast copy per the UI-SPEC's Copywriting Contract
@@ -139,8 +150,9 @@ None - no external service configuration required.
 - No blockers.
 
 ---
-*Phase: 03-job-order-intake-auto-assignment*
-*Completed: 2026-09-02*
+
+_Phase: 03-job-order-intake-auto-assignment_
+_Completed: 2026-09-02_
 
 ## Self-Check: PASSED
 

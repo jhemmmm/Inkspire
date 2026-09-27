@@ -53,6 +53,7 @@ A job order that has become production-ready (Type A at `ReadyForProduction`, Ty
 </decisions>
 
 <canonical_refs>
+
 ## Canonical References
 
 **Downstream agents MUST read these before planning or implementing.**
@@ -86,6 +87,7 @@ A job order that has become production-ready (Type A at `ReadyForProduction`, Ty
 </canonical_refs>
 
 <code_context>
+
 ## Existing Code Insights
 
 ### Reusable Assets
@@ -94,7 +96,7 @@ A job order that has become production-ready (Type A at `ReadyForProduction`, Ty
 - `resources/js/pages/public/QueueDisplay.vue` — working `usePoll(5000, { only: [...] })` implementation; D-14 reuses the interval and the partial-reload pattern for all three polled surfaces.
 - `app/Enums/JobOrderStatus.php` — currently ends at `DesignApproved`. This phase appends the four production stages (D-09); string-backed, TitleCase keys, snake_case values.
 - `app/Models/JobOrder.php` — already has `queueEntry()`, `assignedArtist()`, `designFile()`, `revisionLogs()` relations plus Phase 5's payment columns; this phase adds `productionLogs()` HasMany, the number column, and the `due_at` column.
-- `database/seeders/SystemConfigurationSeeder.php` — `default_sla_days` is already seeded (group `business_rules`, described as "Global default only. A per-product SLA override is deferred until the Phase 3/5 pricing tables exist to key it against."). D-06 reads it. Note the deferred per-product override now *could* be keyed against `pricing_database`, which Phase 5 built — but that is a scope expansion, not this phase's job.
+- `database/seeders/SystemConfigurationSeeder.php` — `default_sla_days` is already seeded (group `business_rules`, described as "Global default only. A per-product SLA override is deferred until the Phase 3/5 pricing tables exist to key it against."). D-06 reads it. Note the deferred per-product override now _could_ be keyed against `pricing_database`, which Phase 5 built — but that is a scope expansion, not this phase's job.
 - `app/Observers/AuditObserver.php` — the new `ProductionLog` model gets automatic audit coverage via `#[ObservedBy(AuditObserver::class)]`, same as every other domain model.
 - `routes/web.php` — three existing public-route precedents (queue display, signed design review, PayMongo webhook), all deliberately outside every `auth`/`role:*` group, all carrying `throttle:60,1`. The tracking route joins them.
 
@@ -121,7 +123,7 @@ A job order that has become production-ready (Type A at `ReadyForProduction`, Ty
 <specifics>
 ## Specific Ideas
 
-- The demo's four stage colours (`demo/main.js` ~line 4335: For Production green, Printing amber, Quality Check violet, Ready for Pickup blue) are a *stage* palette, distinct from PROD-01's *urgency* palette (Green = Normal, Amber = Rush). Both cannot own green/amber on the same card — the UI pass needs to resolve which axis the colour carries. The success criterion locks urgency to two colours; the stage palette is decoration.
+- The demo's four stage colours (`demo/main.js` ~line 4335: For Production green, Printing amber, Quality Check violet, Ready for Pickup blue) are a _stage_ palette, distinct from PROD-01's _urgency_ palette (Green = Normal, Amber = Rush). Both cannot own green/amber on the same card — the UI pass needs to resolve which axis the colour carries. The success criterion locks urgency to two colours; the stage palette is decoration.
 - The demo's production card shows `paid` / `paymentState` / `balance` alongside the job. Phase 5 D-15 says payment does not block production, so if any payment hint appears on the board it is informational only and must never gate the Advance action.
 - `demo/main.js` line ~1146 ("Type A — File validated & queued directly to production") is the demo's version of D-08's automatic entry — the same instinct, arrived at independently.
 
@@ -139,5 +141,5 @@ A job order that has become production-ready (Type A at `ReadyForProduction`, Ty
 
 ---
 
-*Phase: 6-production-monitoring-public-tracking*
-*Context gathered: 2026-09-05*
+_Phase: 6-production-monitoring-public-tracking_
+_Context gathered: 2026-09-05_

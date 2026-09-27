@@ -7,26 +7,24 @@ use App\Models\AccountsReceivable;
 use App\Models\User;
 
 /**
- * This codebase's second (after DesignFilePolicy) Owner-exclusive-not-Admin
- * authorization check. `routes/owner.php`'s `credit-requests.*` group keeps
- * the blanket `role:owner,admin` middleware for page visibility — an Admin
- * can still see the approval queue — but the actual approve()/reject()
- * mutation deliberately narrows below that, to Owner only, matching
- * DesignFileController::unlock's established split and PROJECT.md's
- * "Owner-exclusive financial/approval powers distinct from Admin's"
- * decision.
+ * Credit and write-off approval, the shop's two money-authorising powers.
+ *
+ * These used to be Owner-only, deliberately narrower than the
+ * `role:owner,admin` middleware on the routes so an Admin could see the
+ * queue but not act on it. With the Owner role removed there is no second
+ * administrative role to narrow against, so Admin holds both powers -- the
+ * route middleware and the policy now agree, and this class exists to keep
+ * the authorisation decision in one place rather than only in a route
+ * string.
  */
 class AccountsReceivablePolicy
 {
     /**
      * Determine whether the actor can approve the given credit request.
-     *
-     * Owner only, deliberately not extended to Admin, matching
-     * DesignFilePolicy::unlock()'s exact shape.
      */
     public function approve(User $actor, AccountsReceivable $accountsReceivable): bool
     {
-        return $actor->role === UserRole::Owner;
+        return $actor->role === UserRole::Admin;
     }
 
     /**
@@ -41,11 +39,11 @@ class AccountsReceivablePolicy
 
     /**
      * Determine whether the actor can approve the given write-off request
-     * (D-13). Owner only, same Owner-not-Admin narrowing as approve().
+     * (D-13).
      */
     public function approveWriteOff(User $actor, AccountsReceivable $accountsReceivable): bool
     {
-        return $actor->role === UserRole::Owner;
+        return $actor->role === UserRole::Admin;
     }
 
     /**

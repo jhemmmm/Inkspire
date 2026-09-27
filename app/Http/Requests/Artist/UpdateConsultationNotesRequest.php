@@ -9,7 +9,7 @@ class UpdateConsultationNotesRequest extends FormRequest
 {
     /**
      * No authorize() override — the route's role:artist group middleware
-     * is the access gate, matching every other non-Owner FormRequest.
+     * is the access gate, matching every other non-Admin FormRequest.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */

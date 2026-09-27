@@ -18,6 +18,7 @@ import SearchableSelect, {
 } from '@/components/SearchableSelect.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import PaymentQrCode from '@/components/PaymentQrCode.vue';
+import PricingSummary from '@/components/PricingSummary.vue';
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -58,6 +59,7 @@ interface JobOrderPaymentJobOrder {
     payment_status: string;
     total_amount: number | null;
     base_price_snapshot: number | null;
+    quoted_amount: number | null;
     rush_fee_amount: number | null;
     is_rush: boolean;
     discount_amount: number | null;
@@ -70,7 +72,7 @@ const props = defineProps<{
     rushFeePercentage: number;
     discountCapPercentage: number;
     discountCapFlatAmount: number;
-    hasExistingTransactions: boolean;
+    pricingLocked: boolean;
     amountPaid: number;
     remainingBalance: number | null;
     paymongoRedirectUrl: string | null;
@@ -91,7 +93,11 @@ defineOptions({
 const pricingEntryId = ref<number | null>(
     props.jobOrder.pricing_entry?.id ?? null,
 );
-const lineAmount = ref<number>(Number(props.jobOrder.base_price_snapshot ?? 0));
+const lineAmount = ref<number>(
+    Number(
+        props.jobOrder.base_price_snapshot ?? props.jobOrder.quoted_amount ?? 0,
+    ),
+);
 // A saved rush_fee_amount of 0 means the Cashier already looked at this job
 // order and declined the fee — re-deriving the toggle from `is_rush` on a
 // revisit would silently overturn that decision. So the staff-declared flag
@@ -218,14 +224,49 @@ const breakdown = computed(() => {
 });
 
 /**
+ * The four figures the Pricing card totals up, from whichever source is
+ * authoritative for this visit: the live form while the job order is still
+ * being priced, the stored snapshot once it has been.
+ *
+ * `paid` is what the customer has already handed over across every earlier
+ * transaction, so `remaining` is what they owe today — the number the
+ * cashier reads out loud. On a first visit both are 0 and `remaining`
+ * equals the total, which is exactly right.
+ */
+const pricingSummary = computed(() => {
+    const priced = props.pricingLocked;
+
+    const base = priced
+        ? Number(props.jobOrder.base_price_snapshot ?? 0)
+        : breakdown.value.base;
+    const rushFeeAmount = priced
+        ? Number(props.jobOrder.rush_fee_amount ?? 0)
+        : breakdown.value.rushFeeAmount;
+    const discountAmount = priced
+        ? Number(props.jobOrder.discount_amount ?? 0)
+        : breakdown.value.discountAmount;
+    const total = priced
+        ? Number(props.jobOrder.total_amount ?? 0)
+        : breakdown.value.total;
+    const paid = priced ? Number(props.amountPaid ?? 0) : 0;
+
+    return {
+        base,
+        rushFeeAmount,
+        discountAmount,
+        total,
+        paid,
+        remaining: Math.max(0, round2(total - paid)),
+    };
+});
+
+/**
  * The amount a "Full Payment" would settle right now — either the live
  * preview total (first pricing/payment visit) or the already-snapshotted
  * job order's remaining balance (a follow-up visit).
  */
 const targetAmount = computed<number>(() =>
-    props.hasExistingTransactions
-        ? (props.remainingBalance ?? 0)
-        : breakdown.value.total,
+    props.pricingLocked ? (props.remainingBalance ?? 0) : breakdown.value.total,
 );
 
 const change = computed<number | null>(() => {
@@ -309,7 +350,7 @@ const discountCapHelper = computed(() =>
                     <CardTitle>Pricing</CardTitle>
                 </CardHeader>
                 <CardContent class="grid gap-4">
-                    <template v-if="!hasExistingTransactions">
+                    <template v-if="!pricingLocked">
                         <input
                             type="hidden"
                             name="pricing_entry_id"
@@ -437,86 +478,10 @@ const discountCapHelper = computed(() =>
                             <InputError :message="errors.discount_value" />
                         </div>
 
-                        <div
-                            class="border-border mt-2 flex flex-col gap-2 border-t pt-4 tabular-nums"
-                        >
-                            <div class="flex items-center justify-between">
-                                <span class="text-muted-foreground">
-                                    Base Price
-                                </span>
-                                <span>₱{{ breakdown.base.toFixed(2) }}</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-muted-foreground"
-                                    >Rush Fee</span
-                                >
-                                <span>
-                                    ₱{{ breakdown.rushFeeAmount.toFixed(2) }}
-                                </span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-muted-foreground"
-                                    >Discount</span
-                                >
-                                <span>
-                                    ₱{{ breakdown.discountAmount.toFixed(2) }}
-                                </span>
-                            </div>
-                            <div
-                                class="border-border flex items-center justify-between border-t pt-3 text-2xl leading-tight font-bold"
-                            >
-                                <span>Total</span>
-                                <span>₱{{ breakdown.total.toFixed(2) }}</span>
-                            </div>
-                        </div>
+                        <PricingSummary :summary="pricingSummary" />
                     </template>
 
-                    <div v-else class="flex flex-col gap-2 tabular-nums">
-                        <div class="flex items-center justify-between">
-                            <span class="text-muted-foreground"
-                                >Base Price</span
-                            >
-                            <span>
-                                ₱{{
-                                    Number(
-                                        jobOrder.base_price_snapshot ?? 0,
-                                    ).toFixed(2)
-                                }}
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-muted-foreground">Rush Fee</span>
-                            <span>
-                                ₱{{
-                                    Number(
-                                        jobOrder.rush_fee_amount ?? 0,
-                                    ).toFixed(2)
-                                }}
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-muted-foreground">Discount</span>
-                            <span>
-                                ₱{{
-                                    Number(
-                                        jobOrder.discount_amount ?? 0,
-                                    ).toFixed(2)
-                                }}
-                            </span>
-                        </div>
-                        <div
-                            class="border-border flex items-center justify-between border-t pt-3 text-2xl leading-tight font-bold"
-                        >
-                            <span>Total</span>
-                            <span>
-                                ₱{{
-                                    Number(jobOrder.total_amount ?? 0).toFixed(
-                                        2,
-                                    )
-                                }}
-                            </span>
-                        </div>
-                    </div>
+                    <PricingSummary v-else :summary="pricingSummary" />
                 </CardContent>
             </Card>
 
@@ -562,7 +527,7 @@ const discountCapHelper = computed(() =>
 
                 <CardContent v-else class="grid gap-4">
                     <p
-                        v-if="hasExistingTransactions"
+                        v-if="pricingLocked"
                         class="text-muted-foreground text-sm"
                     >
                         Remaining Balance: ₱{{
@@ -734,7 +699,7 @@ const discountCapHelper = computed(() =>
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
                                     This job order will be flagged "Credit
-                                    Pending Approval" until an Owner reviews it.
+                                    Pending Approval" until an Admin reviews it.
                                     The customer cannot pick up the order until
                                     it's approved or paid another way.
                                 </AlertDialogDescription>

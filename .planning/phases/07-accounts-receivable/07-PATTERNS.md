@@ -8,38 +8,38 @@ Every analog below was read directly from this repository (not inferred from RES
 
 ## File Classification
 
-| New/Modified File | Role | Data Flow | Closest Analog | Match Quality |
-|---|---|---|---|---|
-| `database/migrations/xxxx_add_aging_and_collection_columns_to_accounts_receivable_table.php` | migration | CRUD | `database/migrations/2026_09_04_110000_add_released_at_to_job_orders_table.php` | exact (additive-columns shape) |
-| `app/Enums/AccountsReceivableAgingBracket.php` | model/enum | CRUD | `app/Enums/AccountsReceivableStatus.php` | exact (string-backed, same namespace) |
-| `app/Enums/AccountsReceivableCollectionStatus.php` | model/enum | CRUD | `app/Enums/AccountsReceivableStatus.php` | exact |
-| `app/Enums/PaymentStatus.php` (extend, +`WrittenOff`) | model/enum | CRUD | itself | exact |
-| `app/Models/AccountsReceivable.php` (extend) | model | CRUD | itself | exact |
-| `database/factories/AccountsReceivableFactory.php` (extend) | test/factory | CRUD | itself | exact |
-| `database/seeders/SystemConfigurationSeeder.php` (extend, +`credit_term_days`) | config | CRUD | itself (`default_sla_days` / `cancellation_fee_amount` entries) | exact |
-| `app/Mail/AccountsReceivableReminder.php` | service (mailable) | event-driven | `app/Mail/DesignReviewRequested.php` | exact |
-| `resources/views/mail/accounts-receivable-reminder.blade.php` | template | event-driven | `resources/views/mail/design-review-requested.blade.php` | exact |
-| `app/Console/Commands/SendAccountsReceivableReminders.php` | service (command) | batch / event-driven | none in-repo (first Console Command) — closest process shape is `app/Actions/JobOrder/RecordDesignRevision.php` (mail-failure isolation) | partial |
-| `routes/console.php` (extend, `Schedule::command`) | config/route | batch | itself (currently stock `inspire` only) | partial (no scheduling precedent exists yet) |
-| `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php` (index, show) | controller | request-response (CRUD read) | `app/Http/Controllers/Cashier/ReceiptController.php` (derived-balance shape) + `app/Http/Controllers/Owner/CreditApprovalController.php::index` (list query shape) | exact (composite) |
-| `app/Http/Controllers/AccountingStaff/CollectionStatusController.php` | controller | request-response (CRUD update) | `app/Http/Controllers/Cashier/ReconciliationController.php` (un-narrowed mutation, role-middleware-only) | role-match |
-| `app/Http/Controllers/AccountingStaff/CollectionLetterController.php` | controller | request-response (read-only render) | `app/Http/Controllers/Cashier/ReceiptController.php` | exact |
-| `app/Http/Controllers/AccountingStaff/WriteOffRequestController.php` | controller | request-response | `app/Http/Controllers/Cashier/CreditRequestController.php` | exact |
-| `app/Http/Controllers/Owner/WriteOffApprovalController.php` (approve, reject) | controller | request-response (state transition) | `app/Http/Controllers/Owner/CreditApprovalController.php` | exact |
-| `app/Http/Requests/AccountingStaff/UpdateCollectionStatusRequest.php` | middleware/validation | request-response | `app/Http/Requests/Owner/ApproveCreditRequest.php` (Policy-driven `authorize()`) + new `AccountsReceivableValidationRules` trait for `rules()` | role-match |
-| `app/Http/Requests/AccountingStaff/RequestWriteOffRequest.php` | middleware/validation | request-response | `app/Http/Requests/Cashier/CreateCreditRequestRequest.php` (Cashier-initiated async request) | exact |
-| `app/Http/Requests/Owner/ApproveWriteOffRequest.php` + `RejectWriteOffRequest.php` | middleware/validation | request-response | `app/Http/Requests/Owner/ApproveCreditRequest.php` / `RejectCreditRequest.php` | exact |
-| `app/Concerns/AccountsReceivableValidationRules.php` (new trait) | utility | request-response | `app/Concerns/ProductionLogValidationRules.php` | exact |
-| `app/Policies/AccountsReceivablePolicy.php` (extend, +`approveWriteOff`/`rejectWriteOff`) | middleware/validation | request-response | itself (`approve`/`reject` pair) | exact |
-| `routes/portals.php` (extend `accounting-staff` group + new `owner` write-off routes) | route | request-response | itself (existing groups) | exact |
-| `resources/js/config/nav/accounting-staff.ts` (extend) | config | — | itself | exact |
-| `resources/js/config/nav/owner.ts` (extend) | config | — | itself | exact |
-| `resources/js/pages/accounting-staff/AccountsReceivable/Index.vue` (new) | component | request-response (client-filtered list) | `resources/js/pages/owner/CreditRequests.vue` (Table shape) | exact |
-| `resources/js/pages/accounting-staff/AccountsReceivable/Show.vue` (new) | component | request-response | `resources/js/pages/owner/CreditRequests.vue` (Form + AlertDialog) + `resources/js/pages/cashier/Receipt.vue` (panel/Card layout) | exact (composite) |
-| `resources/js/pages/accounting-staff/CollectionLetter.vue` (new) | component | transform (print) | `resources/js/pages/cashier/Receipt.vue` | exact |
-| `resources/js/pages/owner/WriteOffRequests.vue` (new) | component | request-response | `resources/js/pages/owner/CreditRequests.vue` | exact (near-copy, per UI-SPEC) |
-| `resources/js/pages/cashier/Dashboard.vue` (extend `paymentStatusLabel` + `v-if` chain) | component | CRUD | itself | exact |
-| `resources/js/pages/frontline-staff/Dashboard.vue` (extend `paymentStatusLabel` + `v-if` chain) | component | CRUD | itself | exact |
+| New/Modified File                                                                               | Role                  | Data Flow                               | Closest Analog                                                                                                                                                     | Match Quality                                |
+| ----------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| `database/migrations/xxxx_add_aging_and_collection_columns_to_accounts_receivable_table.php`    | migration             | CRUD                                    | `database/migrations/2026_09_04_110000_add_released_at_to_job_orders_table.php`                                                                                    | exact (additive-columns shape)               |
+| `app/Enums/AccountsReceivableAgingBracket.php`                                                  | model/enum            | CRUD                                    | `app/Enums/AccountsReceivableStatus.php`                                                                                                                           | exact (string-backed, same namespace)        |
+| `app/Enums/AccountsReceivableCollectionStatus.php`                                              | model/enum            | CRUD                                    | `app/Enums/AccountsReceivableStatus.php`                                                                                                                           | exact                                        |
+| `app/Enums/PaymentStatus.php` (extend, +`WrittenOff`)                                           | model/enum            | CRUD                                    | itself                                                                                                                                                             | exact                                        |
+| `app/Models/AccountsReceivable.php` (extend)                                                    | model                 | CRUD                                    | itself                                                                                                                                                             | exact                                        |
+| `database/factories/AccountsReceivableFactory.php` (extend)                                     | test/factory          | CRUD                                    | itself                                                                                                                                                             | exact                                        |
+| `database/seeders/SystemConfigurationSeeder.php` (extend, +`credit_term_days`)                  | config                | CRUD                                    | itself (`default_sla_days` / `cancellation_fee_amount` entries)                                                                                                    | exact                                        |
+| `app/Mail/AccountsReceivableReminder.php`                                                       | service (mailable)    | event-driven                            | `app/Mail/DesignReviewRequested.php`                                                                                                                               | exact                                        |
+| `resources/views/mail/accounts-receivable-reminder.blade.php`                                   | template              | event-driven                            | `resources/views/mail/design-review-requested.blade.php`                                                                                                           | exact                                        |
+| `app/Console/Commands/SendAccountsReceivableReminders.php`                                      | service (command)     | batch / event-driven                    | none in-repo (first Console Command) — closest process shape is `app/Actions/JobOrder/RecordDesignRevision.php` (mail-failure isolation)                           | partial                                      |
+| `routes/console.php` (extend, `Schedule::command`)                                              | config/route          | batch                                   | itself (currently stock `inspire` only)                                                                                                                            | partial (no scheduling precedent exists yet) |
+| `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php` (index, show)           | controller            | request-response (CRUD read)            | `app/Http/Controllers/Cashier/ReceiptController.php` (derived-balance shape) + `app/Http/Controllers/Owner/CreditApprovalController.php::index` (list query shape) | exact (composite)                            |
+| `app/Http/Controllers/AccountingStaff/CollectionStatusController.php`                           | controller            | request-response (CRUD update)          | `app/Http/Controllers/Cashier/ReconciliationController.php` (un-narrowed mutation, role-middleware-only)                                                           | role-match                                   |
+| `app/Http/Controllers/AccountingStaff/CollectionLetterController.php`                           | controller            | request-response (read-only render)     | `app/Http/Controllers/Cashier/ReceiptController.php`                                                                                                               | exact                                        |
+| `app/Http/Controllers/AccountingStaff/WriteOffRequestController.php`                            | controller            | request-response                        | `app/Http/Controllers/Cashier/CreditRequestController.php`                                                                                                         | exact                                        |
+| `app/Http/Controllers/Owner/WriteOffApprovalController.php` (approve, reject)                   | controller            | request-response (state transition)     | `app/Http/Controllers/Owner/CreditApprovalController.php`                                                                                                          | exact                                        |
+| `app/Http/Requests/AccountingStaff/UpdateCollectionStatusRequest.php`                           | middleware/validation | request-response                        | `app/Http/Requests/Owner/ApproveCreditRequest.php` (Policy-driven `authorize()`) + new `AccountsReceivableValidationRules` trait for `rules()`                     | role-match                                   |
+| `app/Http/Requests/AccountingStaff/RequestWriteOffRequest.php`                                  | middleware/validation | request-response                        | `app/Http/Requests/Cashier/CreateCreditRequestRequest.php` (Cashier-initiated async request)                                                                       | exact                                        |
+| `app/Http/Requests/Owner/ApproveWriteOffRequest.php` + `RejectWriteOffRequest.php`              | middleware/validation | request-response                        | `app/Http/Requests/Owner/ApproveCreditRequest.php` / `RejectCreditRequest.php`                                                                                     | exact                                        |
+| `app/Concerns/AccountsReceivableValidationRules.php` (new trait)                                | utility               | request-response                        | `app/Concerns/ProductionLogValidationRules.php`                                                                                                                    | exact                                        |
+| `app/Policies/AccountsReceivablePolicy.php` (extend, +`approveWriteOff`/`rejectWriteOff`)       | middleware/validation | request-response                        | itself (`approve`/`reject` pair)                                                                                                                                   | exact                                        |
+| `routes/portals.php` (extend `accounting-staff` group + new `owner` write-off routes)           | route                 | request-response                        | itself (existing groups)                                                                                                                                           | exact                                        |
+| `resources/js/config/nav/accounting-staff.ts` (extend)                                          | config                | —                                       | itself                                                                                                                                                             | exact                                        |
+| `resources/js/config/nav/owner.ts` (extend)                                                     | config                | —                                       | itself                                                                                                                                                             | exact                                        |
+| `resources/js/pages/accounting-staff/AccountsReceivable/Index.vue` (new)                        | component             | request-response (client-filtered list) | `resources/js/pages/owner/CreditRequests.vue` (Table shape)                                                                                                        | exact                                        |
+| `resources/js/pages/accounting-staff/AccountsReceivable/Show.vue` (new)                         | component             | request-response                        | `resources/js/pages/owner/CreditRequests.vue` (Form + AlertDialog) + `resources/js/pages/cashier/Receipt.vue` (panel/Card layout)                                  | exact (composite)                            |
+| `resources/js/pages/accounting-staff/CollectionLetter.vue` (new)                                | component             | transform (print)                       | `resources/js/pages/cashier/Receipt.vue`                                                                                                                           | exact                                        |
+| `resources/js/pages/owner/WriteOffRequests.vue` (new)                                           | component             | request-response                        | `resources/js/pages/owner/CreditRequests.vue`                                                                                                                      | exact (near-copy, per UI-SPEC)               |
+| `resources/js/pages/cashier/Dashboard.vue` (extend `paymentStatusLabel` + `v-if` chain)         | component             | CRUD                                    | itself                                                                                                                                                             | exact                                        |
+| `resources/js/pages/frontline-staff/Dashboard.vue` (extend `paymentStatusLabel` + `v-if` chain) | component             | CRUD                                    | itself                                                                                                                                                             | exact                                        |
 
 ## Pattern Assignments
 
@@ -653,14 +653,27 @@ export const accountingStaffNavItems: NavItem[] = [
 ```vue
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { ownerNavItems } from '@/config/nav/owner';
 import { index as creditRequestsIndex } from '@/routes/owner/credit-requests';
 
 defineProps<{ creditRequests: CreditRequest[] }>();
 
 defineOptions({
-    layout: { navItems: ownerNavItems, breadcrumbs: [{ title: 'Credit Requests', href: creditRequestsIndex() }] },
+    layout: {
+        navItems: ownerNavItems,
+        breadcrumbs: [
+            { title: 'Credit Requests', href: creditRequestsIndex() },
+        ],
+    },
 });
 </script>
 ```
@@ -708,7 +721,12 @@ function printReceipt(): void {
 }
 </script>
 <template>
-    <Button variant="outline" class="mx-auto w-fit print:hidden" @click="printReceipt">Print Receipt</Button>
+    <Button
+        variant="outline"
+        class="mx-auto w-fit print:hidden"
+        @click="printReceipt"
+        >Print Receipt</Button
+    >
     <Card class="mx-auto w-full max-w-sm">
         <CardContent class="grid gap-4">
             <!-- caption/value rows -->
@@ -717,7 +735,7 @@ function printReceipt(): void {
 </template>
 ```
 
-**Delta:** rename the print handler/button to "Print Letter", widen the `Card` to `max-w-2xl` (UI-SPEC §3 — a letter is prose, not a till slip) and add `print:border-0 print:shadow-none` (the one refinement over `Receipt.vue`, which prints with a visible border). Document body order per UI-SPEC §3 (letterhead → rule → date → addressee → reference → bracket body paragraph → amount block → due-date line → payment instruction → signature). No `TrackingQrCode` — this page has no QR code. Reuse `Receipt.vue`'s exact `money()` helper function for figures inside this letter (the phase's new `toLocaleString`-with-separators contract applies to the *aging list/detail* surfaces per UI-SPEC §Typography; the letter itself isn't listed among those, so default to matching `Receipt.vue`'s `toFixed(2)` unless the planner decides the letter's larger amounts warrant separators too — call this out for the planner to lock, it is a genuinely ambiguous edge in the UI-SPEC's Typography section).
+**Delta:** rename the print handler/button to "Print Letter", widen the `Card` to `max-w-2xl` (UI-SPEC §3 — a letter is prose, not a till slip) and add `print:border-0 print:shadow-none` (the one refinement over `Receipt.vue`, which prints with a visible border). Document body order per UI-SPEC §3 (letterhead → rule → date → addressee → reference → bracket body paragraph → amount block → due-date line → payment instruction → signature). No `TrackingQrCode` — this page has no QR code. Reuse `Receipt.vue`'s exact `money()` helper function for figures inside this letter (the phase's new `toLocaleString`-with-separators contract applies to the _aging list/detail_ surfaces per UI-SPEC §Typography; the letter itself isn't listed among those, so default to matching `Receipt.vue`'s `toFixed(2)` unless the planner decides the letter's larger amounts warrant separators too — call this out for the planner to lock, it is a genuinely ambiguous edge in the UI-SPEC's Typography section).
 
 ---
 
@@ -726,6 +744,7 @@ function printReceipt(): void {
 **Analog:** `resources/js/pages/owner/CreditRequests.vue` (full file read above, in full — UI-SPEC §4 explicitly calls this a "near-copy" and directs reuse of the exact skeleton).
 
 The entire file above is the template. **Delta (per UI-SPEC §4):**
+
 - Add "Reason" (`line-clamp-2` in the cell) and "Days Past Due" (`tabular-nums`) table columns.
 - **Invert button polarity**: "Approve Write-Off" becomes the `variant="destructive"` trigger+confirm pair (was `Button` default in `CreditRequests.vue`'s "Approve Credit"); "Reject Request" becomes the `variant="outline"` trigger with a default (`--primary`) confirm button (was `variant="destructive"` in `CreditRequests.vue`'s "Reject Credit"). This is the one structural difference from a literal copy — every other prop/slot/`Form v-bind` wiring is identical.
 - Swap `CreditApprovalController.approve.form(...)` / `.reject.form(...)` for `WriteOffApprovalController.approve.form(...)` / `.reject.form(...)`.
@@ -763,7 +782,10 @@ function paymentStatusLabel(status: string): string {
 
 ```vue
 <!-- cashier/Dashboard.vue:299-336, verbatim shape — no v-else fallback -->
-<Badge v-if="jobOrder.payment_status === 'unpaid'" ...>{{ paymentStatusLabel(jobOrder.payment_status) }}</Badge>
+<Badge
+    v-if="jobOrder.payment_status === 'unpaid'"
+    ...
+>{{ paymentStatusLabel(jobOrder.payment_status) }}</Badge>
 <Badge v-else-if="jobOrder.payment_status === 'partially_paid'" ...>...</Badge>
 <Badge v-else-if="jobOrder.payment_status === 'paid'" ...>...</Badge>
 <Badge v-else-if="jobOrder.payment_status === 'on_credit'" ...>...</Badge>
@@ -816,12 +838,12 @@ function paymentStatusLabel(status: string): string {
 
 ## No Analog Found
 
-| File / Pattern | Role | Data Flow | Reason |
-|---|---|---|---|
-| `app/Console/Commands/SendAccountsReceivableReminders.php` | service (command) | batch | `app/Console/Commands/` does not exist in this repo — this is genuinely the first scheduled Artisan command (D-07 names this explicitly). `RecordDesignRevision`'s mail-failure-isolation shape is the only borrowable fragment; the chunked-query-over-a-status-filter loop and the scheduler registration itself have no in-repo precedent. Follow RESEARCH.md `## Architecture Patterns` → Pattern 1 and Pattern 1a directly. |
-| `routes/console.php` scheduling block | config/route | batch | Currently holds only the stock `inspire` example — no existing `Schedule::command(...)` call anywhere in the codebase to copy. Verified against Laravel 13 docs in RESEARCH.md rather than an in-repo analog. |
-| Bracket summary `Card` row + `Tabs` + `Table` three-part composite on one page | component | request-response | No page in this exact domain (Accounts Receivable) combines all three; the closest composite precedent is Phase 6's `resources/js/pages/production-staff/Dashboard.vue` (stat cards + Tabs + Table, per `06-PATTERNS.md`), not re-read in full here — read it directly before implementing `Index.vue` if `CreditRequests.vue` alone isn't enough. |
-| `Mail::fake()`/`Mail::assertSent()` test convention | test | event-driven | Per RESEARCH.md Pitfall 5, neither existing `DesignReviewRequested`-touching test file asserts on the mail facade. AR-02's command tests will be this codebase's first `Mail::fake()` usage — standard Pest/Laravel syntax, not a project-specific pattern to copy. |
+| File / Pattern                                                                 | Role              | Data Flow        | Reason                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------------------------------ | ----------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app/Console/Commands/SendAccountsReceivableReminders.php`                     | service (command) | batch            | `app/Console/Commands/` does not exist in this repo — this is genuinely the first scheduled Artisan command (D-07 names this explicitly). `RecordDesignRevision`'s mail-failure-isolation shape is the only borrowable fragment; the chunked-query-over-a-status-filter loop and the scheduler registration itself have no in-repo precedent. Follow RESEARCH.md `## Architecture Patterns` → Pattern 1 and Pattern 1a directly. |
+| `routes/console.php` scheduling block                                          | config/route      | batch            | Currently holds only the stock `inspire` example — no existing `Schedule::command(...)` call anywhere in the codebase to copy. Verified against Laravel 13 docs in RESEARCH.md rather than an in-repo analog.                                                                                                                                                                                                                    |
+| Bracket summary `Card` row + `Tabs` + `Table` three-part composite on one page | component         | request-response | No page in this exact domain (Accounts Receivable) combines all three; the closest composite precedent is Phase 6's `resources/js/pages/production-staff/Dashboard.vue` (stat cards + Tabs + Table, per `06-PATTERNS.md`), not re-read in full here — read it directly before implementing `Index.vue` if `CreditRequests.vue` alone isn't enough.                                                                               |
+| `Mail::fake()`/`Mail::assertSent()` test convention                            | test              | event-driven     | Per RESEARCH.md Pitfall 5, neither existing `DesignReviewRequested`-touching test file asserts on the mail facade. AR-02's command tests will be this codebase's first `Mail::fake()` usage — standard Pest/Laravel syntax, not a project-specific pattern to copy.                                                                                                                                                              |
 
 ## Metadata
 

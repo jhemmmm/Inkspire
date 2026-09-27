@@ -6,11 +6,11 @@ use App\Models\QueueEntry;
 use App\Models\User;
 
 test('a newly created artist is given the next free label', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
     User::factory()->artist()->create(['artist_label' => 'Artist 1']);
     User::factory()->artist()->create(['artist_label' => 'Artist 2']);
 
-    $this->actingAs($owner)->post(route('owner.users.store'), [
+    $this->actingAs($admin)->post(route('admin.users.store'), [
         'name' => 'New Artist',
         'email' => 'new-artist@inkspire.test',
         'role' => UserRole::Artist->value,
@@ -22,11 +22,11 @@ test('a newly created artist is given the next free label', function () {
 });
 
 test('a freed number is reused rather than skipped', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
     User::factory()->artist()->create(['artist_label' => 'Artist 1']);
     User::factory()->artist()->create(['artist_label' => 'Artist 3']);
 
-    $this->actingAs($owner)->post(route('owner.users.store'), [
+    $this->actingAs($admin)->post(route('admin.users.store'), [
         'name' => 'Replacement',
         'email' => 'replacement@inkspire.test',
         'role' => UserRole::Artist->value,
@@ -38,9 +38,9 @@ test('a freed number is reused rather than skipped', function () {
 });
 
 test('non-artist roles are never given a label', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
 
-    $this->actingAs($owner)->post(route('owner.users.store'), [
+    $this->actingAs($admin)->post(route('admin.users.store'), [
         'name' => 'New Cashier',
         'email' => 'new-cashier@inkspire.test',
         'role' => UserRole::Cashier->value,
@@ -51,11 +51,11 @@ test('non-artist roles are never given a label', function () {
     expect(User::where('email', 'new-cashier@inkspire.test')->value('artist_label'))->toBeNull();
 });
 
-test('the owner user list shows each artist their label', function () {
-    $owner = User::factory()->owner()->create(['name' => 'AAA Owner']);
+test('the admin user list shows each artist their label', function () {
+    $admin = User::factory()->admin()->create(['name' => 'AAA Admin']);
     User::factory()->artist()->create(['name' => 'ZZZ Artist', 'artist_label' => 'Artist 4']);
 
-    $response = $this->actingAs($owner)->get(route('owner.users.index'));
+    $response = $this->actingAs($admin)->get(route('admin.users.index'));
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
@@ -85,12 +85,14 @@ test('the artist dashboard tells the artist their own label', function () {
     $response->assertInertia(fn ($page) => $page->where('artistLabel', 'Artist 5'));
 });
 
-test('queue numbers are padded to three digits', function () {
+test('queue numbers are padded to three digits behind their lane prefix', function () {
     $entry = QueueEntry::factory()->create(['queue_number' => 1]);
     $hundreds = QueueEntry::factory()->create(['queue_number' => 142]);
     $thousands = QueueEntry::factory()->create(['queue_number' => 1042]);
+    $rush = QueueEntry::factory()->create(['queue_prefix' => 'R', 'queue_number' => 7]);
 
-    expect($entry->paddedNumber())->toBe('001')
-        ->and($hundreds->paddedNumber())->toBe('142')
-        ->and($thousands->paddedNumber())->toBe('1042');
+    expect($entry->paddedNumber())->toBe('A-001')
+        ->and($hundreds->paddedNumber())->toBe('A-142')
+        ->and($thousands->paddedNumber())->toBe('A-1042')
+        ->and($rush->paddedNumber())->toBe('R-007');
 });

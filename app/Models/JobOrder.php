@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Actions\POS\ComputeJobOrderPrice;
 use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
 use App\Enums\PaymentStatus;
@@ -10,6 +11,8 @@ use App\Observers\AuditObserver;
 use Database\Factories\JobOrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,8 +29,9 @@ use Illuminate\Support\Str;
  * @property int $queue_entry_id
  * @property string $description
  * @property string|null $print_size
- * @property string|null $material
  * @property int|null $quantity
+ * @property float|null $width_ft
+ * @property float|null $height_ft
  * @property Carbon|null $deadline
  * @property string|null $client_notes
  * @property JobOrderType $type
@@ -39,6 +43,7 @@ use Illuminate\Support\Str;
  * @property string|null $consultation_notes
  * @property PaymentStatus $payment_status
  * @property int|null $pricing_entry_id
+ * @property float|null $quoted_amount
  * @property float|null $base_price_snapshot
  * @property bool $rush_fee_applied
  * @property float|null $rush_fee_amount
@@ -51,7 +56,7 @@ use Illuminate\Support\Str;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property float|null $amount_paid Not a persisted column — only present
- *                                   when eager-loaded via withSum() (Cashier Dashboard listing, D-04/D-05).
+ *                                   when loaded via the withAmountPaid() scope.
  * @property bool $is_rush The staff-declared urgency flag captured at the
  *                         counter at intake (RUSH-01). A real, NOT NULL column since
  *                         2026_09_10_120000 — it was previously computed in memory only.
@@ -61,8 +66,9 @@ use Illuminate\Support\Str;
  * @property Carbon|null $ready_at Not a persisted column — only present when
  *                                 eager-loaded via withMax() over productionLogs (PROD-03, D-13);
  *                                 the moment this job order last reached ready_for_pickup.
+ * @property float|null $display_total Not a persisted column — see displayTotal().
  */
-#[Fillable(['number', 'queue_entry_id', 'description', 'print_size', 'material', 'quantity', 'deadline', 'is_rush', 'client_notes', 'pricing_entry_id', 'type', 'status', 'file_path', 'consultation_notes'])]
+#[Fillable(['number', 'queue_entry_id', 'description', 'print_size', 'quantity', 'width_ft', 'height_ft', 'deadline', 'is_rush', 'client_notes', 'pricing_entry_id', 'quoted_amount', 'type', 'status', 'file_path', 'consultation_notes'])]
 #[ObservedBy(AuditObserver::class)]
 class JobOrder extends Model
 {
@@ -98,15 +104,25 @@ class JobOrder extends Model
             'status' => JobOrderStatus::class,
             'payment_status' => PaymentStatus::class,
             'is_rush' => 'boolean',
+            'width_ft' => 'decimal:2',
+            'height_ft' => 'decimal:2',
+            'quoted_amount' => 'decimal:2',
             'base_price_snapshot' => 'decimal:2',
             'rush_fee_applied' => 'boolean',
             'rush_fee_amount' => 'decimal:2',
             'discount_value' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'total_amount' => 'decimal:2',
+            // The withAmountPaid() aggregate arrives from PDO as a string.
+            'amount_paid' => 'float',
             'cancelled_at' => 'datetime',
             'released_at' => 'datetime',
             'due_at' => 'datetime',
+            // When an Artist claimed this out of the shared pool. Uncast
+            // until now because nothing read it as a date -- QUEUE_ORDER
+            // sorts on it in raw SQL -- so the first caller to treat it as
+            // a Carbon instance got a string back instead.
+            'accepted_at' => 'datetime',
             // The date the customer was promised, captured at intake. Distinct
             // from `due_at`, which EnterProduction stamps from the SLA config.
             'deadline' => 'date',
@@ -194,6 +210,106 @@ class JobOrder extends Model
             : $this->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount'));
 
         return $this->total_amount !== null ? round((float) $this->total_amount - $amountPaid, 2) : 0.0;
+    }
+
+    /**
+     * The single source of truth for "can pricing on this job order still be
+     * changed?" Replaces four checks that previously disagreed with each
+     * other: the PayMongo path and the credit-request path both tested
+     * `total_amount === null`, while the Cash path and
+     * `SavePricingAndPaymentRequest` both tested "no transactions exist".
+     * None of the four locked an Admin-approved On-Credit order — which has
+     * `payment_status` `OnCredit`, a real `AccountsReceivable` row, and zero
+     * `Transaction` rows, since the credit line itself is never a
+     * `Transaction` — leaving a Cashier free to reprice an already-approved
+     * credit order.
+     *
+     * Locked once cancelled, or once `payment_status` reaches any of Paid,
+     * WrittenOff, CreditPendingApproval, OnCredit or PendingConfirmation.
+     * `CreditRejected` is deliberately excluded: a rejected credit request
+     * leaves the job order priced and unpaid, exactly the state pricing must
+     * stay editable in. Only the specific `payment_status` values above
+     * lock pricing — the mere existence of an AR row does not.
+     *
+     * Otherwise editable only while no transactions exist yet. Safe to call
+     * on either an eager-loaded (uses the loaded `transactions` collection,
+     * no extra query) or a bare instance (falls back to a fresh query),
+     * mirroring outstandingBalance()'s loaded-vs-fresh pattern above.
+     */
+    public function pricingIsEditable(): bool
+    {
+        if ($this->cancelled_at !== null) {
+            return false;
+        }
+
+        if (in_array($this->payment_status, [
+            PaymentStatus::Paid,
+            PaymentStatus::WrittenOff,
+            PaymentStatus::CreditPendingApproval,
+            PaymentStatus::OnCredit,
+            PaymentStatus::PendingConfirmation,
+        ], true)) {
+            return false;
+        }
+
+        return $this->relationLoaded('transactions')
+            ? $this->transactions->isEmpty()
+            : ! $this->transactions()->exists();
+    }
+
+    /**
+     * Load `amount_paid`: the sum of this job order's Completed
+     * transactions, the same money outstandingBalance() subtracts.
+     *
+     * @param  Builder<JobOrder>  $query
+     */
+    public function scopeWithAmountPaid(Builder $query): void
+    {
+        $query->withSum(['transactions as amount_paid' => fn (Builder $inner) => $inner->where('status', TransactionStatus::Completed->value)], 'amount');
+    }
+
+    /**
+     * Contains-match on number, description or customer name. `%` and `_`
+     * in the term are literals, and the explicit ESCAPE clause makes that
+     * hold on SQLite as well as MySQL (which escapes backslash by default).
+     *
+     * @param  Builder<JobOrder>  $query
+     */
+    public function scopeSearch(Builder $query, string $term): void
+    {
+        $pattern = '%'.addcslashes($term, '%_\\').'%';
+
+        $query->where(function (Builder $inner) use ($pattern): void {
+            $inner->whereRaw('number LIKE ? ESCAPE ?', [$pattern, '\\'])
+                ->orWhereRaw('description LIKE ? ESCAPE ?', [$pattern, '\\'])
+                ->orWhereHas('queueEntry.customer', fn (Builder $customer) => $customer->whereRaw('name LIKE ? ESCAPE ?', [$pattern, '\\']));
+        });
+    }
+
+    /**
+     * The best price figure for job order tables: the Cashier's locked
+     * `total_amount`, otherwise a rush-inclusive estimate from the intake
+     * `quoted_amount`, otherwise null. Not appended by default — table
+     * controllers call `->append('display_total')` and must select
+     * `total_amount`, `quoted_amount` and `is_rush`.
+     *
+     * @return Attribute<float|null, never>
+     */
+    protected function displayTotal(): Attribute
+    {
+        return Attribute::make(
+            get: function (): ?float {
+                if ($this->total_amount !== null) {
+                    return (float) $this->total_amount;
+                }
+
+                if ($this->quoted_amount === null) {
+                    return null;
+                }
+
+                return app(ComputeJobOrderPrice::class)((float) $this->quoted_amount, $this->is_rush, null, null)['total_amount'];
+            },
+        );
     }
 
     /**

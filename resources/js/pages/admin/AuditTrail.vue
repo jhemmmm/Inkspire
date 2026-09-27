@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
+import { Filter } from '@lucide/vue';
 import { ref } from 'vue';
+import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
-import { ownerNavItems } from '@/config/nav/owner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { adminNavItems } from '@/config/nav/admin';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Pagination,
     PaginationContent,
@@ -30,7 +37,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { index as auditTrailIndex } from '@/routes/owner/audit-trail';
+import { index as auditTrailIndex } from '@/routes/admin/audit-trail';
 
 interface AuditTrailUser {
     id: number;
@@ -77,7 +84,7 @@ const props = defineProps<{
 
 defineOptions({
     layout: {
-        navItems: ownerNavItems,
+        navItems: adminNavItems,
         breadcrumbs: [
             {
                 title: 'Audit Trail',
@@ -114,7 +121,9 @@ function shortClassName(type: string | null): string {
 function target(entry: AuditEntry): string {
     const className = shortClassName(entry.auditable_type);
 
-    return entry.auditable_id ? `${className} #${entry.auditable_id}` : className;
+    return entry.auditable_id
+        ? `${className} #${entry.auditable_id}`
+        : className;
 }
 
 function formattedTimestamp(entry: AuditEntry): string {
@@ -126,7 +135,9 @@ function visit(page?: number): void {
         auditTrailIndex.url(),
         {
             ...(selectedUser.value !== ALL ? { user: selectedUser.value } : {}),
-            ...(selectedAction.value !== ALL ? { action: selectedAction.value } : {}),
+            ...(selectedAction.value !== ALL
+                ? { action: selectedAction.value }
+                : {}),
             ...(fromDate.value ? { from: fromDate.value } : {}),
             ...(toDate.value ? { to: toDate.value } : {}),
             ...(page ? { page } : {}),
@@ -147,75 +158,111 @@ function clearFilters(): void {
 <template>
     <Head title="Audit Trail" />
 
-    <div class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-        <h1 class="text-[28px] leading-[1.2] font-semibold">Audit Trail</h1>
+    <PageContainer>
+        <PageHeader
+            title="Audit Trail"
+            description="Every recorded change, append-only. Filter by user, action or date to trace what happened."
+        />
 
-        <form
-            class="flex flex-wrap items-end gap-4"
-            @submit.prevent="visit()"
-        >
-            <div class="flex flex-col gap-1">
-                <label class="text-sm font-semibold" for="audit-filter-user">User</label>
-                <Select v-model="selectedUser">
-                    <SelectTrigger id="audit-filter-user" class="w-48">
-                        <SelectValue placeholder="All users" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem :value="ALL">All users</SelectItem>
-                        <SelectItem
-                            v-for="user in users"
-                            :key="user.id"
-                            :value="String(user.id)"
+        <Card>
+            <CardHeader :icon="Filter">
+                <CardTitle>Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <form
+                    class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                    @submit.prevent="visit()"
+                >
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <Label for="audit-filter-user">User</Label>
+                        <Select v-model="selectedUser">
+                            <SelectTrigger
+                                id="audit-filter-user"
+                                class="w-full"
+                            >
+                                <SelectValue placeholder="All users" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem :value="ALL">All users</SelectItem>
+                                <SelectItem
+                                    v-for="user in users"
+                                    :key="user.id"
+                                    :value="String(user.id)"
+                                >
+                                    {{ user.name }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <Label for="audit-filter-action">Action</Label>
+                        <Select v-model="selectedAction">
+                            <SelectTrigger
+                                id="audit-filter-action"
+                                class="w-full"
+                            >
+                                <SelectValue placeholder="All actions" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem :value="ALL">
+                                    All actions
+                                </SelectItem>
+                                <SelectItem
+                                    v-for="action in actions"
+                                    :key="action"
+                                    :value="action"
+                                >
+                                    {{ actionLabel(action) }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <Label for="audit-filter-from">From</Label>
+                        <Input
+                            id="audit-filter-from"
+                            v-model="fromDate"
+                            type="date"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <Label for="audit-filter-to">To</Label>
+                        <Input
+                            id="audit-filter-to"
+                            v-model="toDate"
+                            type="date"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div
+                        class="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-4"
+                    >
+                        <Button
+                            type="submit"
+                            data-test="apply-audit-filters-button"
                         >
-                            {{ user.name }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-sm font-semibold" for="audit-filter-action">Action</label>
-                <Select v-model="selectedAction">
-                    <SelectTrigger id="audit-filter-action" class="w-48">
-                        <SelectValue placeholder="All actions" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem :value="ALL">All actions</SelectItem>
-                        <SelectItem
-                            v-for="action in actions"
-                            :key="action"
-                            :value="action"
+                            <Filter class="size-4" />
+                            Apply Filters
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            data-test="clear-audit-filters-button"
+                            @click="clearFilters"
                         >
-                            {{ actionLabel(action) }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+                            Clear
+                        </Button>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
 
-            <div class="flex flex-col gap-1">
-                <label class="text-sm font-semibold" for="audit-filter-from">From</label>
-                <Input id="audit-filter-from" v-model="fromDate" type="date" class="w-40" />
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-sm font-semibold" for="audit-filter-to">To</label>
-                <Input id="audit-filter-to" v-model="toDate" type="date" class="w-40" />
-            </div>
-
-            <Button type="submit" data-test="apply-audit-filters-button">
-                Apply Filters
-            </Button>
-            <Button
-                type="button"
-                variant="secondary"
-                data-test="clear-audit-filters-button"
-                @click="clearFilters"
-            >
-                Clear
-            </Button>
-        </form>
-
-        <div class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border">
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -229,16 +276,16 @@ function clearFilters(): void {
                 </TableHeader>
                 <TableBody>
                     <TableEmpty v-if="entries.data.length === 0" :colspan="6">
-                        <div class="flex flex-col items-center gap-1 text-center">
-                            <p class="font-semibold">No matching audit events</p>
-                            <p class="text-muted-foreground">
-                                No mutating actions or auth events match these
-                                filters. Try a wider date range or clear the
-                                user/action filters.
-                            </p>
-                        </div>
+                        <EmptyState
+                            title="No matching audit events"
+                            description="No mutating actions or auth events match these filters. Try a wider date range or clear the user/action filters."
+                        />
                     </TableEmpty>
-                    <TableRow v-for="entry in entries.data" v-else :key="entry.id">
+                    <TableRow
+                        v-for="entry in entries.data"
+                        v-else
+                        :key="entry.id"
+                    >
                         <TableCell>{{ formattedTimestamp(entry) }}</TableCell>
                         <TableCell>{{ entry.user?.name ?? '—' }}</TableCell>
                         <TableCell>{{ entry.user?.role ?? '—' }}</TableCell>
@@ -248,7 +295,7 @@ function clearFilters(): void {
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
+        </DataTableCard>
 
         <Pagination
             v-if="entries.last_page > 1"
@@ -273,12 +320,16 @@ function clearFilters(): void {
                     >
                         {{ item.value }}
                     </PaginationItem>
-                    <PaginationEllipsis v-else :key="`ellipsis-${index}`" :index="index" />
+                    <PaginationEllipsis
+                        v-else
+                        :key="`ellipsis-${index}`"
+                        :index="index"
+                    />
                 </template>
 
                 <PaginationNext />
                 <PaginationLast />
             </PaginationContent>
         </Pagination>
-    </div>
+    </PageContainer>
 </template>

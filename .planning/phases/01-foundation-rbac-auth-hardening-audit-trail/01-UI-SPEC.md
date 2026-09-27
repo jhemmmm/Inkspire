@@ -17,17 +17,18 @@ Source: `components.json` (already initialized in repo), `resources/css/app.css`
 
 ## Design System
 
-| Property | Value |
-|----------|-------|
-| Tool | shadcn (already initialized — `components.json` present) |
-| Preset | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none |
-| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge, per `components.json` |
-| Icon library | lucide (`@lucide/vue`) |
-| Font | Instrument Sans (loaded via Bunny Fonts in `laravel-vite-plugin`), fallback `ui-sans-serif, system-ui, sans-serif` |
+| Property          | Value                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Tool              | shadcn (already initialized — `components.json` present)                                                           |
+| Preset            | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none                                     |
+| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge, per `components.json`                        |
+| Icon library      | lucide (`@lucide/vue`)                                                                                             |
+| Font              | Instrument Sans (loaded via Bunny Fonts in `laravel-vite-plugin`), fallback `ui-sans-serif, system-ui, sans-serif` |
 
 Existing installed `ui/` primitives usable as-is for this phase: `button`, `input`, `label`, `checkbox`, `select`, `dialog`, `sheet`, `dropdown-menu`, `navigation-menu`, `sidebar`, `breadcrumb`, `card`, `alert`, `badge`, `separator`, `skeleton`, `sonner` (toasts), `spinner`, `tooltip`, `collapsible`, `avatar`, `input-otp`.
 
 Components NOT yet installed that this phase needs (add via `npx shadcn add {name}`, official registry, no vetting required):
+
 - `table` — audit trail list, user management list
 - `pagination` — audit trail list (large, growing dataset)
 - `alert-dialog` — destructive confirmation for "Deactivate Account" (do not reuse plain `dialog` for destructive confirms — reserve `alert-dialog` semantics for irreversible/high-stakes actions)
@@ -41,15 +42,15 @@ Components NOT yet installed that this phase needs (add via `npx shadcn add {nam
 
 Declared values (must be multiples of 4):
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| xs | 4px | Icon-to-label gaps, badge inline padding |
-| sm | 8px | Compact form field gaps (matches existing `gap-2` in `Login.vue`) |
-| md | 16px | Default element spacing, card padding, table cell padding |
-| lg | 24px | Section padding within a portal page |
-| xl | 32px | Layout gaps between major page regions (sidebar content offset) |
-| 2xl | 48px | Major section breaks (e.g. between config groups on System Configuration page) |
-| 3xl | 64px | Page-level top/bottom spacing on full-page auth screens |
+| Token | Value | Usage                                                                          |
+| ----- | ----- | ------------------------------------------------------------------------------ |
+| xs    | 4px   | Icon-to-label gaps, badge inline padding                                       |
+| sm    | 8px   | Compact form field gaps (matches existing `gap-2` in `Login.vue`)              |
+| md    | 16px  | Default element spacing, card padding, table cell padding                      |
+| lg    | 24px  | Section padding within a portal page                                           |
+| xl    | 32px  | Layout gaps between major page regions (sidebar content offset)                |
+| 2xl   | 48px  | Major section breaks (e.g. between config groups on System Configuration page) |
+| 3xl   | 64px  | Page-level top/bottom spacing on full-page auth screens                        |
 
 Exceptions: Interactive row-level controls in the audit trail table (filter chips, per-row expand) use a 40px minimum touch/click target height (existing shadcn `Button`/`Input` default height, `h-9`/`h-10`) even though 40 is not on the 8-point scale — this matches the already-installed component defaults and is not overridden.
 
@@ -57,12 +58,12 @@ Exceptions: Interactive row-level controls in the audit trail table (filter chip
 
 ## Typography
 
-| Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
-| Body | 14px | 400 (regular) | 1.5 |
-| Label | 14px | 600 (semibold) | 1.4 |
-| Heading | 20px | 600 (semibold) | 1.2 |
-| Display | 28px | 600 (semibold) | 1.2 |
+| Role    | Size | Weight         | Line Height |
+| ------- | ---- | -------------- | ----------- |
+| Body    | 14px | 400 (regular)  | 1.5         |
+| Label   | 14px | 600 (semibold) | 1.4         |
+| Heading | 20px | 600 (semibold) | 1.2         |
+| Display | 28px | 600 (semibold) | 1.2         |
 
 - Body (14px/400/1.5): form input text, table cell values, audit log entry descriptions, helper/description text.
 - Label (14px/600/1.4): form field labels, table column headers, badge text, nav item text.
@@ -77,12 +78,12 @@ Only two weights used across the phase: 400 and 600. Do not introduce 500 (mediu
 
 Existing neutral shadcn theme (`resources/css/app.css` `:root` / `.dark`) is monochrome — accent and dominant/secondary all derive from the same near-black/white/gray scale, not a separate hue. Contract below maps the 60/30/10 split onto those existing tokens; no new colors introduced.
 
-| Role | Value | Usage |
-|------|-------|-------|
-| Dominant (60%) | `--background` (`hsl(0 0% 100%)` light / `hsl(0 0% 3.9%)` dark) | Page background, main content canvas across all 7 portals |
-| Secondary (30%) | `--card` / `--sidebar` / `--muted` (`hsl(0 0% 98%)` / `hsl(0 0% 96.1%)`) | Sidebar nav, card containers, table zebra-striping, config section panels |
-| Accent (10%) | `--primary` (`hsl(0 0% 9%)` light / `hsl(0 0% 98%)` dark) | Reserved for: primary submit buttons ("Save Configuration", "Log In"), active sidebar nav item indicator, focus rings, links (`TextLink.vue`) |
-| Destructive | `--destructive` (`hsl(0 84.2% 60.2%)`) | Reserved for: "Deactivate Account" confirm button, account-locked-out status badge, failed-login-attempt indicator in audit trail, session-timeout/kicked-out alert banners |
+| Role            | Value                                                                    | Usage                                                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dominant (60%)  | `--background` (`hsl(0 0% 100%)` light / `hsl(0 0% 3.9%)` dark)          | Page background, main content canvas across all 7 portals                                                                                                                   |
+| Secondary (30%) | `--card` / `--sidebar` / `--muted` (`hsl(0 0% 98%)` / `hsl(0 0% 96.1%)`) | Sidebar nav, card containers, table zebra-striping, config section panels                                                                                                   |
+| Accent (10%)    | `--primary` (`hsl(0 0% 9%)` light / `hsl(0 0% 98%)` dark)                | Reserved for: primary submit buttons ("Save Configuration", "Log In"), active sidebar nav item indicator, focus rings, links (`TextLink.vue`)                               |
+| Destructive     | `--destructive` (`hsl(0 84.2% 60.2%)`)                                   | Reserved for: "Deactivate Account" confirm button, account-locked-out status badge, failed-login-attempt indicator in audit trail, session-timeout/kicked-out alert banners |
 
 Accent reserved for: primary form submit buttons, active nav indicator, focus states, hyperlinks only. Never used for decorative fills, illustrations, or as a general "highlight" color on non-interactive elements.
 
@@ -90,21 +91,21 @@ Accent reserved for: primary form submit buttons, active nav indicator, focus st
 
 ## Copywriting Contract
 
-| Element | Copy |
-|---------|------|
-| Primary CTA (System Configuration) | "Save Changes" |
-| Primary CTA (User Management) | "Deactivate Account" (destructive variant, requires confirmation) |
-| Primary CTA (Login, existing) | "Log in" — unchanged from `Login.vue` |
-| Empty state heading (Audit Trail, filtered to zero results) | "No matching audit events" |
-| Empty state body (Audit Trail) | "No mutating actions or auth events match these filters. Try a wider date range or clear the user/action filters." |
-| Empty state heading (User list, filtered to zero results) | "No matching users" |
-| Empty state body (User list) | "No accounts match this search. Check the spelling or clear the filter." |
-| Error state (invalid login credentials) | "These credentials don't match our records. Check your email and password and try again." |
-| Error state (account locked out) | "Too many failed attempts. This account is locked for {n} minutes. Contact your Owner or Admin if you need immediate access." |
-| Error state (403 role boundary) | "You don't have access to this page. This area is only available to {role} accounts. Return to your dashboard." |
-| Error state (idle session timeout) | "Your session expired after {n} minutes of inactivity. Log in again to continue." |
-| Error state (concurrent session invalidated) | "You were signed out because this account logged in from another device. If this wasn't you, contact your Owner or Admin." |
-| Destructive confirmation (deactivate account) | "Deactivate {user_name}'s account? They will immediately lose the ability to log in. This does not delete their data and can be reversed by reactivating the account." |
+| Element                                                     | Copy                                                                                                                                                                   |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Primary CTA (System Configuration)                          | "Save Changes"                                                                                                                                                         |
+| Primary CTA (User Management)                               | "Deactivate Account" (destructive variant, requires confirmation)                                                                                                      |
+| Primary CTA (Login, existing)                               | "Log in" — unchanged from `Login.vue`                                                                                                                                  |
+| Empty state heading (Audit Trail, filtered to zero results) | "No matching audit events"                                                                                                                                             |
+| Empty state body (Audit Trail)                              | "No mutating actions or auth events match these filters. Try a wider date range or clear the user/action filters."                                                     |
+| Empty state heading (User list, filtered to zero results)   | "No matching users"                                                                                                                                                    |
+| Empty state body (User list)                                | "No accounts match this search. Check the spelling or clear the filter."                                                                                               |
+| Error state (invalid login credentials)                     | "These credentials don't match our records. Check your email and password and try again."                                                                              |
+| Error state (account locked out)                            | "Too many failed attempts. This account is locked for {n} minutes. Contact your Owner or Admin if you need immediate access."                                          |
+| Error state (403 role boundary)                             | "You don't have access to this page. This area is only available to {role} accounts. Return to your dashboard."                                                        |
+| Error state (idle session timeout)                          | "Your session expired after {n} minutes of inactivity. Log in again to continue."                                                                                      |
+| Error state (concurrent session invalidated)                | "You were signed out because this account logged in from another device. If this wasn't you, contact your Owner or Admin."                                             |
+| Destructive confirmation (deactivate account)               | "Deactivate {user_name}'s account? They will immediately lose the ability to log in. This does not delete their data and can be reversed by reactivating the account." |
 
 No other destructive actions exist in this phase — audit trail entries have no delete/edit affordance in the UI at all (button/link is structurally absent, not disabled), matching AUDIT-02.
 
@@ -112,8 +113,8 @@ No other destructive actions exist in this phase — audit trail entries have no
 
 ## Registry Safety
 
-| Registry | Blocks Used | Safety Gate |
-|----------|-------------|-------------|
+| Registry        | Blocks Used                                                                            | Safety Gate  |
+| --------------- | -------------------------------------------------------------------------------------- | ------------ |
 | shadcn official | `table`, `pagination`, `alert-dialog`, `tabs`, `switch` (to be added during execution) | not required |
 
 No third-party registries declared for this phase. If a future phase needs a third-party block, the registry vetting gate (`npx shadcn view {block} --registry {url}`) must run before it's added to that phase's UI-SPEC.

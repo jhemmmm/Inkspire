@@ -58,6 +58,7 @@ completed: 2026-09-07
 - **Files modified:** 9 (4 created, 5 modified)
 
 ## Accomplishments
+
 - A customer can type a job order number on a fully public, unauthenticated `/track` page and see exactly its current stage — nothing else
 - The server-side `publicStage()` mapping collapses all eight pre-production statuses into "In Progress" and never serializes the raw `JobOrderStatus` enum value to the client
 - The lookup form's validation regex accepts every number `JobOrder::nextNumberForYear()` can actually produce, including a 5+-digit yearly sequence, proven by a dedicated test
@@ -72,6 +73,7 @@ Each task was committed atomically (Task 1 used TDD: test → feat):
 2. **Task 2: Receipt QR deep link** - `2f1967d` (feat)
 
 ## Files Created/Modified
+
 - `app/Http/Controllers/Public/TrackingController.php` - `show()` renders `public/Tracking` with an explicit column allowlist (`['number', 'status', 'released_at']`) and response shape (`['found', 'number', 'stage']`); `publicStage()` implements the D-02 mapping table
 - `app/Http/Requests/Public/TrackJobOrderRequest.php` - `number` validation, nullable + `\d{4,}`-suffixed regex, custom copywriting-contract error message
 - `resources/js/pages/public/Tracking.vue` - lookup / result / not-found states on the forced-dark public shell, `usePoll(5000, { only: ['result'] }, { autoStart: false })` started/stopped via a `watch` on `result`
@@ -83,6 +85,7 @@ Each task was committed atomically (Task 1 used TDD: test → feat):
 - `tests/Feature/Cashier/ReceiptTest.php` - new test asserting `jobOrder.number` and a `trackingUrl` containing both `/track` and the order's number
 
 ## Decisions Made
+
 - No new dependency: `qrcode.vue@3.10.0` (Phase 5, already approved and installed) is reused via a second independent wrapper component, not by modifying `PaymentQrCode.vue`.
 - PII-boundary "only these fields" test assertions use `AssertableJson`'s native exhaustive-interaction check (omitting `->etc()` inside a `has('result', fn ($r) => ...)` scope) since `hasOnly()` does not exist on this Inertia testing version — verified by reading `vendor/laravel/framework/src/Illuminate/Testing/Fluent/Concerns/Interaction.php` directly rather than guessing at an API.
 - Validation regex suffix is `\d{4,}` (minimum, not exact), matching `JobOrder::nextNumberForYear()`'s zero-padding — a dedicated test (`JO-2026-10000`) proves the 5-digit case is accepted.
@@ -92,6 +95,7 @@ Each task was committed atomically (Task 1 used TDD: test → feat):
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Fixed the plan's `hasOnly()` test helper call, which does not exist in this Inertia testing version**
+
 - **Found during:** Task 1 verification — GREEN run failed 2 of 16 tests with `Method Inertia\Testing\AssertableInertia::hasOnly does not exist.`
 - **Issue:** The plan's acceptance criteria described the PII-boundary assertion as `->hasOnly([...])`, but `inertiajs/inertia-laravel` v3.3.1's `AssertableInertia` (extending Laravel's `Illuminate\Testing\Fluent\AssertableJson`) has no `hasOnly()` method.
 - **Fix:** Rewrote both affected assertions to rely on `AssertableJson`'s built-in exhaustive-interaction check: scoping onto the prop with `has('result', fn ($result) => $result->where(...))` and deliberately omitting `->etc()` — the scope's own `interacted()` call (confirmed by reading the framework source) fails the test if `result` carries any key beyond the ones explicitly checked. This is functionally equivalent to `hasOnly()` using only existing public API.
@@ -100,6 +104,7 @@ Each task was committed atomically (Task 1 used TDD: test → feat):
 - **Committed in:** `668710a` (Task 1 GREEN commit)
 
 **2. [Rule 3 - Blocking] Bootstrapped the fresh worktree's build/runtime environment**
+
 - **Found during:** Start of Task 1 verification — `vendor/bin/pint`/`vendor/bin/pest`/`php artisan migrate`/`npm run types:check` all required `vendor/`, `.env`, a SQLite database file, and `node_modules/`, none of which exist in a fresh worktree checkout (all gitignored)
 - **Fix:** `composer install`, `cp .env.example .env`, `php artisan key:generate`, created `database/database.sqlite`, ran all 21 existing migrations, `npm ci`, `npm run build`
 - **Files modified:** none tracked (`.env`, `database/database.sqlite`, `vendor/`, `node_modules/`, `public/build/` are all gitignored)
@@ -119,13 +124,15 @@ Each task was committed atomically (Task 1 used TDD: test → feat):
 None - no external service configuration required. No new dependency was added (D-03's approval gate was already cleared before this plan by reusing Phase 5's `qrcode.vue@3.10.0`).
 
 ## Next Phase Readiness
+
 - The public tracking route (`public.tracking.show`) and its `publicStage()` mapping are the pattern any later phase can extend if the mapping table ever needs a new stage.
 - `TrackingQrCode.vue` is a reusable component if a future surface (e.g., an SMS/email pickup notification, if ever built) needs the same deep-link QR.
 - No blockers for the remaining Phase 6 plans (production board, Frontline alert) — this plan's controller/tests operate on job order status values directly and do not depend on the production board existing.
 
 ---
-*Phase: 06-production-monitoring-public-tracking*
-*Completed: 2026-09-07*
+
+_Phase: 06-production-monitoring-public-tracking_
+_Completed: 2026-09-07_
 
 ## Self-Check: PASSED
 

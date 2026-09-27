@@ -59,6 +59,7 @@ completed: 2026-09-07
 - **Files modified:** 6 (2 created, 4 modified)
 
 ## Accomplishments
+
 - `DashboardController::index()` renders a `readyForPickup` list filtered to `status=ready_for_pickup` with `released_at`/`cancelled_at` both null, eager-loading `queueEntry.customer:id,name` for the customer column
 - `QueueEntryController::index()` gains a `readyForPickup` summary prop (`{ count, items }`) built from a single base query, cloned separately for `count()` and the two-oldest `items` fetch so neither execution disturbs the other
 - `routes/portals.php`'s `frontline-staff.dashboard` route now goes through `DashboardController@index` instead of `Route::inertia`, matching the cashier/accounting-staff precedent, route name unchanged
@@ -74,6 +75,7 @@ Each task was committed atomically; Task 1 used TDD (test -> feat):
 2. **Task 2: Frontline Dashboard UI + Queue page banner (D-13, D-14)** - `b7192d0` (feat) -> `452c137` (style: formatting fix)
 
 ## Files Created/Modified
+
 - `app/Http/Controllers/FrontlineStaff/DashboardController.php` - new controller; `index()` renders the readyForPickup list
 - `app/Http/Controllers/FrontlineStaff/QueueEntryController.php` - `index()` gains the `readyForPickup` summary prop via a cloned base query
 - `routes/portals.php` - `frontline-staff.dashboard` swapped from `Route::inertia` to `DashboardController@index`
@@ -82,6 +84,7 @@ Each task was committed atomically; Task 1 used TDD (test -> feat):
 - `tests/Feature/FrontlineStaff/ReadyForPickupAlertTest.php` - 7 tests covering both endpoints' filtering, exclusions, and self-correction on send-back
 
 ## Decisions Made
+
 - `Dashboard.vue`'s release-eligibility predicate omits the `released_at === null` check that `QueueList.vue`'s carries — `released_at` isn't part of this page's prop shape (Task 1's explicit `get([...])` allowlist excludes it) and the backend query already guarantees it's null for every row in this list, so the check would be dead code referencing an undefined field.
 - Banner and Dashboard copy handle the singular case (exactly one ready-for-pickup order) with correct grammar ("1 job order ... is waiting") even though the Copywriting Contract's example templates assume 2+ items, since PROD-03 makes a count of exactly 1 a normal, expected state.
 - Test setup uses `JobOrder::withoutTimestamps()` to backdate `updated_at` for the "oldest two" ordering assertion — a plain `forceFill(['updated_at' => ...])->save()` has its explicit value overwritten by Eloquent's own automatic timestamp management on save.
@@ -102,13 +105,15 @@ None — plan executed as written. The two items above are implementation decisi
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - The Frontline Ready-for-Pickup alert (PROD-03) is fully live: derived, polled, self-correcting, with zero new stored state.
 - 06-06 (Production Board, next wave) also touches `routes/portals.php` — this plan's only change there was the `frontline-staff.dashboard` line and one new `use` import, kept additive and scoped per the orchestrator's guidance.
 - 06-07 (next wave) also touches `resources/js/pages/frontline-staff/QueueList.vue` — this plan's only additions were the `readyForPickup` prop, the `usePoll` call, and the banner block above the existing table; no restructuring of surrounding code.
 
 ---
-*Phase: 06-production-monitoring-public-tracking*
-*Completed: 2026-09-07*
+
+_Phase: 06-production-monitoring-public-tracking_
+_Completed: 2026-09-07_
 
 ## Self-Check: PASSED
 

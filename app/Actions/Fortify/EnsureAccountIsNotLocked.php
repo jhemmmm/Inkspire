@@ -26,7 +26,7 @@ class EnsureAccountIsNotLocked
 
         if ($user->locked_until?->isFuture()) {
             throw ValidationException::withMessages([
-                'email' => [__('Too many failed attempts. This account is locked for :minutes minutes. Contact your Owner or Admin if you need immediate access.', [
+                'email' => [__('Too many failed attempts. This account is locked for :minutes minutes. Contact your Admin if you need immediate access.', [
                     'minutes' => now()->diffInMinutes($user->locked_until),
                 ])],
             ]);
@@ -34,7 +34,7 @@ class EnsureAccountIsNotLocked
 
         if (! $user->is_active) {
             throw ValidationException::withMessages([
-                'email' => [__('This account has been deactivated. Contact your Owner or Admin for access.')],
+                'email' => [__('This account has been deactivated. Contact your Admin for access.')],
             ]);
         }
 

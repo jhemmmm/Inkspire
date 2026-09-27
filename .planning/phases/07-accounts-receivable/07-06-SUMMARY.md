@@ -4,46 +4,55 @@ plan: 06
 subsystem: backend
 gap_closure: true
 
-tags: [laravel, inertia, vue, accounts-receivable, write-off, cashier, gap-closure]
+tags:
+    [
+        laravel,
+        inertia,
+        vue,
+        accounts-receivable,
+        write-off,
+        cashier,
+        gap-closure,
+    ]
 
 # Dependency graph
 requires:
-  - phase: 07-accounts-receivable
-    plan: 05
-    provides: "WriteOffApprovalController::approve()/index()/reject(), PaymentStatus::WrittenOff, owner/WriteOffRequests.vue"
+    - phase: 07-accounts-receivable
+      plan: 05
+      provides: 'WriteOffApprovalController::approve()/index()/reject(), PaymentStatus::WrittenOff, owner/WriteOffRequests.vue'
 provides:
-  - "WriteOffApprovalController::approve() -- nulls write_off_requested_at on success, so an approved write-off leaves the Owner's queue immediately (CR-02)"
-  - "WriteOffApprovalController::index() -- defensively excludes paid/written_off collection_status rows as a second, independent layer of protection (CR-02)"
-  - "WriteOffApprovalController::reject() -- aborts 422 if collection_status is already written_off, so a stale or replayed Reject click can never erase an approved write-off's reason/requester/timestamp (CR-01)"
-  - "CancellationController::store() -- treats PaymentStatus::WrittenOff as terminal alongside Paid/PendingConfirmation (CR-03)"
-  - "PaymentController::store() -- treats PaymentStatus::WrittenOff as terminal alongside Paid, checked before the GCash/Maya branch (CR-03)"
-  - "cashier/Dashboard.vue's canCancelJobOrder() helper -- Cancel Job Order action never renders for a written_off job order (CR-03)"
+    - "WriteOffApprovalController::approve() -- nulls write_off_requested_at on success, so an approved write-off leaves the Owner's queue immediately (CR-02)"
+    - 'WriteOffApprovalController::index() -- defensively excludes paid/written_off collection_status rows as a second, independent layer of protection (CR-02)'
+    - "WriteOffApprovalController::reject() -- aborts 422 if collection_status is already written_off, so a stale or replayed Reject click can never erase an approved write-off's reason/requester/timestamp (CR-01)"
+    - 'CancellationController::store() -- treats PaymentStatus::WrittenOff as terminal alongside Paid/PendingConfirmation (CR-03)'
+    - 'PaymentController::store() -- treats PaymentStatus::WrittenOff as terminal alongside Paid, checked before the GCash/Maya branch (CR-03)'
+    - "cashier/Dashboard.vue's canCancelJobOrder() helper -- Cancel Job Order action never renders for a written_off job order (CR-03)"
 affects: []
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "Extracted a canCancelJobOrder(jobOrder) helper function in Dashboard.vue's <script setup>, matching the component's existing per-row helper-function convention (paymentStatusLabel(), cancellationDialogBody()), instead of inlining a two-condition boolean expression directly in the template's v-if -- keeps the template line short enough that Prettier doesn't split the payment_status !== 'written_off' comparison across lines"
+    added: []
+    patterns:
+        - "Extracted a canCancelJobOrder(jobOrder) helper function in Dashboard.vue's <script setup>, matching the component's existing per-row helper-function convention (paymentStatusLabel(), cancellationDialogBody()), instead of inlining a two-condition boolean expression directly in the template's v-if -- keeps the template line short enough that Prettier doesn't split the payment_status !== 'written_off' comparison across lines"
 
 key-files:
-  created: []
-  modified:
-    - app/Http/Controllers/Owner/WriteOffApprovalController.php
-    - app/Http/Controllers/Cashier/CancellationController.php
-    - app/Http/Controllers/Cashier/PaymentController.php
-    - resources/js/pages/cashier/Dashboard.vue
-    - tests/Feature/Owner/WriteOffApprovalTest.php
-    - tests/Feature/Cashier/CancellationFeeTest.php
-    - tests/Feature/Cashier/RecordPaymentTest.php
-    - .planning/phases/07-accounts-receivable/deferred-items.md
+    created: []
+    modified:
+        - app/Http/Controllers/Owner/WriteOffApprovalController.php
+        - app/Http/Controllers/Cashier/CancellationController.php
+        - app/Http/Controllers/Cashier/PaymentController.php
+        - resources/js/pages/cashier/Dashboard.vue
+        - tests/Feature/Owner/WriteOffApprovalTest.php
+        - tests/Feature/Cashier/CancellationFeeTest.php
+        - tests/Feature/Cashier/RecordPaymentTest.php
+        - .planning/phases/07-accounts-receivable/deferred-items.md
 
 key-decisions:
-  - "approve() nulls write_off_requested_at in the SAME forceFill()->save() call that sets collection_status to written_off -- one write inside the existing lockForUpdate() transaction, not a second ->save() call, per the plan's explicit instruction"
-  - "index()'s whereNotIn('collection_status', [...]) is a defensive second layer, not a replacement for nulling write_off_requested_at in approve() -- both fixes ship together per CR-02's two independently-reachable causes (approved-but-not-nulled, and settled-while-pending)"
-  - "reject()'s new abort_if checks collection_status === WrittenOff specifically (not an in_array with Paid), since rejecting a Paid-but-still-flagged entry was already established as harmless in 07-05 and is out of this plan's scope"
-  - "PaymentController::store()'s WrittenOff guard is placed directly after the existing Paid guard and BEFORE the GCash/Maya payment-method branch check, so e-wallet payment attempts are blocked too, not only Cash/Bank Transfer"
-  - "Dashboard.vue's v-if was refactored into a canCancelJobOrder() helper function rather than an inline two-condition boolean expression, because the template's deep indentation (44 spaces) pushed the inline `payment_status !== 'paid' && payment_status !== 'written_off'` past Prettier's printWidth:80 and caused it to wrap the '!==' operator onto its own line, splitting 'written_off' from its comparison -- functionally identical behavior, but keeps the acceptance-criteria grep pattern intact and matches this component's established per-row helper convention (paymentStatusLabel(), cancellationDialogBody())"
+    - "approve() nulls write_off_requested_at in the SAME forceFill()->save() call that sets collection_status to written_off -- one write inside the existing lockForUpdate() transaction, not a second ->save() call, per the plan's explicit instruction"
+    - "index()'s whereNotIn('collection_status', [...]) is a defensive second layer, not a replacement for nulling write_off_requested_at in approve() -- both fixes ship together per CR-02's two independently-reachable causes (approved-but-not-nulled, and settled-while-pending)"
+    - "reject()'s new abort_if checks collection_status === WrittenOff specifically (not an in_array with Paid), since rejecting a Paid-but-still-flagged entry was already established as harmless in 07-05 and is out of this plan's scope"
+    - "PaymentController::store()'s WrittenOff guard is placed directly after the existing Paid guard and BEFORE the GCash/Maya payment-method branch check, so e-wallet payment attempts are blocked too, not only Cash/Bank Transfer"
+    - "Dashboard.vue's v-if was refactored into a canCancelJobOrder() helper function rather than an inline two-condition boolean expression, because the template's deep indentation (44 spaces) pushed the inline `payment_status !== 'paid' && payment_status !== 'written_off'` past Prettier's printWidth:80 and caused it to wrap the '!==' operator onto its own line, splitting 'written_off' from its comparison -- functionally identical behavior, but keeps the acceptance-criteria grep pattern intact and matches this component's established per-row helper convention (paymentStatusLabel(), cancellationDialogBody())"
 
 patterns-established: []
 
@@ -99,7 +108,7 @@ Both tasks are `tdd="true"`; each commit includes its test additions and impleme
 ## Decisions Made
 
 - `approve()`'s `write_off_requested_at => null` write shares the existing `forceFill()->save()` call rather than a second write, keeping the fix inside the existing `lockForUpdate()` transaction with no additional round-trip
-- `index()`'s `whereNotIn('collection_status', ...)` is intentionally a *second* independent layer -- it also catches the case where an entry settles to `Paid` (e.g. via `ar:send-reminders` or a Cashier payment) while a write-off request sits pending, which nulling `write_off_requested_at` in `approve()` alone would not cover
+- `index()`'s `whereNotIn('collection_status', ...)` is intentionally a _second_ independent layer -- it also catches the case where an entry settles to `Paid` (e.g. via `ar:send-reminders` or a Cashier payment) while a write-off request sits pending, which nulling `write_off_requested_at` in `approve()` alone would not cover
 - `PaymentController::store()`'s new guard sits before the GCash/Maya branch specifically so `WrittenOff` is caught before any PayMongo API call is attempted, not after
 - `Dashboard.vue`'s gating logic was extracted to a named helper function rather than left as an inline two-condition template expression, purely to keep the resulting line under Prettier's 80-character printWidth at this component's 44-space template indentation -- behavior is identical to the plan's literal instruction, just implemented via a function call
 
@@ -108,6 +117,7 @@ Both tasks are `tdd="true"`; each commit includes its test additions and impleme
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking issue] Reverted `npm run check:fix`'s repo-wide reformat**
+
 - **Found during:** Task 2 (formatting the `Dashboard.vue` `v-if` change)
 - **Issue:** Running `npm run check:fix` (the project's documented `vp check --fix` command) reformatted 201 files across the entire repository -- `.planning/*.md` tables, `CLAUDE.md`, `.claude/skills/**/*.md`, and several unrelated `.vue` pages -- none of which are in this plan's `files_modified` scope. This is a pre-existing repo-wide Prettier/markdown-formatting drift unrelated to this plan's write-off/cancellation guard fix.
 - **Fix:** Identified the full list of unintended modifications via `git status --short`, then reverted every file outside this plan's 5-file scope with literal-path `git checkout --` calls (batched to satisfy the worktree agent's argument-construction safety rules), leaving only the 5 plan-scoped files staged.
@@ -148,8 +158,9 @@ None - no external service configuration required.
 - No blockers for Phase 8.
 
 ---
-*Phase: 07-accounts-receivable*
-*Completed: 2026-09-09*
+
+_Phase: 07-accounts-receivable_
+_Completed: 2026-09-09_
 
 ## Self-Check: PASSED
 

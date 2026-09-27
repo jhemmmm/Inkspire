@@ -91,6 +91,77 @@ function deadlineLabel(deadline: string | null): string {
     });
 }
 
+/**
+ * Rush and regular are shown as two tables rather than one sorted list.
+ * Sorting alone puts the boundary between "drop everything" and "normal
+ * work" somewhere in the middle of a scrolling table, where it is invisible
+ * — the artist has to read the badge on every row to find it.
+ *
+ * Both lists arrive from the server already ordered (rush first, newest
+ * first within each), so partitioning preserves that order and the top row
+ * of the rush table stays the row `nextEligibleId()` will authorise.
+ */
+function splitByRush<T extends { is_rush: boolean }>(
+    rows: T[],
+): { rush: T[]; regular: T[] } {
+    return {
+        rush: rows.filter((row) => row.is_rush),
+        regular: rows.filter((row) => !row.is_rush),
+    };
+}
+
+const availableGroups = computed(() => {
+    const { rush, regular } = splitByRush(props.availableJobOrders);
+
+    return [
+        {
+            key: 'rush',
+            title: 'Available — Rush Print',
+            description:
+                'Priority jobs nobody has claimed yet. Take these before anything below.',
+            rows: rush,
+            emptyTitle: 'No rush jobs waiting',
+            emptyDescription:
+                'Rush jobs appear here the moment Frontline Staff create one.',
+        },
+        {
+            key: 'regular',
+            title: 'Available — Regular',
+            description:
+                'Unclaimed jobs — first to accept gets it. Accepting one moves it into your queue.',
+            rows: regular,
+            emptyTitle: 'No jobs waiting to be accepted',
+            emptyDescription:
+                'New jobs appear here the moment Frontline Staff create them.',
+        },
+    ];
+});
+
+const queueGroups = computed(() => {
+    const { rush, regular } = splitByRush(props.jobOrders);
+
+    return [
+        {
+            key: 'rush',
+            title: 'My Queue — Rush Print',
+            description: 'Your priority work, newest first.',
+            rows: rush,
+            emptyTitle: 'No rush jobs in your queue',
+            emptyDescription:
+                'Accept a rush job from Available above and it lands here.',
+        },
+        {
+            key: 'regular',
+            title: 'My Queue — Regular',
+            description: 'The rest of your queue, newest first.',
+            rows: regular,
+            emptyTitle: 'No job orders assigned',
+            emptyDescription:
+                'Accept a job from Available Jobs above to start working on it.',
+        },
+    ];
+});
+
 const rushCount = computed(
     () =>
         props.jobOrders.filter((jobOrder) => jobOrder.is_rush).length +
@@ -347,10 +418,14 @@ function artistStatusLabel(artistStatus: string): string {
             />
         </div>
 
-        <section class="flex flex-col gap-3">
+        <section
+            v-for="group in availableGroups"
+            :key="group.key"
+            class="flex flex-col gap-3"
+        >
             <SectionHeading
-                title="Available Jobs"
-                description="Unclaimed jobs — first to accept gets it. Accepting one moves it into your queue."
+                :title="group.title"
+                :description="group.description"
             />
 
             <DataTableCard>
@@ -365,18 +440,15 @@ function artistStatusLabel(artistStatus: string): string {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableEmpty
-                            v-if="availableJobOrders.length === 0"
-                            :colspan="5"
-                        >
+                        <TableEmpty v-if="group.rows.length === 0" :colspan="5">
                             <EmptyState
-                                title="No jobs waiting to be accepted"
-                                description="New jobs appear here the moment Frontline Staff create them."
+                                :title="group.emptyTitle"
+                                :description="group.emptyDescription"
                                 :icon="Inbox"
                             />
                         </TableEmpty>
                         <TableRow
-                            v-for="jobOrder in availableJobOrders"
+                            v-for="jobOrder in group.rows"
                             v-else
                             :key="jobOrder.id"
                         >
@@ -389,7 +461,7 @@ function artistStatusLabel(artistStatus: string): string {
                                         <Badge
                                             v-if="jobOrder.is_rush"
                                             variant="outline"
-                                            class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                            class="border-brand/40 text-brand"
                                             :data-test="`pool-rush-${jobOrder.id}-badge`"
                                         >
                                             <Zap class="size-3" />
@@ -449,14 +521,18 @@ function artistStatusLabel(artistStatus: string): string {
             </DataTableCard>
         </section>
 
-        <section class="flex flex-col gap-3">
+        <section
+            v-for="group in queueGroups"
+            :key="group.key"
+            class="flex flex-col gap-3"
+        >
             <div class="flex flex-wrap items-end justify-between gap-2">
                 <SectionHeading
-                    title="My Queue"
-                    description="Rush jobs first, then the ones you accepted most recently."
+                    :title="group.title"
+                    :description="group.description"
                 />
                 <p
-                    v-if="!isOnShift"
+                    v-if="!isOnShift && group.key === 'rush'"
                     class="text-muted-foreground text-sm"
                     data-test="queue-off-duty-note"
                 >
@@ -475,15 +551,15 @@ function artistStatusLabel(artistStatus: string): string {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableEmpty v-if="jobOrders.length === 0" :colspan="5">
+                        <TableEmpty v-if="group.rows.length === 0" :colspan="5">
                             <EmptyState
-                                title="No job orders assigned"
-                                description="Accept a job from Available Jobs above to start working on it."
+                                :title="group.emptyTitle"
+                                :description="group.emptyDescription"
                                 :icon="LayoutList"
                             />
                         </TableEmpty>
                         <TableRow
-                            v-for="jobOrder in jobOrders"
+                            v-for="jobOrder in group.rows"
                             v-else
                             :key="jobOrder.id"
                         >
@@ -496,7 +572,7 @@ function artistStatusLabel(artistStatus: string): string {
                                         <Badge
                                             v-if="jobOrder.is_rush"
                                             variant="outline"
-                                            class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                            class="border-brand/40 text-brand"
                                             :data-test="`queue-rush-${jobOrder.id}-badge`"
                                         >
                                             <Zap class="size-3" />

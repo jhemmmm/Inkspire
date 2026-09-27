@@ -2,9 +2,13 @@
 
 namespace App\Concerns;
 
+use App\Actions\JobOrder\ValidateJobOrderFile;
+use App\Enums\FileValidationOutcome;
 use App\Enums\JobOrderType;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 trait JobOrderValidationRules
 {
@@ -54,10 +58,10 @@ trait JobOrderValidationRules
      * description, and requiring specifications here would reject the
      * consultation-first (Type B) walk-ins the queue exists to handle.
      *
-     * `print_size` and `material` are validated as free strings rather than
-     * against the live `specification_options` catalog on purpose: the
-     * columns store a label snapshot, so an Owner retiring an option must
-     * not start rejecting a re-submitted form that still carries it.
+     * `print_size` is validated as a free string rather than against the
+     * live `specification_options` catalog on purpose: the column stores a
+     * label snapshot, so an Admin retiring an option must not start
+     * rejecting a re-submitted form that still carries it.
      *
      * ponytail: `deadline` has no upper bound. Add `before:+2 years` if
      * staff start fat-fingering years into the field.
@@ -74,15 +78,64 @@ trait JobOrderValidationRules
     {
         return [
             $prefix.'print_size' => ['nullable', 'string', 'max:255'],
-            $prefix.'material' => ['nullable', 'string', 'max:255'],
             $prefix.'quantity' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            $prefix.'width_ft' => ['nullable', 'numeric', 'min:0.01', 'max:1000'],
+            $prefix.'height_ft' => ['nullable', 'numeric', 'min:0.01', 'max:1000'],
             $prefix.'deadline' => ['nullable', 'date', 'after_or_equal:today'],
             $prefix.'is_rush' => ['nullable', 'boolean'],
             $prefix.'pricing_entry_id' => ['nullable', 'integer', 'exists:pricing_database,id'],
+            // The Frontline override — matches the decimal(10,2) column
+            // exactly: 99999999.99 fits.
+            $prefix.'quoted_amount' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
             // The customer's own questions and instructions, captured at the
             // counter. Roomy because a Type B brief is where the whole job
             // gets described.
             $prefix.'client_notes' => ['nullable', 'string', 'max:5000'],
         ];
+    }
+
+    /**
+     * Reject a Type A file the shop cannot print before any job order is
+     * created for it.
+     *
+     * Runs as a FormRequest `after()` hook, so a bad file stops the request
+     * at validation: no queue entry, no job order and no stored file are left
+     * behind, and the reason lands on the file field the staff member has to
+     * fix. Only the `Rejected` outcome blocks -- a `NeedsArtist` file (too
+     * few pixels for its print size) is still usable work and is created as
+     * normal, then routed to the artist pool.
+     *
+     * @param  list<string>  $prefixes  One key prefix per job order row, e.g. `job_orders.0.` or `` for a single row.
+     */
+    protected function rejectUnusableTypeAFiles(Validator $validator, array $prefixes): void
+    {
+        foreach ($prefixes as $prefix) {
+            $fileKey = $prefix.'file';
+
+            if ($validator->errors()->has($fileKey) || $this->input($prefix.'type') !== JobOrderType::TypeA->value) {
+                continue;
+            }
+
+            $file = $this->file($fileKey);
+
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $printSize = $this->input($prefix.'print_size');
+            $widthFt = $this->input($prefix.'width_ft');
+            $heightFt = $this->input($prefix.'height_ft');
+
+            $result = app(ValidateJobOrderFile::class)(
+                $file,
+                is_string($printSize) ? $printSize : null,
+                is_numeric($widthFt) ? (float) $widthFt : null,
+                is_numeric($heightFt) ? (float) $heightFt : null,
+            );
+
+            if ($result['outcome'] === FileValidationOutcome::Rejected) {
+                $validator->errors()->add($fileKey, $result['reason'] ?? __('This file cannot be used for printing.'));
+            }
+        }
     }
 }

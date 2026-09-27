@@ -4,68 +4,68 @@ reviewed: 2026-09-06T20:18:01Z
 depth: standard
 files_reviewed: 57
 files_reviewed_list:
-  - app/Actions/JobOrder/EnterProduction.php
-  - app/Concerns/ProductionLogValidationRules.php
-  - app/Enums/JobOrderStatus.php
-  - app/Http/Controllers/Artist/DesignEditorController.php
-  - app/Http/Controllers/Artist/JobOrderQueueController.php
-  - app/Http/Controllers/Artist/PerformanceReportController.php
-  - app/Http/Controllers/Cashier/CancellationController.php
-  - app/Http/Controllers/Cashier/CreditRequestController.php
-  - app/Http/Controllers/Cashier/DashboardController.php
-  - app/Http/Controllers/Cashier/PaymentController.php
-  - app/Http/Controllers/Cashier/ReceiptController.php
-  - app/Http/Controllers/FrontlineStaff/DashboardController.php
-  - app/Http/Controllers/FrontlineStaff/JobOrderController.php
-  - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
-  - app/Http/Controllers/Owner/CreditApprovalController.php
-  - app/Http/Controllers/ProductionStaff/ProductionBoardController.php
-  - app/Http/Controllers/ProductionStaff/ProductionStageController.php
-  - app/Http/Controllers/Public/DesignReviewController.php
-  - app/Http/Controllers/Public/TrackingController.php
-  - app/Http/Requests/ProductionStaff/AdvanceProductionStageRequest.php
-  - app/Http/Requests/ProductionStaff/SendBackProductionStageRequest.php
-  - app/Http/Requests/Public/TrackJobOrderRequest.php
-  - app/Models/JobOrder.php
-  - app/Models/ProductionLog.php
-  - database/factories/JobOrderFactory.php
-  - database/factories/ProductionLogFactory.php
-  - database/migrations/2026_09_05_120000_add_number_and_due_at_to_job_orders_table.php
-  - database/migrations/2026_09_05_120100_create_production_logs_table.php
-  - resources/js/components/TrackingQrCode.vue
-  - resources/js/config/nav/production-staff.ts
-  - resources/js/pages/artist/Dashboard.vue
-  - resources/js/pages/cashier/Dashboard.vue
-  - resources/js/pages/cashier/Receipt.vue
-  - resources/js/pages/frontline-staff/Dashboard.vue
-  - resources/js/pages/frontline-staff/NewVisit.vue
-  - resources/js/pages/frontline-staff/QueueList.vue
-  - resources/js/pages/owner/CreditRequests.vue
-  - resources/js/pages/production-staff/Dashboard.vue
-  - resources/js/pages/public/Tracking.vue
-  - routes/portals.php
-  - routes/web.php
-  - tests/Feature/Artist/DesignReviewTest.php
-  - tests/Feature/Artist/PerformanceReportTest.php
-  - tests/Feature/Artist/QueueControlsTest.php
-  - tests/Feature/Cashier/CancellationFeeTest.php
-  - tests/Feature/Cashier/ProductionCompatibilityTest.php
-  - tests/Feature/Cashier/ReceiptTest.php
-  - tests/Feature/FrontlineStaff/JobOrderNumberAssignmentTest.php
-  - tests/Feature/FrontlineStaff/JobOrderProcessingTest.php
-  - tests/Feature/FrontlineStaff/ReadyForPickupAlertTest.php
-  - tests/Feature/JobOrder/EnterProductionTest.php
-  - tests/Feature/JobOrder/JobOrderNumberGeneratorTest.php
-  - tests/Feature/JobOrder/ProductionLogModelTest.php
-  - tests/Feature/ProductionStaff/ProductionBoardTest.php
-  - tests/Feature/ProductionStaff/StageAdvancementTest.php
-  - tests/Feature/Public/DesignReviewTest.php
-  - tests/Feature/Public/TrackingTest.php
+    - app/Actions/JobOrder/EnterProduction.php
+    - app/Concerns/ProductionLogValidationRules.php
+    - app/Enums/JobOrderStatus.php
+    - app/Http/Controllers/Artist/DesignEditorController.php
+    - app/Http/Controllers/Artist/JobOrderQueueController.php
+    - app/Http/Controllers/Artist/PerformanceReportController.php
+    - app/Http/Controllers/Cashier/CancellationController.php
+    - app/Http/Controllers/Cashier/CreditRequestController.php
+    - app/Http/Controllers/Cashier/DashboardController.php
+    - app/Http/Controllers/Cashier/PaymentController.php
+    - app/Http/Controllers/Cashier/ReceiptController.php
+    - app/Http/Controllers/FrontlineStaff/DashboardController.php
+    - app/Http/Controllers/FrontlineStaff/JobOrderController.php
+    - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
+    - app/Http/Controllers/Owner/CreditApprovalController.php
+    - app/Http/Controllers/ProductionStaff/ProductionBoardController.php
+    - app/Http/Controllers/ProductionStaff/ProductionStageController.php
+    - app/Http/Controllers/Public/DesignReviewController.php
+    - app/Http/Controllers/Public/TrackingController.php
+    - app/Http/Requests/ProductionStaff/AdvanceProductionStageRequest.php
+    - app/Http/Requests/ProductionStaff/SendBackProductionStageRequest.php
+    - app/Http/Requests/Public/TrackJobOrderRequest.php
+    - app/Models/JobOrder.php
+    - app/Models/ProductionLog.php
+    - database/factories/JobOrderFactory.php
+    - database/factories/ProductionLogFactory.php
+    - database/migrations/2026_09_05_120000_add_number_and_due_at_to_job_orders_table.php
+    - database/migrations/2026_09_05_120100_create_production_logs_table.php
+    - resources/js/components/TrackingQrCode.vue
+    - resources/js/config/nav/production-staff.ts
+    - resources/js/pages/artist/Dashboard.vue
+    - resources/js/pages/cashier/Dashboard.vue
+    - resources/js/pages/cashier/Receipt.vue
+    - resources/js/pages/frontline-staff/Dashboard.vue
+    - resources/js/pages/frontline-staff/NewVisit.vue
+    - resources/js/pages/frontline-staff/QueueList.vue
+    - resources/js/pages/owner/CreditRequests.vue
+    - resources/js/pages/production-staff/Dashboard.vue
+    - resources/js/pages/public/Tracking.vue
+    - routes/portals.php
+    - routes/web.php
+    - tests/Feature/Artist/DesignReviewTest.php
+    - tests/Feature/Artist/PerformanceReportTest.php
+    - tests/Feature/Artist/QueueControlsTest.php
+    - tests/Feature/Cashier/CancellationFeeTest.php
+    - tests/Feature/Cashier/ProductionCompatibilityTest.php
+    - tests/Feature/Cashier/ReceiptTest.php
+    - tests/Feature/FrontlineStaff/JobOrderNumberAssignmentTest.php
+    - tests/Feature/FrontlineStaff/JobOrderProcessingTest.php
+    - tests/Feature/FrontlineStaff/ReadyForPickupAlertTest.php
+    - tests/Feature/JobOrder/EnterProductionTest.php
+    - tests/Feature/JobOrder/JobOrderNumberGeneratorTest.php
+    - tests/Feature/JobOrder/ProductionLogModelTest.php
+    - tests/Feature/ProductionStaff/ProductionBoardTest.php
+    - tests/Feature/ProductionStaff/StageAdvancementTest.php
+    - tests/Feature/Public/DesignReviewTest.php
+    - tests/Feature/Public/TrackingTest.php
 findings:
-  critical: 6
-  warning: 12
-  info: 7
-  total: 25
+    critical: 6
+    warning: 12
+    info: 7
+    total: 25
 status: issues_found
 ---
 
@@ -95,7 +95,7 @@ The defects are concentrated in three places:
    create). The code's own docblock and `TrackJobOrderRequest`'s `\d{4,}` regex claim
    this case is supported; it is not, and no test covers it.
 2. **Status guards were widened everywhere except where orders can be dragged
-   *backwards*.** `replaceFile`, `sendBack`, and `release` all lack the guards that
+   _backwards_.** `replaceFile`, `sendBack`, and `release` all lack the guards that
    Phase 6's own state machine now requires, producing job orders that are invisible on
    every board, or reported "Completed" to a customer while still on the press.
 3. **`cancelled_at` is not consulted by the public stage mapping**, so a cancelled order
@@ -124,9 +124,9 @@ No structural findings block was supplied for this review.
 
 Traced end-to-end (verified with a standalone PHP run):
 
-| current max | computed next | result |
-|---|---|---|
-| `JO-2026-9999` | `JO-2026-10000` | inserts OK |
+| current max                                      | computed next   | result               |
+| ------------------------------------------------ | --------------- | -------------------- |
+| `JO-2026-9999`                                   | `JO-2026-10000` | inserts OK           |
 | `JO-2026-10000` (max still reads `JO-2026-9999`) | `JO-2026-10000` | **UNIQUE violation** |
 
 Because `MAX()` never advances past `JO-2026-9999`, **every** job order created for the
@@ -142,6 +142,7 @@ number sharing a year prefix has the same fixed width"), and
 files contradict each other; the generator is the one that is wrong.
 
 **Fix:**
+
 ```php
 public static function nextNumberForYear(int $year): string
 {
@@ -156,9 +157,11 @@ public static function nextNumberForYear(int $year): string
     });
 }
 ```
+
 If the SQLite/MySQL portability concern that motivated the PHP-side parse still stands,
 keep the PHP parse but split on the delimiter instead of a fixed width, and order the
 candidate rows by length then value:
+
 ```php
 $maxNumber = static::query()
     ->where('number', 'like', "JO-{$year}-%")
@@ -170,6 +173,7 @@ $sequence = $maxNumber === null
     ? 1
     : ((int) substr($maxNumber, strrpos($maxNumber, '-') + 1)) + 1;
 ```
+
 Add a regression test that seeds `JO-2026-9999`, generates, seeds the result, generates
 again, and asserts `JO-2026-10001`.
 
@@ -200,6 +204,7 @@ the lock was written to prevent. This is production-only (SQLite makes `lockForU
 a no-op, so tests will never catch it).
 
 **Fix:**
+
 ```php
 public function addJobOrder(AddJobOrderRequest $request, QueueEntry $queueEntry): RedirectResponse
 {
@@ -215,6 +220,7 @@ public function addJobOrder(AddJobOrderRequest $request, QueueEntry $queueEntry)
     ...
 }
 ```
+
 Better still, make the invariant impossible to get wrong by asserting inside
 `nextNumberForYear()` that a transaction is already open, or by having it perform the
 insert itself.
@@ -249,6 +255,7 @@ than before:
 decision") — requires the server to re-check.
 
 **Fix:**
+
 ```php
 public function replaceFile(ReplaceJobOrderFileRequest $request, JobOrder $jobOrder): RedirectResponse
 {
@@ -279,12 +286,12 @@ order that has been released (`released_at` set, `status = ready_for_pickup`) ca
 back to `quality_check` while `released_at` stays populated. The resulting row is a
 zombie:
 
-| surface | filter | result |
-|---|---|---|
-| Production Board | `whereNull('released_at')` (`ProductionBoardController:38`) | hidden |
-| Frontline Dashboard | `whereNull('released_at')` (`DashboardController:26`) | hidden |
-| Frontline QueueList summary | `whereNull('released_at')` (`QueueEntryController:45`) | hidden |
-| Public `/track` | `released_at !== null` wins (`TrackingController:60`) | reports **"Completed"** |
+| surface                     | filter                                                      | result                  |
+| --------------------------- | ----------------------------------------------------------- | ----------------------- |
+| Production Board            | `whereNull('released_at')` (`ProductionBoardController:38`) | hidden                  |
+| Frontline Dashboard         | `whereNull('released_at')` (`DashboardController:26`)       | hidden                  |
+| Frontline QueueList summary | `whereNull('released_at')` (`QueueEntryController:45`)      | hidden                  |
+| Public `/track`             | `released_at !== null` wins (`TrackingController:60`)       | reports **"Completed"** |
 
 The order is physically back on the press, but no staff surface shows it and the customer
 is told it is done. `StageAdvancementTest` covers the cancelled case for both actions but
@@ -292,9 +299,11 @@ has no released-order case for either.
 
 **Fix:** Add the guard to both actions, and re-check it inside the locked transaction (see
 WR-10):
+
 ```php
 abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
 ```
+
 Add matching tests:
 `test('a released job order rejects advance and send back')`.
 
@@ -319,6 +328,7 @@ order was cancelled.
 5-digit case — but has no cancelled-order case.
 
 **Fix:**
+
 ```php
 private function publicStage(JobOrder $jobOrder): string
 {
@@ -332,6 +342,7 @@ private function publicStage(JobOrder $jobOrder): string
     ...
 }
 ```
+
 Widen the query at line 35 to `['number', 'status', 'released_at', 'cancelled_at']` and add
 `test('a cancelled job order reports Cancelled, not its production stage')`.
 
@@ -369,6 +380,7 @@ not. Phase 6 is where the `ready_for_pickup` gate belongs, since it is the phase
 introduced both the stage sequence and the `released_at → "Completed"` public mapping.
 
 **Fix:** server-side, in `JobOrderReleaseController::store()`:
+
 ```php
 abort_unless(
     $jobOrder->status === JobOrderStatus::ReadyForPickup,
@@ -376,14 +388,18 @@ abort_unless(
     __("This job order isn't ready for pickup yet. Production hasn't marked it complete."),
 );
 ```
+
 and mirror it in `QueueList.vue`:
+
 ```ts
 return (
     jobOrder.status === 'ready_for_pickup' &&
-    (jobOrder.payment_status === 'paid' || jobOrder.payment_status === 'on_credit') &&
+    (jobOrder.payment_status === 'paid' ||
+        jobOrder.payment_status === 'on_credit') &&
     jobOrder.released_at === null
 );
 ```
+
 (`status` is already in the QueueList payload — `QueueEntryController:52`.)
 
 ---
@@ -409,6 +425,7 @@ Manila browser will render "**Tomorrow**, 7:00 AM" next to a "**Rush**" badge on
 row.
 
 **Fix:**
+
 ```php
 ->each(fn (JobOrder $jobOrder) => $jobOrder->is_rush = $jobOrder->due_at !== null
     && $jobOrder->due_at->lessThanOrEqualTo(now()->timezone('Asia/Manila')->endOfDay()))
@@ -431,6 +448,7 @@ shows one caller entirely lacks. A retried/double-submitted design approval like
 produces two `null → for_production` rows and a silently extended SLA clock.
 
 **Fix:** Make the action defend itself:
+
 ```php
 public function __invoke(JobOrder $jobOrder): void
 {
@@ -450,6 +468,7 @@ public function __invoke(JobOrder $jobOrder): void
     DB::transaction(...);
 }
 ```
+
 Add `test('invoking EnterProduction twice writes only one production_logs row and does not reset due_at')`.
 
 ---
@@ -459,7 +478,7 @@ Add `test('invoking EnterProduction twice writes only one production_logs row an
 **File:** `app/Http/Controllers/ProductionStaff/ProductionStageController.php:60 & 103` vs. `62-84` & `105-127`
 
 **Issue:** The docblocks (lines 53-56, 98-99) present the locked re-read as "the
-idempotency boundary", but the `cancelled_at` guard runs *before* the transaction, on the
+idempotency boundary", but the `cancelled_at` guard runs _before_ the transaction, on the
 route-model-bound instance. The locked re-read at lines 63/106 re-reads `status` but not
 `cancelled_at`.
 
@@ -478,7 +497,7 @@ transaction, after `lockForUpdate()->firstOrFail()`.
 `app/Http/Controllers/FrontlineStaff/QueueEntryController.php:60`;
 `resources/js/pages/frontline-staff/Dashboard.vue:87-127, 192`
 
-**Issue:** `updated_at` changes on *every* write to the row — recording a payment,
+**Issue:** `updated_at` changes on _every_ write to the row — recording a payment,
 requesting credit, an owner approving credit, a reconciliation. Taking payment at the
 counter for an order that has been on the shelf for two hours resets its "Ready Since" to
 "Just now" and jumps it to the bottom of the `oldest('updated_at')` ordering, so the
@@ -490,10 +509,12 @@ Phase 6 already persists the exact transition moment: the `production_logs` row 
 
 **Fix:** Derive "ready since" from the production log rather than the mutable row
 timestamp, e.g.:
+
 ```php
 ->withMax(['productionLogs as ready_at' => fn ($q) => $q->where('to_status', JobOrderStatus::ReadyForPickup->value)], 'created_at')
 ->orderBy('ready_at')
 ```
+
 and send `ready_at` to the page instead of `updated_at`.
 
 ---
@@ -513,14 +534,23 @@ quota indefinitely on every device that ever looked it up.
 
 **Fix:** Raise the limit for this route (it returns three scalar fields), and stop polling
 on a terminal stage:
+
 ```ts
-watch(() => props.result, (value) => {
-    if (value?.found && value.stage !== 'Completed' && value.stage !== 'Cancelled') {
-        start();
-    } else {
-        stop();
-    }
-}, { immediate: true });
+watch(
+    () => props.result,
+    (value) => {
+        if (
+            value?.found &&
+            value.stage !== 'Completed' &&
+            value.stage !== 'Cancelled'
+        ) {
+            start();
+        } else {
+            stop();
+        }
+    },
+    { immediate: true },
+);
 ```
 
 ---
@@ -536,14 +566,14 @@ of possession, and returns a clean binary existence signal plus the live product
 At the configured 60 req/min a single IP walks an entire year's numbering space in under
 an hour. That discloses the shop's total order volume, the current highest order number
 (and hence daily throughput by sampling over time), and per-order production progress — a
-competitor-useful business-intelligence leak. It is *not* a PII leak: the response shape is
+competitor-useful business-intelligence leak. It is _not_ a PII leak: the response shape is
 tightly scoped and `TrackingTest.php:108-133` proves description/pricing/payment/file data
 never reach the client.
 
 **Fix:** Make the tracking key unguessable rather than relying on rate limiting alone —
 e.g. add a random `tracking_token` column, encode `/track?t={token}` into the receipt QR
 (`ReceiptController:46`), and keep the human-typed number path behind a much tighter
-per-IP limit on *not-found* responses specifically.
+per-IP limit on _not-found_ responses specifically.
 
 ---
 
@@ -563,8 +593,19 @@ customer is on the press.
 
 **Fix:** Enumerate the real production statuses and give the design stages their own
 labels:
+
 ```vue
-<Badge v-else-if="['for_production','printing','quality_check','ready_for_pickup'].includes(jobOrder.status)" variant="secondary">
+<Badge
+    v-else-if="
+        [
+            'for_production',
+            'printing',
+            'quality_check',
+            'ready_for_pickup',
+        ].includes(jobOrder.status)
+    "
+    variant="secondary"
+>
     In Production
 </Badge>
 <Badge v-else variant="secondary">In Design</Badge>
@@ -587,6 +628,7 @@ it. The `?? '—'` guard used on the "Job Order No." row two blocks up (line 94)
 here.
 
 **Fix:**
+
 ```vue
 <div v-if="jobOrder.number" class="flex flex-col items-center gap-2 border-t pt-4">
 ```
@@ -598,7 +640,7 @@ here.
 **File:** `app/Http/Controllers/Artist/PerformanceReportController.php:25-36`
 
 **Issue:** The query has no `whereNull('cancelled_at')`. Phase 6 widened the status list
-from one status to five *and* `CancellationController` (lines 44-47, also this phase) now
+from one status to five _and_ `CancellationController` (lines 44-47, also this phase) now
 explicitly permits cancelling from all four production statuses. The window in which a
 job order can be cancelled while still inflating `jobsCompleted` and `slaAdherence` has
 therefore grown substantially.
@@ -619,13 +661,15 @@ migration is left half-applied: the column exists, some rows are numbered, the b
 recorded, and re-running `php artisan migrate` fails with "duplicate column name".
 
 Two smaller correctness issues in the same method:
+
 - `created_at` is nullable (`$table->timestamps()`), and `Carbon::parse(null)` silently
-  returns *now* — so an unstamped legacy row is filed under the current year rather than
+  returns _now_ — so an unstamped legacy row is filed under the current year rather than
   its real one.
 - `orderBy('created_at')` has no tiebreaker, so rows created in the same second get an
   arbitrary sequence.
 
 **Fix:**
+
 ```php
 private function backfillNumbers(): void
 {
@@ -639,6 +683,7 @@ private function backfillNumbers(): void
     });
 }
 ```
+
 The added `whereNull('number')` also makes the backfill safely re-runnable.
 
 ---
@@ -652,9 +697,10 @@ separate statements with no snapshot between them, and the pair runs every 5 sec
 staff member. A release landing between them yields `count: 1, items: []`, which
 `readyForPickupBannerBody()` (`QueueList.vue:92-108`) renders as an empty subject:
 
-> "1 job order ready for pickup /  is waiting on the shelf."
+> "1 job order ready for pickup / is waiting on the shelf."
 
 **Fix:** Fetch once and derive both:
+
 ```php
 $readyForPickup = $readyForPickupQuery->orderBy('updated_at')->get(['id', 'number']);
 
@@ -673,7 +719,7 @@ $readyForPickup = $readyForPickupQuery->orderBy('updated_at')->get(['id', 'numbe
 **Issue:** Neither action limits how many times an order may bounce between stages. A
 double-clicked or scripted send-back/advance pair writes two `ProductionLog` rows and two
 `audit_trail` rows per cycle, unbounded. The `lockForUpdate()` re-read prevents two
-*concurrent* requests from producing two logs for one logical move, but does nothing about
+_concurrent_ requests from producing two logs for one logical move, but does nothing about
 sequential repeats — which is the actual failure mode for a double-click, since the second
 request simply sees the new status and performs a second legitimate-looking move.
 
@@ -704,6 +750,7 @@ same test run.
 any test creating a large number of job orders will slow down and eventually exhaust it.
 
 **Fix:** Use a deterministic sequence anchored to the same year source:
+
 ```php
 'number' => sprintf('JO-%d-%04d', JobOrder::currentNumberingYear(), fake()->unique()->numberBetween(1, 9999)),
 ```
@@ -715,9 +762,9 @@ any test creating a large number of job orders will slow down and eventually exh
 **Files:** `tests/Feature/JobOrder/JobOrderNumberGeneratorTest.php:8`;
 `app/Http/Requests/Public/TrackJobOrderRequest.php:19-36`
 
-**Issue:** `expect($number)->toMatch('/^JO-\d{4}-\d{4}$/')` asserts *exactly* four digits,
+**Issue:** `expect($number)->toMatch('/^JO-\d{4}-\d{4}$/')` asserts _exactly_ four digits,
 directly contradicting `TrackJobOrderRequest`'s documented `\d{4,}`. `TrackingTest` covers a
-5-digit number *reaching* `/track`, but nothing covers the generator producing or
+5-digit number _reaching_ `/track`, but nothing covers the generator producing or
 continuing from one — which is precisely where CR-01 lives.
 
 **Fix:** Add the seeded-9999 → 10000 → 10001 regression test described in CR-01 and relax

@@ -10,6 +10,7 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 This application is a Laravel application running on PHP 8.4. You are an expert with the Laravel ecosystem. Always use the APIs that match the installed major version of each package — do not assume a version.
 
 Before relying on a package's API, confirm its installed version:
+
 - PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.
 - JS packages: check `package.json` for the installed versions.
 
@@ -85,7 +86,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 - Execute PHP in app context for debugging and testing code. Do not create models without user approval, prefer tests with factories instead. Prefer existing Artisan commands over custom tinker code.
 - Always use single quotes to prevent shell expansion: `php artisan tinker --execute 'Your::code();'`
-  - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
+    - Double quotes for PHP strings inside: `php artisan tinker --execute 'User::where("active", true)->count();'`
 
 === php rules ===
 
@@ -200,11 +201,13 @@ Use Wayfinder to generate TypeScript functions for Laravel routes. Import from `
 # Inertia + Vue
 
 Vue components must have a single root element.
+
 - IMPORTANT: Activate `inertia-vue-development` when working with Inertia Vue client-side patterns.
 
 </laravel-boost-guidelines>
 
 <!-- GSD:project-start source:PROJECT.md -->
+
 ## Project
 
 **Inkspire**
@@ -216,26 +219,33 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 ### Constraints
 
 - **Tech stack**: Laravel 13 / PHP 8.4 backend (already scaffolded), Inertia v3 + Vue 3.5 frontend (not Blade-primary), MySQL in production (currently SQLite in dev `.env` — switch before real use). Non-negotiable — this is the already-committed stack for the project, not an open choice.
-- **RBAC**: exactly 7 roles, single `role` enum column on `users`, one role per user, each role with its own dedicated portal (not a shared layout with filtered nav).
+- **RBAC**: exactly 6 roles, single `role` enum column on `users`, one role per user, each role with its own dedicated portal (not a shared layout with filtered nav). The Owner role was removed — it duplicated Admin, which now holds every administrative power.
 - **Payments**: PayMongo for GCash/Maya, webhook-confirmed. Cash and Bank Transfer recorded directly, no gateway.
 - **Data integrity**: `transactions.job_order_id` NOT NULL (no standalone POS sales); `audit_trail` structurally append-only (no update/delete code paths at all, not just permission checks); `users` deactivate via `is_active`, never hard-delete, never `SoftDeletes`.
 - **Hosting**: Laravel Cloud is the intended target (managed MySQL/storage/queue/scheduler) over self-managed VPS — no dedicated DevOps for this project.
+
 <!-- GSD:project-end -->
 
 <!-- GSD:stack-start source:codebase/STACK.md -->
+
 ## Technology Stack
 
 ## Languages
+
 - PHP 8.4.3 (composer.json requires `^8.3`; local CLI is 8.4.3) - Backend application logic in `app/`, `config/`, `database/`, `routes/`
 - TypeScript (strict mode, `target: ESNext`, `module: ESNext`) - Frontend Inertia/Vue application in `resources/js/`
 - Vue 3 Single-File Components (`.vue`) - Pages/components in `resources/js/pages/`, `resources/js/components/`
 - Blade - Not used for page rendering (Inertia handles views); check `resources/views/mail/*` for any mail templates
+
 ## Runtime
+
 - PHP 8.4 (CLI runtime observed: `PHP 8.4.3`)
 - Node.js v22.12.0 (frontend build/dev tooling)
 - PHP: Composer, lockfile `composer.lock` present
 - JS: pnpm (`pnpm-workspace.yaml` present) with npm lockfile `package-lock.json` also present — check which is authoritative before installing; `.npmrc` present with custom settings
+
 ## Frameworks
+
 - Laravel Framework 13.29.0 (`laravel/framework`) - Backend application framework
 - Inertia.js Laravel adapter 3.3.1 (`inertiajs/inertia-laravel`) - Server-driven SPA bridge, routes rendered via `Route::inertia()` in `routes/web.php`
 - `@inertiajs/vue3` ^3.0.0 + `@inertiajs/vite` ^3.0.0 - Client-side Inertia adapter and Vite plugin
@@ -257,7 +267,9 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - Laravel Pao 1.1.4 (`laravel/pao`) - Agent-optimized PHP testing output
 - Laravel Chisel 0.1.1 (`laravel/chisel`) - Toolkit for removing/trimming build artifacts/scripts
 - Laravel Tinker 3.0.2 - REPL for debugging
+
 ## Key Dependencies
+
 - `laravel/framework` 13.29.0 - Application foundation (routing, ORM, service container, queues, etc.)
 - `inertiajs/inertia-laravel` 3.3.1 + `@inertiajs/vue3` - Full-stack page rendering bridge; no separate REST/GraphQL API layer detected
 - `laravel/fortify` 1.39.0 - All authentication flows (login, registration disabled/enabled per `config/fortify.php` features, password reset, two-factor auth, password confirmation)
@@ -268,7 +280,9 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - `laravel/wayfinder` + `@laravel/vite-plugin-wayfinder` - Type-safe route/action generation bridging PHP routes to TypeScript
 - `@laravel/multiplex` 0.4.1 (optional dependency) - Likely supports concurrent dev/watch tooling
 - `vite-plus` 0.3.0 - Wraps Vite with `lint`/`fmt`/`check` tasks configured directly in `vite.config.ts`
+
 ## Configuration
+
 - Configured via `.env` (present, not committed — gitignored) and `.env.example` (template, committed)
 - Key env vars: `APP_NAME`, `APP_ENV`, `APP_KEY`, `APP_URL`, `DB_CONNECTION` (default `sqlite`), `SESSION_DRIVER` (`database`), `QUEUE_CONNECTION` (`database`), `CACHE_STORE` (`database`), `BROADCAST_CONNECTION` (`log`), `FILESYSTEM_DISK` (`local`), `MAIL_MAILER` (`log`)
 - No `REDIS_*`, `AWS_*`, mail provider, or third-party API keys populated in `.env.example` beyond placeholders — this is a stock Laravel starter kit configuration with no live external services wired up yet
@@ -278,7 +292,9 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - `phpstan.neon` - Static analysis, level 7, scans `app/`, `bootstrap/app.php`, `config/`, `database/`, `routes/`
 - `phpunit.xml` - Pest/PHPUnit test suite configuration
 - `components.json` - shadcn-vue style component generator config
+
 ## Platform Requirements
+
 - PHP >= 8.3 (project targets/runs on 8.4)
 - Node.js (v22.12.0 observed) with pnpm as workspace package manager
 - SQLite by default for local development database (`database/database.sqlite`)
@@ -286,12 +302,15 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - No explicit deployment target configured in-repo (no `Procfile`, `fly.toml`, `render.yaml`, or Laravel Cloud config detected)
 - Laravel Forge/Cloud/Sail compatible given standard Laravel structure; `laravel/sail` is present as a dev dependency for Docker-based environments
 - Database driver is environment-driven (`DB_CONNECTION`) and supports switching from SQLite to MySQL/MariaDB/PostgreSQL via `config/database.php` without code changes
+
 <!-- GSD:stack-end -->
 
 <!-- GSD:conventions-start source:CONVENTIONS.md -->
+
 ## Conventions
 
 ## Naming Patterns
+
 - Controllers: `{Resource}Controller.php` under feature subfolders, e.g. `app/Http/Controllers/Settings/ProfileController.php`, `app/Http/Controllers/Settings/SecurityController.php`
 - Form Requests: `{Resource}{Action}Request.php`, e.g. `app/Http/Requests/Settings/ProfileUpdateRequest.php`, `app/Http/Requests/Settings/ProfileDeleteRequest.php`, `app/Http/Requests/Settings/TwoFactorAuthenticationRequest.php`
 - Shared validation logic: traits under `app/Concerns/`, e.g. `app/Concerns/PasswordValidationRules.php`, `app/Concerns/ProfileValidationRules.php`
@@ -311,7 +330,9 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - Full parameter and return type declarations everywhere observed (`function edit(Request $request): Response`).
 - PHPDoc `@property` blocks on Eloquent models document virtual/database attributes (`app/Models/User.php`).
 - Array shapes documented via PHPDoc, e.g. `@return array<string, ValidationRule|array<mixed>|string>` in `app/Http/Requests/Settings/ProfileUpdateRequest.php`.
+
 ## Code Style
+
 - Laravel Pint with the `laravel` preset only (`pint.json`): `{"preset": "laravel"}`.
 - Run `vendor/bin/pint --dirty --format agent` after any PHP change (per project CLAUDE.md), not `pint --test`.
 - Managed by `vite-plus`'s built-in `fmt`/`lint` config inside `vite.config.ts` (no separate `.prettierrc`/`.eslintrc`).
@@ -324,13 +345,17 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - Larastan (`phpstan.neon`) at **level 7**, scanning `app/`, `bootstrap/app.php`, `config/`, `database/`, `routes/`.
 - Run via `composer types:check` → `phpstan analyse`.
 - TypeScript strictness enforced by `vue-tsc --noEmit` (`npm run types:check`).
+
 ## Import Organization
+
 - Standard PSR-4 `use` statements, alphabetically grouped by convention (framework classes, then app classes), one per line, no aliasing except where a class name would collide.
 - Namespace root: `App\` → `app/`; test namespace `Tests\` → `tests/` (see `composer.json` autoload).
 - Import order observed in `resources/js/pages/settings/Profile.vue`: framework packages first (`@inertiajs/vue3`), then `vue` core, then generated Wayfinder controllers (`@/actions/...`), then local components (`@/components/...`), then UI primitives (`@/components/ui/...`), then generated route helpers (`@/routes/...`).
 - Path Alias: `@/*` → `./resources/js/*` (`tsconfig.json`, `components.json`).
 - Additional aliases via `components.json`: `components: @/components`, `composables: @/composables`, `utils: @/lib/utils`, `ui: @/components/ui`, `lib: @/lib`.
+
 ## Error Handling
+
 - Validation rules are defined via `FormRequest::rules()` classes under `app/Http/Requests/**`, not inline in controllers.
 - Shared/reusable rule sets extracted into traits under `app/Concerns/` and composed into FormRequests, e.g. `ProfileUpdateRequest` uses `ProfileValidationRules::profileRules()`, `PasswordUpdateRequest` presumably uses `PasswordValidationRules`.
 - Controllers assume validated input is safe and call `$request->validated()` (see `ProfileController::update`).
@@ -340,59 +365,78 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - Destructive actions re-verify state deliberately: `ProfileController::destroy` logs out, deletes user, invalidates session, and regenerates the CSRF token before redirecting.
 - Form errors surfaced via Inertia `<Form>` slot props (`errors`, `processing`) and rendered with the shared `<InputError :message="errors.field" />` component (`resources/js/components/InputError.vue`, used in `resources/js/pages/settings/Profile.vue`).
 - No custom global error boundary/toast library beyond `vue-sonner` (dependency present in `package.json`) tied to the backend's `Inertia::flash('toast', ...)` convention.
+
 ## Comments
+
 - Sparse inline comments; PHPDoc blocks are the primary documentation form (per project CLAUDE.md: "Prefer PHPDoc blocks over inline comments. Only add inline comments for exceptionally complex logic.")
 - Every public controller method has a one-line PHPDoc summary, e.g. `/** * Show the user's profile settings page. */` in `app/Http/Controllers/Settings/ProfileController.php`.
 - Every non-trivial return type gets an `@return` array-shape annotation, especially for validation rule arrays and Eloquent casts.
+
 ## Function Design
+
 ## Module Design (PHP)
+
 - Uses PHP 8 attributes for Eloquent metadata instead of protected properties: `#[Fillable([...])]` and `#[Hidden([...])]` on the class (`app/Models/User.php`), rather than `protected $fillable` / `protected $hidden`.
 - Casts defined via the `casts(): array` method (Laravel 11+ style), not the legacy `protected $casts` property.
+
 ## Vue Component Conventions
+
 - `<script setup lang="ts">` with Composition API exclusively.
 - Single root element per component (project rule from `inertia-vue/core` guidelines).
 - Page-level layout/breadcrumbs configured via `defineOptions({ layout: { breadcrumbs: [...] } })` at the top of `<script setup>`, referencing generated route helpers (`edit()` from `@/routes/profile`) for `href` values — never hardcoded URL strings.
 - Forms built with Inertia's `<Form>` component bound to generated Wayfinder controller actions: `v-bind="ProfileController.update.form()"`, exposing `{ errors, processing }` via `v-slot`.
 - Interactive elements needing test hooks carry `data-test="..."` attributes, e.g. `data-test="update-profile-button"` in `resources/js/pages/settings/Profile.vue`.
 - Reads current user via `usePage()` + `computed(() => page.props.auth.user)`, not local state or props drilling.
+
 ## PHP Language Conventions (from project CLAUDE.md)
+
 - Always use curly braces for control structures, even single-line bodies.
 - Constructor property promotion for DI: `public function __construct(public GitHub $github) {}`.
 - Explicit return types and parameter type hints on all methods.
 - TitleCase enum keys (e.g. `FavoritePerson`, `Monthly`).
 - Array shape type definitions in PHPDoc blocks over inline comments.
+
 <!-- GSD:conventions-end -->
 
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->
+
 ## Architecture
 
 ## System Overview
+
 ```text
+
 ```
+
 ## Component Responsibilities
-| Component | Responsibility | File |
-|-----------|----------------|------|
-| Inertia SPA bootstrap | Registers layout-resolution rules and app-wide plugins (theme, flash toasts) | `resources/js/app.ts` |
-| Root Blade template | Single HTML shell Inertia hydrates into; sets appearance class from cookie | `resources/views/app.blade.php` |
-| `HandleInertiaRequests` | Shares global props (`auth.user`, `name`, `sidebarOpen`) with every Inertia response | `app/Http/Middleware/HandleInertiaRequests.php` |
-| `HandleAppearance` | Shares light/dark/system cookie value with Blade views | `app/Http/Middleware/HandleAppearance.php` |
-| Web routes | Public/dashboard pages rendered directly via `Route::inertia()` | `routes/web.php` |
-| Settings routes | CRUD-style routes for profile/security backed by controllers | `routes/settings.php` |
-| Settings controllers | Handle profile update/delete and password update, return Inertia responses | `app/Http/Controllers/Settings/ProfileController.php`, `app/Http/Controllers/Settings/SecurityController.php` |
-| Fortify service provider | Wires custom Inertia views for Fortify's built-in auth routes (login, reset password, confirm password) and login rate limiting | `app/Providers/FortifyServiceProvider.php` |
-| Form Requests | Authorize + validate settings input, delegate rule sets to `Concerns` traits | `app/Http/Requests/Settings/*.php` |
-| Validation concerns | Reusable validation rule builders shared across requests | `app/Concerns/ProfileValidationRules.php`, `app/Concerns/PasswordValidationRules.php` |
-| `User` model | Sole domain model; auth, factory, casts, fillable/hidden via PHP attributes | `app/Models/User.php` |
-| Wayfinder-generated actions/routes | Type-safe TS wrappers around Laravel routes/controllers, regenerated from PHP | `resources/js/actions/**`, `resources/js/routes/**` |
-| UI component library | Reusable shadcn/reka-ui-based primitives (button, dialog, sidebar, etc.) | `resources/js/components/ui/**` |
-| Layouts | Compose page chrome (sidebar/header shell, auth split screen, settings sub-nav) around page components | `resources/js/layouts/**` |
+
+| Component                          | Responsibility                                                                                                                  | File                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Inertia SPA bootstrap              | Registers layout-resolution rules and app-wide plugins (theme, flash toasts)                                                    | `resources/js/app.ts`                                                                                         |
+| Root Blade template                | Single HTML shell Inertia hydrates into; sets appearance class from cookie                                                      | `resources/views/app.blade.php`                                                                               |
+| `HandleInertiaRequests`            | Shares global props (`auth.user`, `name`, `sidebarOpen`) with every Inertia response                                            | `app/Http/Middleware/HandleInertiaRequests.php`                                                               |
+| `HandleAppearance`                 | Shares light/dark/system cookie value with Blade views                                                                          | `app/Http/Middleware/HandleAppearance.php`                                                                    |
+| Web routes                         | Public/dashboard pages rendered directly via `Route::inertia()`                                                                 | `routes/web.php`                                                                                              |
+| Settings routes                    | CRUD-style routes for profile/security backed by controllers                                                                    | `routes/settings.php`                                                                                         |
+| Settings controllers               | Handle profile update/delete and password update, return Inertia responses                                                      | `app/Http/Controllers/Settings/ProfileController.php`, `app/Http/Controllers/Settings/SecurityController.php` |
+| Fortify service provider           | Wires custom Inertia views for Fortify's built-in auth routes (login, reset password, confirm password) and login rate limiting | `app/Providers/FortifyServiceProvider.php`                                                                    |
+| Form Requests                      | Authorize + validate settings input, delegate rule sets to `Concerns` traits                                                    | `app/Http/Requests/Settings/*.php`                                                                            |
+| Validation concerns                | Reusable validation rule builders shared across requests                                                                        | `app/Concerns/ProfileValidationRules.php`, `app/Concerns/PasswordValidationRules.php`                         |
+| `User` model                       | Sole domain model; auth, factory, casts, fillable/hidden via PHP attributes                                                     | `app/Models/User.php`                                                                                         |
+| Wayfinder-generated actions/routes | Type-safe TS wrappers around Laravel routes/controllers, regenerated from PHP                                                   | `resources/js/actions/**`, `resources/js/routes/**`                                                           |
+| UI component library               | Reusable shadcn/reka-ui-based primitives (button, dialog, sidebar, etc.)                                                        | `resources/js/components/ui/**`                                                                               |
+| Layouts                            | Compose page chrome (sidebar/header shell, auth split screen, settings sub-nav) around page components                          | `resources/js/layouts/**`                                                                                     |
+
 ## Pattern Overview
+
 - No traditional Blade views for pages — one root Blade template (`resources/views/app.blade.php`) hosts the Vue SPA; all page content is Vue components under `resources/js/pages/`.
 - Controllers return `Inertia::render()` responses instead of JSON API payloads; there is no `app/Http/Controllers/Api` namespace.
 - Authentication (login, password reset, password confirmation, 2FA scaffolding) is delegated to `laravel/fortify`; the app only supplies views and one custom action (`ResetUserPassword`).
 - Frontend route/action calls use Laravel Wayfinder-generated TypeScript (`resources/js/actions/**`, `resources/js/routes/**`) instead of hand-written URL strings, keeping frontend and backend routes in sync.
 - Single Eloquent model (`User`) — this is a starter-kit-scale app; no domain-specific models exist yet beyond auth/user management and settings.
+
 ## Layers
+
 - Purpose: Render pages, handle client-side interactivity, form submission via Inertia
 - Location: `resources/js/pages/`, `resources/js/layouts/`, `resources/js/components/`
 - Contains: `.vue` single-file components, composables (`resources/js/composables/`), small client-side libs (`resources/js/lib/`)
@@ -418,13 +462,20 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - Contains: `AppServiceProvider` (date immutability, destructive-command guard, password policy), `FortifyServiceProvider` (custom views, rate limiting), `HandleInertiaRequests`, `HandleAppearance`
 - Depends on: Framework services (`Date`, `DB`, `Password`, `RateLimiter`)
 - Used by: Registered in `bootstrap/app.php` (middleware) and `bootstrap/providers.php`-style provider array (implicit via `config/app.php`/auto-discovery)
+
 ## Data Flow
+
 ### Primary Request Path (page visit)
+
 ### Form Submission Flow (e.g. profile update)
+
 ### Authentication Flow
+
 - No client-side global store (no Pinia/Vuex). State is server-driven: Inertia props per page plus small composables (`useAppearance`, `useInitials`, `useCurrentUrl`) for local/UI-only concerns.
 - Theme/appearance persisted via cookie, read on both server (`HandleAppearance` → Blade) and client (`useAppearance.ts`) to avoid flash-of-wrong-theme.
+
 ## Key Abstractions
+
 - Purpose: Separate reusable validation rule sets from the request classes that use them, so rules can be shared across multiple requests (e.g. profile update vs. delete needing the same email rules).
 - Examples: `app/Http/Requests/Settings/ProfileUpdateRequest.php` uses `app/Concerns/ProfileValidationRules.php`; `app/Http/Requests/Settings/PasswordUpdateRequest.php` likely uses `app/Concerns/PasswordValidationRules.php`.
 - Pattern: `FormRequest` class `use`s a `Concerns` trait and calls a `*Rules()` method inside `rules()`.
@@ -434,7 +485,9 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - Purpose: Automatically wrap pages in the correct chrome without per-page boilerplate.
 - Examples: `app.ts:12-23` — pages under `auth/*` get `AuthLayout`, pages under `settings/*` get `[AppLayout, SettingsLayout]` nested layouts, `Welcome` gets no layout, everything else gets `AppLayout`.
 - Pattern: New pages must be placed under the correct `resources/js/pages/<namespace>/` subfolder to inherit the intended layout automatically.
+
 ## Entry Points
+
 - Location: `public/index.php` (standard Laravel front controller, not modified)
 - Triggers: All web requests
 - Responsibilities: Bootstraps `bootstrap/app.php`, dispatches through the HTTP kernel/middleware stack defined there
@@ -444,42 +497,98 @@ Inkspire is a web-based printing management system for SquareFoot Graphics & Ads
 - Location: `artisan` (root), routes registered in `routes/console.php`
 - Triggers: CLI (`php artisan ...`)
 - Responsibilities: Artisan commands; only a demo `inspire` command currently defined
+
 ## Architectural Constraints
+
 - **Threading:** Standard PHP-FPM/synchronous request model — no async workers defined beyond Laravel's default queue scaffolding (`config/queue.php`); no custom `app/Console/Commands` beyond the default directory (empty aside from framework defaults).
 - **Global state:** No global mutable state in PHP beyond framework-managed singletons (service container bindings in providers). Frontend has no global store; state lives in Inertia page props and composables.
 - **Circular imports:** None observed — layered structure (routes → controllers → requests/concerns → models) has no back-references.
 - **Single model constraint:** Only `User` exists as an Eloquent model; any new domain concept requires creating its own model, migration, factory, and (if exposed to the frontend) controller + Inertia page — there is no existing precedent for multi-model relationships in this codebase yet.
 - **No API layer:** `bootstrap/app.php` only registers `web` routes (no `api.php`); JSON responses are only produced when `shouldRenderJsonWhen` matches (`api/*` paths or `expectsJson()`), but no such routes exist yet.
+
 ## Anti-Patterns
+
 ### N/A — no anti-patterns identified
+
 - Fat controllers (currently controllers are thin — 1-3 methods, delegate validation to Form Requests).
 - Business logic creeping into Vue components instead of composables/backend.
+
 ## Error Handling
+
 - Form Requests (`app/Http/Requests/**`) centralize authorization + validation; controllers assume valid input.
 - Frontend error display uses `resources/js/components/InputError.vue` and `resources/js/components/AlertError.vue` for consistent field/form-level error rendering.
+
 ## Cross-Cutting Concerns
+
 <!-- GSD:architecture-end -->
 
 <!-- GSD:skills-start source:skills/ -->
+
 ## Project Skills
 
-| Skill | Description | Path |
-|-------|-------------|------|
-| fortify-development | 'ACTIVATE when the user works on authentication in Laravel. This includes login, registration, password reset, email verification, two-factor authentication (2FA/TOTP/QR codes/recovery codes), passkeys, profile updates, password confirmation, or any auth-related routes and controllers. Activate when the user mentions Fortify, auth, authentication, login, register, signup, forgot password, verify email, 2FA, passkeys, WebAuthn, or references app/Actions/Fortify/, CreateNewUser, UpdateUserProfileInformation, FortifyServiceProvider, config/fortify.php, or auth guards. Fortify is the frontend-agnostic authentication backend for Laravel that registers all auth routes and controllers. Also activate when building SPA or headless authentication, customizing login redirects, overriding response contracts like LoginResponse, or configuring login throttling. Do NOT activate for Laravel Passport (OAuth2 API tokens), Socialite (OAuth social login), or non-auth Laravel features.' | `.claude/skills/fortify-development/SKILL.md` |
-| inertia-vue-development | "Develops Inertia.js v3 Vue client-side applications. Activates when creating Vue pages, forms, or navigation; using <Link>, <Form>, useForm, useHttp, setLayoutProps, or router; working with deferred props, prefetching, optimistic updates, instant visits, or polling; or when user mentions Vue with Inertia, Vue pages, Vue forms, or Vue navigation." | `.claude/skills/inertia-vue-development/SKILL.md` |
-| infer-conventions | "Use this skill to analyze how a Laravel application is actually written and record its conventions as shared rules. Trigger when the user wants to detect, infer, document, or standardize project conventions or coding style, set up or grow `.ai/rules`, resolve mixed or conflicting patterns (e.g. \"are we using Form Requests or inline validation?\"), or onboard agents and teammates to \"how we do things here\". Covers: a systematic sweep of ~49 Laravel convention dimensions (validation, models, architecture, testing, frontend, database, console), open-ended house-pattern discovery, conflict reporting, and recording rules scoped to the right paths via the Boost `record-rule` MCP tool. Do not use for one-off code review, enforcing formatting a linter already handles, or editing `.ai/rules` files by hand." | `.claude/skills/infer-conventions/SKILL.md` |
-| laravel-best-practices | "Apply this skill whenever writing, reviewing, or refactoring Laravel PHP code. This includes creating or modifying controllers, models, migrations, form requests, policies, jobs, scheduled commands, service classes, and Eloquent queries. Triggers for N+1 and query performance issues, caching strategies, authorization and security patterns, validation, error handling, queue and job configuration, route definitions, and architectural decisions. Also use for Laravel code reviews and refactoring existing Laravel code to follow best practices. Covers any task involving Laravel backend PHP code patterns." | `.claude/skills/laravel-best-practices/SKILL.md` |
-| tailwindcss-development | "Always invoke when the user's message includes 'tailwind' in any form. Also invoke for: building responsive grid layouts (multi-column card grids, product grids), flex/grid page structures (dashboards with sidebars, fixed topbars, mobile-toggle navs), styling UI components (cards, tables, navbars, pricing sections, forms, inputs, badges), adding dark mode variants, fixing spacing or typography, and Tailwind v3/v4 work. The core use case: writing or fixing Tailwind utility classes in HTML templates (Blade, JSX, Vue). Skip for backend PHP logic, database queries, API routes, JavaScript with no HTML/CSS component, CSS file audits, build tool configuration, and vanilla CSS." | `.claude/skills/tailwindcss-development/SKILL.md` |
-| testing-best-practices | "Laravel test design and review. Use when selecting coverage, naming or structuring tests, choosing assertions or test data, isolating dependencies, testing HTTP or security boundaries, improving suite performance, or reviewing test value. Use framework guidance or search-docs for Pest and PHPUnit syntax." | `.claude/skills/testing-best-practices/SKILL.md` |
-| wayfinder-development | "Use this skill for Laravel Wayfinder which auto-generates typed functions for Laravel controllers and routes. ALWAYS use this skill when frontend code needs to call backend routes or controller actions. Trigger when: connecting any React/Vue/Svelte/Inertia frontend to Laravel controllers, routes, building end-to-end features with both frontend and backend, wiring up forms or links to backend endpoints, fixing route-related TypeScript errors, importing from @/actions or @/routes, or running wayfinder:generate. Use Wayfinder route functions instead of hardcoded URLs. Covers: wayfinder() vite plugin, .url()/.get()/.post()/.form(), query params, route model binding, tree-shaking. Do not use for backend-only task" | `.claude/skills/wayfinder-development/SKILL.md` |
+| Skill                   | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Path                                              |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| fortify-development     | 'ACTIVATE when the user works on authentication in Laravel. This includes login, registration, password reset, email verification, two-factor authentication (2FA/TOTP/QR codes/recovery codes), passkeys, profile updates, password confirmation, or any auth-related routes and controllers. Activate when the user mentions Fortify, auth, authentication, login, register, signup, forgot password, verify email, 2FA, passkeys, WebAuthn, or references app/Actions/Fortify/, CreateNewUser, UpdateUserProfileInformation, FortifyServiceProvider, config/fortify.php, or auth guards. Fortify is the frontend-agnostic authentication backend for Laravel that registers all auth routes and controllers. Also activate when building SPA or headless authentication, customizing login redirects, overriding response contracts like LoginResponse, or configuring login throttling. Do NOT activate for Laravel Passport (OAuth2 API tokens), Socialite (OAuth social login), or non-auth Laravel features.' | `.claude/skills/fortify-development/SKILL.md`     |
+| inertia-vue-development | "Develops Inertia.js v3 Vue client-side applications. Activates when creating Vue pages, forms, or navigation; using <Link>, <Form>, useForm, useHttp, setLayoutProps, or router; working with deferred props, prefetching, optimistic updates, instant visits, or polling; or when user mentions Vue with Inertia, Vue pages, Vue forms, or Vue navigation."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `.claude/skills/inertia-vue-development/SKILL.md` |
+| infer-conventions       | "Use this skill to analyze how a Laravel application is actually written and record its conventions as shared rules. Trigger when the user wants to detect, infer, document, or standardize project conventions or coding style, set up or grow `.ai/rules`, resolve mixed or conflicting patterns (e.g. \"are we using Form Requests or inline validation?\"), or onboard agents and teammates to \"how we do things here\". Covers: a systematic sweep of ~49 Laravel convention dimensions (validation, models, architecture, testing, frontend, database, console), open-ended house-pattern discovery, conflict reporting, and recording rules scoped to the right paths via the Boost `record-rule` MCP tool. Do not use for one-off code review, enforcing formatting a linter already handles, or editing `.ai/rules` files by hand."                                                                                                                                                                        | `.claude/skills/infer-conventions/SKILL.md`       |
+| laravel-best-practices  | "Apply this skill whenever writing, reviewing, or refactoring Laravel PHP code. This includes creating or modifying controllers, models, migrations, form requests, policies, jobs, scheduled commands, service classes, and Eloquent queries. Triggers for N+1 and query performance issues, caching strategies, authorization and security patterns, validation, error handling, queue and job configuration, route definitions, and architectural decisions. Also use for Laravel code reviews and refactoring existing Laravel code to follow best practices. Covers any task involving Laravel backend PHP code patterns."                                                                                                                                                                                                                                                                                                                                                                                      | `.claude/skills/laravel-best-practices/SKILL.md`  |
+| tailwindcss-development | "Always invoke when the user's message includes 'tailwind' in any form. Also invoke for: building responsive grid layouts (multi-column card grids, product grids), flex/grid page structures (dashboards with sidebars, fixed topbars, mobile-toggle navs), styling UI components (cards, tables, navbars, pricing sections, forms, inputs, badges), adding dark mode variants, fixing spacing or typography, and Tailwind v3/v4 work. The core use case: writing or fixing Tailwind utility classes in HTML templates (Blade, JSX, Vue). Skip for backend PHP logic, database queries, API routes, JavaScript with no HTML/CSS component, CSS file audits, build tool configuration, and vanilla CSS."                                                                                                                                                                                                                                                                                                             | `.claude/skills/tailwindcss-development/SKILL.md` |
+| testing-best-practices  | "Laravel test design and review. Use when selecting coverage, naming or structuring tests, choosing assertions or test data, isolating dependencies, testing HTTP or security boundaries, improving suite performance, or reviewing test value. Use framework guidance or search-docs for Pest and PHPUnit syntax."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `.claude/skills/testing-best-practices/SKILL.md`  |
+| wayfinder-development   | "Use this skill for Laravel Wayfinder which auto-generates typed functions for Laravel controllers and routes. ALWAYS use this skill when frontend code needs to call backend routes or controller actions. Trigger when: connecting any React/Vue/Svelte/Inertia frontend to Laravel controllers, routes, building end-to-end features with both frontend and backend, wiring up forms or links to backend endpoints, fixing route-related TypeScript errors, importing from @/actions or @/routes, or running wayfinder:generate. Use Wayfinder route functions instead of hardcoded URLs. Covers: wayfinder() vite plugin, .url()/.get()/.post()/.form(), query params, route model binding, tree-shaking. Do not use for backend-only task"                                                                                                                                                                                                                                                                      | `.claude/skills/wayfinder-development/SKILL.md`   |
+
 <!-- GSD:skills-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->
+
+## UI Changes Require a User-Friendly Check
+
+Every change that alters what a user sees or does must pass this check _before_
+you report it as done. It is not a style review — each item is a defect the
+shop's staff have actually been handed.
+
+1. **Long lists are searchable.** More than ~10 options is a `SearchableSelect`,
+   not a scroll. Staff know the name of the thing they want; let them type it.
+2. **Every state is reachable and reversible.** If a choice can be made wrong,
+   there is a way back out of it without a page reload.
+3. **Nothing important sits below the fold.** Primary actions on a long form are
+   sticky. If the submit button is a screen away from the last field, fix it.
+4. **Wide content scrolls inside its own box**, never the page. A table's
+   horizontal scroll must not drag the heading and filters off-screen.
+5. **Keyboard reaches everything a mouse can.** A clickable row needs
+   `tabindex` and an `@keyup.enter`.
+6. **Numbers that stack in a column get `tabular-nums`**, or the digits jitter
+   between rows.
+7. **Every screen says what it is for.** A title that restates the sidebar item
+   is not orientation; add a description that tells the user what they do here.
+8. **Empty states offer the action that fills them.** "No queue entries yet" is
+   a dead end; "No queue entries yet — New Visit" is not.
+9. **Both themes, both ends of the viewport.** Semantic tokens only
+   (`bg-card`, `text-muted-foreground`, `border-border`) — never a raw colour —
+   and check 375px as well as desktop.
+10. **Interactive widgets are observed working, not just type-checked.** A green
+    `types:check` on a component wired to a reka-ui primitive proves the props
+    match, not that the thing behaves — library defaults like
+    `Combobox.openOnClick: false` only show up in a browser. Drive it: open it,
+    type in it, keyboard through it, then change your mind and do it again.
+    The "change an existing value" path breaks more often than the first-use one.
+
+### Reuse the shared components
+
+Do not hand-roll a page shell, header, table card, stat tile or empty state.
+These exist and are used across every portal:
+
+`PageContainer`, `PageHeader`, `SectionHeading`, `DataTableCard`, `EmptyState`,
+`StatCard`, `SearchableSelect` — all in `resources/js/components/`.
+
+Tailwind utilities only. No inline `style=`, no `<style>` blocks, no CSS
+modules, and no additions to `app.css` for something a utility already does.
+
 ## GSD Workflow Enforcement
 
 Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
 
 Use these entry points:
+
 - `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
 - `/gsd-debug` for investigation and bug fixing
 - `/gsd-execute-phase` for planned phase work
@@ -488,8 +597,10 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 <!-- GSD:workflow-end -->
 
 <!-- GSD:profile-start -->
+
 ## Developer Profile
 
 > Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
 > This section is managed by `generate-claude-profile` -- do not edit manually.
+
 <!-- GSD:profile-end -->

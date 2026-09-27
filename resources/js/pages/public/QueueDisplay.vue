@@ -7,6 +7,7 @@ import { queueNumberLabel } from '@/lib/utils';
 
 interface QueueEntryRecord {
     id: number;
+    queue_prefix: string;
     queue_number: number;
     status: 'waiting' | 'serving' | 'done';
 }
@@ -91,7 +92,12 @@ const done = computed(() =>
                                 <p
                                     class="text-[64px] leading-[1.1] font-semibold"
                                 >
-                                    {{ queueNumberLabel(entry.queue_number) }}
+                                    {{
+                                        queueNumberLabel(
+                                            entry.queue_prefix,
+                                            entry.queue_number,
+                                        )
+                                    }}
                                 </p>
                                 <Badge
                                     variant="default"
@@ -118,7 +124,12 @@ const done = computed(() =>
                                 <p
                                     class="text-[64px] leading-[1.1] font-semibold"
                                 >
-                                    {{ queueNumberLabel(entry.queue_number) }}
+                                    {{
+                                        queueNumberLabel(
+                                            entry.queue_prefix,
+                                            entry.queue_number,
+                                        )
+                                    }}
                                 </p>
                                 <Badge
                                     variant="outline"
@@ -145,7 +156,12 @@ const done = computed(() =>
                                 <p
                                     class="text-[64px] leading-[1.1] font-semibold"
                                 >
-                                    {{ queueNumberLabel(entry.queue_number) }}
+                                    {{
+                                        queueNumberLabel(
+                                            entry.queue_prefix,
+                                            entry.queue_number,
+                                        )
+                                    }}
                                 </p>
                                 <Badge
                                     class="text-base font-semibold text-green-600 dark:text-green-400"

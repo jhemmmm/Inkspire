@@ -3,7 +3,11 @@ import { Form, Head, router } from '@inertiajs/vue3';
 import { Ban, Plus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import ExpenseController from '@/actions/App/Http/Controllers/AccountingStaff/ExpenseController';
+import DataTableCard from '@/components/DataTableCard.vue';
 import InputError from '@/components/InputError.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import StatCard from '@/components/StatCard.vue';
+import PageHeader from '@/components/PageHeader.vue';
 import DateRangeControl from '@/components/reports/DateRangeControl.vue';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -107,6 +111,20 @@ const expenseCountLabel = computed(() => {
         : `${props.activeCount} expenses`;
 });
 
+/**
+ * The expense count, with the voided tally appended when there is one --
+ * flattened into a single string so the total tile can take it as a prop.
+ */
+const totalHint = computed(() => {
+    if (props.voidedCount === 0) {
+        return expenseCountLabel.value;
+    }
+
+    const entries = props.voidedCount === 1 ? 'entry' : 'entries';
+
+    return `${expenseCountLabel.value} · ${props.voidedCount} voided ${entries} excluded`;
+});
+
 function onApplyRange(range: { from: string; to: string }): void {
     router.get(
         expensesIndex.url(),
@@ -144,145 +162,138 @@ function openVoidDialog(row: ExpenseRow): void {
 <template>
     <Head title="Expenses" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4"
-    >
-        <div class="flex items-start justify-between gap-4">
-            <div class="flex flex-col gap-1">
-                <h1 class="text-[28px] leading-[1.2] font-semibold">
-                    Expenses
-                </h1>
-                <p class="text-muted-foreground text-sm">
-                    Costs recorded against the business. Voided entries stay on
-                    the list but count toward nothing.
-                </p>
-            </div>
+    <PageContainer>
+        <PageHeader
+            title="Expenses"
+            description="Shop costs recorded against the business, offset against sales in the reports. Voided entries stay on the list but count toward nothing."
+        >
+            <template #actions>
+                <Dialog>
+                    <DialogTrigger as-child>
+                        <Button
+                            data-test="record-expense-button"
+                            @click="recordCategory = ''"
+                        >
+                            <Plus class="size-4" />
+                            Record Expense
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <Form
+                            v-bind="ExpenseController.store.form()"
+                            :options="{ preserveScroll: true }"
+                            class="space-y-4"
+                            v-slot="{ errors, processing }"
+                        >
+                            <DialogHeader>
+                                <DialogTitle>Record an expense</DialogTitle>
+                                <DialogDescription>
+                                    This counts toward the Expenses and Summary
+                                    reports for the date you set.
+                                </DialogDescription>
+                            </DialogHeader>
 
-            <Dialog>
-                <DialogTrigger as-child>
-                    <Button
-                        data-test="record-expense-button"
-                        @click="recordCategory = ''"
-                    >
-                        <Plus class="size-4" />
-                        Record Expense
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <Form
-                        v-bind="ExpenseController.store.form()"
-                        :options="{ preserveScroll: true }"
-                        class="space-y-4"
-                        v-slot="{ errors, processing }"
-                    >
-                        <DialogHeader>
-                            <DialogTitle>Record an expense</DialogTitle>
-                            <DialogDescription>
-                                This counts toward the Expenses and Summary
-                                reports for the date you set.
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        <input
-                            type="hidden"
-                            name="category"
-                            :value="recordCategory"
-                        />
-                        <div class="grid gap-2">
-                            <Label for="record-category">Category</Label>
-                            <Select v-model="recordCategory">
-                                <SelectTrigger
-                                    id="record-category"
-                                    class="w-56"
-                                >
-                                    <SelectValue
-                                        placeholder="Choose a category"
-                                    />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem
-                                        v-for="category in categories"
-                                        :key="category"
-                                        :value="category"
+                            <input
+                                type="hidden"
+                                name="category"
+                                :value="recordCategory"
+                            />
+                            <div class="grid gap-2">
+                                <Label for="record-category">Category</Label>
+                                <Select v-model="recordCategory">
+                                    <SelectTrigger
+                                        id="record-category"
+                                        class="w-full"
                                     >
-                                        {{ category }}
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p class="text-muted-foreground text-sm">
-                                Categories are managed by the Owner in System
-                                Configuration.
-                            </p>
-                            <InputError :message="errors.category" />
-                        </div>
+                                        <SelectValue
+                                            placeholder="Choose a category"
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem
+                                            v-for="category in categories"
+                                            :key="category"
+                                            :value="category"
+                                        >
+                                            {{ category }}
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p class="text-muted-foreground text-sm">
+                                    Categories are managed by the Admin in
+                                    System Configuration.
+                                </p>
+                                <InputError :message="errors.category" />
+                            </div>
 
-                        <div class="grid gap-2">
-                            <Label for="record-amount">Amount</Label>
-                            <div class="flex items-center gap-2">
-                                <span class="text-muted-foreground text-sm"
-                                    >₱</span
+                            <div class="grid gap-2">
+                                <Label for="record-amount">Amount</Label>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-muted-foreground text-sm"
+                                        >₱</span
+                                    >
+                                    <Input
+                                        id="record-amount"
+                                        name="amount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        class="w-full"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <InputError :message="errors.amount" />
+                            </div>
+
+                            <div class="grid gap-2">
+                                <Label for="record-expense-date"
+                                    >Expense Date</Label
                                 >
                                 <Input
-                                    id="record-amount"
-                                    name="amount"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    class="w-48"
-                                    placeholder="0.00"
+                                    id="record-expense-date"
+                                    name="expense_date"
+                                    type="date"
+                                    class="w-full"
                                 />
+                                <p class="text-muted-foreground text-sm">
+                                    The day the cost was incurred, not the day
+                                    you're entering it.
+                                </p>
+                                <InputError :message="errors.expense_date" />
                             </div>
-                            <InputError :message="errors.amount" />
-                        </div>
 
-                        <div class="grid gap-2">
-                            <Label for="record-expense-date"
-                                >Expense Date</Label
-                            >
-                            <Input
-                                id="record-expense-date"
-                                name="expense_date"
-                                type="date"
-                                class="w-40"
-                            />
-                            <p class="text-muted-foreground text-sm">
-                                The day the cost was incurred, not the day
-                                you're entering it.
-                            </p>
-                            <InputError :message="errors.expense_date" />
-                        </div>
-
-                        <div class="grid gap-2">
-                            <Label for="record-description"
-                                >Description (optional)</Label
-                            >
-                            <Textarea
-                                id="record-description"
-                                name="description"
-                                rows="3"
-                                placeholder="e.g. Meralco — August billing"
-                            />
-                            <p class="text-muted-foreground text-sm">
-                                A short note makes this row readable a month
-                                from now.
-                            </p>
-                            <InputError :message="errors.description" />
-                        </div>
-
-                        <DialogFooter class="gap-2">
-                            <DialogClose as-child>
-                                <Button type="button" variant="secondary"
-                                    >Cancel</Button
+                            <div class="grid gap-2">
+                                <Label for="record-description"
+                                    >Description (optional)</Label
                                 >
-                            </DialogClose>
-                            <Button type="submit" :disabled="processing"
-                                >Record Expense</Button
-                            >
-                        </DialogFooter>
-                    </Form>
-                </DialogContent>
-            </Dialog>
-        </div>
+                                <Textarea
+                                    id="record-description"
+                                    name="description"
+                                    rows="3"
+                                    placeholder="e.g. Meralco — August billing"
+                                />
+                                <p class="text-muted-foreground text-sm">
+                                    A short note makes this row readable a month
+                                    from now.
+                                </p>
+                                <InputError :message="errors.description" />
+                            </div>
+
+                            <DialogFooter class="gap-2">
+                                <DialogClose as-child>
+                                    <Button type="button" variant="secondary"
+                                        >Cancel</Button
+                                    >
+                                </DialogClose>
+                                <Button type="submit" :disabled="processing"
+                                    >Record Expense</Button
+                                >
+                            </DialogFooter>
+                        </Form>
+                    </DialogContent>
+                </Dialog>
+            </template>
+        </PageHeader>
 
         <DateRangeControl
             :from="filters.from"
@@ -290,31 +301,13 @@ function openVoidDialog(row: ExpenseRow): void {
             @apply="onApplyRange"
         />
 
-        <Card>
-            <CardContent class="flex flex-col gap-1">
-                <span class="text-sm font-semibold"
-                    >Total for {{ rangeLabel }}</span
-                >
-                <span
-                    class="text-[28px] leading-[1.2] font-semibold tabular-nums"
-                    >{{ money(total) }}</span
-                >
-                <span class="text-muted-foreground text-sm">{{
-                    expenseCountLabel
-                }}</span>
-                <span
-                    v-if="voidedCount > 0"
-                    class="text-muted-foreground text-sm"
-                >
-                    {{ voidedCount }} voided
-                    {{ voidedCount === 1 ? 'entry' : 'entries' }} excluded
-                </span>
-            </CardContent>
-        </Card>
+        <StatCard
+            :label="`Total for ${rangeLabel}`"
+            :value="money(total)"
+            :hint="totalHint"
+        />
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -410,7 +403,7 @@ function openVoidDialog(row: ExpenseRow): void {
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
+        </DataTableCard>
 
         <Dialog v-model:open="editDialogOpen">
             <DialogContent v-if="editingExpense">
@@ -455,7 +448,7 @@ function openVoidDialog(row: ExpenseRow): void {
                     <div class="grid gap-2">
                         <Label for="edit-category">Category</Label>
                         <Select v-model="editCategory">
-                            <SelectTrigger id="edit-category" class="w-56">
+                            <SelectTrigger id="edit-category" class="w-full">
                                 <SelectValue placeholder="Choose a category" />
                             </SelectTrigger>
                             <SelectContent>
@@ -469,7 +462,7 @@ function openVoidDialog(row: ExpenseRow): void {
                             </SelectContent>
                         </Select>
                         <p class="text-muted-foreground text-sm">
-                            Categories are managed by the Owner in System
+                            Categories are managed by the Admin in System
                             Configuration.
                         </p>
                         <InputError :message="errors.category" />
@@ -485,7 +478,7 @@ function openVoidDialog(row: ExpenseRow): void {
                                 type="number"
                                 step="0.01"
                                 min="0"
-                                class="w-48"
+                                class="w-full"
                                 placeholder="0.00"
                                 :default-value="editingExpense.amount"
                             />
@@ -499,7 +492,7 @@ function openVoidDialog(row: ExpenseRow): void {
                             id="edit-expense-date"
                             name="expense_date"
                             type="date"
-                            class="w-40"
+                            class="w-full"
                             :default-value="
                                 editingExpense.expense_date.slice(0, 10)
                             "
@@ -596,5 +589,5 @@ function openVoidDialog(row: ExpenseRow): void {
                 </Form>
             </DialogContent>
         </Dialog>
-    </div>
+    </PageContainer>
 </template>

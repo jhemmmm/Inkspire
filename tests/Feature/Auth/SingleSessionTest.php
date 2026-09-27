@@ -4,7 +4,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 test('a new login invalidates the previous session on its next request', function () {
-    $user = User::factory()->owner()->create();
+    $user = User::factory()->admin()->create();
 
     $this->post(route('login.store'), [
         'email' => $user->email,
@@ -28,7 +28,7 @@ test('a new login invalidates the previous session on its next request', functio
     Auth::forgetGuards();
 
     $response = $this->withCookie(config('session.cookie'), $sessionId)
-        ->get(route('owner.dashboard'));
+        ->get(route('admin.dashboard'));
 
     $response->assertRedirect(route('login'));
     $response->assertSessionHas('sessionMessage');
@@ -36,7 +36,7 @@ test('a new login invalidates the previous session on its next request', functio
 });
 
 test('a normal authenticated request with a matching session id is unaffected', function () {
-    $user = User::factory()->owner()->create();
+    $user = User::factory()->admin()->create();
 
     $this->post(route('login.store'), [
         'email' => $user->email,
@@ -51,7 +51,7 @@ test('a normal authenticated request with a matching session id is unaffected', 
     // Forward the same session id as a cookie to simulate the same browser
     // making the next request (see note above).
     $response = $this->withCookie(config('session.cookie'), $sessionId)
-        ->get(route('owner.dashboard'));
+        ->get(route('admin.dashboard'));
 
     $response->assertOk();
 });

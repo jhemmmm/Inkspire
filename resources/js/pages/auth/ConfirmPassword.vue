@@ -5,6 +5,11 @@ import PasswordInput from '@/components/PasswordInput.vue';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    authErrorClass,
+    authInputClass,
+    authSubmitClass,
+} from '@/layouts/auth/fields';
 import { store } from '@/routes/password/confirm';
 
 defineOptions({
@@ -30,18 +35,21 @@ defineOptions({
                 <PasswordInput
                     id="password"
                     name="password"
-                    class="mt-1 block w-full"
+                    :class="[authInputClass, 'mt-1 block w-full']"
                     required
                     autocomplete="current-password"
                     autofocus
                 />
 
-                <InputError :message="errors.password" />
+                <InputError
+                    :message="errors.password"
+                    :class="authErrorClass"
+                />
             </div>
 
             <div class="flex items-center">
                 <Button
-                    class="w-full"
+                    :class="authSubmitClass"
                     :disabled="processing"
                     data-test="confirm-password-button"
                 >

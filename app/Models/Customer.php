@@ -14,13 +14,14 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property string $name
+ * @property string|null $organization
  * @property string $contact_number
  * @property string $email
  * @property string $address
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'contact_number', 'email', 'address'])]
+#[Fillable(['name', 'organization', 'contact_number', 'email', 'address'])]
 #[ObservedBy(AuditObserver::class)]
 class Customer extends Model
 {

@@ -15,13 +15,13 @@ created: 2026-09-02
 
 ## Test Infrastructure
 
-| Property | Value |
-|----------|-------|
-| **Framework** | Pest 5.1.3 + pestphp/pest-plugin-laravel 5.0.1 |
-| **Config file** | phpunit.xml (suites: Unit, Feature) |
-| **Quick run command** | `php artisan test --compact --filter=<TestName>` (or `vendor/bin/pest --filter=<name>`) |
-| **Full suite command** | `php artisan test --compact` |
-| **Estimated runtime** | ~15-30 seconds (full suite, SQLite in-memory) |
+| Property               | Value                                                                                   |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| **Framework**          | Pest 5.1.3 + pestphp/pest-plugin-laravel 5.0.1                                          |
+| **Config file**        | phpunit.xml (suites: Unit, Feature)                                                     |
+| **Quick run command**  | `php artisan test --compact --filter=<TestName>` (or `vendor/bin/pest --filter=<name>`) |
+| **Full suite command** | `php artisan test --compact`                                                            |
+| **Estimated runtime**  | ~15-30 seconds (full suite, SQLite in-memory)                                           |
 
 Feature tests are globally bound to `Tests\TestCase` + `RefreshDatabase` via `tests/Pest.php`'s `pest()->extend(...)->in('Feature')` call — new Phase 4 feature tests need no per-file `uses()` boilerplate as long as they live under `tests/Feature/`.
 
@@ -38,18 +38,18 @@ Feature tests are globally bound to `Tests\TestCase` + `RefreshDatabase` via `te
 
 ## Per-Task Verification Map
 
-| Task ID | Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|-------------|----------|-----------|---------------------|-------------|--------|
-| 04-xx | JOB-03 | Artist saves consultation notes on an assigned job order | feature | `pest --filter="consultation notes"` | ❌ W0 | ⬜ pending |
-| 04-xx | JOB-09 | "Next" claims oldest `Assigned` job order for that artist; Forward/Not-Appear don't reassign | feature | `pest --filter="next.*forward.*not.appear"` | ❌ W0 | ⬜ pending |
-| 04-xx | JOB-04 | Design editor page renders with a signed image URL prop (or null for blank canvas) | feature | `pest --filter="design editor"` | ❌ W0 | ⬜ pending |
-| 04-xx | JOB-05 | Send-for-review creates a `revision_logs` row and overwrites `design_files` every time, including the first submission | feature | `pest --filter="send for review"` | ❌ W0 | ⬜ pending |
-| 04-xx | JOB-06 | A `DesignApproved` job order's design file rejects further edits/overwrites server-side | feature | `pest --filter="locked design"` | ❌ W0 | ⬜ pending |
-| 04-xx | JOB-07 | Non-Owner is forbidden from unlock; Owner unlock writes an `audit_trail` row | feature | `pest --filter="unlock override"` | ❌ W0 | ⬜ pending |
-| 04-xx | JOB-08 | Setting `OnBreak`/`OffShift` flips `is_available` false; returning to `Available` claims oldest unassigned job order | feature | `pest --filter="session status"` | ❌ W0 | ⬜ pending |
-| 04-xx | JOB-10 | Performance report aggregates jobs completed / avg revisions / SLA adherence over a date range | feature | `pest --filter="performance report"` | ❌ W0 | ⬜ pending |
+| Task ID | Requirement | Behavior                                                                                                               | Test Type | Automated Command                           | File Exists | Status     |
+| ------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- | --------- | ------------------------------------------- | ----------- | ---------- |
+| 04-xx   | JOB-03      | Artist saves consultation notes on an assigned job order                                                               | feature   | `pest --filter="consultation notes"`        | ❌ W0       | ⬜ pending |
+| 04-xx   | JOB-09      | "Next" claims oldest `Assigned` job order for that artist; Forward/Not-Appear don't reassign                           | feature   | `pest --filter="next.*forward.*not.appear"` | ❌ W0       | ⬜ pending |
+| 04-xx   | JOB-04      | Design editor page renders with a signed image URL prop (or null for blank canvas)                                     | feature   | `pest --filter="design editor"`             | ❌ W0       | ⬜ pending |
+| 04-xx   | JOB-05      | Send-for-review creates a `revision_logs` row and overwrites `design_files` every time, including the first submission | feature   | `pest --filter="send for review"`           | ❌ W0       | ⬜ pending |
+| 04-xx   | JOB-06      | A `DesignApproved` job order's design file rejects further edits/overwrites server-side                                | feature   | `pest --filter="locked design"`             | ❌ W0       | ⬜ pending |
+| 04-xx   | JOB-07      | Non-Owner is forbidden from unlock; Owner unlock writes an `audit_trail` row                                           | feature   | `pest --filter="unlock override"`           | ❌ W0       | ⬜ pending |
+| 04-xx   | JOB-08      | Setting `OnBreak`/`OffShift` flips `is_available` false; returning to `Available` claims oldest unassigned job order   | feature   | `pest --filter="session status"`            | ❌ W0       | ⬜ pending |
+| 04-xx   | JOB-10      | Performance report aggregates jobs completed / avg revisions / SLA adherence over a date range                         | feature   | `pest --filter="performance report"`        | ❌ W0       | ⬜ pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky. Task IDs filled in by the planner once plan/task numbering exists.*
+_Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky. Task IDs filled in by the planner once plan/task numbering exists._
 
 ---
 
@@ -70,10 +70,10 @@ Feature tests are globally bound to `Tests\TestCase` + `RefreshDatabase` via `te
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|--------------------|
-| TOAST UI editor renders correctly, tools function (crop/flip/rotate/draw/shape/icon/text/filter), color picker is styled | JOB-04 | No Dusk/Playwright in this project — canvas-level rendering and interaction is outside Pest's reach | Open the Artist design editor page in a browser; verify menu bar renders, blank canvas and existing-image loading both work, each tool is usable, color picker is styled (not a bare unstyled `<div>`), no NHN telemetry request fires in the network tab |
-| Exported PNG visually matches what was edited in the canvas | JOB-05 | Client-side `toDataURL()` → multipart upload round-trip; asserting pixel content isn't practical in Pest | After editing and clicking "Send for Review", download/view the stored `design_files` PNG and confirm it matches the canvas |
+| Behavior                                                                                                                 | Requirement | Why Manual                                                                                               | Test Instructions                                                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------ | ----------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TOAST UI editor renders correctly, tools function (crop/flip/rotate/draw/shape/icon/text/filter), color picker is styled | JOB-04      | No Dusk/Playwright in this project — canvas-level rendering and interaction is outside Pest's reach      | Open the Artist design editor page in a browser; verify menu bar renders, blank canvas and existing-image loading both work, each tool is usable, color picker is styled (not a bare unstyled `<div>`), no NHN telemetry request fires in the network tab |
+| Exported PNG visually matches what was edited in the canvas                                                              | JOB-05      | Client-side `toDataURL()` → multipart upload round-trip; asserting pixel content isn't practical in Pest | After editing and clicking "Send for Review", download/view the stored `design_files` PNG and confirm it matches the canvas                                                                                                                               |
 
 ---
 

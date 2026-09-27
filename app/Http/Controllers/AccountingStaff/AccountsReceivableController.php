@@ -161,7 +161,7 @@ class AccountsReceivableController extends Controller
             'credit_extended' => (float) $accountsReceivable->balance,
             'aging_bracket' => $accountsReceivable->agingBracket()->value,
             'days_past_due' => $accountsReceivable->daysPastDue(),
-            'collection_status' => $accountsReceivable->collection_status->value,
+            'collection_status' => $accountsReceivable->collectionStatus()->value,
             'due_at' => $accountsReceivable->due_at,
             'write_off_reason' => $accountsReceivable->write_off_reason,
             'write_off_requested_at' => $accountsReceivable->write_off_requested_at,

@@ -29,6 +29,31 @@ use Inertia\Response;
 class TrackingController extends Controller
 {
     /**
+     * The journey a customer sees, as an ordered list of the labels
+     * publicStage() returns. Position in this array is what the page's
+     * progress ladder renders -- see publicStageStep().
+     *
+     * Deliberately a list of LABELS, not of status keys. A key like
+     * `quality_check` would be the internal enum value verbatim, and this
+     * controller's whole contract is that the raw status never reaches the
+     * client; a test asserts the response body contains no enum value, and
+     * it should keep passing.
+     *
+     * `Cancelled` is absent on purpose: it is not a step on the journey, it
+     * ends it.
+     *
+     * @var array<int, string>
+     */
+    private const array PUBLIC_STAGE_ORDER = [
+        'In Progress',
+        'For Production',
+        'Printing',
+        'Quality Check',
+        'Ready for Pickup',
+        'Completed',
+    ];
+
+    /**
      * Show the public, unauthenticated job-order tracking page (TRACK-01).
      */
     public function show(TrackJobOrderRequest $request): Response
@@ -54,6 +79,7 @@ class TrackingController extends Controller
                 'found' => true,
                 'number' => $jobOrder->number,
                 'stage' => $this->publicStage($jobOrder),
+                'stageStep' => $this->publicStageStep($jobOrder),
             ],
         ]);
     }
@@ -69,7 +95,8 @@ class TrackingController extends Controller
      * `description` and `print_size` are excluded on purpose even though a
      * customer arguably owns both: a description is free text a staff member
      * may have typed a customer's name into, so the narrower shape is the
-     * defensible one.
+     * defensible one. `stageStep` is an integer position, not a status --
+     * see PUBLIC_STAGE_ORDER.
      */
     public function showByToken(string $token): Response
     {
@@ -90,6 +117,7 @@ class TrackingController extends Controller
                 'found' => true,
                 'number' => $jobOrder->number,
                 'stage' => $this->publicStage($jobOrder),
+                'stageStep' => $this->publicStageStep($jobOrder),
                 'reviewUrl' => $this->designReviewUrl($jobOrder),
             ],
         ]);
@@ -164,5 +192,24 @@ class TrackingController extends Controller
             JobOrderStatus::ReadyForPickup => 'Ready for Pickup',
             default => 'In Progress',
         };
+    }
+
+    /**
+     * How far along PUBLIC_STAGE_ORDER this job order is, zero-indexed.
+     *
+     * Null means the order is off the ladder -- cancelled -- and the page
+     * renders an ended journey instead of a step. An integer carries no
+     * status vocabulary at all, which is what keeps the raw enum out of the
+     * response.
+     *
+     * The page's own step copy must stay the same length and order as
+     * PUBLIC_STAGE_ORDER; OrderProgress.vue names this file for that reason,
+     * and PublicStageStepTest pins every status to its position.
+     */
+    private function publicStageStep(JobOrder $jobOrder): ?int
+    {
+        $index = array_search($this->publicStage($jobOrder), self::PUBLIC_STAGE_ORDER, true);
+
+        return $index === false ? null : $index;
     }
 }

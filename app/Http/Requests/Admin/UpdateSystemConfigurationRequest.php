@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Owner;
+namespace App\Http\Requests\Admin;
 
 use App\Concerns\SystemConfigValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;

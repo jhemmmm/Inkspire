@@ -6,6 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    authErrorClass,
+    authInputClass,
+    authMutedClass,
+    authSubmitClass,
+} from '@/layouts/auth/fields';
 import { login } from '@/routes';
 import { email } from '@/routes/password';
 
@@ -42,13 +48,14 @@ defineProps<{
                     autocomplete="off"
                     autofocus
                     placeholder="email@example.com"
+                    :class="authInputClass"
                 />
-                <InputError :message="errors.email" />
+                <InputError :message="errors.email" :class="authErrorClass" />
             </div>
 
             <div class="my-6 flex items-center justify-start">
                 <Button
-                    class="w-full"
+                    :class="authSubmitClass"
                     :disabled="processing"
                     data-test="email-password-reset-link-button"
                 >
@@ -58,7 +65,7 @@ defineProps<{
             </div>
         </Form>
 
-        <div class="text-muted-foreground space-x-1 text-center text-sm">
+        <div :class="[authMutedClass, 'space-x-1 text-center text-sm']">
             <span>Or, return to</span>
             <TextLink :href="login()">log in</TextLink>
         </div>

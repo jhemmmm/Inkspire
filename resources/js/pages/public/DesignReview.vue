@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { CircleCheck, Clock, Palette, TriangleAlert } from '@lucide/vue';
 import { computed } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,7 +35,7 @@ const closedMessage = computed(() =>
     >
         <Card class="w-full max-w-xl">
             <template v-if="state === 'active'">
-                <CardHeader>
+                <CardHeader :icon="Palette">
                     <CardTitle>{{ jobOrderDescription }}</CardTitle>
                     <CardDescription>
                         Review the design below and let us know if it's ready to
@@ -80,7 +81,7 @@ const closedMessage = computed(() =>
             </template>
 
             <template v-else-if="state === 'stale'">
-                <CardHeader>
+                <CardHeader :icon="TriangleAlert">
                     <CardTitle>This design has changed</CardTitle>
                     <CardDescription>
                         Check your latest email — a newer version of this design
@@ -90,14 +91,14 @@ const closedMessage = computed(() =>
             </template>
 
             <template v-else-if="state === 'closed'">
-                <CardHeader>
+                <CardHeader :icon="CircleCheck">
                     <CardTitle>Already reviewed</CardTitle>
                     <CardDescription>{{ closedMessage }}</CardDescription>
                 </CardHeader>
             </template>
 
             <template v-else-if="state === 'expired'">
-                <CardHeader>
+                <CardHeader :icon="Clock">
                     <CardTitle>This link has expired</CardTitle>
                     <CardDescription>
                         Design review links are valid for 7 days. Please contact

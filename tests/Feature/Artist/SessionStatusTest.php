@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ArtistStatus;
+use App\Enums\JobOrderStatus;
 use App\Models\JobOrder;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -33,7 +34,7 @@ test('ending a break flips artist_status back to available, clears break_started
     expect($artist->break_started_at)->toBeNull();
 });
 
-test('returning to available claims the artist\'s oldest unassigned type b job order', function () {
+test('returning to available does not claim any job order -- work is pulled, never pushed', function () {
     $artist = User::factory()->artist()->create([
         'artist_status' => ArtistStatus::OnBreak->value,
         'is_available' => false,
@@ -43,7 +44,8 @@ test('returning to available claims the artist\'s oldest unassigned type b job o
 
     $this->actingAs($artist)->patch(route('artist.session-status.end-break'));
 
-    expect($jobOrder->fresh()->assigned_artist_id)->toBe($artist->id);
+    expect($jobOrder->fresh()->assigned_artist_id)->toBeNull();
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::Intake);
 });
 
 test('ending shift is allowed from available and from on_break, setting off_shift and is_available false', function () {

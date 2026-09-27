@@ -4,62 +4,62 @@ plan: 01
 subsystem: frontline-intake, public-tracking, cashier-pos
 tags: [rush, qr-tracking, customer-history, print, pii-boundary, tdd]
 requires:
-  - job_orders table
-  - public.design-review.* signed routes
-  - TrackingQrCode.vue, SearchableSelect.vue, DataTableCard.vue, SectionHeading.vue
+    - job_orders table
+    - public.design-review.* signed routes
+    - TrackingQrCode.vue, SearchableSelect.vue, DataTableCard.vue, SectionHeading.vue
 provides:
-  - job_orders.is_rush (persisted, NOT NULL)
-  - job_orders.tracking_token (unique, 32 chars)
-  - GET track/{token} → public.tracking.token
-  - customerJobOrders + trackingBaseUrl props on frontline-staff/NewVisit
+    - job_orders.is_rush (persisted, NOT NULL)
+    - job_orders.tracking_token (unique, 32 chars)
+    - GET track/{token} → public.tracking.token
+    - customerJobOrders + trackingBaseUrl props on frontline-staff/NewVisit
 affects:
-  - Frontline Staff New Visit and Queue List
-  - Artist Dashboard and Job Order Workspace
-  - Cashier Dashboard and Job Order Payment
-  - Production Board is_rush semantics
+    - Frontline Staff New Visit and Queue List
+    - Artist Dashboard and Job Order Workspace
+    - Cashier Dashboard and Job Order Payment
+    - Production Board is_rush semantics
 tech-stack:
-  added: []
-  patterns:
-    - reka-ui Switch in an uncontrolled Inertia Form needs an explicit value="1"
-      plus a preceding hidden "0" when the server rule is required|boolean
-    - Tailwind print: variants only for print isolation (no @media print in app.css)
-    - Eloquent creating hook for non-fillable generated credentials
+    added: []
+    patterns:
+        - reka-ui Switch in an uncontrolled Inertia Form needs an explicit value="1"
+          plus a preceding hidden "0" when the server rule is required|boolean
+        - Tailwind print: variants only for print isolation (no @media print in app.css)
+        - Eloquent creating hook for non-fillable generated credentials
 key-files:
-  created:
-    - database/migrations/2026_09_10_120000_add_is_rush_to_job_orders_table.php
-    - database/migrations/2026_09_10_120100_add_tracking_token_to_job_orders_table.php
-    - resources/js/pages/public/TrackingToken.vue
-    - tests/Feature/FrontlineStaff/RushJobOrderTest.php
-    - tests/Feature/FrontlineStaff/CustomerJobOrderHistoryTest.php
-    - tests/Feature/Cashier/CashierDashboardPaidFilterTest.php
-    - tests/Feature/Public/TrackingTokenTest.php
-  modified:
-    - app/Models/JobOrder.php
-    - app/Concerns/JobOrderValidationRules.php
-    - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
-    - app/Http/Controllers/FrontlineStaff/CustomerController.php
-    - app/Http/Controllers/Artist/JobOrderQueueController.php
-    - app/Http/Controllers/Artist/JobOrderWorkspaceController.php
-    - app/Http/Controllers/Cashier/DashboardController.php
-    - app/Http/Controllers/ProductionStaff/ProductionBoardController.php
-    - app/Http/Controllers/Public/TrackingController.php
-    - routes/web.php
-    - resources/js/pages/frontline-staff/NewVisit.vue
-    - resources/js/pages/frontline-staff/QueueList.vue
-    - resources/js/pages/artist/Dashboard.vue
-    - resources/js/pages/artist/JobOrderWorkspace.vue
-    - resources/js/pages/cashier/Dashboard.vue
-    - resources/js/pages/cashier/JobOrderPayment.vue
+    created:
+        - database/migrations/2026_09_10_120000_add_is_rush_to_job_orders_table.php
+        - database/migrations/2026_09_10_120100_add_tracking_token_to_job_orders_table.php
+        - resources/js/pages/public/TrackingToken.vue
+        - tests/Feature/FrontlineStaff/RushJobOrderTest.php
+        - tests/Feature/FrontlineStaff/CustomerJobOrderHistoryTest.php
+        - tests/Feature/Cashier/CashierDashboardPaidFilterTest.php
+        - tests/Feature/Public/TrackingTokenTest.php
+    modified:
+        - app/Models/JobOrder.php
+        - app/Concerns/JobOrderValidationRules.php
+        - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
+        - app/Http/Controllers/FrontlineStaff/CustomerController.php
+        - app/Http/Controllers/Artist/JobOrderQueueController.php
+        - app/Http/Controllers/Artist/JobOrderWorkspaceController.php
+        - app/Http/Controllers/Cashier/DashboardController.php
+        - app/Http/Controllers/ProductionStaff/ProductionBoardController.php
+        - app/Http/Controllers/Public/TrackingController.php
+        - routes/web.php
+        - resources/js/pages/frontline-staff/NewVisit.vue
+        - resources/js/pages/frontline-staff/QueueList.vue
+        - resources/js/pages/artist/Dashboard.vue
+        - resources/js/pages/artist/JobOrderWorkspace.vue
+        - resources/js/pages/cashier/Dashboard.vue
+        - resources/js/pages/cashier/JobOrderPayment.vue
 decisions:
-  - Production Board is_rush = persisted column OR due-date heuristic, display-only
-  - Fully-paid rejection happens in PHP off the existing withSum, not a second query
-  - track/{token} response pinned to exactly four keys by a ->has('result', 4) assertion
-  - tracking_token stays DB-nullable; uniqueness is the index, presence is the model hook
+    - Production Board is_rush = persisted column OR due-date heuristic, display-only
+    - Fully-paid rejection happens in PHP off the existing withSum, not a second query
+    - track/{token} response pinned to exactly four keys by a ->has('result', 4) assertion
+    - tracking_token stays DB-nullable; uniqueness is the index, presence is the model hook
 metrics:
-  tasks: 4
-  commits: 8
-  duration: ~2h
-  completed: 2026-09-10
+    tasks: 4
+    commits: 8
+    duration: ~2h
+    completed: 2026-09-10
 ---
 
 # Quick Task 260910-mbb: Frontline Rush Flag, Printable Customer QR, History Gate, Paid-Order Filter Summary
@@ -126,7 +126,7 @@ customer name and one instruction line, printed individually with Tailwind
   explicitly. It blocked this task's own acceptance criterion ("saving with it
   off records no rush fee"), so it was fixed rather than deferred.
 - **Fix:** A hidden `<input type="hidden" name="rush_fee_applied" value="0">`
-  placed *before* the Switch, and `value="1"` on the Switch. Unchecked submits
+  placed _before_ the Switch, and `value="1"` on the Switch. Unchecked submits
   `"0"`; checked submits `"0"` then `"1"`, which PHP resolves to the last value.
   The server rule was deliberately left as `required|boolean` so a future broken
   form fails loudly rather than silently defaulting.
@@ -140,7 +140,7 @@ customer name and one instruction line, printed individually with Tailwind
 - **Found during:** Task 4
 - **Issue:** The slip must show the job order number, but the eager-load column
   list omitted it, so `vue-tsc` failed on `Property 'number' does not exist on
-  type 'ConfirmedJobOrder'`.
+type 'ConfirmedJobOrder'`.
 - **Fix:** Added `number` to the `jobOrders:` select and to the interface, and
   extended the existing history test to assert it.
 - **Files modified:** `app/Http/Controllers/FrontlineStaff/CustomerController.php`,
@@ -152,7 +152,7 @@ customer name and one instruction line, printed individually with Tailwind
 
 **The token-absence assertion.** The plan asked for
 `assertDontSee($token, false)`. That cannot hold: Inertia serialises the current
-request URL into `page.url`, and the token *is* the URL path. The assertion was
+request URL into `page.url`, and the token _is_ the URL path. The assertion was
 made stricter and more honest instead — the token must not appear anywhere in the
 `result` prop, and must appear **exactly once** in the whole body, in
 `page.url`. A genuine re-selection of the column would push that count to two and
@@ -174,16 +174,16 @@ reverted or stashed.
 
 ## Threat Model Compliance
 
-| Threat ID | Disposition | Evidence |
-|-----------|-------------|----------|
-| T-mbb-01 | mitigated | `showByToken` selects five columns, returns four keys; `->has('result', 4)` pins the shape; unescaped-body assertions cover name, contact, email, address, price digits, raw enum, `payment_status`, `total_amount` |
-| T-mbb-02 | mitigated | Token never selected into the response; asserted absent from `result` and present exactly once (in `page.url`) |
-| T-mbb-03 | mitigated | `Str::random(32)` in the model `creating` hook, unique-indexed, route throttled 120/min |
-| T-mbb-04 | mitigated | No route added to the `design-review` prefix, `signed` middleware untouched; unsigned URL returns 403 in both the suite and the browser |
-| T-mbb-05 | mitigated | `reviewUrl` requires PendingReview + latest-by-`submitted_at` + null outcome + unexpired; three tests cover the null cases |
-| T-mbb-06 | accepted | `is_rush` only pre-checks a toggle; `ComputeJobOrderPrice` and `rush_fee_applied` semantics untouched |
-| T-mbb-07 | accepted | `?customer=` sits behind `auth` + `role:frontline-staff` on a page already rendering the same customer's PII |
-| T-mbb-08 | mitigated | No `composer require`, no `npm install`; `qrcode.vue` reused via the existing `TrackingQrCode` component |
+| Threat ID | Disposition | Evidence                                                                                                                                                                                                            |
+| --------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T-mbb-01  | mitigated   | `showByToken` selects five columns, returns four keys; `->has('result', 4)` pins the shape; unescaped-body assertions cover name, contact, email, address, price digits, raw enum, `payment_status`, `total_amount` |
+| T-mbb-02  | mitigated   | Token never selected into the response; asserted absent from `result` and present exactly once (in `page.url`)                                                                                                      |
+| T-mbb-03  | mitigated   | `Str::random(32)` in the model `creating` hook, unique-indexed, route throttled 120/min                                                                                                                             |
+| T-mbb-04  | mitigated   | No route added to the `design-review` prefix, `signed` middleware untouched; unsigned URL returns 403 in both the suite and the browser                                                                             |
+| T-mbb-05  | mitigated   | `reviewUrl` requires PendingReview + latest-by-`submitted_at` + null outcome + unexpired; three tests cover the null cases                                                                                          |
+| T-mbb-06  | accepted    | `is_rush` only pre-checks a toggle; `ComputeJobOrderPrice` and `rush_fee_applied` semantics untouched                                                                                                               |
+| T-mbb-07  | accepted    | `?customer=` sits behind `auth` + `role:frontline-staff` on a page already rendering the same customer's PII                                                                                                        |
+| T-mbb-08  | mitigated   | No `composer require`, no `npm install`; `qrcode.vue` reused via the existing `TrackingQrCode` component                                                                                                            |
 
 ## Browser Verification (CLAUDE.md rule 10)
 
@@ -237,17 +237,17 @@ its own card, and all colours resolve through semantic tokens.
 
 ## Verification Results
 
-| Gate | Result |
-|------|--------|
-| `php artisan test --compact` | **588 tests, 581 passed, 7 skipped, 0 failed** (baseline 551/544/7/0 → +37 tests) |
-| `npm run types:check` | clean |
-| `npm run build` | clean |
-| `npx vp check` | clean for every file under `app/`, `resources/`, `routes/`, `database/`, `tests/`; 235 pre-existing Markdown/JSON failures left alone (see `deferred-items.md`) |
-| `vendor/bin/pint --dirty --format agent` | passed |
-| `php artisan route:list --path=track` | both routes present, `web` + `throttle:120,1` only, no `auth`, no `role:*` |
-| `migrate:fresh --seed` | run against a throwaway SQLite DB (to avoid wiping the dev database): 33 job orders, 0 null tokens, 33 distinct tokens, 0 null `is_rush`; `migrate:rollback --step=2` and re-apply both clean |
-| inline styles / `<style>` / `app.css` | none added; `print:` variants only |
-| new dependencies | none |
+| Gate                                     | Result                                                                                                                                                                                        |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `php artisan test --compact`             | **588 tests, 581 passed, 7 skipped, 0 failed** (baseline 551/544/7/0 → +37 tests)                                                                                                             |
+| `npm run types:check`                    | clean                                                                                                                                                                                         |
+| `npm run build`                          | clean                                                                                                                                                                                         |
+| `npx vp check`                           | clean for every file under `app/`, `resources/`, `routes/`, `database/`, `tests/`; 235 pre-existing Markdown/JSON failures left alone (see `deferred-items.md`)                               |
+| `vendor/bin/pint --dirty --format agent` | passed                                                                                                                                                                                        |
+| `php artisan route:list --path=track`    | both routes present, `web` + `throttle:120,1` only, no `auth`, no `role:*`                                                                                                                    |
+| `migrate:fresh --seed`                   | run against a throwaway SQLite DB (to avoid wiping the dev database): 33 job orders, 0 null tokens, 33 distinct tokens, 0 null `is_rush`; `migrate:rollback --step=2` and re-apply both clean |
+| inline styles / `<style>` / `app.css`    | none added; `print:` variants only                                                                                                                                                            |
+| new dependencies                         | none                                                                                                                                                                                          |
 
 `composer types:check` was not run — Larastan is broken in this environment with
 `Undefined constant Larastan\Larastan\LARAVEL_VERSION`, pre-existing and
@@ -255,15 +255,15 @@ unrelated, as the plan instructs.
 
 ## Commits
 
-| Commit | Message |
-|--------|---------|
-| 481fbba | test(quick-260910-mbb): add failing tests for persisted is_rush intake flag |
-| f9d6aae | feat(quick-260910-mbb): persist is_rush and capture it on both intake paths |
-| a792d36 | test(quick-260910-mbb): add failing tests for paid-order filter and rush downstream |
-| 5cdc28c | feat(quick-260910-mbb): surface rush downstream and drop fully-paid orders |
-| a749686 | test(quick-260910-mbb): add failing tests for the public tracking token route |
-| 4d8da08 | feat(quick-260910-mbb): add an unguessable tracking token and a public token route |
-| aa7abc7 | test(quick-260910-mbb): add failing tests for customer history and QR slip props |
+| Commit  | Message                                                                                |
+| ------- | -------------------------------------------------------------------------------------- |
+| 481fbba | test(quick-260910-mbb): add failing tests for persisted is_rush intake flag            |
+| f9d6aae | feat(quick-260910-mbb): persist is_rush and capture it on both intake paths            |
+| a792d36 | test(quick-260910-mbb): add failing tests for paid-order filter and rush downstream    |
+| 5cdc28c | feat(quick-260910-mbb): surface rush downstream and drop fully-paid orders             |
+| a749686 | test(quick-260910-mbb): add failing tests for the public tracking token route          |
+| 4d8da08 | feat(quick-260910-mbb): add an unguessable tracking token and a public token route     |
+| aa7abc7 | test(quick-260910-mbb): add failing tests for customer history and QR slip props       |
 | 714cb4c | feat(quick-260910-mbb): printable QR slips and returning-customer history on New Visit |
 
 Every task followed a RED → GREEN pair; each `test(...)` commit was verified

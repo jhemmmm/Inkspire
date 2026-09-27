@@ -14,7 +14,7 @@ class WriteOffRequestController extends Controller
 {
     /**
      * Accounting Staff requests a write-off for an Active entry they can't
-     * collect (D-13). Only the Owner's approval actually closes the entry --
+     * collect (D-13). Only the Admin's approval actually closes the entry --
      * this just records the request with a mandatory reason.
      *
      * `collection_status` and `AccountsReceivableStatus` are both untouched
@@ -26,7 +26,7 @@ class WriteOffRequestController extends Controller
     {
         abort_unless($accountsReceivable->status === AccountsReceivableStatus::Active, 422, __('This receivable is not active.'));
         abort_if(
-            in_array($accountsReceivable->collection_status, [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true),
+            in_array($accountsReceivable->collectionStatus(), [AccountsReceivableCollectionStatus::Paid, AccountsReceivableCollectionStatus::WrittenOff], true),
             422,
             __('This entry is already closed and cannot be written off.'),
         );
@@ -38,7 +38,7 @@ class WriteOffRequestController extends Controller
             'write_off_requested_at' => now(),
         ])->save();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Write-off requested. Awaiting Owner approval.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Write-off requested. Awaiting Admin approval.')]);
 
         return back();
     }

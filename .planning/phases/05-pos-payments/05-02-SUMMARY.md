@@ -6,41 +6,41 @@ tags: [laravel, inertia, vue3, pest, pos, payments, receipt, print]
 
 # Dependency graph
 requires:
-  - phase: 05-pos-payments (plan 05-01)
-    provides: pricing_database/transactions schema, Transaction/JobOrder payment models, Cashier Dashboard + Job Order Payment page
+    - phase: 05-pos-payments (plan 05-01)
+      provides: pricing_database/transactions schema, Transaction/JobOrder payment models, Cashier Dashboard + Job Order Payment page
 provides:
-  - ReceiptController@show — read-only, transaction-gated digital receipt render
-  - cashier/Receipt.vue — printable single-card receipt page
-  - print:hidden layout chrome (AppSidebar/AppSidebarHeader) reused by every future page that prints
-  - Cashier Dashboard "View Receipt" link for paid job orders
-  - Full-payment submissions now redirect to the Receipt page instead of back()
+    - ReceiptController@show — read-only, transaction-gated digital receipt render
+    - cashier/Receipt.vue — printable single-card receipt page
+    - print:hidden layout chrome (AppSidebar/AppSidebarHeader) reused by every future page that prints
+    - Cashier Dashboard "View Receipt" link for paid job orders
+    - Full-payment submissions now redirect to the Receipt page instead of back()
 affects: [05-03, 05-04, 05-05, 05-06, 05-07]
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "print:hidden applied unconditionally to AppSidebar/AppSidebarHeader rather than plumbing a per-page prop — every page's nav chrome hides when printed, matching this app's single-purpose-print precedent"
-    - "Template @click handlers never reference the bare `window` global directly (Vue's template compiler resolves it against component context, not globalThis) — wrap in a script-level function instead"
+    added: []
+    patterns:
+        - "print:hidden applied unconditionally to AppSidebar/AppSidebarHeader rather than plumbing a per-page prop — every page's nav chrome hides when printed, matching this app's single-purpose-print precedent"
+        - "Template @click handlers never reference the bare `window` global directly (Vue's template compiler resolves it against component context, not globalThis) — wrap in a script-level function instead"
 
 key-files:
-  created:
-    - app/Http/Controllers/Cashier/ReceiptController.php
-    - resources/js/pages/cashier/Receipt.vue
-    - tests/Feature/Cashier/ReceiptTest.php
-  modified:
-    - routes/portals.php
-    - app/Http/Controllers/Cashier/PaymentController.php
-    - resources/js/pages/cashier/Dashboard.vue
-    - resources/js/components/AppSidebar.vue
-    - resources/js/components/AppSidebarHeader.vue
+    created:
+        - app/Http/Controllers/Cashier/ReceiptController.php
+        - resources/js/pages/cashier/Receipt.vue
+        - tests/Feature/Cashier/ReceiptTest.php
+    modified:
+        - routes/portals.php
+        - app/Http/Controllers/Cashier/PaymentController.php
+        - resources/js/pages/cashier/Dashboard.vue
+        - resources/js/components/AppSidebar.vue
+        - resources/js/components/AppSidebarHeader.vue
 
 key-decisions:
-  - "amount_tendered is always null in the receipt payload — Plan 05-01's schema never persisted a per-transaction tendered amount, so the Receipt's 'Amount Tendered' row is conditionally omitted (v-if) rather than showing a fabricated/incorrect value"
-  - "Split ReceiptTest.php's two test cases across the two task commits (404 gate in Task 1, happy-path render in Task 2) so each commit's own test file stays fully green — the happy-path test needs cashier/Receipt.vue to exist, which Task 1 (backend-only) doesn't yet provide"
+    - "amount_tendered is always null in the receipt payload — Plan 05-01's schema never persisted a per-transaction tendered amount, so the Receipt's 'Amount Tendered' row is conditionally omitted (v-if) rather than showing a fabricated/incorrect value"
+    - "Split ReceiptTest.php's two test cases across the two task commits (404 gate in Task 1, happy-path render in Task 2) so each commit's own test file stays fully green — the happy-path test needs cashier/Receipt.vue to exist, which Task 1 (backend-only) doesn't yet provide"
 
 patterns-established:
-  - "Pattern: layout chrome print visibility is a global class on the shared layout, not a per-page opt-in — only one page in this app prints today, and no page needs to print WITH nav chrome"
+    - 'Pattern: layout chrome print visibility is a global class on the shared layout, not a per-page opt-in — only one page in this app prints today, and no page needs to print WITH nav chrome'
 
 requirements-completed: [POS-06]
 
@@ -62,6 +62,7 @@ completed: 2026-09-04
 - **Files modified:** 9 (3 created, 6 modified)
 
 ## Accomplishments
+
 - `ReceiptController::show` gates on at least one transaction existing (`abort_unless(...)`, 404 otherwise), loads the job order's pricing/customer/transaction data read-only, and computes `amountPaid`/`balance` from completed transactions
 - `cashier/Receipt.vue` renders every Copywriting Contract field (Job Order, Customer, Date, Product/Service, Base Price, Rush Fee, Discount, Total, Payment Method, Balance, Cashier), with "Amount Tendered" shown only when the underlying data exists
 - "Print Receipt" button and the shared `AppSidebar`/`AppSidebarHeader` layout chrome both carry `print:hidden`, so printing the receipt produces a clean strip with no app nav
@@ -79,11 +80,13 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ## Files Created/Modified
 
 **Task 1 (backend):**
+
 - `app/Http/Controllers/Cashier/ReceiptController.php` - read-only receipt render, 404-gated on zero transactions
 - `routes/portals.php` - `cashier.job-orders.receipt.show` route added inside the existing cashier group
 - `tests/Feature/Cashier/ReceiptTest.php` - 404 gate test (happy-path render test added in Task 2)
 
 **Task 2 (frontend):**
+
 - `resources/js/pages/cashier/Receipt.vue` - printable single-card receipt page
 - `resources/js/pages/cashier/Dashboard.vue` - "View Receipt" link for `paid` rows
 - `resources/js/components/AppSidebar.vue` - `print:hidden` on the sidebar root
@@ -102,6 +105,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Provisioned a fresh worktree environment (vendor, node_modules, .env, sqlite db, build)**
+
 - **Found during:** Pre-Task-1 setup
 - **Issue:** This worktree had no `vendor/`, `node_modules/`, `.env`, or built assets — a parallel git-worktree execution starting from a clean checkout (same situation Plan 05-01 documented)
 - **Fix:** Copied `vendor/` and `node_modules/` from the main checkout, generated `.env`/`APP_KEY`, created a worktree-local SQLite database, ran `composer dump-autoload`, `php artisan migrate:fresh --seed`, and `npm run build`
@@ -109,6 +113,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - **Committed in:** N/A (environment setup, not committed — `vendor`/`node_modules`/`.env`/`database.sqlite`/`public/build` are gitignored)
 
 **2. [Rule 1 - Bug] Reverted an unintended repo-wide reformat from `npm run check:fix`**
+
 - **Found during:** Task 2, pre-commit verification
 - **Issue:** Running `npm run check:fix` (vite-plus's formatter) reformatted ~149 unrelated files across the entire repo (Markdown table realignment in `.planning/**`, `.claude/skills/**`, `README.md`, `boost.json`, and four unrelated Vue pages) — none of these were part of this plan's scope
 - **Fix:** Restored all 149 unrelated files via explicit `git checkout -- <path>` calls (never a blanket `git checkout -- .`), keeping only the 6 files this plan actually touches
@@ -135,8 +140,9 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - No blockers.
 
 ---
-*Phase: 05-pos-payments*
-*Completed: 2026-09-04*
+
+_Phase: 05-pos-payments_
+_Completed: 2026-09-04_
 
 ## Self-Check: PASSED
 

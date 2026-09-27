@@ -7,83 +7,83 @@ depends_on: []
 autonomous: true
 requirements: [RUSH-01, RUSH-02, QR-01, QR-02, HIST-01, PAID-01]
 files_modified:
-  - database/migrations/2026_09_10_120000_add_is_rush_to_job_orders_table.php
-  - database/migrations/2026_09_10_120100_add_tracking_token_to_job_orders_table.php
-  - app/Models/JobOrder.php
-  - database/factories/JobOrderFactory.php
-  - app/Concerns/JobOrderValidationRules.php
-  - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
-  - app/Http/Controllers/FrontlineStaff/CustomerController.php
-  - app/Http/Controllers/Artist/JobOrderQueueController.php
-  - app/Http/Controllers/Artist/JobOrderWorkspaceController.php
-  - app/Http/Controllers/Cashier/DashboardController.php
-  - app/Http/Controllers/ProductionStaff/ProductionBoardController.php
-  - app/Http/Controllers/Public/TrackingController.php
-  - routes/web.php
-  - resources/js/pages/frontline-staff/NewVisit.vue
-  - resources/js/pages/frontline-staff/QueueList.vue
-  - resources/js/pages/artist/Dashboard.vue
-  - resources/js/pages/artist/JobOrderWorkspace.vue
-  - resources/js/pages/cashier/Dashboard.vue
-  - resources/js/pages/cashier/JobOrderPayment.vue
-  - resources/js/pages/public/TrackingToken.vue
-  - tests/Feature/FrontlineStaff/RushJobOrderTest.php
-  - tests/Feature/FrontlineStaff/CustomerJobOrderHistoryTest.php
-  - tests/Feature/Cashier/CashierDashboardPaidFilterTest.php
-  - tests/Feature/Public/TrackingTokenTest.php
-  - tests/Feature/ProductionStaff/ProductionBoardTest.php
+    - database/migrations/2026_09_10_120000_add_is_rush_to_job_orders_table.php
+    - database/migrations/2026_09_10_120100_add_tracking_token_to_job_orders_table.php
+    - app/Models/JobOrder.php
+    - database/factories/JobOrderFactory.php
+    - app/Concerns/JobOrderValidationRules.php
+    - app/Http/Controllers/FrontlineStaff/QueueEntryController.php
+    - app/Http/Controllers/FrontlineStaff/CustomerController.php
+    - app/Http/Controllers/Artist/JobOrderQueueController.php
+    - app/Http/Controllers/Artist/JobOrderWorkspaceController.php
+    - app/Http/Controllers/Cashier/DashboardController.php
+    - app/Http/Controllers/ProductionStaff/ProductionBoardController.php
+    - app/Http/Controllers/Public/TrackingController.php
+    - routes/web.php
+    - resources/js/pages/frontline-staff/NewVisit.vue
+    - resources/js/pages/frontline-staff/QueueList.vue
+    - resources/js/pages/artist/Dashboard.vue
+    - resources/js/pages/artist/JobOrderWorkspace.vue
+    - resources/js/pages/cashier/Dashboard.vue
+    - resources/js/pages/cashier/JobOrderPayment.vue
+    - resources/js/pages/public/TrackingToken.vue
+    - tests/Feature/FrontlineStaff/RushJobOrderTest.php
+    - tests/Feature/FrontlineStaff/CustomerJobOrderHistoryTest.php
+    - tests/Feature/Cashier/CashierDashboardPaidFilterTest.php
+    - tests/Feature/Public/TrackingTokenTest.php
+    - tests/Feature/ProductionStaff/ProductionBoardTest.php
 
 must_haves:
-  truths:
-    - "Frontline staff can mark a job order Rush at intake, through both the New Visit form and the Add Job Order dialog, and the flag survives the save."
-    - "An Artist sees a Rush badge on their queue rows, on the Available Jobs pool rows, and in the Job Order Workspace."
-    - "A Cashier sees a Rush badge on the dashboard row, and opening a rush job order's payment page finds the existing Apply Rush Fee toggle already checked but still overridable."
-    - "The Production Board still flags a job order due today as Rush, and now also flags one that was marked Rush at intake regardless of its due date."
-    - "A customer scanning the printed QR slip lands on a public page showing only their job order number and public production stage — no name, contact number, address, price, payment or internal status value."
-    - "When that job order is awaiting a design verdict, the public page offers an Approve / Request Changes link that goes through a freshly signed public.design-review.show URL."
-    - "After a visit is confirmed, frontline staff can print a slip per job order containing its QR code, job order number, customer name, and one instruction line — and only that slip prints."
-    - "Selecting a returning customer on New Visit shows their recent job orders first, with a New Job Order button that reveals the intake form; a first-time customer drops straight into the form as today."
-    - "A fully paid job order disappears from the Cashier dashboard while partially paid, on-credit, and not-yet-priced job orders remain."
-  artifacts:
-    - path: "database/migrations/2026_09_10_120000_add_is_rush_to_job_orders_table.php"
-      provides: "job_orders.is_rush boolean NOT NULL default false"
-      contains: "is_rush"
-    - path: "database/migrations/2026_09_10_120100_add_tracking_token_to_job_orders_table.php"
-      provides: "job_orders.tracking_token, unique index, backfill of existing rows"
-      contains: "tracking_token"
-    - path: "resources/js/pages/public/TrackingToken.vue"
-      provides: "Customer-facing QR landing page"
-      min_lines: 60
-    - path: "tests/Feature/Public/TrackingTokenTest.php"
-      provides: "Token route behaviour and PII-boundary assertions"
-      min_lines: 60
-    - path: "tests/Feature/FrontlineStaff/RushJobOrderTest.php"
-      provides: "Rush persistence through both intake paths"
-    - path: "tests/Feature/Cashier/CashierDashboardPaidFilterTest.php"
-      provides: "Fully-paid exclusion, partial/unpriced inclusion"
-    - path: "tests/Feature/FrontlineStaff/CustomerJobOrderHistoryTest.php"
-      provides: "Customer history prop shape and ordering"
-  key_links:
-    - from: "resources/js/pages/frontline-staff/NewVisit.vue"
-      to: "job_orders.*.is_rush"
-      via: "intakeForm job order row field posted as FormData"
-      pattern: "is_rush"
-    - from: "routes/web.php"
-      to: "App\\Http\\Controllers\\Public\\TrackingController::showByToken"
-      via: "GET track/{token} outside every auth/role group"
-      pattern: "track/\\{token\\}"
-    - from: "app/Http/Controllers/Public/TrackingController.php"
-      to: "public.design-review.show"
-      via: "URL::temporarySignedRoute"
-      pattern: "temporarySignedRoute"
-    - from: "resources/js/pages/frontline-staff/NewVisit.vue"
-      to: "public tracking URL"
-      via: "TrackingQrCode fed trackingBaseUrl + tracking_token"
-      pattern: "TrackingQrCode"
-    - from: "app/Http/Controllers/Cashier/DashboardController.php"
-      to: "amount_paid withSum aggregate"
-      via: "in-PHP reject of fully-paid rows"
-      pattern: "amount_paid"
+    truths:
+        - 'Frontline staff can mark a job order Rush at intake, through both the New Visit form and the Add Job Order dialog, and the flag survives the save.'
+        - 'An Artist sees a Rush badge on their queue rows, on the Available Jobs pool rows, and in the Job Order Workspace.'
+        - "A Cashier sees a Rush badge on the dashboard row, and opening a rush job order's payment page finds the existing Apply Rush Fee toggle already checked but still overridable."
+        - 'The Production Board still flags a job order due today as Rush, and now also flags one that was marked Rush at intake regardless of its due date.'
+        - 'A customer scanning the printed QR slip lands on a public page showing only their job order number and public production stage — no name, contact number, address, price, payment or internal status value.'
+        - 'When that job order is awaiting a design verdict, the public page offers an Approve / Request Changes link that goes through a freshly signed public.design-review.show URL.'
+        - 'After a visit is confirmed, frontline staff can print a slip per job order containing its QR code, job order number, customer name, and one instruction line — and only that slip prints.'
+        - 'Selecting a returning customer on New Visit shows their recent job orders first, with a New Job Order button that reveals the intake form; a first-time customer drops straight into the form as today.'
+        - 'A fully paid job order disappears from the Cashier dashboard while partially paid, on-credit, and not-yet-priced job orders remain.'
+    artifacts:
+        - path: 'database/migrations/2026_09_10_120000_add_is_rush_to_job_orders_table.php'
+          provides: 'job_orders.is_rush boolean NOT NULL default false'
+          contains: 'is_rush'
+        - path: 'database/migrations/2026_09_10_120100_add_tracking_token_to_job_orders_table.php'
+          provides: 'job_orders.tracking_token, unique index, backfill of existing rows'
+          contains: 'tracking_token'
+        - path: 'resources/js/pages/public/TrackingToken.vue'
+          provides: 'Customer-facing QR landing page'
+          min_lines: 60
+        - path: 'tests/Feature/Public/TrackingTokenTest.php'
+          provides: 'Token route behaviour and PII-boundary assertions'
+          min_lines: 60
+        - path: 'tests/Feature/FrontlineStaff/RushJobOrderTest.php'
+          provides: 'Rush persistence through both intake paths'
+        - path: 'tests/Feature/Cashier/CashierDashboardPaidFilterTest.php'
+          provides: 'Fully-paid exclusion, partial/unpriced inclusion'
+        - path: 'tests/Feature/FrontlineStaff/CustomerJobOrderHistoryTest.php'
+          provides: 'Customer history prop shape and ordering'
+    key_links:
+        - from: 'resources/js/pages/frontline-staff/NewVisit.vue'
+          to: 'job_orders.*.is_rush'
+          via: 'intakeForm job order row field posted as FormData'
+          pattern: 'is_rush'
+        - from: 'routes/web.php'
+          to: "App\\Http\\Controllers\\Public\\TrackingController::showByToken"
+          via: 'GET track/{token} outside every auth/role group'
+          pattern: "track/\\{token\\}"
+        - from: 'app/Http/Controllers/Public/TrackingController.php'
+          to: 'public.design-review.show'
+          via: 'URL::temporarySignedRoute'
+          pattern: 'temporarySignedRoute'
+        - from: 'resources/js/pages/frontline-staff/NewVisit.vue'
+          to: 'public tracking URL'
+          via: 'TrackingQrCode fed trackingBaseUrl + tracking_token'
+          pattern: 'TrackingQrCode'
+        - from: 'app/Http/Controllers/Cashier/DashboardController.php'
+          to: 'amount_paid withSum aggregate'
+          via: 'in-PHP reject of fully-paid rows'
+          pattern: 'amount_paid'
 ---
 
 <objective>
@@ -208,34 +208,33 @@ In `database/factories/JobOrderFactory.php`: add `'is_rush' => false` to `defini
 In `app/Concerns/JobOrderValidationRules.php`: add `is_rush` to BOTH rule sets by adding `$prefix.'is_rush' => ['nullable', 'boolean']` inside `printSpecificationRules()` — that single addition covers `jobOrdersRules()` (as `job_orders.*.is_rush`) and `jobOrderRules()` (as `is_rush`) with no duplication, which is exactly what that helper exists for. Add a line to its docblock explaining `nullable` is load-bearing: an unchecked reka-ui `Switch` omits its hidden checkbox from the submission entirely, so `required` would reject every non-rush job order.
 
 In `app/Http/Controllers/FrontlineStaff/QueueEntryController.php`:
+
 - In `addJobOrder()`, add `'is_rush' => $request->boolean('is_rush')` to the `create([...])` array.
 - In `store()`, add `'is_rush' => filter_var($row['is_rush'] ?? false, FILTER_VALIDATE_BOOLEAN)` to the per-row `create([...])` array. Use `filter_var`, not a bare cast, because the FormData path delivers the string `"1"`/`"0"` while a JSON test payload delivers a real boolean.
 
 In `resources/js/pages/frontline-staff/NewVisit.vue`:
+
 - Add `is_rush: boolean;` to the `JobOrderRow` interface and `is_rush: false` to `emptyJobOrderRow()`.
 - Import `Switch` from `@/components/ui/switch` and `Zap` from `@lucide/vue`.
 - Inside each job order Card's Print Specifications `<section>`, add a full-width row (`class="grid gap-2 md:col-span-2"`) after the Deadline field containing: a `<Switch :id="`job-order-rush-${index}`" v-model="row.is_rush" />` next to a `<Label :for="...">` reading "Rush Order" with a `Zap` icon, plus a `text-muted-foreground text-sm` help line reading "Prioritised in production. The Cashier decides whether the rush fee is charged." Wrap the switch + label in `class="flex items-center gap-3"`. Use semantic tokens only.
 - Do NOT pass a `name` prop here: this form is submitted programmatically through `useForm`/`intakeForm`, not by native form serialisation, so `v-model` alone is correct.
 
 In `resources/js/pages/frontline-staff/QueueList.vue`:
+
 - Import `Switch` from `@/components/ui/switch`.
 - Inside the Add Job Order `<Dialog>`'s Inertia `<Form>` (the one bound to `QueueEntryController.addJobOrder.form(...)`), add a Rush row after the file input, before `<DialogFooter>`, using `<Switch name="is_rush" value="1" />` with a matching `<Label>` and the same help copy. The explicit `value="1"` is mandatory — see the interfaces block; the reka-ui default of `'on'` fails Laravel's `boolean` rule. This form is uncontrolled, so the `name`/`value` pair IS the wiring; there is no `v-model` here.
 
 Write `tests/Feature/FrontlineStaff/RushJobOrderTest.php` with `php artisan make:test --pest RushJobOrderTest` and move it into `tests/Feature/FrontlineStaff/`. Cover the five behaviours above. Post to `route('frontline-staff.queue-entries.store')` and `route('frontline-staff.queue-entries.add-job-order', $queueEntry)` — confirm the real route names with `php artisan route:list --name=frontline-staff` rather than guessing. Model the request payloads on the existing `tests/Feature/FrontlineStaff/QueueEntryIntakeTest.php` and `AddJobOrderToVisitTest.php`; for the FormData case reuse whatever `UploadedFile` helper those files already use. Assert with `$this->assertTrue($jobOrder->fresh()->is_rush)` style, not by inspecting raw DB strings.
 
 Run `vendor/bin/pint --dirty --format agent`.
-  </action>
-  <verify>
-    <automated>php artisan migrate --no-interaction && vendor/bin/pest tests/Feature/FrontlineStaff/RushJobOrderTest.php --compact && vendor/bin/pest tests/Feature/FrontlineStaff --compact && npm run types:check</automated>
-    <human-check>
-      Open New Visit in a browser (both light and dark theme, and at a 375px viewport).
-      1. Pick a customer, toggle Rush on job order 1, add a second job order, leave its Rush off, submit. Confirm in the DB (or via the Cashier dashboard after Task 2) that exactly one row has is_rush true.
-      2. Toggle Rush on, then OFF again, then submit — the "change your mind" path is the one that breaks. Confirm the row saves as not-rush.
-      3. On the Queue List page, open the Add Job Order dialog, toggle Rush, submit, and confirm the new job order persists as rush.
-      4. Keyboard-reach both switches with Tab and toggle them with Space.
-    </human-check>
-  </verify>
-  <done>The `is_rush` column exists and is NOT NULL; both intake paths write it; both UI toggles are observed working in a browser including the toggle-off path; `RushJobOrderTest` passes; `npm run types:check` is clean.</done>
+</action>
+<verify>
+<automated>php artisan migrate --no-interaction && vendor/bin/pest tests/Feature/FrontlineStaff/RushJobOrderTest.php --compact && vendor/bin/pest tests/Feature/FrontlineStaff --compact && npm run types:check</automated>
+<human-check>
+Open New Visit in a browser (both light and dark theme, and at a 375px viewport). 1. Pick a customer, toggle Rush on job order 1, add a second job order, leave its Rush off, submit. Confirm in the DB (or via the Cashier dashboard after Task 2) that exactly one row has is_rush true. 2. Toggle Rush on, then OFF again, then submit — the "change your mind" path is the one that breaks. Confirm the row saves as not-rush. 3. On the Queue List page, open the Add Job Order dialog, toggle Rush, submit, and confirm the new job order persists as rush. 4. Keyboard-reach both switches with Tab and toggle them with Space.
+</human-check>
+</verify>
+<done>The `is_rush` column exists and is NOT NULL; both intake paths write it; both UI toggles are observed working in a browser including the toggle-off path; `RushJobOrderTest` passes; `npm run types:check` is clean.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -343,19 +342,14 @@ it. Assert presence/absence with `AssertableInertia`'s `->has('jobOrders', N)`
 and `->where('jobOrders.0.id', ...)`.
 
 Run `vendor/bin/pint --dirty --format agent`.
-  </action>
-  <verify>
-    <automated>vendor/bin/pest tests/Feature/Cashier/CashierDashboardPaidFilterTest.php tests/Feature/ProductionStaff/ProductionBoardTest.php --compact && vendor/bin/pest tests/Feature/Cashier tests/Feature/Artist --compact && npm run types:check</automated>
-    <human-check>
-      In a browser, both themes, desktop and 375px:
-      1. As an Artist, confirm the Rush badge renders on a rush row in My Queue and in Available Jobs, and that a non-rush row shows nothing extra (no empty gap).
-      2. Open the Job Order Workspace for a rush job order and confirm the badge.
-      3. As a Cashier, confirm the Rush badge on the dashboard row, then open that job order's payment page and confirm the Apply Rush Fee switch is already on, that you can turn it OFF, and that saving with it off records no rush fee.
-      4. Open a NON-rush job order's payment page and confirm the switch is off.
-      5. Record a payment that fully settles a job order and confirm the row leaves the Cashier dashboard on the next load, while a partially paid one stays.
-    </human-check>
-  </verify>
-  <done>Production Board flags both clock-urgent and staff-marked rush; Rush badges render in all three portals; the rush fee toggle pre-checks without auto-charging; fully-paid job orders are gone from the Cashier list while partial/credit/unpriced remain; all Cashier, Artist and Production tests pass.</done>
+</action>
+<verify>
+<automated>vendor/bin/pest tests/Feature/Cashier/CashierDashboardPaidFilterTest.php tests/Feature/ProductionStaff/ProductionBoardTest.php --compact && vendor/bin/pest tests/Feature/Cashier tests/Feature/Artist --compact && npm run types:check</automated>
+<human-check>
+In a browser, both themes, desktop and 375px: 1. As an Artist, confirm the Rush badge renders on a rush row in My Queue and in Available Jobs, and that a non-rush row shows nothing extra (no empty gap). 2. Open the Job Order Workspace for a rush job order and confirm the badge. 3. As a Cashier, confirm the Rush badge on the dashboard row, then open that job order's payment page and confirm the Apply Rush Fee switch is already on, that you can turn it OFF, and that saving with it off records no rush fee. 4. Open a NON-rush job order's payment page and confirm the switch is off. 5. Record a payment that fully settles a job order and confirm the row leaves the Cashier dashboard on the next load, while a partially paid one stays.
+</human-check>
+</verify>
+<done>Production Board flags both clock-urgent and staff-marked rush; Rush badges render in all three portals; the rush fee toggle pre-checks without auto-charging; fully-paid job orders are gone from the Cashier list while partial/credit/unpriced remain; all Cashier, Artist and Production tests pass.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -387,6 +381,7 @@ In `app/Models/JobOrder.php`: add `@property string $tracking_token` to the PHPD
 In `routes/web.php`, immediately after the existing `Route::get('track', ...)` block and still outside every `auth`/`role:*` group, register `Route::get('track/{token}', [TrackingController::class, 'showByToken'])->middleware('throttle:120,1')->name('public.tracking.token')`. Mirror the neighbour's throttle exactly, and extend the existing comment block to explain that this is the QR-scan entry point to the same boundary.
 
 In `app/Http/Controllers/Public/TrackingController.php`:
+
 - Extend the class docblock so the boundary statement covers both actions.
 - Add `public function showByToken(string $token): Response`.
 - Query `JobOrder::query()->where('tracking_token', $token)->first(['id', 'number', 'status', 'released_at', 'cancelled_at'])`. `id` is selected only to look the revision log up and is deliberately absent from the response. Never widen this list, never eager-load a relation, and never select `tracking_token` back out.
@@ -403,17 +398,13 @@ Create `resources/js/pages/public/TrackingToken.vue`. It renders with no layout 
 Write `tests/Feature/Public/TrackingTokenTest.php` covering all seven behaviours. For the PII assertions, create the job order under a `Customer` with distinctive values (name `Zenaida Villanueva`, contact `09171234567`, address `12 Mabini St`) and a priced job order, then assert with `$response->assertDontSee('Zenaida Villanueva', false)` and equivalents for the contact number, the address, the `total_amount` digits, the raw status enum value, and the token string itself. Use `false` as the second argument so the check runs against the unescaped body — the Inertia data prop is JSON-encoded into the page, and an escaped-only assertion would miss a leak. Also assert the Inertia prop shape directly with `AssertableInertia`: `->has('result', 4)` on the found case pins the response to exactly four keys, so any future widening of the payload fails this test loudly. For the signature test, hit the emitted `reviewUrl` directly, then hit the same URL with the query string removed and assert 403.
 
 Run `vendor/bin/pint --dirty --format agent`.
-  </action>
-  <verify>
-    <automated>php artisan migrate --no-interaction && vendor/bin/pest tests/Feature/Public --compact && vendor/bin/pest tests/Feature/JobOrder --compact && npm run types:check && npm run build</automated>
-    <human-check>
-      1. Visit `/track/{token}` for a real job order in a private window (no session) and confirm the page renders with only the number and stage, in both themes and at 375px.
-      2. Visit `/track/garbage` and confirm the not-found state, not an error page.
-      3. Put a job order into `pending_review` with an open revision log, reload the token page, click "Review your design", and confirm the existing design-review page loads and an Approve verdict still works end to end.
-      4. View source on the token page and search for the customer's name, phone number and the token — none may appear.
-    </human-check>
-  </verify>
-  <done>Every job order has a unique token; `GET track/{token}` is public, throttled, and renders exactly four result keys; the PII assertions pass; the design-review link is freshly signed, expires on the same basis as the existing flow, and the unsigned URL still 403s.</done>
+</action>
+<verify>
+<automated>php artisan migrate --no-interaction && vendor/bin/pest tests/Feature/Public --compact && vendor/bin/pest tests/Feature/JobOrder --compact && npm run types:check && npm run build</automated>
+<human-check> 1. Visit `/track/{token}` for a real job order in a private window (no session) and confirm the page renders with only the number and stage, in both themes and at 375px. 2. Visit `/track/garbage` and confirm the not-found state, not an error page. 3. Put a job order into `pending_review` with an open revision log, reload the token page, click "Review your design", and confirm the existing design-review page loads and an Approve verdict still works end to end. 4. View source on the token page and search for the customer's name, phone number and the token — none may appear.
+</human-check>
+</verify>
+<done>Every job order has a unique token; `GET track/{token}` is public, throttled, and renders exactly four result keys; the PII assertions pass; the design-review link is freshly signed, expires on the same basis as the existing flow, and the unsigned URL still 403s.</done>
 </task>
 
 <task type="auto" tdd="true">
@@ -491,47 +482,42 @@ customer and assert exactly 20 come back with the newest first. For the N+1
 check, wrap the request in `DB::listen` (or `\Illuminate\Support\Facades\DB::enableQueryLog()`) and assert the query count does not scale with the number of visits — read `tests/Feature/FrontlineStaff/ReadyForPickupAlertTest.php` first to see whether this suite already has a query-counting idiom to reuse before inventing one. Also assert `confirmedQueueEntry.job_orders.0.tracking_token` is present and that `trackingBaseUrl` ends with `/track`.
 
 Run `vendor/bin/pint --dirty --format agent`.
-  </action>
-  <verify>
-    <automated>vendor/bin/pest tests/Feature/FrontlineStaff --compact && npm run types:check && npm run build && ! grep -rn 'style=\|<style' resources/js/pages/frontline-staff/NewVisit.vue</automated>
-    <human-check>
-      In a real browser, both themes, desktop and 375px:
-      1. Search for and select a customer who HAS past job orders. Confirm the history table appears instead of the intake form, that the numbers align in a column, and that "New Job Order" reveals the form.
-      2. Press "Change" to go back, select a DIFFERENT customer, and confirm the gate re-arms (history shows again, not the form left open from the previous customer). Then re-select the FIRST customer and confirm it still works — the re-select path is where the URL-parameter trap bites.
-      3. Select a brand new customer with no history and confirm the intake form appears immediately, with no extra click.
-      4. Complete a visit with two job orders. In the confirmation block, confirm two QR slips render. Scan one with a phone and confirm it lands on the public tracking page for the right job order.
-      5. Press "Print Slip" on the SECOND job order and confirm the print preview shows only that slip — no sidebar, no page header, no step bar, no queue number card chrome, no first slip. Cancel the preview, then press "Print Slip" on the first and confirm it now shows only the first (proving the afterprint reset ran).
-      6. Keyboard-reach both "New Job Order" and "Print Slip" buttons with Tab and activate with Enter.
-    </human-check>
-  </verify>
-  <done>History gates the intake form for returning customers only; customer selection round-trips through the server; QR slips render and scan to the correct public page; a single slip prints alone twice in a row; no inline styles, style blocks, or app.css additions were introduced; all frontline tests pass and the build is clean.</done>
+</action>
+<verify>
+<automated>vendor/bin/pest tests/Feature/FrontlineStaff --compact && npm run types:check && npm run build && ! grep -rn 'style=\|<style' resources/js/pages/frontline-staff/NewVisit.vue</automated>
+<human-check>
+In a real browser, both themes, desktop and 375px: 1. Search for and select a customer who HAS past job orders. Confirm the history table appears instead of the intake form, that the numbers align in a column, and that "New Job Order" reveals the form. 2. Press "Change" to go back, select a DIFFERENT customer, and confirm the gate re-arms (history shows again, not the form left open from the previous customer). Then re-select the FIRST customer and confirm it still works — the re-select path is where the URL-parameter trap bites. 3. Select a brand new customer with no history and confirm the intake form appears immediately, with no extra click. 4. Complete a visit with two job orders. In the confirmation block, confirm two QR slips render. Scan one with a phone and confirm it lands on the public tracking page for the right job order. 5. Press "Print Slip" on the SECOND job order and confirm the print preview shows only that slip — no sidebar, no page header, no step bar, no queue number card chrome, no first slip. Cancel the preview, then press "Print Slip" on the first and confirm it now shows only the first (proving the afterprint reset ran). 6. Keyboard-reach both "New Job Order" and "Print Slip" buttons with Tab and activate with Enter.
+</human-check>
+</verify>
+<done>History gates the intake form for returning customers only; customer selection round-trips through the server; QR slips render and scan to the correct public page; a single slip prints alone twice in a row; no inline styles, style blocks, or app.css additions were introduced; all frontline tests pass and the build is clean.</done>
 </task>
 
 </tasks>
 
 <threat_model>
+
 ## Trust Boundaries
 
-| Boundary | Description |
-|----------|-------------|
-| unauthenticated internet → `GET track/{token}` | A bearer token printed on a paper slip is the only credential. Anyone holding or guessing it reads whatever this action returns. |
-| unauthenticated internet → `public.design-review.show` | Already defended by `signed` middleware. This plan mints links into it; it must not widen it. |
-| frontline staff browser → `job_orders.is_rush` | Staff-supplied boolean crossing into a column the Cashier's fee default reads. |
-| frontline staff browser → `customer` query parameter | Arbitrary customer id selecting whose PII and order history is rendered. |
+| Boundary                                               | Description                                                                                                                      |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| unauthenticated internet → `GET track/{token}`         | A bearer token printed on a paper slip is the only credential. Anyone holding or guessing it reads whatever this action returns. |
+| unauthenticated internet → `public.design-review.show` | Already defended by `signed` middleware. This plan mints links into it; it must not widen it.                                    |
+| frontline staff browser → `job_orders.is_rush`         | Staff-supplied boolean crossing into a column the Cashier's fee default reads.                                                   |
+| frontline staff browser → `customer` query parameter   | Arbitrary customer id selecting whose PII and order history is rendered.                                                         |
 
 ## STRIDE Threat Register
 
-| Threat ID | Category | Component | Disposition | Mitigation Plan |
-|-----------|----------|-----------|-------------|-----------------|
-| T-mbb-01 | Information Disclosure | `TrackingController::showByToken` | mitigate | Narrow `first(['id','number','status','released_at','cancelled_at'])` and a four-key response array; `publicStage()` maps the enum so no raw status value ships. `TrackingTokenTest` asserts absence of name, contact, address, price and raw status against the unescaped body, and pins the prop count at 4 so any widening fails the suite. |
-| T-mbb-02 | Information Disclosure | `tracking_token` echoed back on a public surface | mitigate | Token is excluded from the `showByToken` select entirely and never appears in the response; a dedicated test asserts the token string is absent from the body. |
-| T-mbb-03 | Spoofing | Token guessing / enumeration | mitigate | `Str::random(32)` (~190 bits of alphanumeric entropy) generated in the model's `creating` hook, unique-indexed. Route inherits the neighbouring `throttle:120,1` per-IP limiter. |
-| T-mbb-04 | Elevation of Privilege | Design-review reachable without a signature | mitigate | This plan adds no route to the `design-review` prefix and does not touch its `signed` middleware. It only calls `URL::temporarySignedRoute`. A test asserts the same URL with its query string stripped returns 403. |
-| T-mbb-05 | Elevation of Privilege | Stale or superseded revision reachable via a minted link | mitigate | `reviewUrl` is emitted only when the job order is `pending_review` AND the latest revision log by `submitted_at` has a null `outcome`, mirroring `isCurrentRevision()` + `isActionable()`. Expiry uses the same `submitted_at->addDays(7)` basis, and an already-past expiry yields null instead of a dead link. |
-| T-mbb-06 | Tampering | Forged `is_rush` on intake | accept | The flag only pre-checks a toggle the Cashier must still confirm before any money moves; `ComputeJobOrderPrice` and `rush_fee_applied` are untouched, so the worst case is a mis-prioritised job the Cashier can see and correct. |
-| T-mbb-07 | Information Disclosure | `?customer=` enumerating customer history | accept | The New Visit route already sits behind `auth` + `role:frontline-staff` and already renders any customer by id; this plan adds order history to a surface that already exposes the same customer's name, contact number, email and address. No new privilege boundary is crossed. |
-| T-mbb-08 | Tampering | npm/composer installs | mitigate | No new dependencies. `qrcode.vue` and `reka-ui` are already installed; no `composer require` or `npm install` is permitted by this plan. |
-</threat_model>
+| Threat ID       | Category               | Component                                                | Disposition | Mitigation Plan                                                                                                                                                                                                                                                                                                                                |
+| --------------- | ---------------------- | -------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T-mbb-01        | Information Disclosure | `TrackingController::showByToken`                        | mitigate    | Narrow `first(['id','number','status','released_at','cancelled_at'])` and a four-key response array; `publicStage()` maps the enum so no raw status value ships. `TrackingTokenTest` asserts absence of name, contact, address, price and raw status against the unescaped body, and pins the prop count at 4 so any widening fails the suite. |
+| T-mbb-02        | Information Disclosure | `tracking_token` echoed back on a public surface         | mitigate    | Token is excluded from the `showByToken` select entirely and never appears in the response; a dedicated test asserts the token string is absent from the body.                                                                                                                                                                                 |
+| T-mbb-03        | Spoofing               | Token guessing / enumeration                             | mitigate    | `Str::random(32)` (~190 bits of alphanumeric entropy) generated in the model's `creating` hook, unique-indexed. Route inherits the neighbouring `throttle:120,1` per-IP limiter.                                                                                                                                                               |
+| T-mbb-04        | Elevation of Privilege | Design-review reachable without a signature              | mitigate    | This plan adds no route to the `design-review` prefix and does not touch its `signed` middleware. It only calls `URL::temporarySignedRoute`. A test asserts the same URL with its query string stripped returns 403.                                                                                                                           |
+| T-mbb-05        | Elevation of Privilege | Stale or superseded revision reachable via a minted link | mitigate    | `reviewUrl` is emitted only when the job order is `pending_review` AND the latest revision log by `submitted_at` has a null `outcome`, mirroring `isCurrentRevision()` + `isActionable()`. Expiry uses the same `submitted_at->addDays(7)` basis, and an already-past expiry yields null instead of a dead link.                               |
+| T-mbb-06        | Tampering              | Forged `is_rush` on intake                               | accept      | The flag only pre-checks a toggle the Cashier must still confirm before any money moves; `ComputeJobOrderPrice` and `rush_fee_applied` are untouched, so the worst case is a mis-prioritised job the Cashier can see and correct.                                                                                                              |
+| T-mbb-07        | Information Disclosure | `?customer=` enumerating customer history                | accept      | The New Visit route already sits behind `auth` + `role:frontline-staff` and already renders any customer by id; this plan adds order history to a surface that already exposes the same customer's name, contact number, email and address. No new privilege boundary is crossed.                                                              |
+| T-mbb-08        | Tampering              | npm/composer installs                                    | mitigate    | No new dependencies. `qrcode.vue` and `reka-ui` are already installed; no `composer require` or `npm install` is permitted by this plan.                                                                                                                                                                                                       |
+| </threat_model> |
 
 <verification>
 After all four tasks:
@@ -549,6 +535,7 @@ unrelated to this work. Do not attempt to fix it.
 </verification>
 
 <success_criteria>
+
 - `is_rush` is a real NOT NULL column, written by both frontline intake paths, and visible as a Rush badge to Artist, Cashier and Production Staff.
 - The Production Board `is_rush` collision is resolved explicitly (persisted OR due-date heuristic) with the model PHPDoc corrected and the six existing `ProductionBoardTest` assertions still passing unchanged.
 - The Cashier's Apply Rush Fee toggle pre-checks for rush orders without auto-charging, without bypassing the Cashier, and without touching `ComputeJobOrderPrice`.
@@ -559,7 +546,7 @@ unrelated to this work. Do not attempt to fix it.
 - Fully paid job orders leave the Cashier dashboard; partial, on-credit and unpriced job orders stay.
 - No new npm or composer dependencies. No inline styles, `<style>` blocks, CSS modules, or `app.css` additions.
 - Every UI change was observed working in a real browser per CLAUDE.md rule 10, including each "change your mind" path called out in the human checks.
-</success_criteria>
+  </success_criteria>
 
 <output>
 Create `.planning/quick/260910-mbb-frontline-rush-flag-printable-customer-q/260910-mbb-SUMMARY.md` when done.

@@ -62,6 +62,7 @@ completed: 2026-09-07
 - **Files modified:** 10 (3 controllers, 4 Vue pages, 3 test files)
 
 ## Accomplishments
+
 - `CancellationController`'s `$designStarted` fee-eligibility array now recognizes `ForProduction`/`Printing`/`QualityCheck`/`ReadyForPickup` alongside the existing three — a job order cancelled anywhere from `DesignApproved` through `ReadyForPickup` still collects the Phase 5 cancellation fee (POS-07), proven by driving a job order through the real `approve()` route into `ForProduction` before cancelling
 - `PerformanceReportController`'s completed-jobs query re-keyed from a single `where('status', DesignApproved)` to a `whereIn()` covering `DesignApproved` plus all four production statuses (JOB-10) — `jobsCompleted`/`avgRevisions`/`slaAdherence` never permanently zero out once 06-04 ships, proven with all three metrics asserted explicitly (not just `jobsCompleted`) against the real approve flow
 - `JobOrderQueueController`'s artist-dashboard `whereNotIn()` exclusion extended to also exclude all four production statuses — a job order that has advanced into production no longer piles up forever in the artist's own queue with nothing they can do about it
@@ -77,6 +78,7 @@ Each task was committed atomically:
 3. **Task 3: Artist queue exclusion and staff-facing status displays** - `e4902f2` (feat, includes new tests — not a TDD-gated task per plan frontmatter)
 
 ## Files Created/Modified
+
 - `app/Http/Controllers/Cashier/CancellationController.php` - `$designStarted` array extended to 7 values (added `ForProduction`, `Printing`, `QualityCheck`, `ReadyForPickup`)
 - `resources/js/pages/cashier/Dashboard.vue` - `DESIGN_STARTED_STATUSES` mirrored to match; 4 new `jobOrderStatusLabel()` cases; `v-else` `<Badge variant="secondary">` fallback added to the Status-column chain
 - `tests/Feature/Cashier/CancellationFeeTest.php` - new test driving a job order through the real `approve()` route into `ForProduction`, then asserting the cancellation fee is still collected
@@ -89,6 +91,7 @@ Each task was committed atomically:
 - `tests/Feature/Artist/QueueControlsTest.php` - new dataset test (4 production statuses) plus one end-to-end test proving the artist dashboard exclusion holds against the real `approve()` flow
 
 ## Decisions Made
+
 - Kept `DesignApproved` in `PerformanceReportController`'s `whereIn()` list rather than replacing it, for backward compatibility with pre-06-04 rows and this suite's own pre-existing factory-shortcut tests (see key-decisions in frontmatter).
 - Every new test in this plan uses the real `approve()` HTTP route rather than a factory-injected status shortcut, per the plan's explicit instruction — this is the same shortcut that let 06-04's original regression pass unnoticed, so the checker mandated real-flow coverage everywhere this plan touches.
 
@@ -107,12 +110,14 @@ None — plan executed exactly as written. All three tasks' acceptance criteria 
 None — no external service configuration required.
 
 ## Next Phase Readiness
+
 - Every downstream consumer of `DesignApproved`/`ReadyForProduction` that this phase's own audit could find (Cashier cancellation fee, Cashier Dashboard status, Artist Performance Report, Artist queue exclusion, Artist Dashboard status/actions, Frontline Queue/New-Visit status badges) is now correct against the real `approve()` → `EnterProduction` flow, not just factory-shortcut test setups.
 - No known remaining consumer of the pre-06-04 status shape was left unfixed within this plan's scope. If 06-08 (or any later plan) introduces a new surface that branches on job order status, it should include all four production statuses from the start rather than relying on a `DesignApproved`-only check, per the pattern this plan repeatedly had to retrofit.
 
 ---
-*Phase: 06-production-monitoring-public-tracking*
-*Completed: 2026-09-07*
+
+_Phase: 06-production-monitoring-public-tracking_
+_Completed: 2026-09-07_
 
 ## Self-Check: PASSED
 

@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { FileSpreadsheet, FileText, Info, Zap } from '@lucide/vue';
+import {
+    CalendarRange,
+    ChartColumn,
+    FileSpreadsheet,
+    FileText,
+    Info,
+    Zap,
+} from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import SectionHeading from '@/components/SectionHeading.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +60,7 @@ const props = defineProps<{
     columns: string[];
     rows: Record<string, unknown>[];
     rowsTotal: number;
+    rowsAmountTotal: number | null;
     summary: FinancialSummary | null;
     filters: ReportFilters;
     indexUrl: string;
@@ -94,6 +103,16 @@ const REPORT_ROW_FIELDS: Record<string, string[]> = {
 const MONEY_FIELDS = new Set(['amount', 'job_order_total', 'cancellation_fee']);
 
 const rowFields = computed(() => REPORT_ROW_FIELDS[props.selected] ?? []);
+
+// Which column the money total sits under -- last for Sales, mid-table for
+// Expenses, so the footer cannot just span everything and right-align.
+const amountColumnIndex = computed(() => rowFields.value.indexOf('amount'));
+const showAmountTotal = computed(
+    () => props.rowsAmountTotal !== null && amountColumnIndex.value > 0,
+);
+const amountTotalLabel = computed(() =>
+    props.selected === 'expenses' ? 'Total (voided excluded)' : 'Total',
+);
 const selectedReport = computed(() => props.reports[props.selected]);
 
 function cellClass(field: string): string {
@@ -305,9 +324,10 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
 <template>
     <div class="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
         <div class="flex flex-col gap-4">
-            <h2 class="text-[20px] leading-[1.2] font-semibold">
-                Available Reports
-            </h2>
+            <SectionHeading
+                title="Available Reports"
+                description="Pick one, then set the date range."
+            />
             <div class="flex flex-col gap-4">
                 <button
                     v-for="(report, key) in reports"
@@ -340,7 +360,7 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
 
         <div class="flex flex-col gap-6">
             <Card>
-                <CardHeader>
+                <CardHeader :icon="CalendarRange">
                     <CardTitle>Date Range</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -353,7 +373,7 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
             </Card>
 
             <Card>
-                <CardHeader>
+                <CardHeader :icon="ChartColumn">
                     <CardTitle>{{ selectedReport?.title }}</CardTitle>
                     <CardDescription>{{
                         selectedReport?.subLine
@@ -662,7 +682,7 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                                 <Badge
                                                     v-if="row[field]"
                                                     variant="outline"
-                                                    class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                                                    class="border-brand/40 text-brand"
                                                 >
                                                     <Zap class="size-3" />
                                                     Rush
@@ -725,15 +745,45 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                         </TableCell>
                                     </TableRow>
                                 </TableBody>
-                                <TableFooter v-if="rowsTotal > 100">
-                                    <TableRow>
+                                <TableFooter
+                                    v-if="showAmountTotal || rowsTotal > 100"
+                                >
+                                    <TableRow v-if="showAmountTotal">
+                                        <TableCell
+                                            :colspan="amountColumnIndex"
+                                            class="font-semibold"
+                                        >
+                                            {{ amountTotalLabel }}
+                                        </TableCell>
+                                        <TableCell
+                                            class="text-right font-semibold tabular-nums"
+                                        >
+                                            {{ moneyField(rowsAmountTotal) }}
+                                        </TableCell>
+                                        <TableCell
+                                            v-if="
+                                                columns.length -
+                                                    amountColumnIndex -
+                                                    1 >
+                                                0
+                                            "
+                                            :colspan="
+                                                columns.length -
+                                                amountColumnIndex -
+                                                1
+                                            "
+                                        />
+                                    </TableRow>
+                                    <TableRow v-if="rowsTotal > 100">
                                         <TableCell
                                             :colspan="columns.length"
                                             class="text-muted-foreground text-sm"
                                         >
                                             Showing the first 100 of
-                                            {{ rowsTotal }} rows. Export to see
-                                            them all.
+                                            {{ rowsTotal }} rows. This total
+                                            covers every row in the range, not
+                                            just the ones shown &mdash; export
+                                            to see them all.
                                         </TableCell>
                                     </TableRow>
                                 </TableFooter>

@@ -36,7 +36,7 @@ const { title = '', description = '' } = defineProps<{
                         <div
                             class="text-primary text-xl leading-none font-extrabold"
                         >
-                            7
+                            6
                         </div>
                         <div
                             class="text-muted-foreground mt-1 text-[10px] font-semibold tracking-wider uppercase"
@@ -98,7 +98,18 @@ const { title = '', description = '' } = defineProps<{
                 >
                     Staff Portal
                 </span>
-                <div class="w-full max-w-[280px]">
+                <!--
+                    The panel is a coloured surface, so it has to say what
+                    colour its text is. Without this every Label, link and
+                    icon slotted in here inherited the LIGHT theme's
+                    near-black `--foreground` and rendered black on royal
+                    blue.
+
+                    `text-primary-foreground` and not a `dark` scope: `.dark`
+                    redefines `--primary`, which would repaint both this
+                    panel and the white submit button's blue text.
+                -->
+                <div class="text-primary-foreground w-full max-w-[280px]">
                     <slot />
                 </div>
             </div>

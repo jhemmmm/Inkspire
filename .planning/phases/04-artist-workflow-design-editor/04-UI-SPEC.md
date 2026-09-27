@@ -19,15 +19,16 @@ This is the first phase to build out the Artist portal beyond its placeholder, a
 
 ## Design System
 
-| Property | Value |
-|----------|-------|
-| Tool | shadcn (already initialized — reused from Phase 1/2/3, no re-init) |
-| Preset | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none |
-| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge |
-| Icon library | lucide (`@lucide/vue`) |
-| Font | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
+| Property          | Value                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| Tool              | shadcn (already initialized — reused from Phase 1/2/3, no re-init)                         |
+| Preset            | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none             |
+| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge                       |
+| Icon library      | lucide (`@lucide/vue`)                                                                     |
+| Font              | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
 
 Existing installed `ui/` primitives usable as-is for this phase — **no new `npx shadcn add` calls required**:
+
 - `table` — Artist's own queue list, Owner's Design Overrides list
 - `badge` — job order status, artist session status, "Not Appeared" indicator
 - `card` — job order workspace sections (consultation notes, design editor, review), performance report stat cards, the pre-editor "start design" choice
@@ -48,17 +49,18 @@ No registry additions this phase.
 
 Unchanged from Phase 1/2/3 — reused as-is, no new tokens or exceptions introduced:
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| xs | 4px | Icon-to-label gaps, badge inline padding |
-| sm | 8px | Compact form field gaps, inline status-badge-to-action-button gaps |
-| md | 16px | Default element spacing, card padding, table cell padding |
-| lg | 24px | Section padding within a portal page, gap between Job Order Workspace's stacked cards (Consultation / Design / Review) |
-| xl | 32px | Layout gaps between major page regions |
-| 2xl | 48px | Major section breaks |
-| 3xl | 64px | Page-level spacing |
+| Token | Value | Usage                                                                                                                  |
+| ----- | ----- | ---------------------------------------------------------------------------------------------------------------------- |
+| xs    | 4px   | Icon-to-label gaps, badge inline padding                                                                               |
+| sm    | 8px   | Compact form field gaps, inline status-badge-to-action-button gaps                                                     |
+| md    | 16px  | Default element spacing, card padding, table cell padding                                                              |
+| lg    | 24px  | Section padding within a portal page, gap between Job Order Workspace's stacked cards (Consultation / Design / Review) |
+| xl    | 32px  | Layout gaps between major page regions                                                                                 |
+| 2xl   | 48px  | Major section breaks                                                                                                   |
+| 3xl   | 64px  | Page-level spacing                                                                                                     |
 
 Exceptions:
+
 - The TOAST UI editor's own internal toolbar/menu spacing is controlled by the library's own CSS (`tui-image-editor.css`) and is **not** re-themed to the 8-point scale — it's a third-party canvas tool, not a design-system component. Contain it inside a `Card` with standard `lg` (24px) padding around its outer edge so it still sits correctly inside the page's own rhythm.
 
 ---
@@ -67,12 +69,12 @@ Exceptions:
 
 Unchanged 4-role scale from Phase 1/2/3 — reused as-is:
 
-| Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
-| Body | 14px | 400 (regular) | 1.5 |
-| Label | 14px | 600 (semibold) | 1.4 |
-| Heading | 20px | 600 (semibold) | 1.2 |
-| Display | 28px | 600 (semibold) | 1.2 |
+| Role    | Size | Weight         | Line Height |
+| ------- | ---- | -------------- | ----------- |
+| Body    | 14px | 400 (regular)  | 1.5         |
+| Label   | 14px | 600 (semibold) | 1.4         |
+| Heading | 20px | 600 (semibold) | 1.2         |
+| Display | 28px | 600 (semibold) | 1.2         |
 
 - Body: consultation notes textarea text, table cell values, revision history entries, helper/description text.
 - Label: form field labels ("Consultation Notes", "From", "To"), table column headers, badge text.
@@ -87,31 +89,31 @@ Only two weights used: 400 and 600 — unchanged.
 
 Extends, does not replace, the Phase 1/2/3 contract. No new hex values or CSS custom properties introduced — every new mapping below reuses existing `--primary` / `--secondary` / `--destructive` / `--muted-foreground` tokens or the established green-success text override.
 
-| Role | Value | Usage |
-|------|-------|-------|
-| Dominant (60%) | `--background` | Page background — unchanged |
-| Secondary (30%) | `--card` / `--muted` | Card containers (workspace sections, stat cards), table zebra/header — unchanged |
-| Accent (10%) | `--primary` | Reserved for: existing Phase 1/2/3 list, **plus** the "Assigned" and "Pending Review" job order status badges, and every primary submit button this phase introduces ("Save Consultation Notes", "Send for Review", "Next") |
-| Destructive | `--destructive` | Reserved for: existing Phase 1/2/3 list, **plus** the "Unlock Design" confirm button and the "Client Approved" confirm-dialog's irreversibility framing is NOT destructive-colored (approval is a positive outcome, not an error — use `--primary`, not `--destructive`, for that confirm button; see Copywriting Contract) |
+| Role            | Value                | Usage                                                                                                                                                                                                                                                                                                                       |
+| --------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dominant (60%)  | `--background`       | Page background — unchanged                                                                                                                                                                                                                                                                                                 |
+| Secondary (30%) | `--card` / `--muted` | Card containers (workspace sections, stat cards), table zebra/header — unchanged                                                                                                                                                                                                                                            |
+| Accent (10%)    | `--primary`          | Reserved for: existing Phase 1/2/3 list, **plus** the "Assigned" and "Pending Review" job order status badges, and every primary submit button this phase introduces ("Save Consultation Notes", "Send for Review", "Next")                                                                                                 |
+| Destructive     | `--destructive`      | Reserved for: existing Phase 1/2/3 list, **plus** the "Unlock Design" confirm button and the "Client Approved" confirm-dialog's irreversibility framing is NOT destructive-colored (approval is a positive outcome, not an error — use `--primary`, not `--destructive`, for that confirm button; see Copywriting Contract) |
 
 **Job order status badge mapping — extends Phase 3's existing table (`intake` / `ready_for_production` / `assigned` / `validation_failed` stay exactly as `03-UI-SPEC.md` defined them; do not change their existing treatment). This phase adds:**
 
-| `JobOrderStatus` value | Display label | Badge treatment | Meaning |
-|---|---|---|---|
-| `in_consultation` | "In Consultation" | `variant="secondary"` | Artist actively engaged with the client — in progress, no external action needed |
-| `in_design` | "In Design" | `variant="secondary"` | Same in-progress tier as In Consultation; distinguished by label text only, not color |
-| `pending_review` | "Pending Review" | `variant="default"` | Needs the Artist's action now (record the client's verdict) — same "needs attention" tier as `assigned` |
-| `design_approved` | "Design Approved" | `class="text-green-600 dark:text-green-400"` (no `variant` prop, matching the existing "Ready for Production"/"Done" success precedent exactly) | Terminal success state for this phase — design is locked |
+| `JobOrderStatus` value | Display label     | Badge treatment                                                                                                                                 | Meaning                                                                                                 |
+| ---------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `in_consultation`      | "In Consultation" | `variant="secondary"`                                                                                                                           | Artist actively engaged with the client — in progress, no external action needed                        |
+| `in_design`            | "In Design"       | `variant="secondary"`                                                                                                                           | Same in-progress tier as In Consultation; distinguished by label text only, not color                   |
+| `pending_review`       | "Pending Review"  | `variant="default"`                                                                                                                             | Needs the Artist's action now (record the client's verdict) — same "needs attention" tier as `assigned` |
+| `design_approved`      | "Design Approved" | `class="text-green-600 dark:text-green-400"` (no `variant` prop, matching the existing "Ready for Production"/"Done" success precedent exactly) | Terminal success state for this phase — design is locked                                                |
 
 **"Not Appeared" indicator (JOB-09, D-04):** rendered as a small secondary badge (`variant="outline"`, `text-muted-foreground`) placed next to — never replacing — the job order's normal status badge, labeled "Not Appeared". This is a deprioritization flag, not a lifecycle stage, so it never appears alone; whatever underlying data shape the planner chooses (new status value vs. flag/timestamp per `04-RESEARCH.md`'s Open Question 1) does not change this visual contract.
 
 **Artist session status badge (`ArtistStatus`, JOB-08, D-13):**
 
-| `ArtistStatus` value | Display label | Badge treatment | Meaning |
-|---|---|---|---|
-| `available` | "Available" | `class="text-green-600 dark:text-green-400"` | Eligible for new auto-assignment |
-| `on_break` | "On Break" | `variant="secondary"` | Paused, not eligible for new assignment |
-| `off_shift` | "Off Shift" | `variant="outline"` | Not working, not eligible |
+| `ArtistStatus` value | Display label | Badge treatment                              | Meaning                                 |
+| -------------------- | ------------- | -------------------------------------------- | --------------------------------------- |
+| `available`          | "Available"   | `class="text-green-600 dark:text-green-400"` | Eligible for new auto-assignment        |
+| `on_break`           | "On Break"    | `variant="secondary"`                        | Paused, not eligible for new assignment |
+| `off_shift`          | "Off Shift"   | `variant="outline"`                          | Not working, not eligible               |
 
 **"Exceeded break time" passive indicator (D-14, Owner/Admin-facing only):** a small `variant="outline"` badge with `text-muted-foreground` and a lucide `Clock` icon, label "Exceeded break time" — informational only, never `--destructive` (this is not an error state, just a passive signal for Owner/Admin to notice). Appears only on Owner's User Management page (extended this phase, see Phase-Specific UI Notes), never on the Artist's own dashboard.
 
@@ -121,47 +123,48 @@ Accent reserved for: the additions above only, still never used for decorative f
 
 ## Copywriting Contract
 
-| Element | Copy |
-|---------|------|
-| Consultation notes field label | "Consultation Notes" |
-| Consultation notes save button | "Save Consultation Notes" |
-| Queue control — claim next client | "Next" |
-| Queue control — forward without reassigning | "Forward" |
-| Queue control — client didn't show | "Not Appear" |
-| Design start choice — blank canvas | "Start from Blank Canvas" |
-| Design start choice — import reference | "Import Reference Image" |
-| Design editor submit | "Send for Review" |
-| Client verdict — positive | "Client Approved" |
-| Client verdict — positive, confirm dialog title | "Approve this design?" |
-| Client verdict — positive, confirm dialog body | "Once approved, this design file becomes read-only. Only an Owner can unlock it for further edits." |
-| Client verdict — positive, confirm button | "Confirm Approval" |
-| Client verdict — negative | "Client Requested Changes" |
-| Session status — start break | "Start Break" |
-| Session status — end break | "End Break" |
-| Session status — end shift | "End Shift" |
-| Owner override trigger | "Unlock Design" |
-| Owner override confirm dialog title | "Unlock {job_order_description}'s design file?" |
-| Owner override confirm dialog body | "This design was locked after client approval. Unlocking it lets the Artist edit it again and is recorded in the audit trail." |
-| Owner override confirm button | "Unlock Design" |
-| Performance report filters — apply | "Apply Filters" (matches `AuditTrail.vue`'s exact button, reused verbatim) |
-| Performance report filters — clear | "Clear" |
-| Performance report stat — jobs completed | "Jobs Completed" |
-| Performance report stat — avg revisions | "Avg. Revisions per Job" |
-| Performance report stat — SLA adherence | "SLA Adherence" |
-| Empty state — Artist Dashboard, no assigned job orders | Heading: "No job orders assigned" · Body: "New consultations will appear here automatically when you're set to Available." |
-| Empty state — Performance Report, no data in range | Heading: "No completed job orders in this range" · Body: "Try a wider date range." |
-| Empty state — Owner Design Overrides, nothing locked | Heading: "No locked designs" · Body: "Design files appear here once a job order reaches Design Approved." |
-| Error — consultation notes validation | "Consultation notes couldn't be saved. Check the message below and try again." (paired with field-level `InputError`) |
-| Error — send for review fails validation | "That export couldn't be saved as a design revision. Try exporting again." |
-| Error — action attempted on a locked design (defense-in-depth; UI should never surface this since the editor is disabled and actions are hidden once `design_approved`) | "This design is locked and can no longer be edited. Ask an Owner to unlock it if changes are needed." |
-| Toast — consultation notes saved | "Consultation notes saved." |
-| Toast — sent for review | "Sent for review. Waiting on the client's verdict." |
-| Toast — client approved | "Design approved. This job order is ready for pricing at the Cashier." |
-| Toast — client requested changes | "Noted. Back to editing." |
-| Toast — session status changed | "Status updated to {label}." |
-| Toast — design unlocked (Owner) | "Design unlocked. The Artist can edit it again." |
+| Element                                                                                                                                                                 | Copy                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Consultation notes field label                                                                                                                                          | "Consultation Notes"                                                                                                           |
+| Consultation notes save button                                                                                                                                          | "Save Consultation Notes"                                                                                                      |
+| Queue control — claim next client                                                                                                                                       | "Next"                                                                                                                         |
+| Queue control — forward without reassigning                                                                                                                             | "Forward"                                                                                                                      |
+| Queue control — client didn't show                                                                                                                                      | "Not Appear"                                                                                                                   |
+| Design start choice — blank canvas                                                                                                                                      | "Start from Blank Canvas"                                                                                                      |
+| Design start choice — import reference                                                                                                                                  | "Import Reference Image"                                                                                                       |
+| Design editor submit                                                                                                                                                    | "Send for Review"                                                                                                              |
+| Client verdict — positive                                                                                                                                               | "Client Approved"                                                                                                              |
+| Client verdict — positive, confirm dialog title                                                                                                                         | "Approve this design?"                                                                                                         |
+| Client verdict — positive, confirm dialog body                                                                                                                          | "Once approved, this design file becomes read-only. Only an Owner can unlock it for further edits."                            |
+| Client verdict — positive, confirm button                                                                                                                               | "Confirm Approval"                                                                                                             |
+| Client verdict — negative                                                                                                                                               | "Client Requested Changes"                                                                                                     |
+| Session status — start break                                                                                                                                            | "Start Break"                                                                                                                  |
+| Session status — end break                                                                                                                                              | "End Break"                                                                                                                    |
+| Session status — end shift                                                                                                                                              | "End Shift"                                                                                                                    |
+| Owner override trigger                                                                                                                                                  | "Unlock Design"                                                                                                                |
+| Owner override confirm dialog title                                                                                                                                     | "Unlock {job_order_description}'s design file?"                                                                                |
+| Owner override confirm dialog body                                                                                                                                      | "This design was locked after client approval. Unlocking it lets the Artist edit it again and is recorded in the audit trail." |
+| Owner override confirm button                                                                                                                                           | "Unlock Design"                                                                                                                |
+| Performance report filters — apply                                                                                                                                      | "Apply Filters" (matches `AuditTrail.vue`'s exact button, reused verbatim)                                                     |
+| Performance report filters — clear                                                                                                                                      | "Clear"                                                                                                                        |
+| Performance report stat — jobs completed                                                                                                                                | "Jobs Completed"                                                                                                               |
+| Performance report stat — avg revisions                                                                                                                                 | "Avg. Revisions per Job"                                                                                                       |
+| Performance report stat — SLA adherence                                                                                                                                 | "SLA Adherence"                                                                                                                |
+| Empty state — Artist Dashboard, no assigned job orders                                                                                                                  | Heading: "No job orders assigned" · Body: "New consultations will appear here automatically when you're set to Available."     |
+| Empty state — Performance Report, no data in range                                                                                                                      | Heading: "No completed job orders in this range" · Body: "Try a wider date range."                                             |
+| Empty state — Owner Design Overrides, nothing locked                                                                                                                    | Heading: "No locked designs" · Body: "Design files appear here once a job order reaches Design Approved."                      |
+| Error — consultation notes validation                                                                                                                                   | "Consultation notes couldn't be saved. Check the message below and try again." (paired with field-level `InputError`)          |
+| Error — send for review fails validation                                                                                                                                | "That export couldn't be saved as a design revision. Try exporting again."                                                     |
+| Error — action attempted on a locked design (defense-in-depth; UI should never surface this since the editor is disabled and actions are hidden once `design_approved`) | "This design is locked and can no longer be edited. Ask an Owner to unlock it if changes are needed."                          |
+| Toast — consultation notes saved                                                                                                                                        | "Consultation notes saved."                                                                                                    |
+| Toast — sent for review                                                                                                                                                 | "Sent for review. Waiting on the client's verdict."                                                                            |
+| Toast — client approved                                                                                                                                                 | "Design approved. This job order is ready for pricing at the Cashier."                                                         |
+| Toast — client requested changes                                                                                                                                        | "Noted. Back to editing."                                                                                                      |
+| Toast — session status changed                                                                                                                                          | "Status updated to {label}."                                                                                                   |
+| Toast — design unlocked (Owner)                                                                                                                                         | "Design unlocked. The Artist can edit it again."                                                                               |
 
 **Destructive confirmation:** two high-stakes, semi-irreversible transitions get `AlertDialog` treatment (matching the existing "Deactivate Account" precedent from `UserManagement.vue` — reserve `alert-dialog` for irreversible/high-stakes actions, not routine status changes):
+
 1. **"Client Approved"** — locks the design file; only an Owner can reverse it. Confirm button uses `--primary` styling (this is a positive outcome, not an error — do not use `variant="destructive"` here even though the dialog wraps an irreversible action).
 2. **"Unlock Design"** (Owner override) — reverses a client-approved lock; audited. Confirm button uses `variant="destructive"` styling, matching "Deactivate Account"'s exact precedent, since this reopens a file the shop's process treats as finalized.
 
@@ -171,13 +174,14 @@ Every other action this phase introduces — "Next", "Forward", "Not Appear", "S
 
 ## Registry Safety
 
-| Registry | Blocks Used | Safety Gate |
-|----------|-------------|--------------|
+| Registry        | Blocks Used                                                                                                                                  | Safety Gate  |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | shadcn official | none new — `table`, `badge`, `card`, `alert-dialog`, `textarea`, `select`, `input`, `button`, `label` all already installed from Phase 1/2/3 | not required |
 
 No third-party shadcn registries declared for this phase.
 
 **Non-shadcn dependency legitimacy note (informational, not a registry-gate item):** `tui-image-editor@^3.15.3` + `tui-color-picker@^2.2.8` are plain npm packages, not shadcn registry blocks, so the `npx shadcn view --registry` vetting gate does not apply to them. `04-RESEARCH.md`'s Package Legitimacy Audit already ran the equivalent scrutiny (npm registry age/downloads, official GitHub org, `slopcheck` — both packages came back `Approved`, `OK`). Two behaviors from that research carry a direct UI/security contract and must be honored in the `ToastImageEditor.vue` implementation, not just noted here:
+
 - `usageStatistics: false` must be passed in the `ImageEditor` constructor (opts out of NHN's default hostname telemetry ping — see RESEARCH.md Pitfall 4 / Security Domain V9).
 - The design image is loaded into the editor via a short-lived signed `Storage::disk('local')->temporaryUrl()`, never a permanent public URL (RESEARCH.md Pattern 5 / Security Domain V8) — this is a backend contract, but it directly determines what URL the `ToastImageEditor.vue` component receives as its `initialImageUrl` prop.
 
@@ -190,12 +194,13 @@ No third-party shadcn registries declared for this phase.
 ### 1. Artist Dashboard (`resources/js/pages/artist/Dashboard.vue`, replaces the current placeholder)
 
 Two stacked regions on one page:
+
 - **Session status bar** (top, `Card`, full width): current `ArtistStatus` badge (per the Color section above) + contextual action buttons — "Start Break" shown only when `Available`, "End Break" shown only when `OnBreak` (returning to `Available` triggers the round-robin claim per RESEARCH.md Pattern 3 — no special UI needed for that, it's a server-side side effect), "End Shift" shown whenever status is `Available` or `OnBreak` (per D-15, always allowed). No confirmation dialogs on any of these three (see Copywriting Contract).
 - **Own queue table** (below, `Table` per `QueueList.vue`/`AuditTrail.vue` precedent — not a hand-rolled `<table>`): columns Queue/JO reference, Customer, Description, Status (badge per the mapping above, plus the "Not Appeared" secondary badge when applicable), Actions. Row action buttons are contextual on status:
-  - `assigned` (oldest first per D-04) → "Next" button, claims it into `in_consultation` and navigates to the Job Order Workspace (§2 below).
-  - `in_consultation` (or any active non-terminal status once work has started) → "Forward" and "Not Appear" buttons, plus a plain link/button into the Job Order Workspace to continue work.
-  - `pending_review` → link into the Job Order Workspace where the verdict buttons live (§2) — no verdict buttons directly in this table row; verdicts require seeing the design, which only the Workspace shows.
-  - Empty state: per Copywriting Contract above, rendered via `TableEmpty`.
+    - `assigned` (oldest first per D-04) → "Next" button, claims it into `in_consultation` and navigates to the Job Order Workspace (§2 below).
+    - `in_consultation` (or any active non-terminal status once work has started) → "Forward" and "Not Appear" buttons, plus a plain link/button into the Job Order Workspace to continue work.
+    - `pending_review` → link into the Job Order Workspace where the verdict buttons live (§2) — no verdict buttons directly in this table row; verdicts require seeing the design, which only the Workspace shows.
+    - Empty state: per Copywriting Contract above, rendered via `TableEmpty`.
 
 ### 2. Job Order Workspace (`resources/js/pages/artist/JobOrderWorkspace.vue`, new — one page per job order, e.g. `/artist/job-orders/{jobOrder}`)
 
@@ -203,9 +208,9 @@ A single scrolling page, sections stacked with `lg` (24px) gaps, each in its own
 
 - **"Consultation Notes"** — always visible once the workspace is reached. `Textarea` + "Save Consultation Notes" button. Read-only display (no `Textarea`, plain text) once status has advanced past `in_consultation` — notes are still visible for context, just not re-editable from this section (D-01 doesn't require re-editing after consultation ends).
 - **"Design"** — visible from `in_consultation` onward.
-  - If no `design_files` row exists yet for this job order: show the pre-editor choice `Card` — "Start from Blank Canvas" / "Import Reference Image" (D-11), two side-by-side buttons, `Import Reference Image` opens a native file picker.
-  - Once a base is chosen (or an existing `design_files` row is being re-opened after a change request, D-10): mount `ToastImageEditor.vue` inside this card, contained per the Spacing exception above. Below the editor: "Send for Review" primary button, no confirmation dialog.
-  - Once status reaches `design_approved`: the editor does not mount at all — replace it with a static thumbnail/preview of the locked file plus a `text-muted-foreground` note "This design is locked." (matching the error-state copy's spirit, but as a passive label, not an error `Alert` — nothing has gone wrong here, this is the expected terminal state).
+    - If no `design_files` row exists yet for this job order: show the pre-editor choice `Card` — "Start from Blank Canvas" / "Import Reference Image" (D-11), two side-by-side buttons, `Import Reference Image` opens a native file picker.
+    - Once a base is chosen (or an existing `design_files` row is being re-opened after a change request, D-10): mount `ToastImageEditor.vue` inside this card, contained per the Spacing exception above. Below the editor: "Send for Review" primary button, no confirmation dialog.
+    - Once status reaches `design_approved`: the editor does not mount at all — replace it with a static thumbnail/preview of the locked file plus a `text-muted-foreground` note "This design is locked." (matching the error-state copy's spirit, but as a passive label, not an error `Alert` — nothing has gone wrong here, this is the expected terminal state).
 - **"Review"** — visible only while status is `pending_review`. Two buttons: "Client Approved" (opens the `AlertDialog` above) and "Client Requested Changes" (plain button, bounces status back to `in_design`, no confirmation). Also lists prior `revision_logs` entries for this job order underneath (Body-role text, timestamp + outcome per entry) — this is the version-history trail from D-08, read-only, no restore action (D-08 explicitly rules out independently-restorable old versions).
 
 ### 3. Performance Report (`resources/js/pages/artist/PerformanceReport.vue`, new)
@@ -221,10 +226,12 @@ New Owner-only surface for JOB-07 — mirrors `UserManagement.vue`'s exact list-
 Extend the existing `resources/js/pages/owner/UserManagement.vue` table: for rows where `role === 'artist'`, add the `ArtistStatus` badge (per the Color section above) next to the existing `is_active` "Active"/"Deactivated" badge, and show the "Exceeded break time" passive indicator badge when `artist_status === 'on_break'` and the break has exceeded `max_artist_break_minutes` (computed from `break_started_at` server-side, passed as a boolean prop — do not compute elapsed time client-side against a raw timestamp, to avoid clock-skew bugs). No new action button here — this is display-only, per D-14 ("no automatic state change... passive indicator").
 
 **Nav additions (both new `config/nav/*.ts` files, following `owner.ts`/`frontline-staff.ts`'s exact shape — `NavItem[]` with `title`/`href`/`icon`):**
+
 - `resources/js/config/nav/artist.ts` (new file — Artist's nav is currently `[]`): "Dashboard" (icon `LayoutGrid`, matches every other portal's first item), "Performance Report" (icon `BarChart3`). Do not add a third nav item for the Job Order Workspace — it's a drill-down page reached from the Dashboard's queue table, not top-level navigation.
 - `resources/js/config/nav/owner.ts` (extend existing array): add "Design Overrides" (icon `Unlock`) after "System Configuration".
 
 **Out of scope for this UI-SPEC (confirmed against CONTEXT.md's domain boundary):**
+
 - No pricing/payment UI — Phase 5's job, this phase stops at `design_approved`.
 - No production-stage UI — Phase 6's job.
 - No customer-facing verdict UI — D-05 confirms the Artist records the verdict on the client's behalf, no separate customer screen exists.

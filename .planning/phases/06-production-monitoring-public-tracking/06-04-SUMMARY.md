@@ -63,6 +63,7 @@ completed: 2026-09-07
 - **Files modified:** 13 (1 created action, 2 created test files, 10 modified controllers/tests)
 
 ## Accomplishments
+
 - New `EnterProduction` invokable Action: stamps `ForProduction` + `due_at` (from `SystemConfiguration::getInt('default_sla_days', 3)`) and writes exactly one system-authored `ProductionLog` row, all inside one `DB::transaction()`
 - Wired into all four call sites that previously left a job order at `ReadyForProduction`/`DesignApproved`: `QueueEntryController::applyIntakeOutcome()` (covers both `addJobOrder()` and `store()`), `JobOrderController::replaceFile()`, `DesignEditorController::approve()`, and `Public\DesignReviewController::approve()`
 - Fixed the one crash-level regression this wiring would otherwise introduce: `QueueEntryController`'s post-outcome toast `match` now has a `ForProduction` arm, so `addJobOrder()` no longer throws `UnhandledMatchError` for a passing Type A file — proven end-to-end through the real HTTP route, not just a unit-level status check
@@ -78,6 +79,7 @@ Each task was committed atomically via TDD (test -> feat):
 2. **Task 2: Keep Cashier pricing/payment/credit-request working through the new production statuses** - `d8568f4` (test, RED) -> `0510d3c` (feat, GREEN)
 
 ## Files Created/Modified
+
 - `app/Actions/JobOrder/EnterProduction.php` - new invokable Action; stamps `ForProduction`/`due_at`, creates the first `ProductionLog` row
 - `app/Http/Controllers/FrontlineStaff/QueueEntryController.php` - `applyIntakeOutcome()` calls `EnterProduction` after a Type A pass; toast `match` gains a `ForProduction` arm plus a `default` arm
 - `app/Http/Controllers/FrontlineStaff/JobOrderController.php` - `replaceFile()` calls `EnterProduction` after a Type A pass
@@ -92,6 +94,7 @@ Each task was committed atomically via TDD (test -> feat):
 - `tests/Feature/FrontlineStaff/JobOrderProcessingTest.php` - three stale `ReadyForProduction` assertions updated to `ForProduction` (see Deviations)
 
 ## Decisions Made
+
 - The `default` arm in `jobOrderOutcomeToastMessage()`'s match returns a generic `__('Job order added.')` string — it exists purely to satisfy Larastan's exhaustiveness check against `JobOrderStatus` cases this call site can never actually reach (a freshly created job order's status here is always `ReadyForProduction`/`ForProduction`/`ValidationFailed`/`Assigned`/`Intake`), not to give real per-case copy for statuses like `DesignApproved` or `Printing` that this specific method never sees.
 - `default_sla_days` is read via the existing `SystemConfiguration::getInt('default_sla_days', 3)` helper with no new config key — matches the identical call already used by `PerformanceReportController`.
 
@@ -100,6 +103,7 @@ Each task was committed atomically via TDD (test -> feat):
 ### Auto-fixed Issues
 
 **1. [Rule 1 - Bug] Closed the pre-existing QueueEntryController match.unhandled Larastan gap this plan's own wiring widened**
+
 - **Found during:** Task 1, running `composer types:check` after wiring `EnterProduction` in
 - **Issue:** `jobOrderOutcomeToastMessage()`'s `match ($jobOrder->status)` was already non-exhaustive before this plan (documented in `deferred-items.md` since 06-01). Adding the required `ForProduction` arm (needed to prevent the `UnhandledMatchError` the plan explicitly calls out) still left the match non-exhaustive against the enum's other cases, so Larastan continued to fail. The orchestrator's environment note explicitly flagged this as in-scope: "your plan explicitly owns QueueEntryController's post-outcome toast match — so that particular match.unhandled error IS in scope for you to fix."
 - **Fix:** Added a `default => __('Job order added.')` arm, documented with a PHPDoc explaining that the remaining `JobOrderStatus` cases are structurally unreachable at this call site.
@@ -108,6 +112,7 @@ Each task was committed atomically via TDD (test -> feat):
 - **Committed in:** `8c68f63` (Task 1 GREEN commit)
 
 **2. [Rule 1 - Bug] Fixed three stale ReadyForProduction assertions in a test file not in this plan's files_modified list**
+
 - **Found during:** Task 1, running the full `tests/Feature/FrontlineStaff` sweep after wiring `EnterProduction` in
 - **Issue:** `tests/Feature/FrontlineStaff/JobOrderProcessingTest.php` (not listed in this plan's `files_modified`, and not owned by 06-07 either) contains three assertions that a Type A job order passing validation reaches `ReadyForProduction` — via `addJobOrder()`, `replaceFile()`, and the combined `store()` test. Once `EnterProduction` is wired into all three of those exact code paths, each assertion became a direct, mechanical false-negative — not a pre-existing or unrelated failure, but a same-file consequence of this plan's own wiring, exactly analogous to the two test files the plan explicitly named for the same fix.
 - **Fix:** Updated the three assertions (and the first test's description) from `JobOrderStatus::ReadyForProduction` to `JobOrderStatus::ForProduction`, leaving every other assertion in the file (Type B, validation-failed, audit-trail, forbidden-role) untouched.
@@ -131,13 +136,15 @@ Each task was committed atomically via TDD (test -> feat):
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - Every Type A validation-pass and every Type B design-approval now reaches `ForProduction` with `due_at` stamped and a first `production_logs` row — the Production Board (06-05/06-06) has real, observable data to render.
 - Cashier's payable/priceable/credit-eligible surface now spans the full production lifecycle, so 06-05/06-06's board updates and 06-07's remaining consumer fixes (Artist Performance Report, Artist queue exclusion, Cashier/Artist/Frontline status badges) build on a correct foundation.
 - 06-07 (already planned, not this plan's scope) still owns: `CancellationController`'s `$designStarted` fee-eligibility list, `PerformanceReportController`'s completion query, `JobOrderQueueController`'s exclusion list, and four Vue status-badge/label gaps (`cashier/Dashboard.vue`, `artist/Dashboard.vue`, `frontline-staff/QueueList.vue`, `frontline-staff/NewVisit.vue`) — none of those files were touched here, per this plan's explicit scope boundary.
 
 ---
-*Phase: 06-production-monitoring-public-tracking*
-*Completed: 2026-09-07*
+
+_Phase: 06-production-monitoring-public-tracking_
+_Completed: 2026-09-07_
 
 ## Self-Check: PASSED
 

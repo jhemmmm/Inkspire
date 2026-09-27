@@ -1,8 +1,18 @@
 <script setup lang="ts">
-import { Form, Head, usePoll } from '@inertiajs/vue3';
+import { Form, Head, router, usePoll } from '@inertiajs/vue3';
+import { Search, Zap } from '@lucide/vue';
+import { ref, watch } from 'vue';
 import JobOrderReleaseController from '@/actions/App/Http/Controllers/FrontlineStaff/JobOrderReleaseController';
+import JobOrderTotal from '@/components/JobOrderTotal.vue';
+import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import SectionHeading from '@/components/SectionHeading.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Table,
     TableBody,
@@ -13,7 +23,9 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
+import { balanceLabel, money } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/frontline-staff';
+import { show as jobOrderShow } from '@/routes/frontline-staff/job-orders';
 
 interface ReadyForPickupJobOrder {
     id: number;
@@ -28,10 +40,33 @@ interface ReadyForPickupJobOrder {
     // updated_at.
     ready_at: string | null;
     queue_entry: { customer: { name: string } };
+    total_amount: number | null;
+    display_total: number | null;
+    amount_paid: number | null;
+    is_rush: boolean;
 }
 
-defineProps<{
+interface JobOrderSearchResult {
+    id: number;
+    number: string | null;
+    description: string;
+    status: string;
+    payment_status: string;
+    is_rush: boolean;
+    released_at: string | null;
+    cancelled_at: string | null;
+    created_at: string;
+    queue_entry: { customer: { name: string } | null } | null;
+    assigned_artist: { name: string; artist_label: string | null } | null;
+    total_amount: number | null;
+    display_total: number | null;
+    amount_paid: number | null;
+}
+
+const props = defineProps<{
     readyForPickup: ReadyForPickupJobOrder[];
+    searchResults: JobOrderSearchResult[];
+    filters: { q?: string };
 }>();
 
 defineOptions({
@@ -47,8 +82,84 @@ defineOptions({
 });
 
 // D-13/D-14: a derived, polled query — nothing stored. Matches
-// QueueDisplay.vue's exact usePoll call shape.
+// QueueDisplay.vue's exact usePoll call shape. Scoped to `readyForPickup`
+// so a five-second poll never wipes out search results mid-typing.
 usePoll(5000, { only: ['readyForPickup'] });
+
+const searchTerm = ref(props.filters.q ?? '');
+const searching = ref(false);
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+// Debounced so a staff member typing a job order number fires one request
+// instead of fourteen.
+watch(searchTerm, (term) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        router.get(
+            dashboard.url(),
+            term.trim() === '' ? {} : { q: term.trim() },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                only: ['searchResults', 'filters'],
+                onStart: () => (searching.value = true),
+                onFinish: () => (searching.value = false),
+            },
+        );
+    }, 300);
+});
+
+function clearSearch(): void {
+    searchTerm.value = '';
+}
+
+const JOB_ORDER_STAGE_LABELS: Record<string, string> = {
+    intake: 'Intake',
+    validation_failed: 'Needs a New File',
+    assigned: 'With an Artist',
+    in_consultation: 'In Consultation',
+    in_design: 'In Design',
+    pending_review: 'Awaiting Approval',
+    design_approved: 'Design Approved',
+    ready_for_production: 'Ready for Production',
+    for_production: 'For Production',
+    printing: 'Printing',
+    quality_check: 'Quality Check',
+    ready_for_pickup: 'Ready for Pickup',
+};
+
+function stageLabel(result: JobOrderSearchResult): string {
+    if (result.cancelled_at) {
+        return 'Cancelled';
+    }
+
+    if (result.released_at) {
+        return 'Released';
+    }
+
+    return JOB_ORDER_STAGE_LABELS[result.status] ?? result.status;
+}
+
+function whereToSend(result: JobOrderSearchResult): string {
+    if (result.cancelled_at) {
+        return 'This order was cancelled.';
+    }
+
+    if (result.released_at) {
+        return 'Already collected by the customer.';
+    }
+
+    if (result.status === 'ready_for_pickup') {
+        return 'On the shelf — ready to hand over.';
+    }
+
+    if (result.assigned_artist) {
+        return `With ${result.assigned_artist.artist_label ?? result.assigned_artist.name}.`;
+    }
+
+    return 'Still in progress.';
+}
 
 // Mirrors JobOrderReleaseController::store's own server-side gate (POS-09) —
 // this only decides whether to render the button; the controller re-checks
@@ -62,6 +173,15 @@ function isReleaseEligible(jobOrder: ReadyForPickupJobOrder): boolean {
         jobOrder.payment_status === 'paid' ||
         jobOrder.payment_status === 'on_credit'
     );
+}
+
+/**
+ * Open the full record for a job order. Every row on this page is a lookup
+ * result, so the row itself is the target — the counter is reading, not
+ * choosing between actions.
+ */
+function openJobOrder(id: number): void {
+    router.visit(jobOrderShow.url(id));
 }
 
 function paymentStatusLabel(status: string): string {
@@ -139,25 +259,146 @@ function timeAgo(isoString: string): string {
 <template>
     <Head title="Frontline Dashboard" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
-        <h1 class="text-[28px] leading-[1.2] font-semibold">
-            Frontline Dashboard
-        </h1>
+    <PageContainer>
+        <PageHeader
+            title="Frontline Dashboard"
+            description="What needs a customer-facing action right now."
+        />
 
-        <div class="flex flex-col gap-1">
-            <h2 class="text-[20px] leading-[1.2] font-semibold">
-                Ready for Pickup
-            </h2>
-            <p class="text-muted-foreground">
-                Job orders waiting on the shelf for the customer to collect.
-            </p>
-        </div>
+        <SectionHeading
+            title="Find a Job Order"
+            description="Search by job order number, description, or customer name — at any stage, not just the ones ready for pickup."
+        />
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
+        <DataTableCard>
+            <div class="flex flex-col gap-4 p-4">
+                <div class="grid gap-2">
+                    <Label for="job-order-search">Search job orders</Label>
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex-1">
+                            <Search
+                                class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                            />
+                            <Input
+                                id="job-order-search"
+                                v-model="searchTerm"
+                                type="search"
+                                class="pl-9"
+                                placeholder="JO-2026-1234, tarpaulin, or Maria Santos"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <Button
+                            v-if="searchTerm !== ''"
+                            type="button"
+                            variant="outline"
+                            @click="clearSearch"
+                        >
+                            Clear
+                        </Button>
+                    </div>
+                </div>
+
+                <p
+                    v-if="searchTerm.trim() === ''"
+                    class="text-muted-foreground text-sm"
+                >
+                    Start typing to look up an order the customer is asking
+                    about.
+                </p>
+                <p
+                    v-else-if="searching"
+                    class="text-muted-foreground text-sm"
+                    aria-live="polite"
+                >
+                    Searching…
+                </p>
+                <EmptyState
+                    v-else-if="searchResults.length === 0"
+                    title="No job order matches that"
+                    description="Check the spelling, or try just the customer's surname or part of the description."
+                />
+            </div>
+
+            <div
+                v-if="searchResults.length > 0 && !searching"
+                class="w-full overflow-x-auto"
+            >
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Job Order</TableHead>
+                            <TableHead>Customer</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Stage</TableHead>
+                            <TableHead>Payment</TableHead>
+                            <TableHead class="text-right">Total</TableHead>
+                            <TableHead class="text-right">Balance</TableHead>
+                            <TableHead>Where to send them</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow
+                            v-for="result in searchResults"
+                            :key="result.id"
+                            class="hover:bg-accent/50 cursor-pointer"
+                            tabindex="0"
+                            :data-test="`search-result-${result.id}-row`"
+                            @click="openJobOrder(result.id)"
+                            @keyup.enter="openJobOrder(result.id)"
+                        >
+                            <TableCell class="font-medium tabular-nums">
+                                <div class="flex items-center gap-2">
+                                    {{ result.number ?? '—' }}
+                                    <Badge
+                                        v-if="result.is_rush"
+                                        variant="outline"
+                                        class="border-brand/40 text-brand"
+                                    >
+                                        <Zap class="size-3" />
+                                        Rush
+                                    </Badge>
+                                </div>
+                            </TableCell>
+                            <TableCell>
+                                {{ result.queue_entry?.customer?.name ?? '—' }}
+                            </TableCell>
+                            <TableCell>{{ result.description }}</TableCell>
+                            <TableCell>
+                                <Badge variant="secondary">
+                                    {{ stageLabel(result) }}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <Badge variant="outline">
+                                    {{
+                                        paymentStatusLabel(
+                                            result.payment_status,
+                                        )
+                                    }}
+                                </Badge>
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                <JobOrderTotal :job-order="result" />
+                            </TableCell>
+                            <TableCell class="text-right tabular-nums">
+                                {{ balanceLabel(result) }}
+                            </TableCell>
+                            <TableCell class="text-muted-foreground">
+                                {{ whereToSend(result) }}
+                            </TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </div>
+        </DataTableCard>
+
+        <SectionHeading
+            title="Ready for Pickup"
+            description="Job orders waiting on the shelf for the customer to collect."
+        />
+
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -166,27 +407,27 @@ function timeAgo(isoString: string): string {
                         <TableHead>Description</TableHead>
                         <TableHead>Ready Since</TableHead>
                         <TableHead>Payment</TableHead>
+                        <TableHead class="text-right">Total</TableHead>
+                        <TableHead class="text-right">Balance</TableHead>
                         <TableHead class="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <TableEmpty v-if="readyForPickup.length === 0" :colspan="6">
-                        <div
-                            class="flex flex-col items-center gap-1 text-center"
-                        >
-                            <p class="font-semibold">
-                                Nothing ready for pickup
-                            </p>
-                            <p class="text-muted-foreground">
-                                Job orders appear here the moment Production
-                                marks them Ready for Pickup.
-                            </p>
-                        </div>
+                    <TableEmpty v-if="readyForPickup.length === 0" :colspan="8">
+                        <EmptyState
+                            title="Nothing ready for pickup"
+                            description="Job orders appear here the moment Production marks them Ready for Pickup."
+                        />
                     </TableEmpty>
                     <TableRow
                         v-for="jobOrder in readyForPickup"
                         v-else
                         :key="jobOrder.id"
+                        class="hover:bg-accent/50 cursor-pointer"
+                        tabindex="0"
+                        :data-test="`ready-for-pickup-${jobOrder.id}-row`"
+                        @click="openJobOrder(jobOrder.id)"
+                        @keyup.enter="openJobOrder(jobOrder.id)"
                     >
                         <TableCell>
                             <span class="text-muted-foreground tabular-nums">
@@ -286,7 +527,13 @@ function timeAgo(isoString: string): string {
                                 }}
                             </Badge>
                         </TableCell>
-                        <TableCell class="text-right">
+                        <TableCell class="text-right tabular-nums">
+                            <JobOrderTotal :job-order="jobOrder" />
+                        </TableCell>
+                        <TableCell class="text-right tabular-nums">
+                            {{ balanceLabel(jobOrder) }}
+                        </TableCell>
+                        <TableCell class="text-right" @click.stop>
                             <Form
                                 v-if="isReleaseEligible(jobOrder)"
                                 v-bind="
@@ -310,6 +557,6 @@ function timeAgo(isoString: string): string {
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
-    </div>
+        </DataTableCard>
+    </PageContainer>
 </template>

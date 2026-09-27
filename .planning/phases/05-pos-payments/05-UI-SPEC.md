@@ -19,15 +19,16 @@ This phase replaces the Cashier and Accounting Staff portals' placeholder dashbo
 
 ## Design System
 
-| Property | Value |
-|----------|-------|
-| Tool | shadcn (already initialized — reused from Phase 1-4, no re-init) |
-| Preset | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none |
-| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge |
-| Icon library | lucide (`@lucide/vue`) |
-| Font | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
+| Property          | Value                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| Tool              | shadcn (already initialized — reused from Phase 1-4, no re-init)                           |
+| Preset            | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none             |
+| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge                       |
+| Icon library      | lucide (`@lucide/vue`)                                                                     |
+| Font              | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
 
 Existing installed `ui/` primitives usable as-is for this phase — **no new `npx shadcn add` calls required**:
+
 - `table` — Cashier Dashboard, Accounting Staff Dashboard, Owner Credit Requests list
 - `badge` — job order `payment_status`, transaction status, AR status indicators
 - `card` — Pricing section, Payment section, GCash/Maya QR sub-view, Receipt layout, stat-style summaries
@@ -52,17 +53,18 @@ No registry additions this phase.
 
 Unchanged from Phase 1-4 — reused as-is, no new tokens or exceptions introduced:
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| xs | 4px | Icon-to-label gaps, badge inline padding |
-| sm | 8px | Compact form field gaps, inline status-badge-to-action-button gaps |
-| md | 16px | Default element spacing, card padding, table cell padding |
-| lg | 24px | Section padding within a portal page, gap between the Pricing/Payment/Receipt stacked cards |
-| xl | 32px | Layout gaps between major page regions |
-| 2xl | 48px | Major section breaks |
-| 3xl | 64px | Page-level spacing |
+| Token | Value | Usage                                                                                       |
+| ----- | ----- | ------------------------------------------------------------------------------------------- |
+| xs    | 4px   | Icon-to-label gaps, badge inline padding                                                    |
+| sm    | 8px   | Compact form field gaps, inline status-badge-to-action-button gaps                          |
+| md    | 16px  | Default element spacing, card padding, table cell padding                                   |
+| lg    | 24px  | Section padding within a portal page, gap between the Pricing/Payment/Receipt stacked cards |
+| xl    | 32px  | Layout gaps between major page regions                                                      |
+| 2xl   | 48px  | Major section breaks                                                                        |
+| 3xl   | 64px  | Page-level spacing                                                                          |
 
 Exceptions:
+
 - The Receipt page (`print:` variant) collapses to a single narrow column (`max-w-sm`, `mx-auto`) when printed, using `md` (16px) internal spacing throughout instead of `lg` — a physical receipt-strip layout, not a full portal page layout. Screen view (before printing) keeps the standard `lg` page padding.
 
 ---
@@ -71,12 +73,12 @@ Exceptions:
 
 Unchanged 4-role scale from Phase 1-4 — reused as-is:
 
-| Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
-| Body | 14px | 400 (regular) | 1.5 |
-| Label | 14px | 600 (semibold) | 1.4 |
-| Heading | 20px | 600 (semibold) | 1.2 |
-| Display | 28px | 600 (semibold) | 1.2 |
+| Role    | Size | Weight         | Line Height |
+| ------- | ---- | -------------- | ----------- |
+| Body    | 14px | 400 (regular)  | 1.5         |
+| Label   | 14px | 600 (semibold) | 1.4         |
+| Heading | 20px | 600 (semibold) | 1.2         |
+| Display | 28px | 600 (semibold) | 1.2         |
 
 - Body: pricing breakdown line items (base price, rush fee, discount), table cell values, reconciliation result text, receipt line items.
 - Label: form field labels ("Product/Service", "Discount Type", "Amount Tendered"), table column headers, badge text.
@@ -91,40 +93,40 @@ Only two weights used: 400 and 600 — unchanged.
 
 Extends, does not replace, the Phase 1-4 contract. No new hex values, CSS custom properties, or third semantic color introduced — every new mapping below reuses existing `--primary` / `--secondary` / `--destructive` / `--muted-foreground` tokens or the established green-success text override. **Payment methods (Cash/Bank Transfer/GCash/Maya) are never given per-method brand colors** — the demo's blue/green/purple palette (`demo/main.js` `csSelectMethod`) is a visual reference only per CONTEXT.md, not a locked spec, and this app's neutral theme has never introduced a third semantic color in any prior phase. Distinguish payment methods by icon + label text only (see Phase-Specific UI Notes for the exact icon list).
 
-| Role | Value | Usage |
-|------|-------|-------|
-| Dominant (60%) | `--background` | Page background — unchanged |
-| Secondary (30%) | `--card` / `--muted` | Card containers (Pricing, Payment, Receipt, stat summaries), table zebra/header — unchanged |
-| Accent (10%) | `--primary` | Reserved for: existing Phase 1-4 list, **plus** every primary submit button this phase introduces ("Record Payment", "Record Down Payment", "Generate QR Code", "Request On-Credit Approval", "Release to Customer", "Approve Credit" confirm button), the computed **Total** figure's emphasis, and the "Paid"/"On Credit"/"active" AR success badges' — no, see green-success row below for those; `--primary` here means action buttons and the "needs attention" badge tier only |
-| Destructive | `--destructive` | Reserved for: existing Phase 1-4 list, **plus** "Cancel Job Order" trigger + confirm button, "Reject Credit" confirm button, the "Credit Rejected" payment-status badge, and the "Payment Failed" transaction-status badge |
+| Role            | Value                | Usage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Dominant (60%)  | `--background`       | Page background — unchanged                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Secondary (30%) | `--card` / `--muted` | Card containers (Pricing, Payment, Receipt, stat summaries), table zebra/header — unchanged                                                                                                                                                                                                                                                                                                                                                                                          |
+| Accent (10%)    | `--primary`          | Reserved for: existing Phase 1-4 list, **plus** every primary submit button this phase introduces ("Record Payment", "Record Down Payment", "Generate QR Code", "Request On-Credit Approval", "Release to Customer", "Approve Credit" confirm button), the computed **Total** figure's emphasis, and the "Paid"/"On Credit"/"active" AR success badges' — no, see green-success row below for those; `--primary` here means action buttons and the "needs attention" badge tier only |
+| Destructive     | `--destructive`      | Reserved for: existing Phase 1-4 list, **plus** "Cancel Job Order" trigger + confirm button, "Reject Credit" confirm button, the "Credit Rejected" payment-status badge, and the "Payment Failed" transaction-status badge                                                                                                                                                                                                                                                           |
 
 **`payment_status` badge mapping (new column this phase adds to `job_orders`; job-order `status` badges from Phase 3/4 stay exactly as defined — payment status and lifecycle status are two different fields and must never be visually merged into one badge):**
 
-| `PaymentStatus` value | Display label | Badge treatment | Meaning |
-|---|---|---|---|
-| `unpaid` | "Unpaid" | `variant="outline"` | Not yet actionable by anyone but the Cashier — mirrors the "Awaiting Assignment" treatment from Phase 3 |
-| `partially_paid` | "Partially Paid" | `variant="default"` | Needs the Cashier's action to collect the remaining balance — same "needs attention" tier as `assigned`/`pending_review` |
-| `pending_confirmation` | "Pending Confirmation" | `variant="secondary"` | In progress, waiting on the customer/webhook — no error, no action needed from staff yet (matches `in_consultation`'s "in progress" tier); pair with a small lucide `Clock` icon inline, same treatment as the "Exceeded break time" indicator from Phase 4 |
-| `paid` | "Paid" | `class="text-green-600 dark:text-green-400"` (no `variant` prop, matching the existing "Ready for Production"/"Design Approved" success precedent exactly) | Terminal success state — fully settled |
-| `credit_pending_approval` | "Credit Pending Approval" | `variant="default"` | Needs the Owner's action now — same "needs attention" tier as `partially_paid` |
-| `on_credit` | "On Credit" | `class="text-green-600 dark:text-green-400"` | Resolved for release-gating purposes (POS-09) — active credit is a settled payment path, not an error |
-| `credit_rejected` | "Credit Rejected" | `variant="destructive"` | Error/blocked state — requires manual follow-up (D-07: no auto-fallback) |
+| `PaymentStatus` value     | Display label             | Badge treatment                                                                                                                                            | Meaning                                                                                                                                                                                                                                                     |
+| ------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unpaid`                  | "Unpaid"                  | `variant="outline"`                                                                                                                                        | Not yet actionable by anyone but the Cashier — mirrors the "Awaiting Assignment" treatment from Phase 3                                                                                                                                                     |
+| `partially_paid`          | "Partially Paid"          | `variant="default"`                                                                                                                                        | Needs the Cashier's action to collect the remaining balance — same "needs attention" tier as `assigned`/`pending_review`                                                                                                                                    |
+| `pending_confirmation`    | "Pending Confirmation"    | `variant="secondary"`                                                                                                                                      | In progress, waiting on the customer/webhook — no error, no action needed from staff yet (matches `in_consultation`'s "in progress" tier); pair with a small lucide `Clock` icon inline, same treatment as the "Exceeded break time" indicator from Phase 4 |
+| `paid`                    | "Paid"                    | `class="text-green-600 dark:text-green-400"` (no `variant` prop, matching the existing "Ready for Production"/"Design Approved" success precedent exactly) | Terminal success state — fully settled                                                                                                                                                                                                                      |
+| `credit_pending_approval` | "Credit Pending Approval" | `variant="default"`                                                                                                                                        | Needs the Owner's action now — same "needs attention" tier as `partially_paid`                                                                                                                                                                              |
+| `on_credit`               | "On Credit"               | `class="text-green-600 dark:text-green-400"`                                                                                                               | Resolved for release-gating purposes (POS-09) — active credit is a settled payment path, not an error                                                                                                                                                       |
+| `credit_rejected`         | "Credit Rejected"         | `variant="destructive"`                                                                                                                                    | Error/blocked state — requires manual follow-up (D-07: no auto-fallback)                                                                                                                                                                                    |
 
 **Transaction `status` badge mapping (per-payment-event rows, e.g. reconciliation list, receipt history):**
 
-| `TransactionStatus` value | Display label | Badge treatment |
-|---|---|---|
-| `completed` | "Completed" | `class="text-green-600 dark:text-green-400"` |
-| `pending_confirmation` | "Pending Confirmation" | `variant="secondary"` |
-| `failed` | "Failed" | `variant="destructive"` |
+| `TransactionStatus` value | Display label          | Badge treatment                              |
+| ------------------------- | ---------------------- | -------------------------------------------- |
+| `completed`               | "Completed"            | `class="text-green-600 dark:text-green-400"` |
+| `pending_confirmation`    | "Pending Confirmation" | `variant="secondary"`                        |
+| `failed`                  | "Failed"               | `variant="destructive"`                      |
 
 **AR `status` badge mapping (Owner Credit Requests list):**
 
-| AR `status` value | Display label | Badge treatment |
-|---|---|---|
-| `pending_approval` | "Pending Approval" | `variant="default"` |
-| `active` | "Active" | `class="text-green-600 dark:text-green-400"` |
-| `rejected` | "Rejected" | `variant="destructive"` |
+| AR `status` value  | Display label      | Badge treatment                              |
+| ------------------ | ------------------ | -------------------------------------------- |
+| `pending_approval` | "Pending Approval" | `variant="default"`                          |
+| `active`           | "Active"           | `class="text-green-600 dark:text-green-400"` |
+| `rejected`         | "Rejected"         | `variant="destructive"`                      |
 
 Accent reserved for: the additions above only, still never used for decorative fills — same rule as every prior phase.
 
@@ -132,85 +134,86 @@ Accent reserved for: the additions above only, still never used for decorative f
 
 ## Copywriting Contract
 
-| Element | Copy |
-|---------|------|
-| Cashier Dashboard page title | "Cashier Dashboard" |
-| Cashier Dashboard table — primary action, unpriced/unpaid job order | "Process Payment" |
-| Cashier Dashboard table — primary action, pending confirmation | "Check Payment Status" |
-| Cashier Dashboard table — primary action, paid/on-credit | "View Receipt" |
-| Job Order Payment page title | "Job Order Payment — {job_order_reference}" |
-| Pricing section heading | "Pricing" |
-| Pricing field — catalog pick | "Product / Service" |
-| Pricing field — adjusted amount | "Line Amount" |
-| Pricing field — rush fee toggle | "Apply Rush Fee (+{rush_fee_percentage}%)" |
-| Pricing field — discount type | "Discount" (options: "None", "Percentage", "Flat Amount") |
-| Pricing field — discount value helper | "Up to {cap}" (renders as "Up to 20%" or "Up to ₱500" depending on discount type) |
-| Pricing breakdown — labels | "Base Price", "Rush Fee", "Discount", "Total" |
-| Payment section heading | "Payment" |
-| Payment method field label | "Payment Method" |
-| Payment method options | "Cash", "Bank Transfer", "GCash", "Maya", "On Credit" |
-| Payment type field label | "Payment Type" |
-| Payment type options | "Full Payment", "Down Payment" |
-| Cash field — amount tendered | "Amount Tendered" |
-| Cash field — change | "Change" |
-| Bank Transfer field — reference number | "Bank Reference Number" |
-| Down payment field — amount | "Down Payment Amount" |
-| Down payment remaining balance display | "Remaining Balance: ₱{balance}" |
-| Primary submit — full payment (Cash/Bank Transfer) | "Record Payment" |
-| Primary submit — down payment (any method) | "Record Down Payment" |
-| Primary submit — GCash/Maya | "Generate QR Code" |
-| GCash/Maya QR sub-view heading | "Scan to Pay" |
-| GCash/Maya QR sub-view instructions | "Ask the customer to scan this code with their {method} app to complete the ₱{amount} payment." |
-| GCash/Maya QR sub-view — reconciliation button | "Check Payment Status" |
-| GCash/Maya QR sub-view — switch method button | "Switch Payment Method" |
-| On Credit — request button | "Request On-Credit Approval" |
-| On Credit — request confirm dialog title | "Request On-Credit approval for ₱{amount}?" |
-| On Credit — request confirm dialog body | "This job order will be flagged \"Credit Pending Approval\" until an Owner reviews it. The customer cannot pick up the order until it's approved or paid another way." |
-| On Credit — request confirm button | "Send for Approval" |
-| Cancellation — trigger | "Cancel Job Order" |
-| Cancellation — dialog title | "Cancel this job order?" |
-| Cancellation — dialog body, no fee (before design started) | "No cancellation fee applies — design work hasn't started yet." |
-| Cancellation — dialog body, fee applies, no down payment | "A cancellation fee of ₱{fee} applies since design work has started. Collect this amount from the customer." |
-| Cancellation — dialog body, fee applies, down payment covers it | "A cancellation fee of ₱{fee} applies. The existing down payment of ₱{down_payment} covers it — ₱{excess} is refundable to the customer." |
-| Cancellation — dialog body, fee applies, down payment falls short | "A cancellation fee of ₱{fee} applies. The existing down payment of ₱{down_payment} covers part of it — collect the remaining ₱{shortfall} from the customer." |
-| Cancellation — confirm button | "Confirm Cancellation" |
-| Release — trigger | "Release to Customer" |
-| Release — blocked message | "This job order isn't fully paid yet. Send the customer to Cashier before releasing it." |
-| Release — blocked message, credit path | "This job order's On-Credit request is still pending Owner approval. Send the customer to Cashier." |
-| Owner Credit Requests page title | "Credit Requests" |
-| Owner Credit Requests — approve action | "Approve Credit" |
-| Owner Credit Requests — approve dialog title | "Approve On-Credit for ₱{amount}?" |
-| Owner Credit Requests — approve dialog body | "This posts a ₱{amount} balance to Accounts Receivable and marks the job order eligible for release." |
-| Owner Credit Requests — approve confirm button | "Confirm Approval" |
-| Owner Credit Requests — reject action | "Reject Credit" |
-| Owner Credit Requests — reject dialog title | "Reject this credit request?" |
-| Owner Credit Requests — reject dialog body | "The job order stays flagged \"Credit Rejected.\" There's no automatic fallback — someone will need to follow up with the customer on another payment method." |
-| Owner Credit Requests — reject confirm button | "Confirm Rejection" |
-| Accounting Staff Dashboard page title | "Accounting Dashboard" |
-| Accounting Staff Dashboard — reconciliation action | "Check Payment Status" |
-| Receipt page title | "Receipt — {job_order_reference}" |
-| Receipt — print button | "Print Receipt" |
-| Receipt fields | "Job Order", "Customer", "Date", "Product / Service", "Base Price", "Rush Fee", "Discount", "Total", "Payment Method", "Amount Tendered", "Balance", "Cashier" |
-| Empty state — Cashier Dashboard, no job orders ready | Heading: "No job orders ready for payment" · Body: "Job orders will appear here once they're validated or design-approved." |
-| Empty state — Accounting Staff Dashboard, nothing pending | Heading: "No payments awaiting confirmation" · Body: "GCash and Maya payments will appear here while waiting on PayMongo." |
-| Empty state — Owner Credit Requests, none pending | Heading: "No credit requests" · Body: "Requests will appear here when a Cashier places a job order On Credit." |
-| Error — pricing/payment validation | "That couldn't be saved. Check the message below and try again." (paired with field-level `InputError`) |
-| Error — discount exceeds cap | "Discount can't exceed {cap}. Enter a smaller amount." |
-| Error — PayMongo intent creation failed | "Couldn't start the {method} payment. Try again, or choose Cash or Bank Transfer instead." |
-| Error — reconciliation still pending | "Payment not received yet. Try again in a moment, or ask the customer to confirm they completed the payment." |
-| Error — reconciliation shows failed/expired (D-13) | "This payment failed or expired. Choose a different payment method to continue." |
-| Toast — pricing saved | "Pricing saved. Total: ₱{total}." |
-| Toast — full payment recorded | "Payment recorded. Job order is fully paid." |
-| Toast — down payment recorded | "Down payment recorded. Remaining balance: ₱{balance}." |
-| Toast — GCash/Maya QR generated | "QR code ready. Waiting for the customer to complete payment." |
-| Toast — payment confirmed via reconciliation | "Payment confirmed." |
-| Toast — cancellation recorded | "Job order cancelled." (fee outcome shown in the dialog body before confirming, per the mapping above — no separate toast duplicating the amount) |
-| Toast — credit requested | "On-Credit requested. Awaiting Owner approval." |
-| Toast — credit approved | "Credit approved and posted to Accounts Receivable." |
-| Toast — credit rejected | "Credit request rejected." |
-| Toast — released to customer | "Released to customer." |
+| Element                                                             | Copy                                                                                                                                                                   |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cashier Dashboard page title                                        | "Cashier Dashboard"                                                                                                                                                    |
+| Cashier Dashboard table — primary action, unpriced/unpaid job order | "Process Payment"                                                                                                                                                      |
+| Cashier Dashboard table — primary action, pending confirmation      | "Check Payment Status"                                                                                                                                                 |
+| Cashier Dashboard table — primary action, paid/on-credit            | "View Receipt"                                                                                                                                                         |
+| Job Order Payment page title                                        | "Job Order Payment — {job_order_reference}"                                                                                                                            |
+| Pricing section heading                                             | "Pricing"                                                                                                                                                              |
+| Pricing field — catalog pick                                        | "Product / Service"                                                                                                                                                    |
+| Pricing field — adjusted amount                                     | "Line Amount"                                                                                                                                                          |
+| Pricing field — rush fee toggle                                     | "Apply Rush Fee (+{rush_fee_percentage}%)"                                                                                                                             |
+| Pricing field — discount type                                       | "Discount" (options: "None", "Percentage", "Flat Amount")                                                                                                              |
+| Pricing field — discount value helper                               | "Up to {cap}" (renders as "Up to 20%" or "Up to ₱500" depending on discount type)                                                                                      |
+| Pricing breakdown — labels                                          | "Base Price", "Rush Fee", "Discount", "Total"                                                                                                                          |
+| Payment section heading                                             | "Payment"                                                                                                                                                              |
+| Payment method field label                                          | "Payment Method"                                                                                                                                                       |
+| Payment method options                                              | "Cash", "Bank Transfer", "GCash", "Maya", "On Credit"                                                                                                                  |
+| Payment type field label                                            | "Payment Type"                                                                                                                                                         |
+| Payment type options                                                | "Full Payment", "Down Payment"                                                                                                                                         |
+| Cash field — amount tendered                                        | "Amount Tendered"                                                                                                                                                      |
+| Cash field — change                                                 | "Change"                                                                                                                                                               |
+| Bank Transfer field — reference number                              | "Bank Reference Number"                                                                                                                                                |
+| Down payment field — amount                                         | "Down Payment Amount"                                                                                                                                                  |
+| Down payment remaining balance display                              | "Remaining Balance: ₱{balance}"                                                                                                                                        |
+| Primary submit — full payment (Cash/Bank Transfer)                  | "Record Payment"                                                                                                                                                       |
+| Primary submit — down payment (any method)                          | "Record Down Payment"                                                                                                                                                  |
+| Primary submit — GCash/Maya                                         | "Generate QR Code"                                                                                                                                                     |
+| GCash/Maya QR sub-view heading                                      | "Scan to Pay"                                                                                                                                                          |
+| GCash/Maya QR sub-view instructions                                 | "Ask the customer to scan this code with their {method} app to complete the ₱{amount} payment."                                                                        |
+| GCash/Maya QR sub-view — reconciliation button                      | "Check Payment Status"                                                                                                                                                 |
+| GCash/Maya QR sub-view — switch method button                       | "Switch Payment Method"                                                                                                                                                |
+| On Credit — request button                                          | "Request On-Credit Approval"                                                                                                                                           |
+| On Credit — request confirm dialog title                            | "Request On-Credit approval for ₱{amount}?"                                                                                                                            |
+| On Credit — request confirm dialog body                             | "This job order will be flagged \"Credit Pending Approval\" until an Owner reviews it. The customer cannot pick up the order until it's approved or paid another way." |
+| On Credit — request confirm button                                  | "Send for Approval"                                                                                                                                                    |
+| Cancellation — trigger                                              | "Cancel Job Order"                                                                                                                                                     |
+| Cancellation — dialog title                                         | "Cancel this job order?"                                                                                                                                               |
+| Cancellation — dialog body, no fee (before design started)          | "No cancellation fee applies — design work hasn't started yet."                                                                                                        |
+| Cancellation — dialog body, fee applies, no down payment            | "A cancellation fee of ₱{fee} applies since design work has started. Collect this amount from the customer."                                                           |
+| Cancellation — dialog body, fee applies, down payment covers it     | "A cancellation fee of ₱{fee} applies. The existing down payment of ₱{down_payment} covers it — ₱{excess} is refundable to the customer."                              |
+| Cancellation — dialog body, fee applies, down payment falls short   | "A cancellation fee of ₱{fee} applies. The existing down payment of ₱{down_payment} covers part of it — collect the remaining ₱{shortfall} from the customer."         |
+| Cancellation — confirm button                                       | "Confirm Cancellation"                                                                                                                                                 |
+| Release — trigger                                                   | "Release to Customer"                                                                                                                                                  |
+| Release — blocked message                                           | "This job order isn't fully paid yet. Send the customer to Cashier before releasing it."                                                                               |
+| Release — blocked message, credit path                              | "This job order's On-Credit request is still pending Owner approval. Send the customer to Cashier."                                                                    |
+| Owner Credit Requests page title                                    | "Credit Requests"                                                                                                                                                      |
+| Owner Credit Requests — approve action                              | "Approve Credit"                                                                                                                                                       |
+| Owner Credit Requests — approve dialog title                        | "Approve On-Credit for ₱{amount}?"                                                                                                                                     |
+| Owner Credit Requests — approve dialog body                         | "This posts a ₱{amount} balance to Accounts Receivable and marks the job order eligible for release."                                                                  |
+| Owner Credit Requests — approve confirm button                      | "Confirm Approval"                                                                                                                                                     |
+| Owner Credit Requests — reject action                               | "Reject Credit"                                                                                                                                                        |
+| Owner Credit Requests — reject dialog title                         | "Reject this credit request?"                                                                                                                                          |
+| Owner Credit Requests — reject dialog body                          | "The job order stays flagged \"Credit Rejected.\" There's no automatic fallback — someone will need to follow up with the customer on another payment method."         |
+| Owner Credit Requests — reject confirm button                       | "Confirm Rejection"                                                                                                                                                    |
+| Accounting Staff Dashboard page title                               | "Accounting Dashboard"                                                                                                                                                 |
+| Accounting Staff Dashboard — reconciliation action                  | "Check Payment Status"                                                                                                                                                 |
+| Receipt page title                                                  | "Receipt — {job_order_reference}"                                                                                                                                      |
+| Receipt — print button                                              | "Print Receipt"                                                                                                                                                        |
+| Receipt fields                                                      | "Job Order", "Customer", "Date", "Product / Service", "Base Price", "Rush Fee", "Discount", "Total", "Payment Method", "Amount Tendered", "Balance", "Cashier"         |
+| Empty state — Cashier Dashboard, no job orders ready                | Heading: "No job orders ready for payment" · Body: "Job orders will appear here once they're validated or design-approved."                                            |
+| Empty state — Accounting Staff Dashboard, nothing pending           | Heading: "No payments awaiting confirmation" · Body: "GCash and Maya payments will appear here while waiting on PayMongo."                                             |
+| Empty state — Owner Credit Requests, none pending                   | Heading: "No credit requests" · Body: "Requests will appear here when a Cashier places a job order On Credit."                                                         |
+| Error — pricing/payment validation                                  | "That couldn't be saved. Check the message below and try again." (paired with field-level `InputError`)                                                                |
+| Error — discount exceeds cap                                        | "Discount can't exceed {cap}. Enter a smaller amount."                                                                                                                 |
+| Error — PayMongo intent creation failed                             | "Couldn't start the {method} payment. Try again, or choose Cash or Bank Transfer instead."                                                                             |
+| Error — reconciliation still pending                                | "Payment not received yet. Try again in a moment, or ask the customer to confirm they completed the payment."                                                          |
+| Error — reconciliation shows failed/expired (D-13)                  | "This payment failed or expired. Choose a different payment method to continue."                                                                                       |
+| Toast — pricing saved                                               | "Pricing saved. Total: ₱{total}."                                                                                                                                      |
+| Toast — full payment recorded                                       | "Payment recorded. Job order is fully paid."                                                                                                                           |
+| Toast — down payment recorded                                       | "Down payment recorded. Remaining balance: ₱{balance}."                                                                                                                |
+| Toast — GCash/Maya QR generated                                     | "QR code ready. Waiting for the customer to complete payment."                                                                                                         |
+| Toast — payment confirmed via reconciliation                        | "Payment confirmed."                                                                                                                                                   |
+| Toast — cancellation recorded                                       | "Job order cancelled." (fee outcome shown in the dialog body before confirming, per the mapping above — no separate toast duplicating the amount)                      |
+| Toast — credit requested                                            | "On-Credit requested. Awaiting Owner approval."                                                                                                                        |
+| Toast — credit approved                                             | "Credit approved and posted to Accounts Receivable."                                                                                                                   |
+| Toast — credit rejected                                             | "Credit request rejected."                                                                                                                                             |
+| Toast — released to customer                                        | "Released to customer."                                                                                                                                                |
 
 **Destructive confirmation:** three high-stakes, money-moving actions get `AlertDialog` treatment (matching the existing "Deactivate Account" / "Unlock Design" precedent — reserve `alert-dialog` for irreversible/high-stakes actions, not routine status changes):
+
 1. **"Cancel Job Order"** — collects a fee, cannot be undone. Confirm button uses `variant="destructive"`.
 2. **"Approve Credit"** (Owner) — posts real money to Accounts Receivable; high-stakes but a positive outcome. Confirm button uses `--primary` styling (not destructive), matching Phase 4's "Client Approved" precedent (irreversible-but-positive actions don't get red buttons).
 3. **"Reject Credit"** (Owner) — final state with no auto-fallback (D-07). Confirm button uses `variant="destructive"`, since it blocks the job order's payment path and requires manual follow-up.
@@ -223,8 +226,8 @@ Every other action this phase introduces — "Record Payment", "Record Down Paym
 
 ## Registry Safety
 
-| Registry | Blocks Used | Safety Gate |
-|----------|-------------|--------------|
+| Registry        | Blocks Used                                                                                                                                                                                            | Safety Gate  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
 | shadcn official | none new — `table`, `badge`, `card`, `dialog`, `alert-dialog`, `radio-group`, `select`, `switch`, `input`, `dropdown-menu`, `alert`, `spinner`, `button`, `label` all already installed from Phase 1-4 | not required |
 
 No third-party shadcn registries declared for this phase.
@@ -244,6 +247,7 @@ Separately (also informational, not a registry-gate item): `luigel/laravel-paymo
 One `Table` (per `AuditTrail.vue`/`QueueList.vue` precedent — not a hand-rolled `<table>`) listing job orders eligible for POS action: any job order with `status` in `ready_for_production`/`design_approved` (i.e., production-ready per Phase 3/4) whose `payment_status` is not yet a terminal state. Columns: Job Order, Customer, Description, Job Order Status (badge, unchanged from Phase 3/4), Payment Status (badge, per the mapping above), Actions.
 
 Actions column uses a `DropdownMenu` (lucide `MoreHorizontal` trigger, `sr-only` "Actions" label) rather than several inline buttons, since up to five contextual actions can apply to one row:
+
 - `payment_status` is `unpaid` / `partially_paid` / `credit_rejected` → "Process Payment" (navigates to §2)
 - `payment_status` is `pending_confirmation` → "Check Payment Status" (inline reconciliation, per D-12 — same action as Accounting's, see §5)
 - `payment_status` is `paid` / `on_credit` → "View Receipt" (navigates to §3)
@@ -257,6 +261,7 @@ Empty state per Copywriting Contract, rendered via `TableEmpty`.
 Two stacked `Card` sections with `lg` (24px) gap, plus a conditional third:
 
 **"Pricing" card** — editable while no `transactions` row exists yet for this job order; once at least one transaction exists, this card becomes a read-only summary (per Pattern 3's snapshot principle — never let a price change after money has moved):
+
 - `Select` "Product / Service" — options from active `pricing_database` rows, labeled "{name} — ₱{base_price}"
 - `Input type="number"` "Line Amount" — defaults to the picked catalog row's `base_price`, Cashier-editable (D-01's "manual adjust")
 - `Switch` "Apply Rush Fee (+{rush_fee_percentage}%)" (D-03) — reads the live `rush_fee_percentage` system config, same read-pattern as every prior phase's config usage
@@ -265,13 +270,14 @@ Two stacked `Card` sections with `lg` (24px) gap, plus a conditional third:
 - No standalone "Save Pricing" button — pricing is submitted together with the first payment action below in one form, so the Cashier never has to save pricing and payment as two separate round-trips for the common case (full payment in one visit)
 
 **"Payment" card:**
+
 - `RadioGroup` "Payment Method": "Cash" (lucide `Banknote`), "Bank Transfer" (lucide `Landmark`), "GCash" (lucide `Wallet`), "Maya" (lucide `Smartphone`), "On Credit" (lucide `CreditCard`) — plain list rows exactly matching `NewVisit.vue`'s Type A/B pattern (icon + `Label`, no colored borders/cards, per the Color section's explicit "no brand colors" rule)
 - `RadioGroup` "Payment Type": "Full Payment" / "Down Payment" (POS-05) — hidden entirely when "On Credit" is selected (D-09's credit path posts the full outstanding total, not a partial)
 - Method-specific fields, shown/hidden based on the method radio (mirrors the demo's show/hide-by-method interaction, not its colors):
-  - Cash: `Input type="number"` "Amount Tendered", live-computed "Change" display (Body-role) when tendered > total
-  - Bank Transfer: `Input type="text"` "Bank Reference Number"
-  - GCash / Maya: no amount input for Full Payment (amount = computed Total or the entered Down Payment amount); submitting transitions the page into the QR sub-view below rather than completing immediately
-  - On Credit: no amount input (always the full outstanding total per D-09); submitting opens the "Request On-Credit Approval" `AlertDialog` per Copywriting Contract, then flashes the "credit requested" toast and returns to the Cashier Dashboard (§1) — no QR/receipt sub-view for this path
+    - Cash: `Input type="number"` "Amount Tendered", live-computed "Change" display (Body-role) when tendered > total
+    - Bank Transfer: `Input type="text"` "Bank Reference Number"
+    - GCash / Maya: no amount input for Full Payment (amount = computed Total or the entered Down Payment amount); submitting transitions the page into the QR sub-view below rather than completing immediately
+    - On Credit: no amount input (always the full outstanding total per D-09); submitting opens the "Request On-Credit Approval" `AlertDialog` per Copywriting Contract, then flashes the "credit requested" toast and returns to the Cashier Dashboard (§1) — no QR/receipt sub-view for this path
 - Primary submit button, label per Copywriting Contract's contextual mapping (Cash/Bank Transfer full → "Record Payment"; any method down payment → "Record Down Payment"; GCash/Maya full → "Generate QR Code"; On Credit → "Request On-Credit Approval")
 
 **GCash/Maya "Scan to Pay" sub-view** (replaces the Payment card's contents in place after "Generate QR Code" is submitted, same page — not a separate route): `PaymentQrCode.vue` renders the PayMongo `redirect.url` via `qrcode.vue`, centered, with the instructions copy above beneath it. Two buttons below: "Check Payment Status" (primary, triggers the reconciliation request, shows `Spinner` while in flight, then either the "payment confirmed" toast + navigates to the Receipt page §3, or the "still pending" `Alert` per Copywriting Contract) and "Switch Payment Method" (secondary/outline, per D-13 — discards the pending intent and returns to the Payment card with the method radio reset, no data loss on the Pricing card above).
@@ -296,11 +302,12 @@ Same `Table` shape as Cashier Dashboard §1, but filtered to `payment_status = p
 
 ### 6. Release to Customer action (extends `resources/js/pages/frontline-staff/QueueList.vue` — not a new page)
 
-Per D-16, exact ownership was left to planning; this UI-SPEC makes the call explicit for consistency: **Frontline Staff** is the counter-facing role that already owns the full job-order lifecycle view (`QueueList.vue`, since Phase 2), and POS-09's "redirected to Cashier" framing implies the person attempting release is *not* the Cashier — so the action lives on `QueueList.vue`'s existing job-order row, not on the Cashier Dashboard. Add a "Release to Customer" button (per the mapping in §1, contextual on `payment_status` being `paid` or `on_credit`-active and the job order not yet released). Clicking it when the server-side gate blocks it (unpaid, or credit still pending) shows the corresponding blocked-message `Alert` from the Copywriting Contract inline — never a silently-disabled button alone, per RESEARCH.md's explicit anti-pattern callout (RBAC-02's "not just hidden navigation" principle extends to this gate). On success: plain toast, no confirmation dialog (routine, not destructive).
+Per D-16, exact ownership was left to planning; this UI-SPEC makes the call explicit for consistency: **Frontline Staff** is the counter-facing role that already owns the full job-order lifecycle view (`QueueList.vue`, since Phase 2), and POS-09's "redirected to Cashier" framing implies the person attempting release is _not_ the Cashier — so the action lives on `QueueList.vue`'s existing job-order row, not on the Cashier Dashboard. Add a "Release to Customer" button (per the mapping in §1, contextual on `payment_status` being `paid` or `on_credit`-active and the job order not yet released). Clicking it when the server-side gate blocks it (unpaid, or credit still pending) shows the corresponding blocked-message `Alert` from the Copywriting Contract inline — never a silently-disabled button alone, per RESEARCH.md's explicit anti-pattern callout (RBAC-02's "not just hidden navigation" principle extends to this gate). On success: plain toast, no confirmation dialog (routine, not destructive).
 
 If planning instead finds Phase 6's forthcoming Production board a more natural home once it exists, the same copy/gate contract applies there unchanged — this is an implementation-detail relocation, not a new visual/interaction contract.
 
 **Out of scope for this UI-SPEC (confirmed against `05-CONTEXT.md`'s domain boundary):**
+
 - No AR aging/bracket UI, no reminder/collection-letter UI — Phase 7's job; this phase's Owner Credit Requests page only covers the approval gate (D-06 through D-09), not aging.
 - No production-stage board — Phase 6's job (PROD-01/PROD-02).
 - No sales/reporting dashboards — Phase 8's job (RPT-02, RPT-04).

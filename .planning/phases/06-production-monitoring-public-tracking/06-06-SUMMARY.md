@@ -64,6 +64,7 @@ completed: 2026-09-07
 - **Files modified:** 11 (7 created, 4 modified — see key-files)
 
 ## Accomplishments
+
 - `ProductionBoardController::index()` lists exactly the job orders that belong on the board (`ForProduction`/`Printing`/`QualityCheck`/`ReadyForPickup`, excluding `released_at`/`cancelled_at`), each carrying a server-authoritative `is_rush` boolean derived purely from `due_at` vs. today — never from `rush_fee_applied` (D-05/D-07)
 - The board never selects or eager-loads `payment_status`/`total_amount` — verified by a dedicated response-content test, matching the UI-SPEC's "no payment hint on this surface" rule
 - A real `production-staff/Dashboard.vue`: rush banner (amber, never destructive, Zap icon + "Rush" text always paired with colour), four stage stat cards, client-side filter tabs (All/Rush/four stages — the whole board is a handful of rows, never a server round-trip to filter), and an urgency-coded table with per-row Urgency/Stage badges that carry text, not colour alone
@@ -81,6 +82,7 @@ Each task was committed atomically; Tasks 1 and 3 used TDD (test -> feat):
 3. **Task 3: Stage advancement — advance() and sendBack()** - `3d33222` (test, RED) -> `66b560f` (feat, GREEN)
 
 ## Files Created/Modified
+
 - `app/Http/Controllers/ProductionStaff/ProductionBoardController.php` - `index()` listing query with the `is_rush` computation
 - `app/Http/Controllers/ProductionStaff/ProductionStageController.php` - `advance()`/`sendBack()`, the fixed `SEQUENCE`, `stageLabel()`
 - `app/Http/Requests/ProductionStaff/AdvanceProductionStageRequest.php` - body-less by design (target stage is server-derived)
@@ -94,6 +96,7 @@ Each task was committed atomically; Tasks 1 and 3 used TDD (test -> feat):
 - `tests/Feature/ProductionStaff/StageAdvancementTest.php` - 13 tests covering forward/back movement, both sequence boundaries, mandatory-reason validation, cancelled rejection, role gating
 
 ## Decisions Made
+
 - `is_rush` documented via `@property` PHPDoc on `JobOrder`, matching the `amount_paid` precedent exactly (both are dynamically-set virtual attributes computed in a controller, never persisted columns)
 - `advance()`'s end-of-sequence boundary check uses `count(self::SEQUENCE) - 1` instead of the plan's literally-described `array_key_last(self::SEQUENCE)` — a direct, mechanical Larastan-narrowing fix (see Deviations)
 - The success/error toast for both `advance()` and `sendBack()` is flashed after `DB::transaction()` returns (not from inside the closure), matching the plan's described "after the transaction" sequencing — achieved by having the transaction closure return the data the toast needs
@@ -103,6 +106,7 @@ Each task was committed atomically; Tasks 1 and 3 used TDD (test -> feat):
 ### Auto-fixed Issues
 
 **1. [Rule 1 - Bug] Documented the virtual `is_rush` attribute on `JobOrder` for Larastan**
+
 - **Found during:** Task 1, running a scoped `phpstan analyse` against the new controller
 - **Issue:** `ProductionBoardController::index()`'s `->each(fn (JobOrder $jobOrder) => $jobOrder->is_rush = ...)` sets a dynamic attribute Larastan doesn't know about, reporting `property.notFound`
 - **Fix:** Added `@property bool|null $is_rush` to `JobOrder`'s docblock, identical in shape to the pre-existing `amount_paid` entry
@@ -111,6 +115,7 @@ Each task was committed atomically; Tasks 1 and 3 used TDD (test -> feat):
 - **Committed in:** `4e6fdc7` (Task 1 GREEN commit)
 
 **2. [Rule 1 - Bug] Fixed a Larastan-unprovable array offset access at the advance() sequence boundary**
+
 - **Found during:** Task 3, running a scoped `phpstan analyse` against the new controller
 - **Issue:** `abort_if($currentIndex === array_key_last(self::SEQUENCE), ...)` followed by `self::SEQUENCE[$currentIndex + 1]` reported `offsetAccess.notFound` — Larastan/PHPStan does not treat `array_key_last()`'s return value as a compile-time literal for the purposes of narrowing `$currentIndex`'s type after the `abort_if` check, unlike `sendBack()`'s boundary check against the literal `0`, which narrowed correctly and left that offset access clean
 - **Fix:** Rewrote the boundary comparison as `$currentIndex === count(self::SEQUENCE) - 1` — `count()` on a `private const` literal array resolves to a literal int for PHPStan's type inference, restoring the same narrowing `sendBack()` already had. No behavior change: `count(self::SEQUENCE) - 1` and `array_key_last(self::SEQUENCE)` are numerically identical for this fixed 4-element array.
@@ -135,13 +140,15 @@ Each task was committed atomically; Tasks 1 and 3 used TDD (test -> feat):
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - The Production Board (PROD-01/PROD-02) is fully live: a job order automatically entering production via 06-04's `EnterProduction` wiring is now visible, urgency-coded, and actionable by Production Staff — closing the last gap in the "job order flows correctly end-to-end" core value.
 - 06-07 (concurrent parallel plan, not this plan's scope) owns fixing stale `DesignApproved`/`ReadyForProduction` status-display consumers elsewhere in Cashier/Artist/Frontline surfaces — none of those files were touched here, per this plan's explicit scope boundary.
 - 06-08 (next wave, if any) can rely on: a real, queryable `production_logs` audit trail with both system-authored (06-04) and staff-authored (this plan) rows, ready for any future reprint/waste reporting.
 
 ---
-*Phase: 06-production-monitoring-public-tracking*
-*Completed: 2026-09-07*
+
+_Phase: 06-production-monitoring-public-tracking_
+_Completed: 2026-09-07_
 
 ## Self-Check: PASSED
 

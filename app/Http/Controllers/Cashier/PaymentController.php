@@ -48,7 +48,7 @@ class PaymentController extends Controller
             'This job order is not ready for pricing.',
         );
         abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
-        abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.'));
+        abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.'));
 
         $jobOrder->loadMissing(['pricingEntry', 'transactions', 'queueEntry.customer:id,name']);
 
@@ -72,7 +72,7 @@ class PaymentController extends Controller
             'rushFeePercentage' => SystemConfiguration::getFloat('rush_fee_percentage', 0.0),
             'discountCapPercentage' => SystemConfiguration::getFloat('discount_cap_percentage', 20.0),
             'discountCapFlatAmount' => SystemConfiguration::getFloat('discount_cap_flat_amount', 500.0),
-            'hasExistingTransactions' => $jobOrder->transactions->isNotEmpty(),
+            'pricingLocked' => ! $jobOrder->pricingIsEditable(),
             'amountPaid' => $amountPaid,
             'remainingBalance' => $remainingBalance,
             // Flashed after a GCash/Maya "Generate QR Code" submission
@@ -108,7 +108,7 @@ class PaymentController extends Controller
         );
         abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
         abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
-        abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.'));
+        abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.'));
 
         $paymentMethod = $request->validated('payment_method');
 
@@ -129,11 +129,31 @@ class PaymentController extends Controller
             abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
             abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
             abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
-            abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.'));
+            abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.'));
 
             $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
 
-            if ($jobOrder->total_amount === null) {
+            // Pricing is editable per the single shared predicate,
+            // JobOrder::pricingIsEditable() -- NOT "total_amount is null".
+            // The two are different states and the gap between them
+            // silently lost money: a job order can already carry a total
+            // with no transaction against it (seeded rows, or a rejected
+            // On-Credit request, which prices the order and then leaves it
+            // unpaid), and it used to entirely miss the On-Credit case too
+            // (an Admin-approved On-Credit order has zero transactions, so
+            // the old "no transactions" check said it was still editable).
+            // edit() shows the pricing form in exactly the states this
+            // predicate reports editable, so the Cashier could tick Rush
+            // Fee, watch the preview total rise, and submit, while this
+            // block refused to run and charged the stale total with
+            // `rush_fee_amount` still at zero. The receipt then printed a
+            // rush order with no rush fee on it.
+            //
+            // Matching edit()'s condition exactly is what keeps the form the
+            // Cashier sees and the figures the server saves in agreement.
+            // A pending GCash/Maya intent counts as a transaction, so a
+            // repricing cannot slip underneath an outstanding QR either.
+            if ($jobOrder->pricingIsEditable()) {
                 $computed = ($this->computeJobOrderPrice)(
                     (float) $request->validated('line_amount'),
                     (bool) $request->validated('rush_fee_applied'),
@@ -189,12 +209,12 @@ class PaymentController extends Controller
             : __('Payment recorded. Job order is fully paid.'),
         ]);
 
-        // A full-payment submission lands on the Receipt page (POS-06); a
-        // down payment keeps returning to this page to show the updated
-        // remaining balance.
-        return $result['is_down_payment']
-            ? back()
-            : to_route('cashier.job-orders.receipt.show', $jobOrder);
+        // Both land on the Receipt page (POS-06). A down payment used to
+        // return here instead, which left the customer who just handed over
+        // real money with no printable proof of it -- the receipt already
+        // shows Amount Paid and the remaining Balance, so it answers the
+        // "what do I still owe" question this page was kept open for.
+        return to_route('cashier.job-orders.receipt.show', $jobOrder);
     }
 
     /**
@@ -223,7 +243,7 @@ class PaymentController extends Controller
         // method, exactly like the Cash/Bank Transfer branch's atomicity.
         $computed = null;
 
-        if ($jobOrder->total_amount === null) {
+        if ($jobOrder->pricingIsEditable()) {
             $computed = ($this->computeJobOrderPrice)(
                 (float) $request->validated('line_amount'),
                 (bool) $request->validated('rush_fee_applied'),
@@ -298,7 +318,7 @@ class PaymentController extends Controller
             abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
             abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
             abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
-            abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Owner approval. Resolve it before recording a payment.'));
+            abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.'));
 
             if ($computed !== null) {
                 $jobOrder->forceFill([

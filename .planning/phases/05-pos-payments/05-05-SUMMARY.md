@@ -6,41 +6,41 @@ tags: [laravel, inertia, vue3, pest, pos, payments, cancellation, alert-dialog]
 
 # Dependency graph
 requires:
-  - phase: 05-01
-    provides: pricing_database/transactions ledger, JobOrder payment columns, Cashier Dashboard, SystemConfiguration::getFloat()
-  - phase: 05-04
-    provides: Cashier Dashboard DropdownMenu with Check Payment Status item (pattern extended here)
+    - phase: 05-01
+      provides: pricing_database/transactions ledger, JobOrder payment columns, Cashier Dashboard, SystemConfiguration::getFloat()
+    - phase: 05-04
+      provides: Cashier Dashboard DropdownMenu with Check Payment Status item (pattern extended here)
 provides:
-  - CancellationController@store — cancels a job order, computing a flat cancellation_fee_amount server-side, netting any existing completed down payment against it (D-04/D-05)
-  - cancellation_fee_amount system_configurations business rule
-  - Cancel Job Order AlertDialog on the Cashier Dashboard with a four-variant pre-confirmation body
+    - CancellationController@store — cancels a job order, computing a flat cancellation_fee_amount server-side, netting any existing completed down payment against it (D-04/D-05)
+    - cancellation_fee_amount system_configurations business rule
+    - Cancel Job Order AlertDialog on the Cashier Dashboard with a four-variant pre-confirmation body
 affects: [05-06, 05-07, 07-accounts-receivable, 08-reporting]
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "AlertDialogTrigger as-child wraps a DropdownMenuItem with @select.prevent, nested inside its own AlertDialog root, to combine a destructive confirm dialog with a per-row dropdown action (avoids the DropdownMenu-closes-before-AlertDialog-opens focus-trap conflict)"
-    - "Client-side dialog-body text mirrors a server-authoritative computation (design-started status set + fee/down-payment comparison) via a page-level prop, rather than a second round trip, for a fuller pre-confirmation UX"
+    added: []
+    patterns:
+        - 'AlertDialogTrigger as-child wraps a DropdownMenuItem with @select.prevent, nested inside its own AlertDialog root, to combine a destructive confirm dialog with a per-row dropdown action (avoids the DropdownMenu-closes-before-AlertDialog-opens focus-trap conflict)'
+        - 'Client-side dialog-body text mirrors a server-authoritative computation (design-started status set + fee/down-payment comparison) via a page-level prop, rather than a second round trip, for a fuller pre-confirmation UX'
 
 key-files:
-  created:
-    - app/Http/Controllers/Cashier/CancellationController.php
-    - app/Http/Requests/Cashier/CancelJobOrderRequest.php
-    - tests/Feature/Cashier/CancellationFeeTest.php
-  modified:
-    - database/seeders/SystemConfigurationSeeder.php
-    - routes/portals.php
-    - app/Http/Controllers/Cashier/DashboardController.php
-    - resources/js/pages/cashier/Dashboard.vue
-    - tests/Unit/SystemConfigurationTest.php
+    created:
+        - app/Http/Controllers/Cashier/CancellationController.php
+        - app/Http/Requests/Cashier/CancelJobOrderRequest.php
+        - tests/Feature/Cashier/CancellationFeeTest.php
+    modified:
+        - database/seeders/SystemConfigurationSeeder.php
+        - routes/portals.php
+        - app/Http/Controllers/Cashier/DashboardController.php
+        - resources/js/pages/cashier/Dashboard.vue
+        - tests/Unit/SystemConfigurationTest.php
 
 key-decisions:
-  - "CancellationFee shortfall transactions default payment_method to Cash, since the confirm-only AlertDialog has no method picker (plan-flagged discretion call)"
-  - "DashboardController::index also gained amount_paid (withSum) and a cancellationFeeAmount page prop beyond the plan's literal whereNull('cancelled_at') instruction, to support the frontend's four-variant dialog body (plan's Task 2 explicitly names this as the preferred option (a))"
+    - 'CancellationFee shortfall transactions default payment_method to Cash, since the confirm-only AlertDialog has no method picker (plan-flagged discretion call)'
+    - "DashboardController::index also gained amount_paid (withSum) and a cancellationFeeAmount page prop beyond the plan's literal whereNull('cancelled_at') instruction, to support the frontend's four-variant dialog body (plan's Task 2 explicitly names this as the preferred option (a))"
 
 patterns-established:
-  - "Pattern: money-moving confirm-only actions inside a DropdownMenu use AlertDialogTrigger as-child wrapping the DropdownMenuItem (not the reverse), with @select.prevent on the item, to avoid Radix's dropdown-closes-before-dialog-opens conflict"
+    - "Pattern: money-moving confirm-only actions inside a DropdownMenu use AlertDialogTrigger as-child wrapping the DropdownMenuItem (not the reverse), with @select.prevent on the item, to avoid Radix's dropdown-closes-before-dialog-opens conflict"
 
 requirements-completed: [POS-07]
 
@@ -61,6 +61,7 @@ completed: 2026-09-05
 - **Files modified:** 9 (3 created, 6 modified)
 
 ## Accomplishments
+
 - `cancellation_fee_amount` business rule seeded alongside the existing `business_rules` group
 - `CancellationController@store` gates on already-cancelled/already-fully-paid, determines design-started status per D-04's exact status set (`InDesign`/`PendingReview`/`DesignApproved`), and either cancels for free or collects/nets a cancellation fee per D-05 — the fee is always read server-side via `SystemConfiguration::getFloat()`, never trusted from the client (T-05-13)
 - `DashboardController::index` now excludes cancelled job orders (`whereNull('cancelled_at')`) and exposes per-row `amount_paid` plus a page-level `cancellationFeeAmount`, so the Cashier Dashboard can compute the correct dialog body before the Cashier confirms
@@ -78,6 +79,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ## Files Created/Modified
 
 **Task 1 (backend):**
+
 - `database/seeders/SystemConfigurationSeeder.php` - added `cancellation_fee_amount` row
 - `app/Http/Requests/Cashier/CancelJobOrderRequest.php` - `authorize()` true (route-gated), empty `rules()`
 - `app/Http/Controllers/Cashier/CancellationController.php` - `store()` gate/compute/net/cancel
@@ -87,6 +89,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - `tests/Unit/SystemConfigurationTest.php` - seeded-row count updated 14→15
 
 **Task 2 (frontend):**
+
 - `resources/js/pages/cashier/Dashboard.vue` - Cancel Job Order `AlertDialog` + `cancellationDialogBody()` computing one of four Copywriting Contract variants
 - `tests/Feature/Cashier/CancellationFeeTest.php` - added a case proving a cancelled job order drops off the Dashboard listing
 
@@ -101,6 +104,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] Regenerated Wayfinder actions/routes after adding the new controller route**
+
 - **Found during:** Task 2
 - **Issue:** `resources/js/actions/App/Http/Controllers/Cashier/CancellationController.ts` didn't exist yet (gitignored, generated) — Task 2's `CancellationController.store.form()` call would fail to resolve
 - **Fix:** Ran `php artisan wayfinder:generate --with-form --no-interaction` (matching the project's documented `--with-form` convention from Phase 1)
@@ -109,6 +113,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - **Committed in:** n/a (gitignored, not committed)
 
 **2. [Rule 1 - Bug] Fixed pre-existing test broken by the new seeder row**
+
 - **Found during:** Task 1
 - **Issue:** `tests/Unit/SystemConfigurationTest.php` hardcoded an assertion of 14 seeded `system_configurations` rows; this plan's `cancellation_fee_amount` addition makes the real count 15
 - **Fix:** Updated the test's expected count 14→15 and its description
@@ -133,8 +138,9 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - No blockers.
 
 ---
-*Phase: 05-pos-payments*
-*Completed: 2026-09-05*
+
+_Phase: 05-pos-payments_
+_Completed: 2026-09-05_
 
 ## Self-Check: PASSED
 

@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Queue Display Monitor — Inkspire</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+            rel="stylesheet"
+        />
+        <style>
+            :root {
+                --primary: #1a3a8f;
+                --primary-dark: #142d78;
+                --primary-container: #2d52b8;
+                --primary-fixed: #dde1ff;
+                --primary-fixed-dim: #b8c4ff;
+                --on-primary: #ffffff;
+                --surface: #0a0e1a;
+                --surface-card: #111827;
+                --surface-card-2: #1a2236;
+                --outline: #3a4566;
+                --outline-variant: #1e2a42;
+                --on-surface: #e8eeff;
+                --on-surface-dim: #8892b0;
+                --success: #22c55e;
+                --success-bg: rgba(34, 197, 94, 0.1);
+                --warning: #f59e0b;
+                --warning-bg: rgba(245, 158, 11, 0.1);
+                --cyan: #60a5fa;
+                --cyan-bg: rgba(96, 165, 250, 0.1);
+                --font: 'Plus Jakarta Sans', sans-serif;
+            }
+
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                font-family: var(--font);
+                background: var(--surface);
+                color: var(--on-surface);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            /* ── HEADER ── */
+            .qdm-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 18px 36px;
+                background: var(--surface-card);
+                border-bottom: 1px solid var(--outline-variant);
+                flex-shrink: 0;
+            }
+
+            .qdm-brand {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+            }
+
+            .qdm-logo {
+                font-size: 22px;
+                font-weight: 800;
+                letter-spacing: -0.5px;
+                color: var(--on-surface);
+            }
+            .qdm-logo span {
+                color: var(--cyan);
+            }
+
+            .qdm-divider {
+                width: 1px;
+                height: 28px;
+                background: var(--outline);
+            }
+
+            .qdm-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--on-surface-dim);
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }
+
+            .qdm-live-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                padding: 5px 14px;
+                border-radius: 100px;
+                background: rgba(34, 197, 94, 0.12);
+                border: 1px solid rgba(34, 197, 94, 0.25);
+                font-size: 12px;
+                font-weight: 700;
+                color: var(--success);
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+            }
+            .qdm-live-dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: var(--success);
+                animation: pulse-dot 1.5s ease-in-out infinite;
+            }
+            @keyframes pulse-dot {
+                0%,
+                100% {
+                    opacity: 1;
+                    transform: scale(1);
+                }
+                50% {
+                    opacity: 0.4;
+                    transform: scale(0.7);
+                }
+            }
+
+            .qdm-header-right {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+            }
+
+            .qdm-clock {
+                font-size: 26px;
+                font-weight: 800;
+                color: var(--on-surface);
+                letter-spacing: 0.04em;
+                font-variant-numeric: tabular-nums;
+            }
+
+            .qdm-date {
+                font-size: 12px;
+                color: var(--on-surface-dim);
+                font-weight: 500;
+                text-align: right;
+                margin-top: 2px;
+            }
+
+            .qdm-fullscreen-btn {
+                background: var(--outline-variant);
+                border: none;
+                border-radius: 8px;
+                padding: 8px 10px;
+                cursor: pointer;
+                color: var(--on-surface-dim);
+                display: flex;
+                align-items: center;
+                transition: all 0.15s;
+            }
+            .qdm-fullscreen-btn:hover {
+                background: var(--outline);
+                color: var(--on-surface);
+            }
+
+            /* ── STATS ROW ── */
+            .qdm-stats {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+                padding: 20px 36px;
+                flex-shrink: 0;
+            }
+
+            .qdm-stat-card {
+                background: var(--surface-card);
+                border: 1px solid var(--outline-variant);
+                border-radius: 14px;
+                padding: 20px 28px;
+                display: flex;
+                align-items: center;
+                gap: 18px;
+                transition: border-color 0.3s;
+            }
+
+            .qdm-stat-icon {
+                width: 52px;
+                height: 52px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 24px;
+                flex-shrink: 0;
+            }
+            .qdm-stat-icon.green {
+                background: var(--success-bg);
+                color: var(--success);
+            }
+            .qdm-stat-icon.blue {
+                background: var(--cyan-bg);
+                color: var(--cyan);
+            }
+            .qdm-stat-icon.amber {
+                background: var(--warning-bg);
+                color: var(--warning);
+            }
+
+            .qdm-stat-num {
+                font-size: 42px;
+                font-weight: 900;
+                line-height: 1;
+                font-variant-numeric: tabular-nums;
+                transition: all 0.4s ease;
+            }
+            .qdm-stat-num.green {
+                color: var(--success);
+            }
+            .qdm-stat-num.blue {
+                color: var(--cyan);
+            }
+            .qdm-stat-num.amber {
+                color: var(--warning);
+            }
+
+            .qdm-stat-label {
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--on-surface-dim);
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                margin-top: 4px;
+            }
+
+            /* ── TABLE SECTION ── */
+            .qdm-table-wrap {
+                flex: 1;
+                padding: 0 36px 24px;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .qdm-table-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 14px;
+            }
+
+            .qdm-table-title {
+                font-size: 13px;
+                font-weight: 700;
+                color: var(--on-surface-dim);
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .qdm-last-update {
+                font-size: 12px;
+                color: var(--on-surface-dim);
+                font-variant-numeric: tabular-nums;
+            }
+
+            .qdm-table-container {
+                flex: 1;
+                background: var(--surface-card);
+                border: 1px solid var(--outline-variant);
+                border-radius: 16px;
+                overflow: hidden;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            thead th {
+                background: var(--surface-card-2);
+                padding: 14px 24px;
+                text-align: left;
+                font-size: 11px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: var(--on-surface-dim);
+                border-bottom: 1px solid var(--outline-variant);
+            }
+
+            tbody td {
+                padding: 18px 24px;
+                border-bottom: 1px solid var(--outline-variant);
+                vertical-align: middle;
+                font-size: 15px;
+            }
+
+            tbody tr:last-child td {
+                border-bottom: none;
+            }
+
+            tbody tr {
+                transition: background 0.2s;
+            }
+            tbody tr:hover td {
+                background: rgba(255, 255, 255, 0.02);
+            }
+            tbody tr.row-busy td {
+                background: rgba(96, 165, 250, 0.04);
+            }
+
+            .artist-name {
+                font-weight: 700;
+                font-size: 16px;
+                color: var(--on-surface);
+            }
+            .artist-id {
+                font-size: 12px;
+                color: var(--on-surface-dim);
+                margin-top: 3px;
+                font-weight: 500;
+            }
+
+            .ticket-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 7px 16px;
+                border-radius: 100px;
+                font-size: 15px;
+                font-weight: 800;
+                letter-spacing: 0.06em;
+            }
+            .ticket-chip.busy {
+                background: rgba(96, 165, 250, 0.15);
+                color: var(--cyan);
+                border: 1px solid rgba(96, 165, 250, 0.3);
+            }
+            .ticket-chip.free {
+                background: var(--outline-variant);
+                color: var(--on-surface-dim);
+                border: 1px dashed var(--outline);
+            }
+            .ticket-dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                background: currentColor;
+            }
+
+            .status-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 5px 14px;
+                border-radius: 100px;
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+            }
+            .status-badge::before {
+                content: '';
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: currentColor;
+            }
+            .status-badge.in-service {
+                background: rgba(96, 165, 250, 0.12);
+                color: var(--cyan);
+                border: 1px solid rgba(96, 165, 250, 0.2);
+            }
+            .status-badge.available {
+                background: rgba(34, 197, 94, 0.1);
+                color: var(--success);
+                border: 1px solid rgba(34, 197, 94, 0.2);
+            }
+
+            .customer-name {
+                font-weight: 600;
+                color: var(--on-surface);
+            }
+            .no-data {
+                color: var(--outline);
+            }
+
+            .since-time {
+                font-size: 13px;
+                color: var(--on-surface-dim);
+                font-variant-numeric: tabular-nums;
+            }
+
+            /* ── FOOTER ── */
+            .qdm-footer {
+                padding: 12px 36px;
+                background: var(--surface-card);
+                border-top: 1px solid var(--outline-variant);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-shrink: 0;
+            }
+            .qdm-footer-note {
+                font-size: 12px;
+                color: var(--on-surface-dim);
+            }
+            .qdm-footer-note strong {
+                color: var(--on-surface);
+            }
+
+            /* ── Animate in ── */
+            @keyframes fadeSlideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(8px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .qdm-stat-card,
+            .qdm-table-container {
+                animation: fadeSlideIn 0.4s ease both;
+            }
+            .qdm-stat-card:nth-child(1) {
+                animation-delay: 0.05s;
+            }
+            .qdm-stat-card:nth-child(2) {
+                animation-delay: 0.1s;
+            }
+            .qdm-stat-card:nth-child(3) {
+                animation-delay: 0.15s;
+            }
+            .qdm-table-container {
+                animation-delay: 0.2s;
+            }
+
+            /* Highlight row flash on update */
+            @keyframes rowFlash {
+                0% {
+                    background: rgba(96, 165, 250, 0.18);
+                }
+                100% {
+                    background: transparent;
+                }
+            }
+            tr.flash td {
+                animation: rowFlash 1.2s ease forwards;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- HEADER -->
+        <header class="qdm-header">
+            <div class="qdm-brand">
+                <div class="qdm-logo">ink<span>spire</span></div>
+                <div class="qdm-divider"></div>
+                <div class="qdm-title">Queue Display Monitor</div>
+                <div class="qdm-live-badge" style="margin-left: 16px">
+                    <span class="qdm-live-dot"></span> Live
+                </div>
+            </div>
+            <div class="qdm-header-right">
+                <div>
+                    <div class="qdm-clock" id="qdm-clock">—</div>
+                    <div class="qdm-date" id="qdm-date">—</div>
+                </div>
+                <button
+                    class="qdm-fullscreen-btn"
+                    title="Toggle Fullscreen"
+                    onclick="toggleFullscreen()"
+                >
+                    <span
+                        class="material-symbols-outlined"
+                        id="fs-icon"
+                        style="font-size: 22px"
+                        >fullscreen</span
+                    >
+                </button>
+            </div>
+        </header>
+
+        <!-- STATS -->
+        <div class="qdm-stats">
+            <div class="qdm-stat-card">
+                <div class="qdm-stat-icon green">
+                    <span class="material-symbols-outlined">check_circle</span>
+                </div>
+                <div>
+                    <div class="qdm-stat-num green" id="stat-avail">—</div>
+                    <div class="qdm-stat-label">Artists Available</div>
+                </div>
+            </div>
+            <div class="qdm-stat-card">
+                <div class="qdm-stat-icon blue">
+                    <span class="material-symbols-outlined">person_play</span>
+                </div>
+                <div>
+                    <div class="qdm-stat-num blue" id="stat-busy">—</div>
+                    <div class="qdm-stat-label">In Service</div>
+                </div>
+            </div>
+            <div class="qdm-stat-card">
+                <div class="qdm-stat-icon amber">
+                    <span class="material-symbols-outlined">hourglass</span>
+                </div>
+                <div>
+                    <div class="qdm-stat-num amber" id="stat-wait">8</div>
+                    <div class="qdm-stat-label">In Waiting Queue</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="qdm-table-wrap">
+            <div class="qdm-table-header">
+                <div class="qdm-table-title">
+                    <span
+                        class="material-symbols-outlined"
+                        style="font-size: 16px"
+                        >table_chart</span
+                    >
+                    Artist Assignment Board
+                </div>
+                <div class="qdm-last-update" id="qdm-last-update">
+                    Last updated: —
+                </div>
+            </div>
+            <div class="qdm-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Artist</th>
+                            <th>Current Ticket</th>
+                            <th>Customer</th>
+                            <th>Since</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="qdm-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="qdm-footer">
+            <span
+                class="material-symbols-outlined"
+                style="font-size: 16px; color: var(--on-surface-dim)"
+                >info</span
+            >
+            <span class="qdm-footer-note">
+                This is a <strong>view-only</strong> display. Artist assignments
+                are managed automatically by the system. Auto-refreshes every 5
+                seconds.
+            </span>
+        </div>
+
+        <script>
+            // ── Queue State (mirrored from main system) ──────────────────────
+            const queueState = [
+                {
+                    id: 'ART-01',
+                    name: 'Maria Santos',
+                    ticket: 'AA203',
+                    status: 'busy',
+                    customer: 'Jose R.',
+                    since: '09:14 AM',
+                },
+                {
+                    id: 'ART-02',
+                    name: 'Carlo Reyes',
+                    ticket: 'AA204',
+                    status: 'busy',
+                    customer: 'Luna T.',
+                    since: '09:22 AM',
+                },
+                {
+                    id: 'ART-03',
+                    name: 'Ana Dela Cruz',
+                    ticket: null,
+                    status: 'available',
+                    customer: null,
+                    since: null,
+                },
+                {
+                    id: 'ART-04',
+                    name: 'Ben Navarro',
+                    ticket: 'AA205',
+                    status: 'busy',
+                    customer: 'Cris M.',
+                    since: '09:30 AM',
+                },
+                {
+                    id: 'ART-05',
+                    name: 'Liza Gomez',
+                    ticket: null,
+                    status: 'available',
+                    customer: null,
+                    since: null,
+                },
+                {
+                    id: 'ART-06',
+                    name: 'Ryan Pascual',
+                    ticket: 'AA206',
+                    status: 'busy',
+                    customer: 'Dave P.',
+                    since: '09:45 AM',
+                },
+            ];
+
+            const customers = [
+                'Jose R.',
+                'Luna T.',
+                'Cris M.',
+                'Dave P.',
+                'Ana S.',
+                'Ben T.',
+                'Rey L.',
+                'Joy M.',
+                'Kim P.',
+                'Sam A.',
+            ];
+
+            function now() {
+                return new Date().toLocaleTimeString('en-PH', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true,
+                });
+            }
+
+            // ── Clock ──────────────────────────────────────────────────────
+            function updateClock() {
+                const d = new Date();
+                document.getElementById('qdm-clock').textContent =
+                    d.toLocaleTimeString('en-PH', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                    });
+                document.getElementById('qdm-date').textContent =
+                    d.toLocaleDateString('en-PH', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                    });
+            }
+            setInterval(updateClock, 1000);
+            updateClock();
+
+            // ── Render Table ───────────────────────────────────────────────
+            let prevState = null;
+
+            function renderTable() {
+                const tbody = document.getElementById('qdm-tbody');
+                const busyCount = queueState.filter(
+                    (a) => a.status === 'busy',
+                ).length;
+                document.getElementById('stat-avail').textContent =
+                    queueState.length - busyCount;
+                document.getElementById('stat-busy').textContent = busyCount;
+                document.getElementById('qdm-last-update').textContent =
+                    'Last updated: ' + now();
+
+                tbody.innerHTML = queueState
+                    .map((a, i) => {
+                        const changed =
+                            prevState &&
+                            prevState[i] &&
+                            prevState[i].status !== a.status;
+                        return `
+        <tr class="${a.status === 'busy' ? 'row-busy' : ''}${changed ? ' flash' : ''}">
+          <td>
+            <div class="artist-name">${a.name}</div>
+            <div class="artist-id">${a.id}</div>
+          </td>
+          <td>
+            ${
+                a.status === 'busy'
+                    ? `<span class="ticket-chip busy"><span class="ticket-dot"></span>${a.ticket}</span>`
+                    : `<span class="ticket-chip free">— Open</span>`
+            }
+          </td>
+          <td>
+            ${
+                a.customer
+                    ? `<span class="customer-name">${a.customer}</span>`
+                    : `<span class="no-data">—</span>`
+            }
+          </td>
+          <td>
+            ${
+                a.since
+                    ? `<span class="since-time">${a.since}</span>`
+                    : `<span class="no-data">—</span>`
+            }
+          </td>
+          <td>
+            <span class="status-badge ${a.status === 'busy' ? 'in-service' : 'available'}">
+              ${a.status === 'busy' ? 'In Service' : 'Available'}
+            </span>
+          </td>
+        </tr>`;
+                    })
+                    .join('');
+
+                // Save snapshot for change detection
+                prevState = queueState.map((a) => ({ ...a }));
+
+                // Remove flash after animation completes
+                setTimeout(() => {
+                    tbody
+                        .querySelectorAll('tr.flash')
+                        .forEach((r) => r.classList.remove('flash'));
+                }, 1300);
+            }
+
+            // ── Auto-Update Simulation (same logic as main system) ─────────
+            setInterval(() => {
+                if (Math.random() > 0.85) {
+                    const idx = Math.floor(Math.random() * queueState.length);
+                    queueState[idx].status =
+                        queueState[idx].status === 'busy'
+                            ? 'available'
+                            : 'busy';
+                    if (queueState[idx].status === 'available') {
+                        queueState[idx].ticket = null;
+                        queueState[idx].customer = null;
+                        queueState[idx].since = null;
+                    } else {
+                        queueState[idx].ticket =
+                            'AA' + (200 + Math.floor(Math.random() * 99));
+                        queueState[idx].since = now();
+                        queueState[idx].customer =
+                            customers[
+                                Math.floor(Math.random() * customers.length)
+                            ];
+                    }
+                    renderTable();
+                }
+            }, 5000);
+
+            // ── Fullscreen Toggle ──────────────────────────────────────────
+            function toggleFullscreen() {
+                const icon = document.getElementById('fs-icon');
+                if (!document.fullscreenElement) {
+                    document.documentElement
+                        .requestFullscreen()
+                        .catch(() => {});
+                    icon.textContent = 'fullscreen_exit';
+                } else {
+                    document.exitFullscreen().catch(() => {});
+                    icon.textContent = 'fullscreen';
+                }
+            }
+
+            document.addEventListener('fullscreenchange', () => {
+                document.getElementById('fs-icon').textContent =
+                    document.fullscreenElement
+                        ? 'fullscreen_exit'
+                        : 'fullscreen';
+            });
+
+            // ── Init ───────────────────────────────────────────────────────
+            renderTable();
+
+            // Auto-enter fullscreen on open
+            setTimeout(() => {
+                document.documentElement.requestFullscreen().catch(() => {});
+            }, 300);
+        </script>
+    </body>
+</html>

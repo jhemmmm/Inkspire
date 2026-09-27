@@ -41,6 +41,9 @@
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
 
+    --color-brand: var(--brand);
+    --color-brand-foreground: var(--brand-foreground);
+
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -87,10 +90,35 @@
             'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
             'Noto Color Emoji';
     }
+
+    /*
+      Tailwind sizes everything in rem, so the root font-size is the single
+      dial for the whole UI scale -- text, padding, gaps and control heights
+      all grow together. Turn this one value to rescale the entire app.
+    */
+    html {
+        font-size: 18px;
+    }
 }
 
+/*
+  White ground, blue actions, red identity.
+
+  `--brand` is Squarefoot's own red, sampled from the logo (#c62424). It sits
+  within a few percent of `--destructive`, which is deliberate: they are the
+  same red doing two jobs, kept apart by ROLE rather than by hue.
+
+      --brand       identity and urgency. Rush chips, brand rules, accent
+                    marks. Never on a control the user can click.
+      --destructive danger. Delete, cancel, void, validation errors, overdue.
+                    Always on, or beside, something that acts.
+
+  Keep that split. Two near-identical reds are only safe while a red button
+  can mean exactly one thing, and the moment a brand-red button ships next to
+  a destructive-red one, neither reads.
+*/
 :root {
-    --background: hsl(257.1 100% 98.6%);
+    --background: hsl(220 30% 98.5%);
     --foreground: hsl(222.2 41.5% 12.7%);
     --card: hsl(0 0% 100%);
     --card-foreground: hsl(222.2 41.5% 12.7%);
@@ -98,68 +126,78 @@
     --popover-foreground: hsl(222.2 41.5% 12.7%);
     --primary: hsl(223.6 69.2% 33.1%);
     --primary-foreground: hsl(0 0% 100%);
-    --secondary: hsl(218.5 86.7% 91.2%);
+    --secondary: hsl(218 60% 93%);
     --secondary-foreground: hsl(222.2 41.5% 12.7%);
-    --muted: hsl(231.4 100% 95.9%);
-    --muted-foreground: hsl(232 9.9% 29.6%);
-    --accent: hsl(229.7 100% 94.3%);
+    --muted: hsl(220 40% 96.5%);
+    --muted-foreground: hsl(225 12% 38%);
+    --accent: hsl(221 70% 95%);
     --accent-foreground: hsl(225 71.4% 27.5%);
     --destructive: hsl(0 75.5% 41.6%);
     --destructive-foreground: hsl(0 0% 100%);
-    --border: hsl(236.5 16.8% 80.2%);
-    --input: hsl(236.5 16.8% 80.2%);
+    --brand: hsl(0 69% 46%);
+    --brand-foreground: hsl(0 0% 100%);
+    --border: hsl(220 20% 87%);
+    --input: hsl(220 20% 87%);
     --ring: hsl(223.6 69.2% 33.1%);
     --chart-1: hsl(223.6 69.2% 33.1%);
-    --chart-2: hsl(224.9 53.4% 50.4%);
+    --chart-2: hsl(0 69% 46%);
     --chart-3: hsl(219.7 82.2% 64.7%);
-    --chart-4: hsl(249.5 56.6% 62.9%);
+    --chart-4: hsl(14 80% 57%);
     --chart-5: hsl(219.2 62% 76.3%);
     --radius: 0.75rem;
     --sidebar-background: hsl(0 0% 100%);
-    --sidebar-foreground: hsl(232 9.9% 29.6%);
+    --sidebar-foreground: hsl(225 12% 38%);
     --sidebar-primary: hsl(223.6 69.2% 33.1%);
     --sidebar-primary-foreground: hsl(0 0% 100%);
-    --sidebar-accent: hsl(231.4 100% 95.9%);
+    --sidebar-accent: hsl(220 40% 96.5%);
     --sidebar-accent-foreground: hsl(225 71.4% 27.5%);
-    --sidebar-border: hsl(236.5 16.8% 80.2%);
+    --sidebar-border: hsl(220 20% 87%);
     --sidebar-ring: hsl(223.6 69.2% 33.1%);
     --sidebar: hsl(0 0% 100%);
 }
 
+/*
+  Dark mode is a near-black slate with only a faint blue cast, not a
+  saturated navy -- a heavily tinted background muddies every surface stacked
+  on it and leaves the brand blue nowhere to sit. Keeping the ground neutral
+  lets a brightened primary carry the accent work at readable contrast.
+*/
 .dark {
-    --background: hsl(229.7 57.4% 12%);
-    --foreground: hsl(232.5 100% 95.3%);
-    --card: hsl(229.8 50.6% 15.9%);
-    --card-foreground: hsl(232.5 100% 95.3%);
-    --popover: hsl(229.8 50.6% 15.9%);
-    --popover-foreground: hsl(232.5 100% 95.3%);
-    --primary: hsl(224.9 53.4% 50.4%);
-    --primary-foreground: hsl(0 0% 100%);
-    --secondary: hsl(225.9 45.1% 22.2%);
-    --secondary-foreground: hsl(218.5 86.7% 91.2%);
-    --muted: hsl(228 43.5% 18%);
-    --muted-foreground: hsl(227.1 26.3% 68.6%);
-    --accent: hsl(226.2 48.9% 26.1%);
-    --accent-foreground: hsl(227.1 100% 89%);
-    --destructive: hsl(1.1 83.2% 62.5%);
+    --background: hsl(225 24% 7.5%);
+    --foreground: hsl(220 20% 96%);
+    --card: hsl(225 20% 11%);
+    --card-foreground: hsl(220 20% 96%);
+    --popover: hsl(225 20% 11%);
+    --popover-foreground: hsl(220 20% 96%);
+    --primary: hsl(224 76% 66%);
+    --primary-foreground: hsl(225 40% 10%);
+    --secondary: hsl(225 16% 18%);
+    --secondary-foreground: hsl(220 20% 94%);
+    --muted: hsl(225 16% 15%);
+    --muted-foreground: hsl(222 14% 66%);
+    --accent: hsl(225 18% 20%);
+    --accent-foreground: hsl(220 25% 94%);
+    --destructive: hsl(1 75% 62%);
     --destructive-foreground: hsl(0 0% 100%);
-    --border: hsl(227.8 39.1% 27.1%);
-    --input: hsl(227.8 39.1% 27.1%);
-    --ring: hsl(224.9 53.4% 50.4%);
-    --chart-1: hsl(227.9 100% 71.8%);
-    --chart-2: hsl(219.7 82.2% 64.7%);
-    --chart-3: hsl(225.3 76.6% 74.9%);
-    --chart-4: hsl(250.2 76.9% 74.5%);
-    --chart-5: hsl(229.9 100% 86.1%);
-    --sidebar-background: hsl(228.3 54.5% 12.9%);
-    --sidebar-foreground: hsl(226.8 39.8% 79.8%);
-    --sidebar-primary: hsl(224.9 53.4% 50.4%);
-    --sidebar-primary-foreground: hsl(0 0% 100%);
-    --sidebar-accent: hsl(227.3 48.1% 21.2%);
-    --sidebar-accent-foreground: hsl(226.5 100% 92.2%);
-    --sidebar-border: hsl(227.8 39.1% 27.1%);
-    --sidebar-ring: hsl(224.9 53.4% 50.4%);
-    --sidebar: hsl(228.3 54.5% 12.9%);
+    --brand: hsl(0 79% 63%);
+    --brand-foreground: hsl(0 0% 100%);
+    --border: hsl(225 14% 21%);
+    --input: hsl(225 14% 21%);
+    --ring: hsl(224 76% 66%);
+    --chart-1: hsl(224 76% 66%);
+    --chart-2: hsl(0 79% 63%);
+    --chart-3: hsl(255 70% 72%);
+    --chart-4: hsl(172 60% 52%);
+    --chart-5: hsl(43 84% 66%);
+    --sidebar-background: hsl(225 22% 9.5%);
+    --sidebar-foreground: hsl(222 16% 76%);
+    --sidebar-primary: hsl(224 76% 66%);
+    --sidebar-primary-foreground: hsl(225 40% 10%);
+    --sidebar-accent: hsl(225 18% 18%);
+    --sidebar-accent-foreground: hsl(220 25% 94%);
+    --sidebar-border: hsl(225 14% 21%);
+    --sidebar-ring: hsl(224 76% 66%);
+    --sidebar: hsl(225 22% 9.5%);
 }
 
 @layer base {

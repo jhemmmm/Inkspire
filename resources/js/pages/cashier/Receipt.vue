@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import PageContainer from '@/components/PageContainer.vue';
 import TrackingQrCode from '@/components/TrackingQrCode.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +17,8 @@ interface ReceiptJobOrder {
     id: number;
     number: string | null;
     description: string;
+    is_rush: boolean;
+    rush_fee_applied: boolean;
     base_price_snapshot: number | null;
     rush_fee_amount: number | null;
     discount_amount: number | null;
@@ -65,6 +68,17 @@ function paymentMethodLabel(method: string): string {
     }
 }
 
+/**
+ * A rush order that carries no rush fee. Printing a bare "Rush Fee P0.00"
+ * on one reads as a mistake, so the receipt says the fee was waived —
+ * which is what a zero means once the Cashier has been shown the toggle.
+ */
+const rushFeeWaived = computed(
+    () =>
+        props.jobOrder.is_rush &&
+        Number(props.jobOrder.rush_fee_amount ?? 0) === 0,
+);
+
 function money(value: number | null): string {
     return `₱${Number(value ?? 0).toFixed(2)}`;
 }
@@ -77,9 +91,7 @@ function printReceipt(): void {
 <template>
     <Head :title="`Receipt — ${jobOrder.number ?? jobOrder.id}`" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-    >
+    <PageContainer>
         <Button
             variant="outline"
             class="mx-auto w-fit print:hidden"
@@ -114,6 +126,13 @@ function printReceipt(): void {
                     <span class="font-semibold">Product / Service</span>
                     <span>{{ jobOrder.pricing_entry?.name ?? '—' }}</span>
                 </div>
+                <div
+                    v-if="jobOrder.is_rush"
+                    class="flex items-center justify-between"
+                >
+                    <span class="font-semibold">Priority</span>
+                    <span class="font-semibold">Rush Print</span>
+                </div>
 
                 <div class="flex flex-col gap-1 border-t pt-4">
                     <div class="flex items-center justify-between">
@@ -121,7 +140,15 @@ function printReceipt(): void {
                         <span>{{ money(jobOrder.base_price_snapshot) }}</span>
                     </div>
                     <div class="flex items-center justify-between">
-                        <span>Rush Fee</span>
+                        <span>
+                            Rush Fee
+                            <span
+                                v-if="rushFeeWaived"
+                                class="text-muted-foreground"
+                            >
+                                (waived)
+                            </span>
+                        </span>
                         <span>{{ money(jobOrder.rush_fee_amount) }}</span>
                     </div>
                     <div class="flex items-center justify-between">
@@ -129,7 +156,7 @@ function printReceipt(): void {
                         <span>{{ money(jobOrder.discount_amount) }}</span>
                     </div>
                     <div
-                        class="flex items-center justify-between pt-2 text-[28px] leading-[1.2] font-semibold"
+                        class="flex items-center justify-between pt-2 text-3xl leading-[1.2] font-bold"
                     >
                         <span>Total</span>
                         <span>{{ money(jobOrder.total_amount) }}</span>
@@ -148,6 +175,10 @@ function printReceipt(): void {
                                     : '—'
                             }}
                         </span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold">Amount Paid</span>
+                        <span>{{ money(amountPaid) }}</span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="font-semibold">Balance</span>
@@ -181,5 +212,5 @@ function printReceipt(): void {
                 </div>
             </CardContent>
         </Card>
-    </div>
+    </PageContainer>
 </template>

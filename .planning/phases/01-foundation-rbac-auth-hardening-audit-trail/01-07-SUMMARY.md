@@ -5,34 +5,34 @@ subsystem: auth
 tags: [fortify, laravel, account-lockout, audit-trail, pest]
 
 requires:
-  - phase: 01-foundation-rbac-auth-hardening-audit-trail
-    provides: "AuditLogger::recordAuthEvent() (01-05), SystemConfiguration::getInt() + seeded lockout config (01-03), User.locked_until/is_active/failed_login_attempts columns (01-01)"
+    - phase: 01-foundation-rbac-auth-hardening-audit-trail
+      provides: 'AuditLogger::recordAuthEvent() (01-05), SystemConfiguration::getInt() + seeded lockout config (01-03), User.locked_until/is_active/failed_login_attempts columns (01-01)'
 provides:
-  - "EnsureAccountIsNotLocked Fortify authenticateThrough() pipeline step rejecting locked/deactivated accounts before AttemptToAuthenticate"
-  - "RecordFailedLoginAttempt listener incrementing failed_login_attempts and locking the account after the configured threshold"
-  - "RecordLockoutEvent listener auditing Fortify's native IP-throttle Lockout event"
-  - "UserFactory::locked()/deactivated() states for test fixtures"
+    - 'EnsureAccountIsNotLocked Fortify authenticateThrough() pipeline step rejecting locked/deactivated accounts before AttemptToAuthenticate'
+    - 'RecordFailedLoginAttempt listener incrementing failed_login_attempts and locking the account after the configured threshold'
+    - "RecordLockoutEvent listener auditing Fortify's native IP-throttle Lockout event"
+    - 'UserFactory::locked()/deactivated() states for test fixtures'
 affects: [rbac, user-management, auth]
 
 tech-stack:
-  added: []
-  patterns:
-    - "Fortify authenticateThrough() pipeline extension for pre-AttemptToAuthenticate rejection, via a single-purpose __invoke(Request, callable) action class"
-    - "afterCreating() factory states for attributes outside a model's #[Fillable] list"
+    added: []
+    patterns:
+        - 'Fortify authenticateThrough() pipeline extension for pre-AttemptToAuthenticate rejection, via a single-purpose __invoke(Request, callable) action class'
+        - "afterCreating() factory states for attributes outside a model's #[Fillable] list"
 
 key-files:
-  created:
-    - app/Actions/Fortify/EnsureAccountIsNotLocked.php
-    - app/Listeners/Auth/RecordFailedLoginAttempt.php
-    - app/Listeners/Auth/RecordLockoutEvent.php
-    - tests/Feature/Auth/AccountLockoutTest.php
-  modified:
-    - app/Providers/FortifyServiceProvider.php
-    - database/factories/UserFactory.php
+    created:
+        - app/Actions/Fortify/EnsureAccountIsNotLocked.php
+        - app/Listeners/Auth/RecordFailedLoginAttempt.php
+        - app/Listeners/Auth/RecordLockoutEvent.php
+        - tests/Feature/Auth/AccountLockoutTest.php
+    modified:
+        - app/Providers/FortifyServiceProvider.php
+        - database/factories/UserFactory.php
 
 key-decisions:
-  - "EnsureAccountIsNotLocked resolves the user by Fortify::username() and no-ops (passes through) on unknown emails, deferring to AttemptToAuthenticate's standard failure and the existing IP+email rate limiter"
-  - "Account-level lockout counter is independent of Fortify's existing IP+email RateLimiter — two separate defense-in-depth triggers, per RESEARCH.md"
+    - "EnsureAccountIsNotLocked resolves the user by Fortify::username() and no-ops (passes through) on unknown emails, deferring to AttemptToAuthenticate's standard failure and the existing IP+email rate limiter"
+    - "Account-level lockout counter is independent of Fortify's existing IP+email RateLimiter — two separate defense-in-depth triggers, per RESEARCH.md"
 
 requirements-completed: [RBAC-03, RBAC-07, RBAC-08]
 
@@ -53,6 +53,7 @@ completed: 2026-09-01
 - **Files modified:** 6 (3 created, 2 modified, 1 test created)
 
 ## Accomplishments
+
 - Locked-out accounts (`locked_until` in the future) and deactivated accounts (`is_active = false`) are now rejected at login before Fortify ever attempts password verification
 - 5 consecutive failed login attempts against the same account lock it for the configured duration (`account_lockout_minutes`, seeded to 15), read from `SystemConfiguration` rather than hardcoded
 - Every failed attempt and every lockout (both account-level and Fortify's native IP-throttle lockout) writes an `audit_trail` row
@@ -67,6 +68,7 @@ Each task followed RED → GREEN TDD (test file created and committed in task 2,
 _Note: Both tasks used `tdd="true"` per plan frontmatter; the test file was authored as part of task 2 per the plan's explicit file split, so task 1 has no dedicated preceding test commit — its "deactivated account" behavior was verified against `AccountLockoutTest` once that file existed in task 2's RED phase (confirmed passing immediately, since it depends only on task 1's already-committed code, not on the listeners added in task 2)._
 
 ## Files Created/Modified
+
 - `app/Actions/Fortify/EnsureAccountIsNotLocked.php` - Fortify pipeline action; throws `ValidationException` on `email` for locked or deactivated accounts before `AttemptToAuthenticate` runs
 - `app/Providers/FortifyServiceProvider.php` - added `configureAuthenticationPipeline()`, called from `boot()`, inserting `EnsureAccountIsNotLocked::class` into `Fortify::authenticateThrough()` before `AttemptToAuthenticate::class`
 - `database/factories/UserFactory.php` - added `locked()` and `deactivated()` states via `afterCreating()->forceFill()->save()` (both attribute sets are outside `User`'s `#[Fillable]` list)
@@ -75,6 +77,7 @@ _Note: Both tasks used `tdd="true"` per plan frontmatter; the test file was auth
 - `tests/Feature/Auth/AccountLockoutTest.php` - 3 tests covering RBAC-03 (lockout after 5 attempts), RBAC-07 (deactivated login rejection), RBAC-08 (audit trail rows)
 
 ## Decisions Made
+
 - Both listeners are auto-discovered by Laravel's event auto-discovery (confirmed via `php artisan event:list`) — no manual `EventServiceProvider::$listen` registration needed, matching the existing `HandleSuccessfulLogin`/`HandleLogout` convention in this codebase
 - Guarded `$event->user instanceof User` in `RecordFailedLoginAttempt` (per Pitfall 3 in RESEARCH.md) so unknown-email failed attempts are silently ignored here and left to the existing IP+email rate limiter
 
@@ -83,6 +86,7 @@ _Note: Both tasks used `tdd="true"` per plan frontmatter; the test file was auth
 None - plan executed exactly as written.
 
 ## Issues Encountered
+
 None. `composer types:check` (Larastan/PHPStan) remains broken in this environment due to a pre-existing `phpstan_turbo` native-extension/GLIBC mismatch (logged in prior plans' summaries, e.g. 01-06) — unrelated to this plan's changes and out of scope per the deviation rules' scope boundary. All new code follows the established `instanceof User` guard pattern from 01-05 that satisfies Larastan level 7 when the tool is runnable.
 
 ## User Setup Required
@@ -90,13 +94,15 @@ None. `composer types:check` (Larastan/PHPStan) remains broken in this environme
 None - no external service configuration required.
 
 ## Next Phase Readiness
+
 - RBAC-03, RBAC-07 (login-blocking half), and RBAC-08 are now fully satisfied
 - Remaining Phase 1 plans (single-session enforcement, idle timeout, role middleware, audit trail viewing UI, system config UI) are unaffected and can proceed independently
 - Full backend suite green: 44 tests, 40 passed, 4 pre-existing skips, 0 failed
 
 ---
-*Phase: 01-foundation-rbac-auth-hardening-audit-trail*
-*Completed: 2026-09-01*
+
+_Phase: 01-foundation-rbac-auth-hardening-audit-trail_
+_Completed: 2026-09-01_
 
 ## Self-Check: PASSED
 

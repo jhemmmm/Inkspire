@@ -2,6 +2,10 @@
 import { Head, Link } from '@inertiajs/vue3';
 import { Clock } from '@lucide/vue';
 import { computed, ref } from 'vue';
+import DataTableCard from '@/components/DataTableCard.vue';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import StatCard from '@/components/StatCard.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,7 +20,10 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
-import { index as accountsReceivableIndex, show } from '@/routes/accounting-staff/accounts-receivable';
+import {
+    index as accountsReceivableIndex,
+    show,
+} from '@/routes/accounting-staff/accounts-receivable';
 
 interface AccountsReceivableRow {
     id: number;
@@ -85,6 +92,7 @@ const COLLECTION_STATUS_LABELS: Record<string, string> = {
     collections: 'Collections',
     paid: 'Paid',
     written_off: 'Written Off',
+    cancelled: 'Cancelled',
 };
 
 type FilterValue = 'all' | 'closed' | (typeof BRACKETS)[number];
@@ -96,11 +104,23 @@ function onTabChange(value: unknown): void {
 }
 
 const bracketSummaryByKey = computed(() =>
-    Object.fromEntries(props.bracketSummaries.map((summary) => [summary.bracket, summary])),
+    Object.fromEntries(
+        props.bracketSummaries.map((summary) => [summary.bracket, summary]),
+    ),
 );
 
+/**
+ * "1 entry" / "4 entries" -- pluralised here rather than inline in the
+ * template so the ageing tiles can pass it as a plain string prop.
+ */
+function entryCountLabel(count: number): string {
+    return `${count} ${count === 1 ? 'entry' : 'entries'}`;
+}
+
 function summaryFor(bracket: string): BracketSummary {
-    return bracketSummaryByKey.value[bracket] ?? { bracket, total: 0, count: 0 };
+    return (
+        bracketSummaryByKey.value[bracket] ?? { bracket, total: 0, count: 0 }
+    );
 }
 
 const filteredRows = computed(() => {
@@ -112,7 +132,9 @@ const filteredRows = computed(() => {
         return props.receivables;
     }
 
-    return props.receivables.filter((row) => row.aging_bracket === activeFilter.value);
+    return props.receivables.filter(
+        (row) => row.aging_bracket === activeFilter.value,
+    );
 });
 
 function money(value: number): string {
@@ -128,7 +150,10 @@ function agingBadgeProps(bracket: string): {
 } {
     switch (bracket) {
         case 'current':
-            return { variant: undefined, class: 'text-green-600 dark:text-green-400' };
+            return {
+                variant: undefined,
+                class: 'text-green-600 dark:text-green-400',
+            };
         case 'one_to_fifteen':
         case 'sixteen_to_thirty':
             return { variant: 'secondary', class: '' };
@@ -158,8 +183,12 @@ function collectionStatusBadgeProps(status: string): {
         case 'collections':
             return { variant: 'default', class: '' };
         case 'paid':
-            return { variant: undefined, class: 'text-green-600 dark:text-green-400' };
+            return {
+                variant: undefined,
+                class: 'text-green-600 dark:text-green-400',
+            };
         case 'written_off':
+        case 'cancelled':
             return { variant: 'outline', class: 'text-muted-foreground' };
         default:
             return { variant: undefined, class: '' };
@@ -202,47 +231,38 @@ function dueSubLine(row: AccountsReceivableRow): string {
 <template>
     <Head title="Accounts Receivable" />
 
-    <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4">
-        <div class="flex flex-col gap-1">
-            <h1 class="text-[28px] leading-[1.2] font-semibold">
-                Accounts Receivable
-            </h1>
-            <p class="text-muted-foreground text-sm">
-                Owner-approved credit balances, grouped by how far past due
-                they are.
-            </p>
-        </div>
+    <PageContainer>
+        <PageHeader
+            title="Accounts Receivable"
+            description="Admin-approved credit balances, grouped by how far past due they are. Older brackets need chasing first."
+        />
 
         <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-            <Card v-for="bracket in BRACKETS" :key="bracket">
-                <CardContent class="flex flex-col gap-1">
-                    <span class="text-sm font-semibold">
-                        {{ BRACKET_LABELS[bracket] }}
-                    </span>
-                    <span class="text-[28px] leading-[1.2] font-semibold tabular-nums">
-                        {{ money(summaryFor(bracket).total) }}
-                    </span>
-                    <span class="text-muted-foreground text-sm">
-                        {{ summaryFor(bracket).count }}
-                        {{ summaryFor(bracket).count === 1 ? 'entry' : 'entries' }}
-                    </span>
-                </CardContent>
-            </Card>
+            <StatCard
+                v-for="bracket in BRACKETS"
+                :key="bracket"
+                :label="BRACKET_LABELS[bracket]"
+                :value="money(summaryFor(bracket).total)"
+                :tone="bracket === 'ninety_plus' ? 'attention' : 'default'"
+                :hint="entryCountLabel(summaryFor(bracket).count)"
+            />
         </div>
 
         <Tabs :model-value="activeFilter" @update:model-value="onTabChange">
             <TabsList class="h-auto flex-wrap">
                 <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger v-for="bracket in BRACKETS" :key="bracket" :value="bracket">
+                <TabsTrigger
+                    v-for="bracket in BRACKETS"
+                    :key="bracket"
+                    :value="bracket"
+                >
                     {{ BRACKET_LABELS[bracket] }}
                 </TabsTrigger>
                 <TabsTrigger value="closed">Closed</TabsTrigger>
             </TabsList>
         </Tabs>
 
-        <div
-            class="border-sidebar-border/70 dark:border-sidebar-border overflow-hidden rounded-xl border"
-        >
+        <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -260,12 +280,17 @@ function dueSubLine(row: AccountsReceivableRow): string {
                 <TableBody>
                     <TableEmpty v-if="filteredRows.length === 0" :colspan="9">
                         <div
-                            v-if="activeFilter === 'all' && receivables.length === 0"
+                            v-if="
+                                activeFilter === 'all' &&
+                                receivables.length === 0
+                            "
                             class="flex flex-col items-center gap-1 text-center"
                         >
-                            <p class="font-semibold">No outstanding receivables</p>
+                            <p class="font-semibold">
+                                No outstanding receivables
+                            </p>
                             <p class="text-muted-foreground">
-                                Balances appear here once an Owner approves an
+                                Balances appear here once an Admin approves an
                                 On-Credit request at the counter.
                             </p>
                         </div>
@@ -273,29 +298,42 @@ function dueSubLine(row: AccountsReceivableRow): string {
                             No settled or written-off entries yet.
                         </p>
                         <p v-else>
-                            Nothing in {{ BRACKET_LABELS[activeFilter] ?? activeFilter }}.
+                            Nothing in
+                            {{ BRACKET_LABELS[activeFilter] ?? activeFilter }}.
                         </p>
                     </TableEmpty>
                     <TableRow v-for="row in filteredRows" v-else :key="row.id">
                         <TableCell>
                             <div class="flex flex-col">
-                                <span class="text-muted-foreground text-xs tabular-nums">
+                                <span
+                                    class="text-muted-foreground text-xs tabular-nums"
+                                >
                                     {{ row.job_order.number ?? '—' }}
                                 </span>
                                 <span>{{ row.job_order.description }}</span>
                             </div>
                         </TableCell>
                         <TableCell>
-                            {{ row.job_order.queue_entry.customer?.name ?? '—' }}
+                            {{
+                                row.job_order.queue_entry.customer?.name ?? '—'
+                            }}
                         </TableCell>
                         <TableCell class="text-right tabular-nums">
                             {{ money(row.job_order.total_amount ?? 0) }}
                         </TableCell>
                         <TableCell class="text-right tabular-nums">
-                            {{ money((row.job_order.total_amount ?? 0) - row.balance) }}
+                            {{
+                                money(
+                                    (row.job_order.total_amount ?? 0) -
+                                        row.balance,
+                                )
+                            }}
                         </TableCell>
                         <TableCell class="text-right tabular-nums">
-                            <span v-if="row.balance <= 0" class="text-green-600 dark:text-green-400">
+                            <span
+                                v-if="row.balance <= 0"
+                                class="text-green-600 dark:text-green-400"
+                            >
                                 Settled
                             </span>
                             <span v-else>{{ money(row.balance) }}</span>
@@ -303,28 +341,53 @@ function dueSubLine(row: AccountsReceivableRow): string {
                         <TableCell>
                             <div class="flex flex-col">
                                 <span>{{ dueDateLabel(row.due_at) }}</span>
-                                <span v-if="dueSubLine(row)" class="text-muted-foreground text-sm">
+                                <span
+                                    v-if="dueSubLine(row)"
+                                    class="text-muted-foreground text-sm"
+                                >
                                     {{ dueSubLine(row) }}
                                 </span>
                             </div>
                         </TableCell>
                         <TableCell>
                             <Badge
-                                :variant="agingBadgeProps(row.aging_bracket).variant"
-                                :class="agingBadgeProps(row.aging_bracket).class"
+                                :variant="
+                                    agingBadgeProps(row.aging_bracket).variant
+                                "
+                                :class="
+                                    agingBadgeProps(row.aging_bracket).class
+                                "
                             >
-                                {{ BRACKET_LABELS[row.aging_bracket] ?? row.aging_bracket }}
+                                {{
+                                    BRACKET_LABELS[row.aging_bracket] ??
+                                    row.aging_bracket
+                                }}
                             </Badge>
                         </TableCell>
                         <TableCell>
                             <div class="flex flex-col items-start gap-1">
                                 <Badge
-                                    :variant="collectionStatusBadgeProps(row.collection_status).variant"
-                                    :class="collectionStatusBadgeProps(row.collection_status).class"
+                                    :variant="
+                                        collectionStatusBadgeProps(
+                                            row.collection_status,
+                                        ).variant
+                                    "
+                                    :class="
+                                        collectionStatusBadgeProps(
+                                            row.collection_status,
+                                        ).class
+                                    "
                                 >
-                                    {{ COLLECTION_STATUS_LABELS[row.collection_status] ?? row.collection_status }}
+                                    {{
+                                        COLLECTION_STATUS_LABELS[
+                                            row.collection_status
+                                        ] ?? row.collection_status
+                                    }}
                                 </Badge>
-                                <Badge v-if="row.write_off_requested_at" variant="secondary">
+                                <Badge
+                                    v-if="row.write_off_requested_at"
+                                    variant="secondary"
+                                >
                                     <Clock class="size-3" />
                                     Write-Off Pending
                                 </Badge>
@@ -343,6 +406,6 @@ function dueSubLine(row: AccountsReceivableRow): string {
                     </TableRow>
                 </TableBody>
             </Table>
-        </div>
-    </div>
+        </DataTableCard>
+    </PageContainer>
 </template>

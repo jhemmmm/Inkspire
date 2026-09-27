@@ -52,12 +52,14 @@ test('a valid token renders the tracking page with the number and its public sta
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->component('public/TrackingToken')
-        // Exactly four keys. Any future widening of this payload fails here,
-        // loudly, which is the point.
-        ->has('result', 4)
+        // Exactly five keys. Any future widening of this payload fails here,
+        // loudly, which is the point. `stageKey` is the machine form of
+        // `stage` and carries nothing `stage` does not.
+        ->has('result', 5)
         ->where('result.found', true)
         ->where('result.number', 'JO-2026-0777')
         ->where('result.stage', 'Printing')
+        ->where('result.stageStep', 2)
         ->where('result.reviewUrl', null));
 });
 

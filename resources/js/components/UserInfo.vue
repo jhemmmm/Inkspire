@@ -2,15 +2,18 @@
 import { computed } from 'vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useInitials } from '@/composables/useInitials';
+import { roleLabel } from '@/lib/roles';
 import type { User } from '@/types';
 
 type Props = {
     user: User;
     showEmail?: boolean;
+    showRole?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
     showEmail: false,
+    showRole: false,
 });
 
 const { getInitials } = useInitials();
@@ -33,6 +36,9 @@ const showAvatar = computed(
         <span class="truncate font-medium">{{ user.name }}</span>
         <span v-if="showEmail" class="text-muted-foreground truncate text-xs">{{
             user.email
+        }}</span>
+        <span v-if="showRole" class="text-muted-foreground truncate text-xs">{{
+            roleLabel(user.role)
         }}</span>
     </div>
 </template>

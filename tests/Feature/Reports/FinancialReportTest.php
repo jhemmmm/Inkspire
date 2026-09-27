@@ -25,23 +25,23 @@ function financialReportHeaders(): array
     ];
 }
 
-test("owner's reports prop is the union of all five report types (D-05)", function () {
-    $owner = User::factory()->owner()->create();
+test("admin's reports prop is the union of all five report types (D-05)", function () {
+    $admin = User::factory()->admin()->create();
 
-    $response = $this->actingAs($owner)->withHeaders(financialReportHeaders())->get(route('owner.reports.index'));
+    $response = $this->actingAs($admin)->withHeaders(financialReportHeaders())->get(route('admin.reports.index'));
 
     $response->assertOk();
     expect(array_keys($response->json('props.reports')))->toBe(['sales', 'cancellations', 'production-status', 'expenses', 'financial-summary']);
 });
 
-test('an admin hitting the owner reports route directly gets a 403, not a 200 (D-05/Pitfall 2)', function () {
-    $admin = User::factory()->admin()->create();
+test('a staff role hitting the admin reports route directly gets a 403, not a 200 (Pitfall 2)', function () {
+    $frontline = User::factory()->frontlineStaff()->create();
 
-    $this->actingAs($admin)->get(route('owner.reports.index'))->assertForbidden();
+    $this->actingAs($frontline)->get(route('admin.reports.index'))->assertForbidden();
 });
 
 test('financial-summary splits revenue into job sales and cancellation fees, and discloses an in-range write-off without subtracting it from result (D-09/D-10)', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
 
     $salesJobOrder = JobOrder::factory()->create(['total_amount' => 1000]);
     Transaction::factory()->for($salesJobOrder)->create([
@@ -71,9 +71,9 @@ test('financial-summary splits revenue into job sales and cancellation fees, and
     $accountsReceivable = AccountsReceivable::factory()->active()->for($writeOffJobOrder)->create();
     $accountsReceivable->forceFill(['written_off_at' => now()])->save();
 
-    $response = $this->actingAs($owner)
+    $response = $this->actingAs($admin)
         ->withHeaders(financialReportHeaders())
-        ->get(route('owner.reports.index', ['report' => 'financial-summary']));
+        ->get(route('admin.reports.index', ['report' => 'financial-summary']));
 
     $response->assertOk();
     $summary = $response->json('props.summary');
@@ -87,7 +87,7 @@ test('financial-summary splits revenue into job sales and cancellation fees, and
 });
 
 test('revenue is computed from confirmed_at, not created_at -- a transaction confirmed outside the range is excluded even when created inside it, and vice versa (D-08/Pitfall 1)', function () {
-    $owner = User::factory()->owner()->create();
+    $admin = User::factory()->admin()->create();
 
     $from = now()->startOfMonth();
     $to = now()->endOfMonth();
@@ -108,9 +108,9 @@ test('revenue is computed from confirmed_at, not created_at -- a transaction con
         'confirmed_at' => now(),
     ]);
 
-    $response = $this->actingAs($owner)
+    $response = $this->actingAs($admin)
         ->withHeaders(financialReportHeaders())
-        ->get(route('owner.reports.index', ['report' => 'sales']));
+        ->get(route('admin.reports.index', ['report' => 'sales']));
 
     $response->assertOk();
     $rows = $response->json('props.rows');

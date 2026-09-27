@@ -1,0 +1,170 @@
+<script setup lang="ts">
+import { Check, ChevronDown, Search } from '@lucide/vue';
+import {
+    ComboboxAnchor,
+    ComboboxContent,
+    ComboboxEmpty,
+    ComboboxInput,
+    ComboboxItem,
+    ComboboxItemIndicator,
+    ComboboxPortal,
+    ComboboxRoot,
+    ComboboxTrigger,
+    ComboboxViewport,
+} from 'reka-ui';
+import { computed, ref } from 'vue';
+import { cn } from '@/lib/utils';
+
+export interface SearchableOption {
+    value: string;
+    label: string;
+    /** Secondary line — a price, a dimension, whatever disambiguates. */
+    hint?: string;
+}
+
+const props = withDefaults(
+    defineProps<{
+        options: SearchableOption[];
+        id?: string;
+        placeholder?: string;
+        searchPlaceholder?: string;
+        emptyText?: string;
+        class?: string;
+    }>(),
+    {
+        placeholder: 'Select an option',
+        searchPlaceholder: 'Type to search…',
+        emptyText: 'Nothing matches that search.',
+    },
+);
+
+const model = defineModel<string>({ default: '' });
+
+const search = ref('');
+
+const selected = computed(() =>
+    props.options.find((option) => option.value === model.value),
+);
+
+/**
+ * Filtering is done here rather than through the library's own matcher so the
+ * rule is visible and testable: a case-insensitive substring match across both
+ * the label and its hint, so "sintra" finds "Tarp on Sintraboard" and "1500"
+ * finds the banner priced at that.
+ */
+/**
+ * Clear the search term whenever the menu opens.
+ *
+ * `displayValue` writes the selected label into the input, and the input *is*
+ * the search term — so reopening a field that already had a value filtered the
+ * list down to that one item, and typing appended to it ("Mug Printbacklit"),
+ * leaving no way to change a selection without manually clearing the field.
+ *
+ * While the menu is open the input is empty and the current selection shows as
+ * the placeholder; closing restores the label via `resetSearchTermOnBlur`.
+ */
+function onOpenChange(open: boolean): void {
+    if (open) {
+        search.value = '';
+    }
+}
+
+const matches = computed(() => {
+    const term = search.value.trim().toLowerCase();
+
+    if (term === '') {
+        return props.options;
+    }
+
+    return props.options.filter((option) =>
+        `${option.label} ${option.hint ?? ''}`.toLowerCase().includes(term),
+    );
+});
+</script>
+
+<template>
+    <!--
+        `openOnClick` and `openOnFocus` both default to FALSE in reka-ui, so
+        without them the menu only opens via the chevron or the keyboard —
+        clicking the field appeared to do nothing.
+    -->
+    <ComboboxRoot
+        v-model="model"
+        :ignore-filter="true"
+        :open-on-click="true"
+        :open-on-focus="true"
+        class="relative"
+        @update:open="onOpenChange"
+    >
+        <ComboboxAnchor as-child>
+            <!--
+                Styled to match SelectTrigger exactly, so a searchable field
+                and a plain one sitting in the same form look like the same
+                control rather than two different widgets.
+            -->
+            <div
+                :class="
+                    cn(
+                        'border-input bg-card focus-within:border-ring focus-within:ring-ring/50 dark:bg-input/30 flex h-9 w-full items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]',
+                        props.class,
+                    )
+                "
+            >
+                <Search class="text-muted-foreground size-4 shrink-0" />
+                <!--
+                    The search term lives on the *input*, not the root:
+                    ComboboxRoot emits only update:modelValue / update:open /
+                    highlight, so binding a search term to it silently did
+                    nothing and the filter never saw a keystroke.
+                -->
+                <ComboboxInput
+                    :id="id"
+                    v-model="search"
+                    class="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent outline-none"
+                    :placeholder="selected?.label ?? placeholder"
+                    :display-value="() => selected?.label ?? ''"
+                />
+                <ComboboxTrigger class="shrink-0">
+                    <ChevronDown class="size-4 opacity-50" />
+                </ComboboxTrigger>
+            </div>
+        </ComboboxAnchor>
+
+        <ComboboxPortal>
+            <ComboboxContent
+                position="popper"
+                class="bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 z-50 mt-1 max-h-72 w-(--reka-combobox-trigger-width) overflow-hidden rounded-md border shadow-md"
+            >
+                <ComboboxViewport class="max-h-72 overflow-y-auto p-1">
+                    <ComboboxEmpty
+                        class="text-muted-foreground px-2 py-6 text-center text-sm"
+                    >
+                        {{ emptyText }}
+                    </ComboboxEmpty>
+
+                    <ComboboxItem
+                        v-for="option in matches"
+                        :key="option.value"
+                        :value="option.value"
+                        class="data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none"
+                    >
+                        <span class="flex min-w-0 flex-col gap-0.5">
+                            <span class="truncate">{{ option.label }}</span>
+                            <span
+                                v-if="option.hint"
+                                class="text-muted-foreground text-xs tabular-nums"
+                            >
+                                {{ option.hint }}
+                            </span>
+                        </span>
+                        <ComboboxItemIndicator
+                            class="absolute right-2 flex size-3.5 items-center justify-center"
+                        >
+                            <Check class="size-4" />
+                        </ComboboxItemIndicator>
+                    </ComboboxItem>
+                </ComboboxViewport>
+            </ComboboxContent>
+        </ComboboxPortal>
+    </ComboboxRoot>
+</template>

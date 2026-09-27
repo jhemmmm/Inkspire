@@ -7,6 +7,7 @@ Items discovered during execution that are out of scope for the current task/pla
 **Discovered during:** Plan 04-01, Task 3 verification pass.
 
 **Symptom:**
+
 ```
 PHP Warning: PHP Startup: Unable to load dynamic library '.../vendor/phpstan/phpstan/turbo-ext/linux-gnu-x86_64/phpstan_turbo-8.4.so'
 (/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.33' not found)
@@ -36,6 +37,7 @@ downgrading/reinstalling `phpstan/phpstan` without the turbo-ext, or pin a compa
 this plan's own `<verification>` block, run as an extra precaution).
 
 **Symptom:**
+
 ```
 app/Http/Controllers/FrontlineStaff/QueueEntryController.php:181
   Match expression does not handle remaining values: App\Enums\JobOrderStatus::DesignApproved|

@@ -4,92 +4,92 @@ reviewed: 2026-09-01T00:00:00Z
 depth: standard
 files_reviewed: 81
 files_reviewed_list:
-  - app/Actions/Fortify/CaptureAuthenticatedSessionId.php
-  - app/Actions/Fortify/EnsureAccountIsNotLocked.php
-  - app/Concerns/SystemConfigValidationRules.php
-  - app/Enums/UserRole.php
-  - app/Http/Controllers/Owner/AuditTrailController.php
-  - app/Http/Controllers/Owner/SystemConfigurationController.php
-  - app/Http/Controllers/Owner/UserManagementController.php
-  - app/Http/Middleware/EnforceIdleSessionTimeout.php
-  - app/Http/Middleware/EnsureUserHasRole.php
-  - app/Http/Middleware/VerifySingleSession.php
-  - app/Http/Requests/Owner/DeactivateUserRequest.php
-  - app/Http/Requests/Owner/ReactivateUserRequest.php
-  - app/Http/Requests/Owner/UpdateSystemConfigurationRequest.php
-  - app/Http/Responses/LoginResponse.php
-  - app/Listeners/Auth/HandleLogout.php
-  - app/Listeners/Auth/HandleSuccessfulLogin.php
-  - app/Listeners/Auth/RecordFailedLoginAttempt.php
-  - app/Listeners/Auth/RecordLockoutEvent.php
-  - app/Models/AuditLog.php
-  - app/Models/SystemConfiguration.php
-  - app/Models/User.php
-  - app/Observers/AuditObserver.php
-  - app/Policies/UserPolicy.php
-  - app/Providers/AppServiceProvider.php
-  - app/Providers/FortifyServiceProvider.php
-  - app/Support/AuditLogger.php
-  - bootstrap/app.php
-  - database/factories/UserFactory.php
-  - database/migrations/2026_08_31_165341_add_rbac_and_lockout_columns_to_users_table.php
-  - database/migrations/2026_08_31_165342_create_audit_trail_table.php
-  - database/migrations/2026_08_31_171450_create_system_configurations_table.php
-  - database/seeders/DatabaseSeeder.php
-  - database/seeders/SystemConfigurationSeeder.php
-  - resources/js/app.ts
-  - resources/js/components/AppSidebar.vue
-  - resources/js/components/ui/alert-dialog/AlertDialog.vue
-  - resources/js/components/ui/alert-dialog/AlertDialogAction.vue
-  - resources/js/components/ui/alert-dialog/AlertDialogCancel.vue
-  - resources/js/components/ui/alert-dialog/AlertDialogContent.vue
-  - resources/js/components/ui/alert-dialog/AlertDialogDescription.vue
-  - resources/js/components/ui/alert-dialog/AlertDialogFooter.vue
-  - resources/js/components/ui/alert-dialog/AlertDialogHeader.vue
-  - resources/js/components/ui/alert-dialog/AlertDialogTitle.vue
-  - resources/js/components/ui/alert-dialog/AlertDialogTrigger.vue
-  - resources/js/components/ui/switch/Switch.vue
-  - resources/js/components/ui/tabs/Tabs.vue
-  - resources/js/components/ui/tabs/TabsContent.vue
-  - resources/js/components/ui/tabs/TabsList.vue
-  - resources/js/components/ui/tabs/TabsTrigger.vue
-  - resources/js/config/nav/owner.ts
-  - resources/js/layouts/AppLayout.vue
-  - resources/js/layouts/app/AppSidebarLayout.vue
-  - resources/js/pages/accounting-staff/Dashboard.vue
-  - resources/js/pages/artist/Dashboard.vue
-  - resources/js/pages/cashier/Dashboard.vue
-  - resources/js/pages/errors/Forbidden.vue
-  - resources/js/pages/frontline-staff/Dashboard.vue
-  - resources/js/pages/owner/AuditTrail.vue
-  - resources/js/pages/owner/Dashboard.vue
-  - resources/js/pages/owner/SystemConfiguration.vue
-  - resources/js/pages/owner/UserManagement.vue
-  - resources/js/pages/production-staff/Dashboard.vue
-  - resources/js/types/auth.ts
-  - routes/owner.php
-  - routes/portals.php
-  - routes/web.php
-  - tests/Feature/Auth/AccountLockoutTest.php
-  - tests/Feature/Auth/AuthAuditTrailTest.php
-  - tests/Feature/Auth/AuthenticationTest.php
-  - tests/Feature/Auth/IdleTimeoutTest.php
-  - tests/Feature/Auth/PasswordComplexityTest.php
-  - tests/Feature/Auth/PasswordResetTest.php
-  - tests/Feature/Auth/SingleSessionTest.php
-  - tests/Feature/Owner/AuditTrailTest.php
-  - tests/Feature/Owner/SystemConfigurationTest.php
-  - tests/Feature/Owner/UserManagementTest.php
-  - tests/Feature/RoleBoundaryTest.php
-  - tests/Feature/Settings/SecurityTest.php
-  - tests/Pest.php
-  - tests/Unit/Arch/AuditLogArchTest.php
-  - tests/Unit/SystemConfigurationTest.php
+    - app/Actions/Fortify/CaptureAuthenticatedSessionId.php
+    - app/Actions/Fortify/EnsureAccountIsNotLocked.php
+    - app/Concerns/SystemConfigValidationRules.php
+    - app/Enums/UserRole.php
+    - app/Http/Controllers/Owner/AuditTrailController.php
+    - app/Http/Controllers/Owner/SystemConfigurationController.php
+    - app/Http/Controllers/Owner/UserManagementController.php
+    - app/Http/Middleware/EnforceIdleSessionTimeout.php
+    - app/Http/Middleware/EnsureUserHasRole.php
+    - app/Http/Middleware/VerifySingleSession.php
+    - app/Http/Requests/Owner/DeactivateUserRequest.php
+    - app/Http/Requests/Owner/ReactivateUserRequest.php
+    - app/Http/Requests/Owner/UpdateSystemConfigurationRequest.php
+    - app/Http/Responses/LoginResponse.php
+    - app/Listeners/Auth/HandleLogout.php
+    - app/Listeners/Auth/HandleSuccessfulLogin.php
+    - app/Listeners/Auth/RecordFailedLoginAttempt.php
+    - app/Listeners/Auth/RecordLockoutEvent.php
+    - app/Models/AuditLog.php
+    - app/Models/SystemConfiguration.php
+    - app/Models/User.php
+    - app/Observers/AuditObserver.php
+    - app/Policies/UserPolicy.php
+    - app/Providers/AppServiceProvider.php
+    - app/Providers/FortifyServiceProvider.php
+    - app/Support/AuditLogger.php
+    - bootstrap/app.php
+    - database/factories/UserFactory.php
+    - database/migrations/2026_08_31_165341_add_rbac_and_lockout_columns_to_users_table.php
+    - database/migrations/2026_08_31_165342_create_audit_trail_table.php
+    - database/migrations/2026_08_31_171450_create_system_configurations_table.php
+    - database/seeders/DatabaseSeeder.php
+    - database/seeders/SystemConfigurationSeeder.php
+    - resources/js/app.ts
+    - resources/js/components/AppSidebar.vue
+    - resources/js/components/ui/alert-dialog/AlertDialog.vue
+    - resources/js/components/ui/alert-dialog/AlertDialogAction.vue
+    - resources/js/components/ui/alert-dialog/AlertDialogCancel.vue
+    - resources/js/components/ui/alert-dialog/AlertDialogContent.vue
+    - resources/js/components/ui/alert-dialog/AlertDialogDescription.vue
+    - resources/js/components/ui/alert-dialog/AlertDialogFooter.vue
+    - resources/js/components/ui/alert-dialog/AlertDialogHeader.vue
+    - resources/js/components/ui/alert-dialog/AlertDialogTitle.vue
+    - resources/js/components/ui/alert-dialog/AlertDialogTrigger.vue
+    - resources/js/components/ui/switch/Switch.vue
+    - resources/js/components/ui/tabs/Tabs.vue
+    - resources/js/components/ui/tabs/TabsContent.vue
+    - resources/js/components/ui/tabs/TabsList.vue
+    - resources/js/components/ui/tabs/TabsTrigger.vue
+    - resources/js/config/nav/owner.ts
+    - resources/js/layouts/AppLayout.vue
+    - resources/js/layouts/app/AppSidebarLayout.vue
+    - resources/js/pages/accounting-staff/Dashboard.vue
+    - resources/js/pages/artist/Dashboard.vue
+    - resources/js/pages/cashier/Dashboard.vue
+    - resources/js/pages/errors/Forbidden.vue
+    - resources/js/pages/frontline-staff/Dashboard.vue
+    - resources/js/pages/owner/AuditTrail.vue
+    - resources/js/pages/owner/Dashboard.vue
+    - resources/js/pages/owner/SystemConfiguration.vue
+    - resources/js/pages/owner/UserManagement.vue
+    - resources/js/pages/production-staff/Dashboard.vue
+    - resources/js/types/auth.ts
+    - routes/owner.php
+    - routes/portals.php
+    - routes/web.php
+    - tests/Feature/Auth/AccountLockoutTest.php
+    - tests/Feature/Auth/AuthAuditTrailTest.php
+    - tests/Feature/Auth/AuthenticationTest.php
+    - tests/Feature/Auth/IdleTimeoutTest.php
+    - tests/Feature/Auth/PasswordComplexityTest.php
+    - tests/Feature/Auth/PasswordResetTest.php
+    - tests/Feature/Auth/SingleSessionTest.php
+    - tests/Feature/Owner/AuditTrailTest.php
+    - tests/Feature/Owner/SystemConfigurationTest.php
+    - tests/Feature/Owner/UserManagementTest.php
+    - tests/Feature/RoleBoundaryTest.php
+    - tests/Feature/Settings/SecurityTest.php
+    - tests/Pest.php
+    - tests/Unit/Arch/AuditLogArchTest.php
+    - tests/Unit/SystemConfigurationTest.php
 findings:
-  critical: 1
-  warning: 5
-  info: 3
-  total: 9
+    critical: 1
+    warning: 5
+    info: 3
+    total: 9
 status: issues_found
 ---
 
@@ -126,6 +126,7 @@ One boolean-configuration hypothesis I initially suspected (string `"false"` rou
 `AuditLog` has no `#[Hidden]` attributes and `AuditTrailController::index()` selects/returns full `AuditLog` rows (no column restriction) directly as Inertia props. `resources/js/pages/owner/AuditTrail.vue`'s own `AuditEntry` interface types `old_values`/`new_values` as arbitrary records, and `tests/Feature/Owner/AuditTrailTest.php` ("preserve the D-03 before/after value shape") already proves `new_values.<field>` is present and readable in the actual Inertia response payload — i.e. this isn't just a theoretical DB-level concern, the raw JSON is served to the browser on every Owner/Admin page visit to Audit Trail.
 
 **Verified with a temporary, non-committed test** (`User::factory()->create()` then read back `audit_trail.new_values`):
+
 ```
 new_values: {"name":"Mr. Ayden Mertz MD","email":"...","email_verified_at":"...",
 "password":"$2y$04$L52YE4w\/pCDf\/0MCJDdg6ONJcQxiaDa4wdI0NPCKoRFyaO\/7Dya.e",
@@ -153,6 +154,7 @@ private function redact(Model $model, array $attributes): array
     return array_diff_key($attributes, array_flip($model->getHidden()));
 }
 ```
+
 Apply the same redaction inside `updated()`'s `getChanges()`/`getOriginal()` extraction for defense in depth (a future column added to `$hidden` should never require remembering to also update this observer). Consider additionally excluding `old_values`/`new_values` from the `AuditLog` payload sent to the frontend for actions where they aren't needed, rather than shipping full row JSON unconditionally.
 
 ## Warnings
@@ -164,6 +166,7 @@ Apply the same redaction inside `updated()`'s `getChanges()`/`getOriginal()` ext
 **Issue:** `$request->date('from')` / `$request->date('to')` are called directly on unvalidated query-string input. `Illuminate\Support\Traits\InteractsWithData::date()` throws `Carbon\Exceptions\InvalidFormatException` when the value can't be parsed, and nothing in this controller catches or validates it. Confirmed with a temporary test: `GET /owner/audit-trail?from=not-a-date` returns HTTP 500 instead of a graceful validation error, for an internal page a logged-in Owner/Admin could trivially hit by hand-editing the URL or bookmarking a stale filtered link.
 
 **Fix:** Validate filter input before use, e.g. via a lightweight `FormRequest` or manual `Validator::make($request->only(['from','to']), ['from' => 'nullable|date', 'to' => 'nullable|date'])->validate()`, or wrap the parse:
+
 ```php
 ->when($request->filled('from'), function ($q) use ($request) {
     $from = rescue(fn () => $request->date('from'), report: false);
@@ -186,6 +189,7 @@ Apply the same redaction inside `updated()`'s `getChanges()`/`getOriginal()` ext
 **Issue:** The seeder uses `updateOrCreate()` and its docblock explicitly claims it is "idempotent and safe to re-run." `SystemConfiguration::getInt/getBool/getArray/getString` cache resolved values with `Cache::rememberForever()`, and the model's own `invalidate()` helper exists specifically because "a stale cached value would otherwise persist indefinitely." `SystemConfigurationController::update()` correctly calls `invalidate()` after each write, but the seeder never does. If the seeder is re-run in an environment where a value was already read (and thus cached) earlier — e.g. to roll out a new default for an existing key — the change silently has no effect until something else clears the cache.
 
 **Fix:** Invalidate after each write in the seeder loop:
+
 ```php
 foreach ($configurations as $configuration) {
     SystemConfiguration::updateOrCreate(['key' => $configuration['key']], $configuration);
@@ -202,6 +206,7 @@ foreach ($configurations as $configuration) {
 Compounding this, `resources/js/pages/errors/Forbidden.vue` — the page every role sees after a 403 — links "Return to your dashboard" to this same generic `dashboard()` route (`@/routes`) instead of the signed-in user's own role-specific portal (`role.portalRoute()`/`ownerNavItems`-style routes used elsewhere). A Cashier who gets a 403 and clicks "Return to your dashboard" lands on the generic starter-kit page, not `/cashier/dashboard`.
 
 **Fix:** Either remove the generic `/dashboard` route/page (preferred, since it has no purpose once every role has a dedicated portal) or gate it behind the same role-aware redirect used by `LoginResponse`. Fix the Forbidden page to link to the user's own portal, e.g. pass the resolved portal route from `bootstrap/app.php`'s exception handler alongside `role`:
+
 ```php
 // bootstrap/app.php
 return Inertia::render('errors/Forbidden', [

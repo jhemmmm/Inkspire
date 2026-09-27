@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
 import ReportsWorkspace from '@/components/reports/ReportsWorkspace.vue';
-import { ownerNavItems } from '@/config/nav/owner';
+import PageContainer from '@/components/PageContainer.vue';
+import PageHeader from '@/components/PageHeader.vue';
+import { adminNavItems } from '@/config/nav/admin';
 import {
     pdf as reportsExportPdf,
     xlsx as reportsExportXlsx,
-} from '@/routes/owner/reports/export';
-import { index as reportsIndex } from '@/routes/owner/reports';
+} from '@/routes/admin/reports/export';
+import { index as reportsIndex } from '@/routes/admin/reports';
 
 interface ReportDefinition {
     title: string;
@@ -30,13 +32,14 @@ const props = defineProps<{
     columns: string[];
     rows: Record<string, unknown>[];
     rowsTotal: number;
+    rowsAmountTotal: number | null;
     summary: FinancialSummary | null;
     filters: { from: string; to: string };
 }>();
 
 defineOptions({
     layout: {
-        navItems: ownerNavItems,
+        navItems: adminNavItems,
         breadcrumbs: [{ title: 'Reports', href: reportsIndex() }],
     },
 });
@@ -57,15 +60,11 @@ function exportXlsxUrl(key: string): string {
 <template>
     <Head title="Reports" />
 
-    <div
-        class="flex h-full flex-1 flex-col gap-6 overflow-x-auto rounded-xl p-4"
-    >
-        <div class="flex flex-col gap-1">
-            <h1 class="text-[28px] leading-[1.2] font-semibold">Reports</h1>
-            <p class="text-muted-foreground text-sm">
-                Every report in the system, over any date range you choose.
-            </p>
-        </div>
+    <PageContainer>
+        <PageHeader
+            title="Reports"
+            description="Every report in the system, over any date range you choose. Export to PDF or Excel."
+        />
 
         <ReportsWorkspace
             v-bind="props"
@@ -73,5 +72,5 @@ function exportXlsxUrl(key: string): string {
             :export-pdf-url="exportPdfUrl"
             :export-xlsx-url="exportXlsxUrl"
         />
-    </div>
+    </PageContainer>
 </template>

@@ -73,7 +73,8 @@ const props = defineProps<{
         consultation_notes: string | null;
         client_notes: string | null;
         print_size: string | null;
-        material: string | null;
+        width_ft: string | null;
+        height_ft: string | null;
         quantity: number | null;
         validation_failure_reason: string | null;
         canEditConsultation: boolean;
@@ -212,7 +213,7 @@ function outcomeLabel(outcome: string | null): string {
                 <Badge
                     v-if="jobOrder.is_rush"
                     variant="outline"
-                    class="border-amber-600/40 text-amber-600 dark:text-amber-400"
+                    class="border-brand/40 text-brand"
                     data-test="workspace-rush-badge"
                 >
                     <Zap class="size-3" />
@@ -267,9 +268,13 @@ function outcomeLabel(outcome: string | null): string {
                         </dd>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <dt class="text-muted-foreground text-sm">Material</dt>
-                        <dd class="font-medium">
-                            {{ jobOrder.material ?? '—' }}
+                        <dt class="text-muted-foreground text-sm">Size</dt>
+                        <dd class="font-medium tabular-nums">
+                            {{
+                                jobOrder.width_ft && jobOrder.height_ft
+                                    ? `${jobOrder.width_ft} ft × ${jobOrder.height_ft} ft`
+                                    : '—'
+                            }}
                         </dd>
                     </div>
                     <div class="flex flex-col gap-1">
@@ -433,7 +438,7 @@ function outcomeLabel(outcome: string | null): string {
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
                                     Once approved, this design file becomes
-                                    read-only. Only an Owner can unlock it for
+                                    read-only. Only an Admin can unlock it for
                                     further edits.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>

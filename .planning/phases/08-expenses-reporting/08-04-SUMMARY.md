@@ -6,66 +6,66 @@ tags: [laravel, dompdf, blade, pdf, audit, openspout, xlsx]
 
 # Dependency graph
 requires:
-  - phase: 08-expenses-reporting
-    plan: 03
-    provides: "ReportRegistry (entitlement), ReportBuilder (rows()/summary(), uncapped)"
-  - phase: 07-accounts-receivable
-    provides: "CollectionLetterController::show(), AccountsReceivableAgingBracket::letterBody()"
+    - phase: 08-expenses-reporting
+      plan: 03
+      provides: 'ReportRegistry (entitlement), ReportBuilder (rows()/summary(), uncapped)'
+    - phase: 07-accounts-receivable
+      provides: 'CollectionLetterController::show(), AccountsReceivableAgingBracket::letterBody()'
 provides:
-  - "AuditLogger::recordReportExport() -- D-02's non-model-driven export audit write"
-  - "resources/views/reports/layout.blade.php -- shared A4/DejaVu Sans PDF shell (page-numbered footer via dompdf's isPhpEnabled/page_text, since no CSS-only page-counter exists in the installed dompdf version)"
-  - "ReportExportController::exportPdf -- entitlement-gated PDF export for all five report keys, audited before rendering"
-  - "ReportExportController::exportXlsx -- entitlement-gated, uncapped, streamed .xlsx export for all five report keys via openspout v5, audited before streaming"
-  - "CollectionLetterController::pdf() -- D-03's bounded PDF extension, show()/CollectionLetter.vue untouched"
-  - "barryvdh/laravel-dompdf ^3.1 (resolved v3.1.2) installed and verified working"
-  - "openspout/openspout ^5.0 (resolved v5.11.3) installed via a targeted --ignore-platform-req=ext-zip override"
-  - "TestCase::skipUnlessZipAvailable() -- conditional-skip precedent for any future test that invokes an ext-zip-dependent writer"
+    - "AuditLogger::recordReportExport() -- D-02's non-model-driven export audit write"
+    - "resources/views/reports/layout.blade.php -- shared A4/DejaVu Sans PDF shell (page-numbered footer via dompdf's isPhpEnabled/page_text, since no CSS-only page-counter exists in the installed dompdf version)"
+    - 'ReportExportController::exportPdf -- entitlement-gated PDF export for all five report keys, audited before rendering'
+    - 'ReportExportController::exportXlsx -- entitlement-gated, uncapped, streamed .xlsx export for all five report keys via openspout v5, audited before streaming'
+    - "CollectionLetterController::pdf() -- D-03's bounded PDF extension, show()/CollectionLetter.vue untouched"
+    - 'barryvdh/laravel-dompdf ^3.1 (resolved v3.1.2) installed and verified working'
+    - 'openspout/openspout ^5.0 (resolved v5.11.3) installed via a targeted --ignore-platform-req=ext-zip override'
+    - 'TestCase::skipUnlessZipAvailable() -- conditional-skip precedent for any future test that invokes an ext-zip-dependent writer'
 affects: [08-05-reports-ui]
 
 # Tech tracking
 tech-stack:
-  added:
-    - "barryvdh/laravel-dompdf ^3.1 (resolved v3.1.2, dompdf/dompdf v3.1.6)"
-    - "openspout/openspout ^5.0 (resolved v5.11.3), installed with --ignore-platform-req=ext-zip since this sandbox's PHP 8.4 CLI has no ext-zip loaded (Laravel Cloud, the production target, does)"
-  patterns:
-    - "dompdf page-number footer via a <script type=\"text/php\"> block + Pdf::setOption('isPhpEnabled', true) scoped per-instance (never global config) -- verified against the installed dompdf v3.1.6 source (Canvas::page_text, PhpEvaluator, Options::isPhpEnabled), since this dompdf version has no CSS Paged Media @bottom-center/counter(page) margin-box support"
-    - "resources/views/reports/layout.blade.php's Range/Generated-by meta lines wrapped in @isset so non-report PDFs (the collection letter) can extend the same shell without synthesizing fake range data"
-    - "Every report/letter Blade interpolation uses {{ }}; addslashes() specifically on the two strings interpolated into the PHP-eval footer script, since that text becomes eval()'d PHP source, not just HTML"
-    - "openspout v5 Writer: new Writer() -> openToFile('php://output') -> addRow(Row::fromValues([...])) -> close(), wrapped inside response()->streamDownload() -- never openToBrowser(), which bypasses Laravel's response lifecycle and could let bytes stream before the D-02 audit write lands"
-    - "xlsx exports carry raw numeric money cells and ISO YYYY-MM-DD date strings, never the display-formatted strings the on-screen Inertia props carry -- a binding data contract, not a styling choice"
-    - "TestCase::skipUnlessZipAvailable() gates only the tests that actually invoke the xlsx writer; entitlement/denial tests for export routes always run, since a 403 check never reaches the writer"
+    added:
+        - 'barryvdh/laravel-dompdf ^3.1 (resolved v3.1.2, dompdf/dompdf v3.1.6)'
+        - "openspout/openspout ^5.0 (resolved v5.11.3), installed with --ignore-platform-req=ext-zip since this sandbox's PHP 8.4 CLI has no ext-zip loaded (Laravel Cloud, the production target, does)"
+    patterns:
+        - 'dompdf page-number footer via a <script type="text/php"> block + Pdf::setOption(''isPhpEnabled'', true) scoped per-instance (never global config) -- verified against the installed dompdf v3.1.6 source (Canvas::page_text, PhpEvaluator, Options::isPhpEnabled), since this dompdf version has no CSS Paged Media @bottom-center/counter(page) margin-box support'
+        - "resources/views/reports/layout.blade.php's Range/Generated-by meta lines wrapped in @isset so non-report PDFs (the collection letter) can extend the same shell without synthesizing fake range data"
+        - "Every report/letter Blade interpolation uses {{ }}; addslashes() specifically on the two strings interpolated into the PHP-eval footer script, since that text becomes eval()'d PHP source, not just HTML"
+        - "openspout v5 Writer: new Writer() -> openToFile('php://output') -> addRow(Row::fromValues([...])) -> close(), wrapped inside response()->streamDownload() -- never openToBrowser(), which bypasses Laravel's response lifecycle and could let bytes stream before the D-02 audit write lands"
+        - 'xlsx exports carry raw numeric money cells and ISO YYYY-MM-DD date strings, never the display-formatted strings the on-screen Inertia props carry -- a binding data contract, not a styling choice'
+        - 'TestCase::skipUnlessZipAvailable() gates only the tests that actually invoke the xlsx writer; entitlement/denial tests for export routes always run, since a 403 check never reaches the writer'
 
 key-files:
-  created:
-    - resources/views/reports/layout.blade.php
-    - resources/views/reports/sales.blade.php
-    - resources/views/reports/cancellations.blade.php
-    - resources/views/reports/production-status.blade.php
-    - resources/views/reports/expenses.blade.php
-    - resources/views/reports/financial-summary.blade.php
-    - resources/views/reports/collection-letter.blade.php
-    - app/Http/Controllers/Reports/ReportExportController.php
-    - tests/Feature/AccountingStaff/CollectionLetterPdfTest.php
-    - tests/Feature/Reports/ReportExportTest.php
-  modified:
-    - app/Support/AuditLogger.php
-    - app/Http/Controllers/AccountingStaff/CollectionLetterController.php
-    - resources/js/pages/accounting-staff/AccountsReceivable/Show.vue
-    - routes/owner.php
-    - routes/portals.php
-    - composer.json
-    - composer.lock
-    - tests/TestCase.php
-    - .planning/phases/08-expenses-reporting/deferred-items.md
+    created:
+        - resources/views/reports/layout.blade.php
+        - resources/views/reports/sales.blade.php
+        - resources/views/reports/cancellations.blade.php
+        - resources/views/reports/production-status.blade.php
+        - resources/views/reports/expenses.blade.php
+        - resources/views/reports/financial-summary.blade.php
+        - resources/views/reports/collection-letter.blade.php
+        - app/Http/Controllers/Reports/ReportExportController.php
+        - tests/Feature/AccountingStaff/CollectionLetterPdfTest.php
+        - tests/Feature/Reports/ReportExportTest.php
+    modified:
+        - app/Support/AuditLogger.php
+        - app/Http/Controllers/AccountingStaff/CollectionLetterController.php
+        - resources/js/pages/accounting-staff/AccountsReceivable/Show.vue
+        - routes/owner.php
+        - routes/portals.php
+        - composer.json
+        - composer.lock
+        - tests/TestCase.php
+        - .planning/phases/08-expenses-reporting/deferred-items.md
 
 key-decisions:
-  - "dompdf page numbering uses the isPhpEnabled/<script type=\"text/php\"> mechanism (Canvas::page_text with {PAGE_NUM}/{PAGE_COUNT} substitution), scoped per PDF instance via ->setOption(), never dompdf.php's global config -- confirmed via source read that this dompdf version has no CSS-only page-counter alternative"
-  - "CollectionLetterController::pdf() adds a THIRD guard beyond show()'s two verbatim-copied lines: abort_if(bracket === Current, 404). A PDF has no equivalent of show()'s 200-with-pastDue-false screen state, and AccountsReceivableAgingBracket::Current->letterBody() throws by design, so an uncaught LogicException (500) would result without this guard. Documented explicitly since the plan's action text described only two copied lines but its own acceptance test required the Current-bracket 404."
-  - "Task 2 (openspout/openspout xlsx export) was initially blocked because ext-zip is unavailable for this sandbox's PHP 8.4 CLI, with no apt package, no root, and a stale phpize/php-config toolchain. Further investigation confirmed this is unfixable in-sandbox (ondrej/php focal PPA purged at Ubuntu 20.04 EOL, packages.sury.org 404s for focal). Because Laravel Cloud -- the actual production target -- ships ext-zip, the decision was made to install openspout with a *targeted* `composer require openspout/openspout:^5.0 --ignore-platform-req=ext-zip` (singular, not the blanket `--ignore-platform-reqs`, and no `config.platform` override added to composer.json) and build the real exportXlsx implementation, rather than leave RPT-05 permanently half-done. Writer-invoking tests are gated behind a new TestCase::skipUnlessZipAvailable() helper so they skip cleanly here and run for real in CI/production; entitlement/denial tests for the xlsx routes are never skipped."
+    - 'dompdf page numbering uses the isPhpEnabled/<script type="text/php"> mechanism (Canvas::page_text with {PAGE_NUM}/{PAGE_COUNT} substitution), scoped per PDF instance via ->setOption(), never dompdf.php''s global config -- confirmed via source read that this dompdf version has no CSS-only page-counter alternative'
+    - "CollectionLetterController::pdf() adds a THIRD guard beyond show()'s two verbatim-copied lines: abort_if(bracket === Current, 404). A PDF has no equivalent of show()'s 200-with-pastDue-false screen state, and AccountsReceivableAgingBracket::Current->letterBody() throws by design, so an uncaught LogicException (500) would result without this guard. Documented explicitly since the plan's action text described only two copied lines but its own acceptance test required the Current-bracket 404."
+    - "Task 2 (openspout/openspout xlsx export) was initially blocked because ext-zip is unavailable for this sandbox's PHP 8.4 CLI, with no apt package, no root, and a stale phpize/php-config toolchain. Further investigation confirmed this is unfixable in-sandbox (ondrej/php focal PPA purged at Ubuntu 20.04 EOL, packages.sury.org 404s for focal). Because Laravel Cloud -- the actual production target -- ships ext-zip, the decision was made to install openspout with a *targeted* `composer require openspout/openspout:^5.0 --ignore-platform-req=ext-zip` (singular, not the blanket `--ignore-platform-reqs`, and no `config.platform` override added to composer.json) and build the real exportXlsx implementation, rather than leave RPT-05 permanently half-done. Writer-invoking tests are gated behind a new TestCase::skipUnlessZipAvailable() helper so they skip cleanly here and run for real in CI/production; entitlement/denial tests for the xlsx routes are never skipped."
 
 patterns-established:
-  - "Export controllers call AuditLogger::recordReportExport()/AuditLogger's export method before any byte of the download response is built, matching recordAuthEvent()'s direct-AuditLog::create() shape"
-  - "A test-only environment capability (an optional PHP extension a writer depends on) gets its own skipUnless*() helper on the shared TestCase, following skipUnlessFortifyHas()'s exact shape -- only the specific assertions that need the capability are gated, never the whole test file"
+    - "Export controllers call AuditLogger::recordReportExport()/AuditLogger's export method before any byte of the download response is built, matching recordAuthEvent()'s direct-AuditLog::create() shape"
+    - "A test-only environment capability (an optional PHP extension a writer depends on) gets its own skipUnless*() helper on the shared TestCase, following skipUnlessFortifyHas()'s exact shape -- only the specific assertions that need the capability are gated, never the whole test file"
 
 requirements-completed: [RPT-05]
 
@@ -87,6 +87,7 @@ completed: 2026-09-10
 - **Files modified:** 21 across all three tasks (18 from Task 1/3, plus ReportExportController.php, routes/owner.php, routes/portals.php modified again, tests/TestCase.php, tests/Feature/Reports/ReportExportTest.php, composer.json/composer.lock, deferred-items.md updated for Task 2)
 
 ## Accomplishments
+
 - `barryvdh/laravel-dompdf` ^3.1 installed (resolved v3.1.2, `dompdf/dompdf` v3.1.6), confirmed via `composer show` before any facade code was written
 - `openspout/openspout` ^5.0 installed (resolved v5.11.3) via a targeted `--ignore-platform-req=ext-zip`; `php artisan --version` confirmed the autoloader stayed healthy immediately after
 - `AuditLogger::recordReportExport()` -- D-02's one deliberate non-model-driven audit write, matching `recordAuthEvent()`'s exact shape, reused unchanged for both `exportPdf` and `exportXlsx`
@@ -113,6 +114,7 @@ Each completed task was committed atomically:
 **Plan metadata:** (this commit)
 
 ## Files Created/Modified
+
 - `app/Support/AuditLogger.php` - `recordReportExport()`
 - `resources/views/reports/layout.blade.php` - shared PDF shell, range/generated-by meta lines made `@isset`-conditional
 - `resources/views/reports/{sales,cancellations,production-status,expenses,financial-summary}.blade.php` - one table view per report key
@@ -129,15 +131,17 @@ Each completed task was committed atomically:
 - `.planning/phases/08-expenses-reporting/deferred-items.md` - full investigation record of the `ext-zip` blocker plus its resolution
 
 ## Decisions Made
+
 - dompdf's page-number footer uses `<script type="text/php">` + `Canvas::page_text()` (via `{PAGE_NUM}`/`{PAGE_COUNT}` string substitution), enabled per-PDF-instance with `->setOption('isPhpEnabled', true)` rather than the app-wide `config/dompdf.php` default -- verified against the installed dompdf v3.1.6 source (`Options::$isPhpEnabled` defaults `false`; `Css/Stylesheet.php`'s `@page` parser has no `@bottom-center`/margin-box support to fall back on).
 - `CollectionLetterController::pdf()` adds a guard beyond the plan's literal "copy two lines verbatim" instruction: `abort_if($bracket === AccountsReceivableAgingBracket::Current, 404)`. Without it, a Current-bracket entry would reach `$bracket->letterBody()`, which throws `LogicException` by design (uncaught -> 500), and the plan's own acceptance test explicitly requires a 404 for this case. Documented as a clarification, not a scope change.
-- Task 2 (openspout Excel export) was completed using a *targeted* `--ignore-platform-req=ext-zip` override rather than left permanently blocked -- see Deviations below for the full reasoning.
+- Task 2 (openspout Excel export) was completed using a _targeted_ `--ignore-platform-req=ext-zip` override rather than left permanently blocked -- see Deviations below for the full reasoning.
 
 ## Deviations from Plan
 
 ### Auto-fixed Issues
 
 **1. [Rule 3 - Blocking] layout.blade.php's range/generated-by meta lines made conditional**
+
 - **Found during:** Task 3 (writing collection-letter.blade.php)
 - **Issue:** Task 1's `layout.blade.php` unconditionally rendered `$from`/`$to`/`$generatedAt`/`$generatedBy`. The collection letter (Task 3) extends the same layout per the plan's own artifact description ("the shared shell every report PDF and the collection letter PDF extend") but has no date-range concept -- rendering it unconditionally would force synthesizing meaningless range data for a single-entry demand letter.
 - **Fix:** Wrapped both meta lines in `@isset($from, $to)` / `@isset($generatedAt, $generatedBy)`. No behavior change for the five report views, which always pass all four variables.
@@ -146,6 +150,7 @@ Each completed task was committed atomically:
 - **Committed in:** 131a810 (Task 3 commit)
 
 **2. [Rule 2 - Missing Critical] CollectionLetterController::pdf() guards the Current aging bracket**
+
 - **Found during:** Task 3, while implementing the guards
 - **Issue:** The plan's `<action>` text describes copying only `show()`'s two guard lines verbatim, but its own acceptance test requires a Current-bracket entry to 404 on the pdf route. Without an explicit guard, `pdf()` would call `$bracket->letterBody()` unconditionally (unlike `show()`, which ternary-guards it on `$pastDue`), throwing an uncaught `LogicException` (500) for a Current entry instead of a clean 404.
 - **Fix:** Added `abort_if($bracket === AccountsReceivableAgingBracket::Current, 404);` as a third guard, after computing `agingBracket()`.
@@ -154,6 +159,7 @@ Each completed task was committed atomically:
 - **Committed in:** 131a810 (Task 3 commit)
 
 **3. [Rule 3 - Blocking, environment gap, user-directed resolution] openspout installed with a targeted `--ignore-platform-req=ext-zip`**
+
 - **Found during:** Task 2, re-attempted in this session
 - **Issue:** `composer require openspout/openspout:^5.0` fails dependency resolution on this sandbox's PHP 8.4 CLI because `ext-zip` is not loaded, and (per independent re-investigation this session) is genuinely unfixable here: `ondrej/php`'s focal PPA `Packages` index is 0 bytes (purged at Ubuntu 20.04 EOL), `packages.sury.org` 404s for focal, and `phpize`/`php-config` on `PATH` resolve to a stale PHP 8.2 toolchain (ext-dir `20220829`), not the running 8.4.3 CLI (ext-dir `20240924`).
 - **Fix:** Installed with `composer require openspout/openspout:^5.0 --ignore-platform-req=ext-zip --no-interaction` -- a targeted, single-extension override (not the blanket `--ignore-platform-reqs`), with no `config.platform` override added to `composer.json`. `php artisan --version` confirmed the autoloader stayed healthy. `ReportExportController::exportXlsx` was then implemented for real per `08-RESEARCH.md`'s vetted openspout v5 Code Examples, cross-checked against the installed package's own source (`vendor/openspout/openspout/src/Writer/XLSX/Writer.php`, `Common/Entity/Row.php`). Writer-invoking tests are gated behind a new `TestCase::skipUnlessZipAvailable()` helper so they skip cleanly here and run for real wherever `ext-zip` is loaded (Laravel Cloud, CI, any standard PHP 8.4 host); entitlement/denial tests for both export formats run unconditionally, since a 403 check never reaches the writer.
@@ -174,6 +180,7 @@ Each completed task was committed atomically:
 None. Local development in this sandbox will continue to skip the 3 ZipArchive-gated xlsx-content tests (`vendor/bin/pest tests/Feature/Reports/ReportExportTest.php` will report them as skipped, not failed) until this sandbox's PHP gains `ext-zip` -- this is expected and does not block further work. On Laravel Cloud or any standard PHP 8.4 host, all 9 tests will run and pass without any code change.
 
 ## Next Phase Readiness
+
 - PDF export (`ReportExportController::exportPdf`), Excel export (`ReportExportController::exportXlsx`), and the collection letter PDF are all fully functional, tested, and ready for Plan 08-05's UI to link to.
 - **RPT-05 is now fully satisfied** -- both the PDF and Excel halves are done; `requirements-completed: [RPT-05]` reflects this, and `REQUIREMENTS.md`'s RPT-05 checkbox has been marked complete.
 - Plan 08-05 (Reports UI) can proceed for both the "Export PDF" and "Export Excel" buttons -- both routes (`reports.export.pdf`, `reports.export.xlsx`) exist in every entitled role's route group.
@@ -182,8 +189,9 @@ None. Local development in this sandbox will continue to skip the 3 ZipArchive-g
 - `TestCase::skipUnlessZipAvailable()` is now the established pattern for any future test whose assertions depend on an optional PHP extension not guaranteed in every environment.
 
 ---
-*Phase: 08-expenses-reporting*
-*Completed: 2026-09-10*
+
+_Phase: 08-expenses-reporting_
+_Completed: 2026-09-10_
 
 ## Self-Check: PASSED
 

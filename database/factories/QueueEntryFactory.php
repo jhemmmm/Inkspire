@@ -22,6 +22,7 @@ class QueueEntryFactory extends Factory
         return [
             'customer_id' => Customer::factory(),
             'queue_date' => now()->timezone('Asia/Manila')->toDateString(),
+            'queue_prefix' => QueueEntry::REGULAR_PREFIX,
             'queue_number' => fake()->unique()->numberBetween(1, 999),
             'status' => QueueStatus::Waiting->value,
         ];

@@ -85,7 +85,7 @@ class SendAccountsReceivableReminders extends Command
     }
 
     /**
-     * Accounting Staff and Owner, at every bracket (D-06) — never the
+     * Accounting Staff and Admin, at every bracket (D-06) — never the
      * customer. Excludes deactivated accounts.
      *
      * @return Collection<int, string>
@@ -93,7 +93,7 @@ class SendAccountsReceivableReminders extends Command
     private function reminderRecipients(): Collection
     {
         return User::query()
-            ->whereIn('role', [UserRole::AccountingStaff->value, UserRole::Owner->value])
+            ->whereIn('role', [UserRole::AccountingStaff->value, UserRole::Admin->value])
             ->where('is_active', true)
             ->pluck('email');
     }

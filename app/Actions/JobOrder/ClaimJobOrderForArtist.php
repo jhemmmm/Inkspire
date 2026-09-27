@@ -4,7 +4,6 @@ namespace App\Actions\JobOrder;
 
 use App\Enums\ArtistStatus;
 use App\Enums\JobOrderStatus;
-use App\Enums\JobOrderType;
 use App\Models\JobOrder;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,10 +11,18 @@ use Illuminate\Database\Eloquent\Builder;
 class ClaimJobOrderForArtist
 {
     /**
-     * Let an available Artist take an unclaimed Type B job order out of the
-     * shared pool. Returns false — writing nothing — when another Artist
-     * claimed it first, when the artist is not Available, or when the job
-     * order is no longer claimable.
+     * Let an available Artist take an unclaimed job order out of the shared
+     * pool. Returns false — writing nothing — when another Artist claimed it
+     * first, when the artist is not Available, or when the job order is no
+     * longer claimable.
+     *
+     * Intentionally not filtered by type. `status = intake` already IS the
+     * "waiting for an artist" set: a Type B arrives there, and so does a
+     * Type A whose file the scanner judged NeedsArtist. Filtering on
+     * `type_b` as well stranded every one of those Type A rows — invisible
+     * to the pool that was supposed to hold them, and never sent to
+     * production either. A Type A the scanner rejected outright sits at
+     * `validation_failed`, a different status, and is still excluded.
      *
      * Concurrency: the claim is a single conditional UPDATE whose WHERE
      * clause carries `assigned_artist_id IS NULL`, and the decision is the
@@ -40,7 +47,6 @@ class ClaimJobOrderForArtist
         $claimed = JobOrder::query()
             ->whereKey($jobOrder->getKey())
             ->whereNull('assigned_artist_id')
-            ->where('type', JobOrderType::TypeB->value)
             ->where('status', JobOrderStatus::Intake->value)
             ->whereNull('cancelled_at')
             ->update([
@@ -70,25 +76,28 @@ class ClaimJobOrderForArtist
     }
 
     /**
-     * The shared pool every available Artist sees: Type B job orders nobody
-     * has claimed yet.
+     * The shared pool every available Artist sees: job orders nobody has
+     * claimed yet. Both kinds land here — a Type B consultation, and a
+     * Type A whose file the scanner sent for artist work.
      *
-     * Rush jobs sort to the top, and within each group the longest-waiting
-     * customer leads. Rush is what the customer paid a premium for, so it
-     * outranks arrival order -- but only as a tie-break above it, never
-     * instead of it: two rush jobs still come out oldest-first, so a rush
-     * job cannot be overtaken by a newer rush job.
+     * Rush leads, then newest first, so a job created at the counter
+     * surfaces at the top of the artist's list while the customer is still
+     * standing there.
+     *
+     * Note the trade-off that buys: this is no longer FIFO, so a quiet
+     * job can be pushed down indefinitely by newer arrivals. The shop asked
+     * for newest-first; if a job is ever found to have starved, `latest()`
+     * here is the single line to put back to `oldest()`.
      *
      * @return Builder<JobOrder>
      */
     public static function pool(): Builder
     {
         return JobOrder::query()
-            ->where('type', JobOrderType::TypeB->value)
             ->where('status', JobOrderStatus::Intake->value)
             ->whereNull('assigned_artist_id')
             ->whereNull('cancelled_at')
             ->orderByDesc('is_rush')
-            ->oldest('created_at');
+            ->latest('created_at');
     }
 }

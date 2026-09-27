@@ -32,8 +32,8 @@ The table already exists (`job_order_id` unique, `balance`, `status`, `requested
 
 ### Reminder Delivery (AR-02)
 
-- **D-05:** Reminders are **emails sent via the installed `resend/resend-php` transport**, following `app/Mail/DesignReviewRequested.php`. AR-02 says "sends notifications", and an escalation only escalates if it pushes — an in-app list nobody opens is not an escalation, and the Owner in particular does not sit in the portal. **The send MUST be wrapped in Phase 4's mail-failure isolation** (plan 04-13, `app/Actions/JobOrder/RecordDesignRevision.php`) so a Resend outage can never break the bracket transition or the scheduled run. Rejected: Phase 6 D-13's derived-polled-list pattern alone — correct there because a pickup alert is a live queue a Frontline person is already staring at, wrong here because AR escalation is precisely about reaching someone who is *not* looking.
-- **D-06:** All four levels go to **Accounting Staff and Owner, at every bracket** — only the subject line and tone escalate (15 = notice, 30 = urgent, 60 = escalation, 90+ = final, flagged for write-off). AR-02 names exactly these two roles. **The customer is never auto-emailed.** The customer-facing artifact is AR-03's collection letter — deliberately human-triggered and printed, so the shop controls what a customer receives. Rejected: escalating the *audience* (15 to Accounting, Owner joining at 30) because AR-02 explicitly says "15-day → Accounting+Owner"; and auto-dunning the customer, which is a new capability with no existing channel (Phase 6 D-13 already deferred customer notifications).
+- **D-05:** Reminders are **emails sent via the installed `resend/resend-php` transport**, following `app/Mail/DesignReviewRequested.php`. AR-02 says "sends notifications", and an escalation only escalates if it pushes — an in-app list nobody opens is not an escalation, and the Owner in particular does not sit in the portal. **The send MUST be wrapped in Phase 4's mail-failure isolation** (plan 04-13, `app/Actions/JobOrder/RecordDesignRevision.php`) so a Resend outage can never break the bracket transition or the scheduled run. Rejected: Phase 6 D-13's derived-polled-list pattern alone — correct there because a pickup alert is a live queue a Frontline person is already staring at, wrong here because AR escalation is precisely about reaching someone who is _not_ looking.
+- **D-06:** All four levels go to **Accounting Staff and Owner, at every bracket** — only the subject line and tone escalate (15 = notice, 30 = urgent, 60 = escalation, 90+ = final, flagged for write-off). AR-02 names exactly these two roles. **The customer is never auto-emailed.** The customer-facing artifact is AR-03's collection letter — deliberately human-triggered and printed, so the shop controls what a customer receives. Rejected: escalating the _audience_ (15 to Accounting, Owner joining at 30) because AR-02 explicitly says "15-day → Accounting+Owner"; and auto-dunning the customer, which is a new capability with no existing channel (Phase 6 D-13 already deferred customer notifications).
 
 ### Reminder Trigger & Idempotency
 
@@ -43,7 +43,7 @@ The table already exists (`job_order_id` unique, `balance`, `status`, `requested
 
 ### Collection Status (AR-03)
 
-- **D-09:** Collection status lives in its **own column, separate from `AccountsReceivableStatus`**. The existing enum (`PendingApproval` / `Active` / `Rejected`) is the *credit lifecycle* — "did Owner approve this?". Collection status is *how chasing is going*. Two orthogonal axes, two columns — the identical reasoning PROJECT.md §Context already applied when splitting `job_orders.status` from `payment_status`. Merging them would recreate the flat multi-value list that split was rejecting, and every Phase 5 query filtering `status = Active` would need revisiting.
+- **D-09:** Collection status lives in its **own column, separate from `AccountsReceivableStatus`**. The existing enum (`PendingApproval` / `Active` / `Rejected`) is the _credit lifecycle_ — "did Owner approve this?". Collection status is _how chasing is going_. Two orthogonal axes, two columns — the identical reasoning PROJECT.md §Context already applied when splitting `job_orders.status` from `payment_status`. Merging them would recreate the flat multi-value list that split was rejecting, and every Phase 5 query filtering `status = Active` would need revisiting.
 - **D-10:** Six values, matching the demo's set (which the client already recognises): **Pending, Follow-up, Warning Sent, Collections, Paid, Written Off**. Accounting sets any of the first four **freely, in any direction** — it is a record of human activity, not a machine state, and a customer who promises to pay legitimately moves back from Collections to Follow-up. **Paid and Written Off are system-set**, never hand-picked: Paid when the derived balance clears, Written Off when Owner approves (D-13). Every change is audited automatically through the model's existing `#[ObservedBy(AuditObserver::class)]`. Rejected: a strict forward-only ladder (collections is not a production line; even Phase 6's stage sequence needed D-11's backward escape hatch).
 
 ### Collection Letter (AR-03)
@@ -75,6 +75,7 @@ The table already exists (`job_order_id` unique, `balance`, `status`, `requested
 </decisions>
 
 <canonical_refs>
+
 ## Canonical References
 
 **Downstream agents MUST read these before planning or implementing.**
@@ -115,6 +116,7 @@ The table already exists (`job_order_id` unique, `balance`, `status`, `requested
 </canonical_refs>
 
 <code_context>
+
 ## Existing Code Insights
 
 ### Reusable Assets
@@ -172,5 +174,5 @@ The table already exists (`job_order_id` unique, `balance`, `status`, `requested
 
 ---
 
-*Phase: 7-accounts-receivable*
-*Context gathered: 2026-09-07*
+_Phase: 7-accounts-receivable_
+_Context gathered: 2026-09-07_

@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Http\Controllers\Owner;
+namespace App\Http\Controllers\Admin;
 
 use App\Enums\ArtistStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Owner\CreateUserRequest;
-use App\Http\Requests\Owner\DeactivateUserRequest;
-use App\Http\Requests\Owner\ReactivateUserRequest;
+use App\Http\Requests\Admin\CreateUserRequest;
+use App\Http\Requests\Admin\DeactivateUserRequest;
+use App\Http\Requests\Admin\ReactivateUserRequest;
+use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\SystemConfiguration;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -18,15 +19,15 @@ use Inertia\Response;
 class UserManagementController extends Controller
 {
     /**
-     * Show the Owner/Admin user management list.
+     * Show the Admin user management list.
      */
     public function index(Request $request): Response
     {
         $maxBreakMinutes = SystemConfiguration::getInt('max_artist_break_minutes', 15);
 
-        return Inertia::render('owner/UserManagement', [
+        return Inertia::render('admin/UserManagement', [
             'users' => User::query()
-                ->select(['id', 'name', 'email', 'role', 'artist_label', 'is_active', 'artist_status', 'break_started_at'])
+                ->select(['id', 'name', 'email', 'role', 'artist_label', 'is_active', 'artist_status', 'break_started_at', 'locked_until'])
                 ->orderBy('name')
                 ->get()
                 ->map(fn (User $user) => [
@@ -35,9 +36,14 @@ class UserManagementController extends Controller
                     'email' => $user->email,
                     'role' => $user->role,
                     // The name a customer is sent to ("Artist 3"), so the
-                    // Owner can see at a glance which numbers are in use.
+                    // Admin can see at a glance which numbers are in use.
                     'artist_label' => $user->role === UserRole::Artist ? $user->artist_label : null,
                     'is_active' => $user->is_active,
+                    // A lockout expires on its own, so only a `locked_until`
+                    // still in the future means the account is shut out right
+                    // now. Surfaced here because the Admin dashboard counts
+                    // these and sends the Admin to this page to see who.
+                    'is_locked_out' => $user->locked_until !== null && $user->locked_until->isFuture(),
                     'artist_status' => $user->role === UserRole::Artist ? $user->artist_status : null,
                     // Carbon 3's diff defaults to a signed difference (not
                     // absolute), so an explicit `absolute: true` is required
@@ -63,7 +69,7 @@ class UserManagementController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'role' => $validated['role'],
-            // Assigned here rather than left to the Owner to type: the label
+            // Assigned here rather than left to the Admin to type: the label
             // is what a customer is sent to, so an artist must never exist
             // without one.
             'artist_label' => $validated['role'] === UserRole::Artist->value
@@ -75,6 +81,42 @@ class UserManagementController extends Controller
         ])->save();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __(":name's account has been created.", ['name' => $user->name])]);
+
+        return back();
+    }
+
+    /**
+     * Update a user's name, email, role and, when one is given, password.
+     */
+    public function update(UpdateUserRequest $request, User $user): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $newRole = UserRole::from($validated['role']);
+        $wasArtist = $user->role === UserRole::Artist;
+        $isArtist = $newRole === UserRole::Artist;
+
+        $user->forceFill([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'role' => $newRole,
+        ]);
+
+        // An artist must always carry a label customers are sent to, and a
+        // non-artist must never hold one that would block its reuse.
+        if ($isArtist && ! $wasArtist) {
+            $user->artist_label = User::nextArtistLabel();
+        } elseif (! $isArtist) {
+            $user->artist_label = null;
+        }
+
+        if (filled($validated['password'] ?? null)) {
+            $user->password = $validated['password'];
+        }
+
+        $user->save();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __(":name's account has been updated.", ['name' => $user->name])]);
 
         return back();
     }

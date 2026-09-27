@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid } from '@lucide/vue';
+import { Link } from '@inertiajs/vue3';
+import { LayoutGrid } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
-import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -30,28 +29,7 @@ const defaultNavItems: NavItem[] = [
     },
 ];
 
-const page = usePage();
-
-const navItems = computed(() => {
-    const currentRole = page.props.auth.user.role;
-
-    return (props.items ?? defaultNavItems).filter(
-        (item) => !item.roles || item.roles.includes(currentRole),
-    );
-});
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
+const navItems = computed(() => props.items ?? defaultNavItems);
 </script>
 
 <template>
@@ -73,7 +51,6 @@ const footerNavItems: NavItem[] = [
         </SidebarContent>
 
         <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
             <NavUser />
         </SidebarFooter>
     </Sidebar>

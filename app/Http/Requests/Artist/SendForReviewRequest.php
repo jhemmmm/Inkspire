@@ -9,7 +9,7 @@ class SendForReviewRequest extends FormRequest
 {
     /**
      * No authorize() override — the route's role:artist group middleware
-     * is the access gate, matching every other non-Owner FormRequest.
+     * is the access gate, matching every other non-Admin FormRequest.
      *
      * Tighter than FrontlineStaff's ReplaceJobOrderFileRequest (T-04-08):
      * this endpoint's only legitimate producer is the app's own canvas

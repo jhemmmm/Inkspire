@@ -24,14 +24,14 @@ This phase builds **two new surface families** (a shared Reports workspace mount
 
 ## Design System
 
-| Property | Value |
-|----------|-------|
-| Tool | shadcn-vue (already initialized — reused from Phase 1-7, no re-init) |
-| Preset | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none |
-| Component library | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge |
-| Icon library | lucide (`@lucide/vue`) |
-| Font (screen) | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
-| Font (PDF documents) | DejaVu Sans — dompdf's bundled font, declared explicitly. See §Typography. |
+| Property             | Value                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| Tool                 | shadcn-vue (already initialized — reused from Phase 1-7, no re-init)                       |
+| Preset               | style: `new-york-v4`, baseColor: `neutral`, cssVariables: `true`, prefix: none             |
+| Component library    | reka-ui (Radix Vue port) + class-variance-authority + tailwind-merge                       |
+| Icon library         | lucide (`@lucide/vue`)                                                                     |
+| Font (screen)        | Instrument Sans (Bunny Fonts), fallback `ui-sans-serif, system-ui, sans-serif` — unchanged |
+| Font (PDF documents) | DejaVu Sans — dompdf's bundled font, declared explicitly. See §Typography.                 |
 
 Existing installed `ui/` primitives cover this phase in full — **no `npx shadcn-vue add` calls required** (verified against `resources/js/components/ui/`):
 
@@ -58,15 +58,15 @@ No npm package is added. Two Composer packages (`barryvdh/laravel-dompdf`, `open
 
 Unchanged from Phase 1-7 — reused as-is:
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| xs | 4px | Icon-to-label gaps, badge inline padding, the gap between a report card's title and its sub-line |
-| sm | 8px | Compact form field gaps, gap between the two export buttons, gap between preset range buttons, gap between a summary figure and its caption |
-| md | 16px | Default element spacing, card padding, table cell padding, gap between report picker cards, gap between expense form fields |
-| lg | 24px | Section padding within a portal page, gap between the range-control panel and the preview panel, gap between the expenses summary row and the ledger table |
-| xl | 32px | Layout gaps between the report picker column and the preview column; the PDF's gap between letterhead, body, and footer |
-| 2xl | 48px | Major section breaks |
-| 3xl | 64px | Page-level spacing |
+| Token | Value | Usage                                                                                                                                                      |
+| ----- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| xs    | 4px   | Icon-to-label gaps, badge inline padding, the gap between a report card's title and its sub-line                                                           |
+| sm    | 8px   | Compact form field gaps, gap between the two export buttons, gap between preset range buttons, gap between a summary figure and its caption                |
+| md    | 16px  | Default element spacing, card padding, table cell padding, gap between report picker cards, gap between expense form fields                                |
+| lg    | 24px  | Section padding within a portal page, gap between the range-control panel and the preview panel, gap between the expenses summary row and the ledger table |
+| xl    | 32px  | Layout gaps between the report picker column and the preview column; the PDF's gap between letterhead, body, and footer                                    |
+| 2xl   | 48px  | Major section breaks                                                                                                                                       |
+| 3xl   | 64px  | Page-level spacing                                                                                                                                         |
 
 Exceptions: **none.** Every value this phase needs already exists in the scale.
 
@@ -82,12 +82,12 @@ PDF page geometry (a print measurement, not a screen spacing token): A4 portrait
 
 Unchanged 4-role scale from Phase 1-7 — reused as-is. **No fifth size, no third weight:**
 
-| Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
-| Body | 14px | 400 (regular) | 1.5 |
-| Label | 14px | 600 (semibold) | 1.4 |
-| Heading | 20px | 600 (semibold) | 1.2 |
-| Display | 28px | 600 (semibold) | 1.2 |
+| Role    | Size | Weight         | Line Height |
+| ------- | ---- | -------------- | ----------- |
+| Body    | 14px | 400 (regular)  | 1.5         |
+| Label   | 14px | 600 (semibold) | 1.4         |
+| Heading | 20px | 600 (semibold) | 1.2         |
+| Display | 28px | 600 (semibold) | 1.2         |
 
 - **Body** — report card sub-lines, every preview table cell value, the range label and generated timestamp in the preview header, expense ledger cell values, dialog body copy, helper and footnote lines.
 - **Label** — every table column header, every form field caption ("Category", "Amount", "Expense Date", "Description", "Reason", "From", "To"), all badge text, report card titles, summary figure captions.
@@ -100,12 +100,12 @@ Display is applied to the one figure each surface exists to communicate — the 
 
 The four screen roles above govern **in-app screen surfaces only** — the same carve-out `07-UI-SPEC.md` made for the Laravel mail theme. A dompdf document is paged print media at physical point sizes, cannot load Instrument Sans (no `@font-face` registration is configured and none is added), and must stay legible at 100% on paper. It gets its own scale — still **4 sizes and 2 weights**, so the discipline is unchanged:
 
-| Role | Size | Weight | Line Height |
-|------|------|--------|-------------|
-| PDF body / table cell | 9pt | 400 | 1.4 |
-| PDF label / table header | 9pt | 700 | 1.3 |
-| PDF document title | 14pt | 700 | 1.2 |
-| PDF letterhead | 18pt | 700 | 1.2 |
+| Role                     | Size | Weight | Line Height |
+| ------------------------ | ---- | ------ | ----------- |
+| PDF body / table cell    | 9pt  | 400    | 1.4         |
+| PDF label / table header | 9pt  | 700    | 1.3         |
+| PDF document title       | 14pt | 700    | 1.2         |
+| PDF letterhead           | 18pt | 700    | 1.2         |
 
 `body { font-family: 'DejaVu Sans', sans-serif; }` is set explicitly in `resources/views/reports/layout.blade.php`. DejaVu Sans is dompdf's bundled default and is the font whose Unicode coverage includes **U+20B1 PESO SIGN (₱)**; leaving the family unset invites a substitution that drops the glyph.
 
@@ -133,18 +133,18 @@ Phase 7's contract applies unchanged to every screen surface in this phase: `₱
 
 Extends, does not replace, the Phase 1-7 contract. **No new CSS custom properties, no new hex values in `resources/css/app.css`, no theme change, no chart palette.** Every treatment below is an existing token or one of the two already-established Tailwind utility overrides (green success from Phase 3-5, amber attention from Phase 6).
 
-| Role | Value | Usage |
-|------|-------|-------|
-| Dominant (60%) | `--background` | Page background — unchanged |
-| Secondary (30%) | `--card` / `--muted` | Report picker cards, range-control panel, preview panel, expense summary cards, table header/zebra, the PDF's table header band (`--muted` equivalent, `#f5f5f5`) — unchanged |
-| Accent (10%) | `--primary` | Reserved for: existing Phase 1-7 list, **plus** the four primary submit buttons this phase introduces ("Apply Range", "Record Expense" confirm, "Save Changes" in the edit dialog, and the "Record Expense" page CTA), the **active** preset range button (`variant="default"`, inactive siblings `variant="outline"` — the same active-filter treatment Phase 6 gave its stage tabs), and the selected report card's `border-primary` indicator. Never a decorative fill. |
-| Destructive | `--destructive` | Reserved for: existing Phase 1-7 list, **plus** the "Void Expense" dialog trigger and its confirm button, and the **Net Loss** figure when the financial summary's result is negative. Nothing else in this phase. |
+| Role            | Value                | Usage                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dominant (60%)  | `--background`       | Page background — unchanged                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Secondary (30%) | `--card` / `--muted` | Report picker cards, range-control panel, preview panel, expense summary cards, table header/zebra, the PDF's table header band (`--muted` equivalent, `#f5f5f5`) — unchanged                                                                                                                                                                                                                                                                                              |
+| Accent (10%)    | `--primary`          | Reserved for: existing Phase 1-7 list, **plus** the four primary submit buttons this phase introduces ("Apply Range", "Record Expense" confirm, "Save Changes" in the edit dialog, and the "Record Expense" page CTA), the **active** preset range button (`variant="default"`, inactive siblings `variant="outline"` — the same active-filter treatment Phase 6 gave its stage tabs), and the selected report card's `border-primary` indicator. Never a decorative fill. |
+| Destructive     | `--destructive`      | Reserved for: existing Phase 1-7 list, **plus** the "Void Expense" dialog trigger and its confirm button, and the **Net Loss** figure when the financial summary's result is negative. Nothing else in this phase.                                                                                                                                                                                                                                                         |
 
 ### The three colour decisions this phase has to get right
 
 **1. A negative result is the one new destructive use, and it is never colour-alone.** When revenue minus expenses is below zero, the figure renders `text-destructive`, its caption changes from "Net Profit" to **"Net Loss"**, and the amount carries an explicit leading minus sign. A colour-blind user, a greyscale printout, and a screen reader each get the meaning from the word and the sign. When the result is zero or positive it renders in default foreground — **never green.** Phase 7's rule holds: a normal state does not get a colour.
 
-**2. The write-off disclosure line is NOT destructive-coloured.** D-09 makes it a disclosure that is deliberately *not* deducted. Colouring it red reads as "this was subtracted and it hurt", which is the exact misreading D-09 exists to prevent. It renders at Body in `text-muted-foreground`, visually subordinate to the Revenue/Expenses/Result block, inside an `Alert` (default variant, lucide `Info`) whose copy states the non-deduction in words. See §Copywriting Contract for the exact string.
+**2. The write-off disclosure line is NOT destructive-coloured.** D-09 makes it a disclosure that is deliberately _not_ deducted. Colouring it red reads as "this was subtracted and it hurt", which is the exact misreading D-09 exists to prevent. It renders at Body in `text-muted-foreground`, visually subordinate to the Revenue/Expenses/Result block, inside an `Alert` (default variant, lucide `Info`) whose copy states the non-deduction in words. See §Copywriting Contract for the exact string.
 
 **3. Report rows inherit their existing badge mappings verbatim — this phase invents no new status colour.** A Sales row's `payment_method`, a Production Status row's `JobOrderStatus`, a Cancellation row's `payment_status`, an Expenses row's category — each renders with the treatment its owning phase already defined (`03-UI-SPEC.md` / `04-UI-SPEC.md` job order status, `05-UI-SPEC.md` payment status, `07-UI-SPEC.md` written-off and aging). A report is a view over existing data; it must look like the data it reports on.
 
@@ -152,10 +152,10 @@ Extends, does not replace, the Phase 1-7 contract. **No new CSS custom propertie
 
 ### Expense status badge — one new treatment
 
-| State | Display label | Badge treatment | Meaning |
-|---|---|---|---|
-| active (not voided) | *no badge rendered* | — | The normal state of every row. A badge on every row carries no information. |
-| voided | "Voided" | `variant="outline" class="text-muted-foreground"` | Closed and inert — the row survives for the audit trail but counts toward nothing. **Never `variant="destructive"`**: a voided expense is a correction, not an error. Identical treatment to Phase 7's "Written Off" badge, so the system's two "closed, not deleted" states agree on sight. |
+| State               | Display label       | Badge treatment                                   | Meaning                                                                                                                                                                                                                                                                                      |
+| ------------------- | ------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| active (not voided) | _no badge rendered_ | —                                                 | The normal state of every row. A badge on every row carries no information.                                                                                                                                                                                                                  |
+| voided              | "Voided"            | `variant="outline" class="text-muted-foreground"` | Closed and inert — the row survives for the audit trail but counts toward nothing. **Never `variant="destructive"`**: a voided expense is a correction, not an error. Identical treatment to Phase 7's "Written Off" badge, so the system's two "closed, not deleted" states agree on sight. |
 
 **Accent reserved for:** the additions listed in the table above only. Never used for decorative fills — same rule as every prior phase.
 
@@ -167,72 +167,72 @@ Extends, does not replace, the Phase 1-7 contract. **No new CSS custom propertie
 
 ### Shared Reports workspace — page chrome (all four roles)
 
-| Element | Copy |
-|---------|------|
-| Page title / `<Head>` | "Reports" |
-| Nav item (all four portals) | "Reports" |
-| H1 | "Reports" |
-| Sub-copy under H1 — Owner | "Every report in the system, over any date range you choose." |
-| Sub-copy under H1 — Cashier | "Sales and cancellations at the counter, over any date range you choose." |
-| Sub-copy under H1 — Production Staff | "Where every job order stands in production, over any date range you choose." |
-| Sub-copy under H1 — Accounting Staff | "Sales, expenses, and the summary of both, over any date range you choose." |
-| Picker column caption | "Available Reports" |
-| Picker card — selected state, screen-reader only | "Selected" (`sr-only`, alongside `aria-pressed="true"`) |
+| Element                                          | Copy                                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Page title / `<Head>`                            | "Reports"                                                                     |
+| Nav item (all four portals)                      | "Reports"                                                                     |
+| H1                                               | "Reports"                                                                     |
+| Sub-copy under H1 — Owner                        | "Every report in the system, over any date range you choose."                 |
+| Sub-copy under H1 — Cashier                      | "Sales and cancellations at the counter, over any date range you choose."     |
+| Sub-copy under H1 — Production Staff             | "Where every job order stands in production, over any date range you choose." |
+| Sub-copy under H1 — Accounting Staff             | "Sales, expenses, and the summary of both, over any date range you choose."   |
+| Picker column caption                            | "Available Reports"                                                           |
+| Picker card — selected state, screen-reader only | "Selected" (`sr-only`, alongside `aria-pressed="true"`)                       |
 
 ### Report registry — titles, sub-lines, and badges (the authoritative list)
 
 Five reports. This list is fixed by ROADMAP success criterion 2 and RPT-01 – RPT-04. **Do not add a sixth.**
 
-| Key | Title | Sub-line | Badge | Entitled roles |
-|---|---|---|---|---|
-| `sales` | "Sales" | "Every payment that cleared in this range, by method and job order." | "Sales" | Owner, Cashier, Accounting Staff |
-| `cancellations` | "Cancellations" | "Job orders cancelled in this range, with and without a cancellation fee." | "Cancellations" | Owner, Cashier |
-| `production-status` | "Production Status" | "Where each job order stands, with its urgency and stage." | "Production" | Owner, Production Staff |
-| `expenses` | "Expenses" | "Every expense recorded in this range, by category." | "Expenses" | Owner, Accounting Staff |
-| `financial-summary` | "Summary of Sales & Expenses" | "Revenue less expenses for this range, with the profit result." | "Financial" | Owner, Accounting Staff |
+| Key                 | Title                         | Sub-line                                                                   | Badge           | Entitled roles                   |
+| ------------------- | ----------------------------- | -------------------------------------------------------------------------- | --------------- | -------------------------------- |
+| `sales`             | "Sales"                       | "Every payment that cleared in this range, by method and job order."       | "Sales"         | Owner, Cashier, Accounting Staff |
+| `cancellations`     | "Cancellations"               | "Job orders cancelled in this range, with and without a cancellation fee." | "Cancellations" | Owner, Cashier                   |
+| `production-status` | "Production Status"           | "Where each job order stands, with its urgency and stage."                 | "Production"    | Owner, Production Staff          |
+| `expenses`          | "Expenses"                    | "Every expense recorded in this range, by category."                       | "Expenses"      | Owner, Accounting Staff          |
+| `financial-summary` | "Summary of Sales & Expenses" | "Revenue less expenses for this range, with the profit result."            | "Financial"     | Owner, Accounting Staff          |
 
 **Copy rule (binding): no report title contains the words "Daily" or "Monthly".** D-06 makes those ranges, not report types. Naming a report "Daily Sales" while a date-range control sits above it showing "Sep 1 – Sep 30" is a direct contradiction on screen. The range label in the preview header is what tells the user which of RPT-04's variants they are looking at. The PDF and `.xlsx` filenames and document headers carry the range for the same reason.
 
 ### Date range control
 
-| Element | Copy |
-|---------|------|
-| Panel caption | "Date Range" |
-| Preset buttons | "Today", "This Week", "This Month", "This Quarter", "Custom" |
-| Custom field labels | "From", "To" |
-| Apply button | "Apply Range" |
-| Current range display | "Showing {range label}" (Body, `text-muted-foreground`) |
+| Element                         | Copy                                                              |
+| ------------------------------- | ----------------------------------------------------------------- |
+| Panel caption                   | "Date Range"                                                      |
+| Preset buttons                  | "Today", "This Week", "This Month", "This Quarter", "Custom"      |
+| Custom field labels             | "From", "To"                                                      |
+| Apply button                    | "Apply Range"                                                     |
+| Current range display           | "Showing {range label}" (Body, `text-muted-foreground`)           |
 | Helper — Production Status only | "This range covers job orders that entered production within it." |
-| Error — "To" before "From" | "The end date can't be earlier than the start date." |
-| Error — a date is in the future | "Pick a date on or before today." |
-| Error — malformed date | "Enter a valid date." |
+| Error — "To" before "From"      | "The end date can't be earlier than the start date."              |
+| Error — a date is in the future | "Pick a date on or before today."                                 |
+| Error — malformed date          | "Enter a valid date."                                             |
 
 **Default range on first load: "This Month"** (the 1st of the current month through today). Rationale over "Today": a shop with no sales yet this morning would open every report empty, which reads as a broken page rather than an accurate answer; a month-to-date range always has content by the second day and matches RPT-04's "Monthly" framing directly. Rationale over "This Quarter": a quarter is not a period this shop reconciles against.
 
 ### Preview panel
 
-| Element | Copy |
-|---------|------|
-| Panel heading | The selected report's title (Heading) |
-| Panel sub-line | The selected report's sub-line (Body, `text-muted-foreground`) |
-| Range line | "Range: {range label}" (Body, `text-muted-foreground`) |
-| Generated line | "Generated {timestamp}" (Body, `text-muted-foreground`) |
-| Export PDF button | "Export PDF" (lucide `FileText`) |
-| Export Excel button | "Export Excel" (lucide `FileSpreadsheet`) |
-| Export helper line | "Exports carry every row in this range and are recorded in the audit trail." (Body, `text-muted-foreground`, beneath the two buttons) |
-| Row cap footer | "Showing the first 100 of {n} rows. Export to see them all." (Body, `text-muted-foreground`, inside `TableFooter` — rendered only when {n} > 100) |
-| Empty state — a report with no rows in range | Heading: "Nothing in this range" · Body: "No {report title, lowercased} activity between {from} and {to}. Try a wider date range." |
+| Element                                                   | Copy                                                                                                                                                  |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Panel heading                                             | The selected report's title (Heading)                                                                                                                 |
+| Panel sub-line                                            | The selected report's sub-line (Body, `text-muted-foreground`)                                                                                        |
+| Range line                                                | "Range: {range label}" (Body, `text-muted-foreground`)                                                                                                |
+| Generated line                                            | "Generated {timestamp}" (Body, `text-muted-foreground`)                                                                                               |
+| Export PDF button                                         | "Export PDF" (lucide `FileText`)                                                                                                                      |
+| Export Excel button                                       | "Export Excel" (lucide `FileSpreadsheet`)                                                                                                             |
+| Export helper line                                        | "Exports carry every row in this range and are recorded in the audit trail." (Body, `text-muted-foreground`, beneath the two buttons)                 |
+| Row cap footer                                            | "Showing the first 100 of {n} rows. Export to see them all." (Body, `text-muted-foreground`, inside `TableFooter` — rendered only when {n} > 100)     |
+| Empty state — a report with no rows in range              | Heading: "Nothing in this range" · Body: "No {report title, lowercased} activity between {from} and {to}. Try a wider date range."                    |
 | Empty state — the expenses report, no expenses at all yet | Heading: "No expenses recorded yet" · Body: "Accounting Staff records expenses from the Expenses page. They appear here once the first one is saved." |
 
 ### Column headers, per report
 
-| Report | Column headers |
-|---|---|
-| `sales` | "Date", "Job Order", "Customer", "Type", "Method", "Amount" |
-| `cancellations` | "Date", "Job Order", "Customer", "Job Order Total", "Cancellation Fee", "Payment Status" |
-| `production-status` | "Job Order", "Customer", "Product", "Stage", "Urgency", "Entered Production", "Due" |
-| `expenses` | "Date", "Category", "Description", "Amount", "Recorded By", "Status" |
-| `financial-summary` | *(not a row table — see the figure block below)* |
+| Report              | Column headers                                                                           |
+| ------------------- | ---------------------------------------------------------------------------------------- |
+| `sales`             | "Date", "Job Order", "Customer", "Type", "Method", "Amount"                              |
+| `cancellations`     | "Date", "Job Order", "Customer", "Job Order Total", "Cancellation Fee", "Payment Status" |
+| `production-status` | "Job Order", "Customer", "Product", "Stage", "Urgency", "Entered Production", "Due"      |
+| `expenses`          | "Date", "Category", "Description", "Amount", "Recorded By", "Status"                     |
+| `financial-summary` | _(not a row table — see the figure block below)_                                         |
 
 Cell fallbacks: an absent job order number renders `—` (the existing `CreditRequests.vue` fallback); an absent description renders `—`; a cancellation with no fee renders "No fee" in `text-muted-foreground`, **not** "₱0.00" — the demo's own fee/no-fee distinction, carried in words rather than a sub-filter button row.
 
@@ -242,37 +242,37 @@ Cell fallbacks: an absent job order number renders `—` (the existing `CreditRe
 
 Three sections with `Separator` rules between them, captions at Label, amounts at Body right-aligned `tabular-nums`, and one Display figure at the end.
 
-| Element | Copy |
-|---------|------|
-| Section heading | "Revenue" |
-| Line 1 caption | "Job sales" |
-| Line 1 helper | "Down payments, balance payments, and full payments that cleared in this range." |
-| Line 2 caption | "Cancellation fees" |
-| Line 2 helper | "Fees collected on job orders that were cancelled." |
-| Revenue subtotal caption | "Total revenue" |
-| Section heading | "Expenses" |
-| Expenses caption | "Recorded expenses" |
-| Expenses helper | "Every non-voided expense dated in this range." |
-| Section heading | "Result" |
-| Result caption — positive or zero | "Net Profit" |
-| Result caption — negative | "Net Loss" |
+| Element                                                        | Copy                                                                                                                                                                                                                                             |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Section heading                                                | "Revenue"                                                                                                                                                                                                                                        |
+| Line 1 caption                                                 | "Job sales"                                                                                                                                                                                                                                      |
+| Line 1 helper                                                  | "Down payments, balance payments, and full payments that cleared in this range."                                                                                                                                                                 |
+| Line 2 caption                                                 | "Cancellation fees"                                                                                                                                                                                                                              |
+| Line 2 helper                                                  | "Fees collected on job orders that were cancelled."                                                                                                                                                                                              |
+| Revenue subtotal caption                                       | "Total revenue"                                                                                                                                                                                                                                  |
+| Section heading                                                | "Expenses"                                                                                                                                                                                                                                       |
+| Expenses caption                                               | "Recorded expenses"                                                                                                                                                                                                                              |
+| Expenses helper                                                | "Every non-voided expense dated in this range."                                                                                                                                                                                                  |
+| Section heading                                                | "Result"                                                                                                                                                                                                                                         |
+| Result caption — positive or zero                              | "Net Profit"                                                                                                                                                                                                                                     |
+| Result caption — negative                                      | "Net Loss"                                                                                                                                                                                                                                       |
 | Write-off disclosure — `Alert`, default variant, lucide `Info` | Heading: "Bad debt written off: ₱{amount}" · Body: "This is not deducted above. Written-off balances were never counted as revenue in the first place, so subtracting them would book the same loss twice. Shown here so the figure isn't lost." |
-| Write-off disclosure — none in range | The `Alert` is not rendered at all. |
-| Basis footnote | "Revenue counts money that actually arrived — a payment is included on the day it was confirmed, not the day it was started. Balances still on credit contribute nothing until they're paid." (Body, `text-muted-foreground`, beneath the block) |
+| Write-off disclosure — none in range                           | The `Alert` is not rendered at all.                                                                                                                                                                                                              |
+| Basis footnote                                                 | "Revenue counts money that actually arrived — a payment is included on the day it was confirmed, not the day it was started. Balances still on credit contribute nothing until they're paid." (Body, `text-muted-foreground`, beneath the block) |
 
 ### Exported document copy (PDF and `.xlsx`)
 
-| Element | Copy |
-|---------|------|
-| PDF letterhead | The app name (`config('app.name')`) — **never a hardcoded shop name and never an image**, per the Phase 7 letterhead rule |
-| PDF document title | The report title, verbatim from the registry |
-| PDF meta line 1 | "Range: {range label}" |
-| PDF meta line 2 | "Generated {timestamp} by {user full name}" |
-| PDF footer (every page) | "{app name} · {report title} · Page {n} of {total}" |
-| PDF empty state | "No records for this range." (centred, in place of the table) |
-| `.xlsx` row 1 | The column headers, verbatim from the registry — **and nothing else in row 1** |
-| `.xlsx` final row | First cell "Total", money columns carrying the range totals, other cells empty |
-| Export filename | `{report-key}_{from}_{to}.{pdf\|xlsx}` — e.g. `sales_2026-09-01_2026-09-10.xlsx`. ISO dates so a folder of exports sorts chronologically. A single-day range repeats the date on both sides. |
+| Element                 | Copy                                                                                                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PDF letterhead          | The app name (`config('app.name')`) — **never a hardcoded shop name and never an image**, per the Phase 7 letterhead rule                                                                    |
+| PDF document title      | The report title, verbatim from the registry                                                                                                                                                 |
+| PDF meta line 1         | "Range: {range label}"                                                                                                                                                                       |
+| PDF meta line 2         | "Generated {timestamp} by {user full name}"                                                                                                                                                  |
+| PDF footer (every page) | "{app name} · {report title} · Page {n} of {total}"                                                                                                                                          |
+| PDF empty state         | "No records for this range." (centred, in place of the table)                                                                                                                                |
+| `.xlsx` row 1           | The column headers, verbatim from the registry — **and nothing else in row 1**                                                                                                               |
+| `.xlsx` final row       | First cell "Total", money columns carrying the range totals, other cells empty                                                                                                               |
+| Export filename         | `{report-key}_{from}_{to}.{pdf\|xlsx}` — e.g. `sales_2026-09-01_2026-09-10.xlsx`. ISO dates so a folder of exports sorts chronologically. A single-day range repeats the date on both sides. |
 
 **No metadata banner rows above the `.xlsx` header row.** Row 1 must be the header row so that sorting, filtering, and `SUM()` work on first open. The range lives in the filename, which is where a spreadsheet user looks for it.
 
@@ -280,90 +280,90 @@ Three sections with `Separator` rules between them, captions at Label, amounts a
 
 ### Expenses ledger (Accounting Staff)
 
-| Element | Copy |
-|---------|------|
-| Page title / `<Head>` | "Expenses" |
-| Nav item | "Expenses" |
-| H1 | "Expenses" |
-| Sub-copy under H1 | "Costs recorded against the business. Voided entries stay on the list but count toward nothing." |
-| Summary card caption | "Total for {range label}" |
-| Summary card sub-line | "{n} expenses" / "1 expense" / "No expenses" |
-| Summary card — voided sub-line | "{n} voided entries excluded" (rendered only when > 0, Body, `text-muted-foreground`) |
-| Primary CTA | "Record Expense" (lucide `Plus`) |
-| Table column headers | "Date", "Category", "Description", "Amount", "Recorded By", "Status", "Actions" |
-| Row action — active row | "Edit" (`variant="outline" size="sm"`), "Void" (`variant="outline" size="sm"`, lucide `Ban`) |
-| Row action — voided row | No buttons. In the Actions cell: "Voided {date}" (Body, `text-muted-foreground`) |
-| Voided row — reason | The void reason renders beneath the description in the Description cell, prefixed "Voided: " (Body, `text-muted-foreground`, `line-clamp-2`) |
-| Empty state — none at all | Heading: "No expenses recorded" · Body: "Record the shop's costs here — utilities, supplies, rent — so they show up in the Summary of Sales & Expenses report." |
-| Empty state — none in the selected range | Heading: "Nothing in this range" · Body: "No expenses dated between {from} and {to}. Try a wider date range, or record one." |
+| Element                                  | Copy                                                                                                                                                            |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page title / `<Head>`                    | "Expenses"                                                                                                                                                      |
+| Nav item                                 | "Expenses"                                                                                                                                                      |
+| H1                                       | "Expenses"                                                                                                                                                      |
+| Sub-copy under H1                        | "Costs recorded against the business. Voided entries stay on the list but count toward nothing."                                                                |
+| Summary card caption                     | "Total for {range label}"                                                                                                                                       |
+| Summary card sub-line                    | "{n} expenses" / "1 expense" / "No expenses"                                                                                                                    |
+| Summary card — voided sub-line           | "{n} voided entries excluded" (rendered only when > 0, Body, `text-muted-foreground`)                                                                           |
+| Primary CTA                              | "Record Expense" (lucide `Plus`)                                                                                                                                |
+| Table column headers                     | "Date", "Category", "Description", "Amount", "Recorded By", "Status", "Actions"                                                                                 |
+| Row action — active row                  | "Edit" (`variant="outline" size="sm"`), "Void" (`variant="outline" size="sm"`, lucide `Ban`)                                                                    |
+| Row action — voided row                  | No buttons. In the Actions cell: "Voided {date}" (Body, `text-muted-foreground`)                                                                                |
+| Voided row — reason                      | The void reason renders beneath the description in the Description cell, prefixed "Voided: " (Body, `text-muted-foreground`, `line-clamp-2`)                    |
+| Empty state — none at all                | Heading: "No expenses recorded" · Body: "Record the shop's costs here — utilities, supplies, rent — so they show up in the Summary of Sales & Expenses report." |
+| Empty state — none in the selected range | Heading: "Nothing in this range" · Body: "No expenses dated between {from} and {to}. Try a wider date range, or record one."                                    |
 
 ### Record Expense dialog (Accounting Staff)
 
-| Element | Copy |
-|---------|------|
-| Dialog title | "Record an expense" |
-| Dialog description | "This counts toward the Expenses and Summary reports for the date you set." |
-| Field label — category | "Category" |
-| Category placeholder | "Choose a category" |
-| Category helper | "Categories are managed by the Owner in System Configuration." |
-| Field label — amount | "Amount" |
-| Amount prefix | "₱" (rendered as static text before the input, not typed by the user) |
-| Amount placeholder | "0.00" |
-| Field label — date | "Expense Date" |
-| Date helper | "The day the cost was incurred, not the day you're entering it." |
-| Field label — description | "Description (optional)" |
-| Description placeholder | "e.g. Meralco — August billing" |
-| Description helper | "A short note makes this row readable a month from now." |
-| Confirm button | "Record Expense" |
-| Cancel button | "Cancel" |
-| Error — category missing | "Choose a category for this expense." |
-| Error — category no longer configured | "That category is no longer available. Pick one from the current list." |
-| Error — amount missing or zero | "Enter an amount greater than ₱0.00." |
-| Error — amount not a number | "Enter an amount as a number, like 1250.00." |
-| Error — date missing | "Set the date this cost was incurred." |
-| Error — date in the future | "An expense can't be dated in the future." |
+| Element                               | Copy                                                                        |
+| ------------------------------------- | --------------------------------------------------------------------------- |
+| Dialog title                          | "Record an expense"                                                         |
+| Dialog description                    | "This counts toward the Expenses and Summary reports for the date you set." |
+| Field label — category                | "Category"                                                                  |
+| Category placeholder                  | "Choose a category"                                                         |
+| Category helper                       | "Categories are managed by the Owner in System Configuration."              |
+| Field label — amount                  | "Amount"                                                                    |
+| Amount prefix                         | "₱" (rendered as static text before the input, not typed by the user)       |
+| Amount placeholder                    | "0.00"                                                                      |
+| Field label — date                    | "Expense Date"                                                              |
+| Date helper                           | "The day the cost was incurred, not the day you're entering it."            |
+| Field label — description             | "Description (optional)"                                                    |
+| Description placeholder               | "e.g. Meralco — August billing"                                             |
+| Description helper                    | "A short note makes this row readable a month from now."                    |
+| Confirm button                        | "Record Expense"                                                            |
+| Cancel button                         | "Cancel"                                                                    |
+| Error — category missing              | "Choose a category for this expense."                                       |
+| Error — category no longer configured | "That category is no longer available. Pick one from the current list."     |
+| Error — amount missing or zero        | "Enter an amount greater than ₱0.00."                                       |
+| Error — amount not a number           | "Enter an amount as a number, like 1250.00."                                |
+| Error — date missing                  | "Set the date this cost was incurred."                                      |
+| Error — date in the future            | "An expense can't be dated in the future."                                  |
 
 ### Edit Expense dialog (Accounting Staff)
 
-| Element | Copy |
-|---------|------|
-| Dialog title | "Edit this expense" |
-| Dialog description | "Corrections are recorded in the audit trail, including what changed. Reports already printed from an earlier version will differ." |
-| Field labels / errors | Identical to Record Expense |
-| Confirm button | "Save Changes" |
-| Cancel button | "Cancel" |
+| Element                                                   | Copy                                                                                                                                 |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Dialog title                                              | "Edit this expense"                                                                                                                  |
+| Dialog description                                        | "Corrections are recorded in the audit trail, including what changed. Reports already printed from an earlier version will differ."  |
+| Field labels / errors                                     | Identical to Record Expense                                                                                                          |
+| Confirm button                                            | "Save Changes"                                                                                                                       |
+| Cancel button                                             | "Cancel"                                                                                                                             |
 | Guard — expense already voided (`Alert`, default variant) | "This expense was voided on {date} and can't be edited." — the form fields are **not rendered**, only this line and a "Close" button |
-| Error — stale (voided since the dialog opened) | "This expense was voided while you had it open. The list has refreshed." |
+| Error — stale (voided since the dialog opened)            | "This expense was voided while you had it open. The list has refreshed."                                                             |
 
 ### Void Expense dialog (Accounting Staff)
 
-| Element | Copy |
-|---------|------|
-| Dialog title | "Void this ₱{amount} expense?" |
-| Dialog description | "It stays on the list for the record but stops counting toward every report. This can't be undone — if the entry just needs a correction, edit it instead." |
-| Field label — reason | "Reason" |
-| Reason placeholder | "e.g. Duplicate of the August Meralco entry" |
-| Reason helper | "This is recorded in the audit trail beside your name." |
-| Confirm button | "Void Expense" (`variant="destructive"`) |
-| Cancel button | "Cancel" |
-| Error — reason missing | "Enter a reason before voiding this expense." |
-| Error — already voided | "This expense has already been voided." |
+| Element                | Copy                                                                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dialog title           | "Void this ₱{amount} expense?"                                                                                                                              |
+| Dialog description     | "It stays on the list for the record but stops counting toward every report. This can't be undone — if the entry just needs a correction, edit it instead." |
+| Field label — reason   | "Reason"                                                                                                                                                    |
+| Reason placeholder     | "e.g. Duplicate of the August Meralco entry"                                                                                                                |
+| Reason helper          | "This is recorded in the audit trail beside your name."                                                                                                     |
+| Confirm button         | "Void Expense" (`variant="destructive"`)                                                                                                                    |
+| Cancel button          | "Cancel"                                                                                                                                                    |
+| Error — reason missing | "Enter a reason before voiding this expense."                                                                                                               |
+| Error — already voided | "This expense has already been voided."                                                                                                                     |
 
 ### Collection letter PDF action (D-03 — bounded extension to Phase 7)
 
-| Element | Copy |
-|---------|------|
-| Button (on the AR entry detail Actions row) | "Download Letter (PDF)" (`variant="outline"`, lucide `FileDown`) |
-| Placement rule | Beside the existing "Print Collection Letter" button on `accounting-staff/AccountsReceivable/Show.vue`. **`CollectionLetter.vue` is not touched**, per D-03. |
-| Availability rule | Rendered under exactly the same condition as the existing "Print Collection Letter" button: absent for a `Current` entry, absent for a terminal entry. The server-side 404 guards are the enforcement; hiding the button is the courtesy. |
+| Element                                     | Copy                                                                                                                                                                                                                                      |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Button (on the AR entry detail Actions row) | "Download Letter (PDF)" (`variant="outline"`, lucide `FileDown`)                                                                                                                                                                          |
+| Placement rule                              | Beside the existing "Print Collection Letter" button on `accounting-staff/AccountsReceivable/Show.vue`. **`CollectionLetter.vue` is not touched**, per D-03.                                                                              |
+| Availability rule                           | Rendered under exactly the same condition as the existing "Print Collection Letter" button: absent for a `Current` entry, absent for a terminal entry. The server-side 404 guards are the enforcement; hiding the button is the courtesy. |
 
 ### Toasts (`Inertia::flash('toast', …)` — existing convention)
 
-| Trigger | Copy |
-|---------|------|
-| Expense recorded | "Expense recorded." |
-| Expense updated | "Expense updated." |
-| Expense voided | "Expense voided. It no longer counts toward reports." |
+| Trigger          | Copy                                                  |
+| ---------------- | ----------------------------------------------------- |
+| Expense recorded | "Expense recorded."                                   |
+| Expense updated  | "Expense updated."                                    |
+| Expense voided   | "Expense voided. It no longer counts toward reports." |
 
 **No toast fires on export, and this is deliberate.** An export is a plain browser navigation, not an Inertia visit — there is no response for the toast listener to read, and a click-time optimistic toast saying "exported successfully" would lie whenever the server returns a 403 or an error. The static export helper line ("Exports carry every row in this range and are recorded in the audit trail.") carries the same reassurance honestly, and the browser's own download indicator is the completion signal.
 
@@ -383,8 +383,8 @@ Three sections with `Separator` rules between them, captions at Label, amounts a
 
 ## Registry Safety
 
-| Registry | Blocks Used | Safety Gate |
-|----------|-------------|-------------|
+| Registry                     | Blocks Used                                                                                                                                                                                                               | Safety Gate  |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | shadcn official (shadcn-vue) | none new — `card`, `table`, `badge`, `button`, `input`, `label`, `select`, `textarea`, `dialog`, `alert`, `separator`, `sonner` are all already installed from Phase 1-7 (verified against `resources/js/components/ui/`) | not required |
 
 No third-party shadcn registries are declared for this phase, so the `npx shadcn view --registry` vetting gate does not apply.
@@ -437,7 +437,7 @@ Below `xl` the two columns stack, picker first. The picker is a plain vertical l
 
 CONTEXT.md left this open and asked for one decision, not a third variant. **Decision: one entry, `financial-summary`, titled "Summary of Sales & Expenses", entitled to Owner and Accounting Staff, showing byte-identical content to both.**
 
-Reasons: it is the same query (D-08 revenue less D-13 expenses); the write-off disclosure is arguably *more* relevant to Accounting, who own the AR lifecycle, than to the Owner; and D-10's revenue split costs nothing to show twice. Building a reduced Accounting variant would create exactly the third variant CONTEXT.md forbids.
+Reasons: it is the same query (D-08 revenue less D-13 expenses); the write-off disclosure is arguably _more_ relevant to Accounting, who own the AR lifecycle, than to the Owner; and D-10's revenue split costs nothing to show twice. Building a reduced Accounting variant would create exactly the third variant CONTEXT.md forbids.
 
 **Binding:** there is no role-conditional content anywhere inside this report. If a future requirement genuinely needs Accounting to see less, that is a new registry entry, not a `v-if`.
 
@@ -448,13 +448,13 @@ One page, three dialogs, no separate create or edit route. This follows `owner/C
 Top to bottom, `lg` (24px) gaps:
 
 - **H1** "Expenses" (Display) + sub-copy (Body, muted), with the "Record Expense" primary CTA right-aligned on the same row.
-- **Range control** — the *same* preset control as §1, so the two surfaces behave identically. Same default ("This Month"). Extract it as `resources/js/components/reports/DateRangeControl.vue` and use it in both places; two divergent date pickers in one phase is the kind of drift this contract exists to prevent.
+- **Range control** — the _same_ preset control as §1, so the two surfaces behave identically. Same default ("This Month"). Extract it as `resources/js/components/reports/DateRangeControl.vue` and use it in both places; two divergent date pickers in one phase is the kind of drift this contract exists to prevent.
 - **Summary `Card`** — the range total at Display, "{n} expenses" beneath at Body, and the voided-excluded sub-line when applicable. One card, not a row of four: there is exactly one number here.
 - **Ledger `Table`** — columns per the Copywriting Contract, newest expense date first, money right-aligned `tabular-nums`, `TableEmpty` for both empty states. Voided rows keep full contrast (**never `opacity`-dimmed** — the Phase 7 rejection of the demo's `opacity:0.55` applies verbatim); the "Voided" badge plus the muted reason line beneath the description carry the state.
 - **Rows are not clickable.** Same rule as every list in this app.
 - **No pagination in this phase.** A single-location shop records tens of expenses a month and the range control already bounds the set. If the ledger later needs it, `01-UI-SPEC.md`'s existing pagination pattern is the one to reach for — do not invent a second.
 
-**Owner does not get an expenses page.** D-12 requires the Owner to *read* the itemized list; the `expenses` report on the shared Reports workspace **is** that list, with the same columns. Building a read-only Owner mirror of this page would duplicate a surface and create a second place for the two views to disagree.
+**Owner does not get an expenses page.** D-12 requires the Owner to _read_ the itemized list; the `expenses` report on the shared Reports workspace **is** that list, with the same columns. Building a read-only Owner mirror of this page would duplicate a surface and create a second place for the two views to disagree.
 
 ### 4. PDF documents (`resources/views/reports/`, new — the first Blade documents in this app)
 
@@ -474,12 +474,12 @@ The sheet mirrors the on-screen table for that report: row 1 = the same column h
 
 ### 6. Navigation (four bounded extensions)
 
-| File | Addition | Icon | Placement |
-|---|---|---|---|
-| `resources/js/config/nav/owner.ts` | "Reports" | lucide `ChartColumn` | Last, after "Write-Off Requests" |
-| `resources/js/config/nav/cashier.ts` | "Reports" | lucide `ChartColumn` | After "Dashboard" |
-| `resources/js/config/nav/production-staff.ts` | "Reports" | lucide `ChartColumn` | After "Production Board" |
-| `resources/js/config/nav/accounting-staff.ts` | "Expenses", then "Reports" | lucide `Wallet`, then `ChartColumn` | After "Accounts Receivable" |
+| File                                          | Addition                   | Icon                                | Placement                        |
+| --------------------------------------------- | -------------------------- | ----------------------------------- | -------------------------------- |
+| `resources/js/config/nav/owner.ts`            | "Reports"                  | lucide `ChartColumn`                | Last, after "Write-Off Requests" |
+| `resources/js/config/nav/cashier.ts`          | "Reports"                  | lucide `ChartColumn`                | After "Dashboard"                |
+| `resources/js/config/nav/production-staff.ts` | "Reports"                  | lucide `ChartColumn`                | After "Production Board"         |
+| `resources/js/config/nav/accounting-staff.ts` | "Expenses", then "Reports" | lucide `Wallet`, then `ChartColumn` | After "Accounts Receivable"      |
 
 `resources/js/config/nav/admin.ts` (or the Admin portal's equivalent) is **not** touched — D-05 gives Admin no Reports surface, and a nav item that 403s is worse than no nav item. Every other existing item in all four files is unchanged.
 
@@ -499,7 +499,7 @@ D-04 makes the server the single boundary. The client-side consequences are bind
 - **No charts, sparklines, or visualizations of any kind.** CONTEXT.md `<deferred>` rules them out by name and no charting library is installed. Every report is a table or a figure block.
 - **No sixth report.** The demo's `jo`, `completed`, `quality`, `fileval`, and `audit` reports correspond to no requirement; `ar` aging is Phase 7's existing surface. The registry is the five entries in §Copywriting Contract.
 - **No AR aging report or aging widget** on the Reports page or the Owner dashboard — deferred in Phase 7 D-16 and again in CONTEXT.md `<deferred>`.
-- **No Audit Log report.** The Owner's existing filterable audit *viewer* (`owner/AuditTrail.vue`) stands; CONTEXT.md `<specifics>` explicitly notes a report version is out of scope.
+- **No Audit Log report.** The Owner's existing filterable audit _viewer_ (`owner/AuditTrail.vue`) stands; CONTEXT.md `<specifics>` explicitly notes a report version is out of scope.
 - **No per-report sub-filters.** One date range governs the page (§Column headers).
 - **No preview pagination.** Cap plus export (§1).
 - **No export scheduling, emailing, or saved report presets** — CONTEXT.md `<deferred>`.
@@ -517,16 +517,16 @@ D-04 makes the server the single boundary. The client-side consequences are bind
 
 CONTEXT.md's `### Claude's Discretion` block listed eight open items. Six were UI calls and are settled above; two are backend calls and are deliberately left to the planner.
 
-| # | Item | Settled here | Where |
-|---|---|---|---|
-| 1 | Reports page layout (cards + preview vs plain list) | **Yes** — master/detail: picker card column + range panel + preview panel | §1 |
-| 2 | Default date range on first load | **Yes** — "This Month" (1st of month → today) | §Copywriting Contract, Date range control |
-| 3 | Preview pagination vs row cap | **Yes** — cap at 100 rows, no pagination, footer line, export carries all | §1 |
-| 4 | PDF letterhead and branding | **Yes** — text-only `config('app.name')`, no logo image; collection letter reuses the same shell | §Copywriting Contract, Exported document copy |
-| 5 | Excel export content shape | **Yes** — raw rows mirroring the on-screen table, header in row 1, totals in the final row, raw numeric money cells, no styling | §5 |
-| 6 | `financial-summary` as one entry or two | **Yes** — one entry, both roles, identical content | §2 |
-| 7 | Export filename convention | **Yes** — `{report-key}_{from}_{to}.{ext}`, ISO dates | §Copywriting Contract, Exported document copy |
-| 8 | Report registry mechanism; expense table/column/enum naming; voided-shape (`voided_at` pair vs status enum); category-removal handling; sync vs queued generation | **No — planner's call.** No UI surface changes either way. The only UI-visible constraints are: a voided expense must expose a **void date** and a **void reason** to the client (the ledger renders both), and a historical expense whose category is no longer configured must still render its stored category string in the ledger and in every report. | §3 |
+| #   | Item                                                                                                                                                              | Settled here                                                                                                                                                                                                                                                                                                                                                | Where                                         |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| 1   | Reports page layout (cards + preview vs plain list)                                                                                                               | **Yes** — master/detail: picker card column + range panel + preview panel                                                                                                                                                                                                                                                                                   | §1                                            |
+| 2   | Default date range on first load                                                                                                                                  | **Yes** — "This Month" (1st of month → today)                                                                                                                                                                                                                                                                                                               | §Copywriting Contract, Date range control     |
+| 3   | Preview pagination vs row cap                                                                                                                                     | **Yes** — cap at 100 rows, no pagination, footer line, export carries all                                                                                                                                                                                                                                                                                   | §1                                            |
+| 4   | PDF letterhead and branding                                                                                                                                       | **Yes** — text-only `config('app.name')`, no logo image; collection letter reuses the same shell                                                                                                                                                                                                                                                            | §Copywriting Contract, Exported document copy |
+| 5   | Excel export content shape                                                                                                                                        | **Yes** — raw rows mirroring the on-screen table, header in row 1, totals in the final row, raw numeric money cells, no styling                                                                                                                                                                                                                             | §5                                            |
+| 6   | `financial-summary` as one entry or two                                                                                                                           | **Yes** — one entry, both roles, identical content                                                                                                                                                                                                                                                                                                          | §2                                            |
+| 7   | Export filename convention                                                                                                                                        | **Yes** — `{report-key}_{from}_{to}.{ext}`, ISO dates                                                                                                                                                                                                                                                                                                       | §Copywriting Contract, Exported document copy |
+| 8   | Report registry mechanism; expense table/column/enum naming; voided-shape (`voided_at` pair vs status enum); category-removal handling; sync vs queued generation | **No — planner's call.** No UI surface changes either way. The only UI-visible constraints are: a voided expense must expose a **void date** and a **void reason** to the client (the ledger renders both), and a historical expense whose category is no longer configured must still render its stored category string in the ledger and in every report. | §3                                            |
 
 ---
 

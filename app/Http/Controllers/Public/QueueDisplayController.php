@@ -24,8 +24,9 @@ class QueueDisplayController extends Controller
                 // with a time component on write, which SQLite does not
                 // truncate back to a bare date (see QueueEntry::nextForBusinessDay()).
                 ->whereDate('queue_date', QueueEntry::currentBusinessDate())
+                ->orderByRaw("CASE queue_prefix WHEN 'R' THEN 0 ELSE 1 END")
                 ->orderBy('queue_number')
-                ->get(['id', 'queue_number', 'status']),
+                ->get(['id', 'queue_prefix', 'queue_number', 'status']),
         ]);
     }
 }

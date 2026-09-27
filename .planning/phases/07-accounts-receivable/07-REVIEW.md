@@ -4,67 +4,67 @@ reviewed: 2026-09-09T00:00:00Z
 depth: standard
 files_reviewed: 56
 files_reviewed_list:
-  - app/Actions/POS/ConfirmPaymentIntent.php
-  - app/Concerns/AccountsReceivableValidationRules.php
-  - app/Console/Commands/SendAccountsReceivableReminders.php
-  - app/Enums/AccountsReceivableAgingBracket.php
-  - app/Enums/AccountsReceivableCollectionStatus.php
-  - app/Enums/PaymentStatus.php
-  - app/Http/Controllers/AccountingStaff/AccountsReceivableController.php
-  - app/Http/Controllers/AccountingStaff/CollectionLetterController.php
-  - app/Http/Controllers/AccountingStaff/CollectionStatusController.php
-  - app/Http/Controllers/AccountingStaff/WriteOffRequestController.php
-  - app/Http/Controllers/Cashier/CancellationController.php
-  - app/Http/Controllers/Cashier/CreditRequestController.php
-  - app/Http/Controllers/Cashier/PaymentController.php
-  - app/Http/Controllers/Cashier/ReceiptController.php
-  - app/Http/Controllers/Owner/CreditApprovalController.php
-  - app/Http/Controllers/Owner/WriteOffApprovalController.php
-  - app/Http/Requests/AccountingStaff/RequestWriteOffRequest.php
-  - app/Http/Requests/AccountingStaff/UpdateCollectionStatusRequest.php
-  - app/Http/Requests/Cashier/SavePricingAndPaymentRequest.php
-  - app/Http/Requests/Owner/ApproveWriteOffRequest.php
-  - app/Http/Requests/Owner/RejectWriteOffRequest.php
-  - app/Mail/AccountsReceivableReminder.php
-  - app/Models/AccountsReceivable.php
-  - app/Models/JobOrder.php
-  - app/Policies/AccountsReceivablePolicy.php
-  - database/factories/AccountsReceivableFactory.php
-  - database/migrations/2026_09_08_090000_add_aging_and_collection_columns_to_accounts_receivable_table.php
-  - database/seeders/SystemConfigurationSeeder.php
-  - resources/js/config/nav/accounting-staff.ts
-  - resources/js/config/nav/owner.ts
-  - resources/js/pages/accounting-staff/AccountsReceivable/Index.vue
-  - resources/js/pages/accounting-staff/AccountsReceivable/Show.vue
-  - resources/js/pages/accounting-staff/CollectionLetter.vue
-  - resources/js/pages/cashier/Dashboard.vue
-  - resources/js/pages/frontline-staff/Dashboard.vue
-  - resources/js/pages/owner/WriteOffRequests.vue
-  - resources/views/mail/accounts-receivable-reminder.blade.php
-  - routes/console.php
-  - routes/owner.php
-  - routes/portals.php
-  - tests/Feature/AccountingStaff/AccountsReceivableListTest.php
-  - tests/Feature/AccountingStaff/CollectionLetterTest.php
-  - tests/Feature/AccountingStaff/CollectionStatusTest.php
-  - tests/Feature/AccountingStaff/WriteOffRequestTest.php
-  - tests/Feature/AccountsReceivable/AgingBracketTest.php
-  - tests/Feature/Cashier/CancellationFeeTest.php
-  - tests/Feature/Cashier/CashierPagesTest.php
-  - tests/Feature/Cashier/CreditRequestTest.php
-  - tests/Feature/Cashier/RecordPaymentTest.php
-  - tests/Feature/Console/SendAccountsReceivableRemindersTest.php
-  - tests/Feature/Owner/CreditApprovalTest.php
-  - tests/Feature/Owner/WriteOffApprovalTest.php
-  - tests/Unit/Actions/ConfirmPaymentIntentTest.php
-  - tests/Unit/Mail/AccountsReceivableReminderMailableTest.php
-  - tests/Unit/Models/JobOrderTest.php
-  - tests/Unit/SystemConfigurationTest.php
+    - app/Actions/POS/ConfirmPaymentIntent.php
+    - app/Concerns/AccountsReceivableValidationRules.php
+    - app/Console/Commands/SendAccountsReceivableReminders.php
+    - app/Enums/AccountsReceivableAgingBracket.php
+    - app/Enums/AccountsReceivableCollectionStatus.php
+    - app/Enums/PaymentStatus.php
+    - app/Http/Controllers/AccountingStaff/AccountsReceivableController.php
+    - app/Http/Controllers/AccountingStaff/CollectionLetterController.php
+    - app/Http/Controllers/AccountingStaff/CollectionStatusController.php
+    - app/Http/Controllers/AccountingStaff/WriteOffRequestController.php
+    - app/Http/Controllers/Cashier/CancellationController.php
+    - app/Http/Controllers/Cashier/CreditRequestController.php
+    - app/Http/Controllers/Cashier/PaymentController.php
+    - app/Http/Controllers/Cashier/ReceiptController.php
+    - app/Http/Controllers/Owner/CreditApprovalController.php
+    - app/Http/Controllers/Owner/WriteOffApprovalController.php
+    - app/Http/Requests/AccountingStaff/RequestWriteOffRequest.php
+    - app/Http/Requests/AccountingStaff/UpdateCollectionStatusRequest.php
+    - app/Http/Requests/Cashier/SavePricingAndPaymentRequest.php
+    - app/Http/Requests/Owner/ApproveWriteOffRequest.php
+    - app/Http/Requests/Owner/RejectWriteOffRequest.php
+    - app/Mail/AccountsReceivableReminder.php
+    - app/Models/AccountsReceivable.php
+    - app/Models/JobOrder.php
+    - app/Policies/AccountsReceivablePolicy.php
+    - database/factories/AccountsReceivableFactory.php
+    - database/migrations/2026_09_08_090000_add_aging_and_collection_columns_to_accounts_receivable_table.php
+    - database/seeders/SystemConfigurationSeeder.php
+    - resources/js/config/nav/accounting-staff.ts
+    - resources/js/config/nav/owner.ts
+    - resources/js/pages/accounting-staff/AccountsReceivable/Index.vue
+    - resources/js/pages/accounting-staff/AccountsReceivable/Show.vue
+    - resources/js/pages/accounting-staff/CollectionLetter.vue
+    - resources/js/pages/cashier/Dashboard.vue
+    - resources/js/pages/frontline-staff/Dashboard.vue
+    - resources/js/pages/owner/WriteOffRequests.vue
+    - resources/views/mail/accounts-receivable-reminder.blade.php
+    - routes/console.php
+    - routes/owner.php
+    - routes/portals.php
+    - tests/Feature/AccountingStaff/AccountsReceivableListTest.php
+    - tests/Feature/AccountingStaff/CollectionLetterTest.php
+    - tests/Feature/AccountingStaff/CollectionStatusTest.php
+    - tests/Feature/AccountingStaff/WriteOffRequestTest.php
+    - tests/Feature/AccountsReceivable/AgingBracketTest.php
+    - tests/Feature/Cashier/CancellationFeeTest.php
+    - tests/Feature/Cashier/CashierPagesTest.php
+    - tests/Feature/Cashier/CreditRequestTest.php
+    - tests/Feature/Cashier/RecordPaymentTest.php
+    - tests/Feature/Console/SendAccountsReceivableRemindersTest.php
+    - tests/Feature/Owner/CreditApprovalTest.php
+    - tests/Feature/Owner/WriteOffApprovalTest.php
+    - tests/Unit/Actions/ConfirmPaymentIntentTest.php
+    - tests/Unit/Mail/AccountsReceivableReminderMailableTest.php
+    - tests/Unit/Models/JobOrderTest.php
+    - tests/Unit/SystemConfigurationTest.php
 findings:
-  critical: 2
-  warning: 2
-  info: 2
-  total: 6
+    critical: 2
+    warning: 2
+    info: 2
+    total: 6
 status: issues_found
 ---
 
@@ -112,7 +112,7 @@ locking, cancellation-fee double-submit) round out the findings.
 **File:** `app/Http/Controllers/Cashier/PaymentController.php:94-184` (cash/bank branch) and `:202-307` (`storePaymongoIntent`)
 
 **Issue:** Every other AR-adjacent `payment_status` mutator added or touched in
-the 07-08 round takes a locked re-read of the job order *inside* its
+the 07-08 round takes a locked re-read of the job order _inside_ its
 `DB::transaction()` and re-verifies the terminal-state guards there
 (`ConfirmPaymentIntent::__invoke` lines 32-48, `CreditRequestController::
 store` lines 49-64, `CreditApprovalController::approve` lines 55-70,
@@ -125,13 +125,14 @@ re-querying it under `lockForUpdate()` — before writing a new `payment_status`
 and creating a `Transaction`.
 
 Concretely reachable races:
+
 - A `WriteOffApprovalController::approve()` call and a `PaymentController::
-  store()` call for the same job order can interleave so that the write-off
+store()` call for the same job order can interleave so that the write-off
   approval's `payment_status = WrittenOff` write is immediately overwritten by
   the payment controller's `payment_status = Paid/PartiallyPaid` write,
   silently reopening a booked loss — the exact scenario the phase's own
   `ConfirmPaymentIntent` guard and test (`tests/Unit/Actions/
-  ConfirmPaymentIntentTest.php:74-86`, "does not revert the terminal state")
+ConfirmPaymentIntentTest.php:74-86`, "does not revert the terminal state")
   were written to prevent, but which does not exist for this controller.
 - Two concurrent submissions of the same Cash/Bank payment (double-click,
   slow-network retry) both read `payment_status = Unpaid` before either
@@ -163,7 +164,7 @@ Apply the same re-fetch-and-re-check at the top of `storePaymongoIntent`'s
 
 **File:** `app/Models/JobOrder.php:162-169`; consumed by `app/Http/Controllers/AccountingStaff/AccountsReceivableController.php:144`, `app/Http/Controllers/AccountingStaff/CollectionLetterController.php:40`, `app/Http/Controllers/Owner/WriteOffApprovalController.php:39,104`, `app/Console/Commands/SendAccountsReceivableReminders.php:56`, `app/Mail/AccountsReceivableReminder.php:117`
 
-**Issue:** `outstandingBalance()` sums *every* `Completed` transaction
+**Issue:** `outstandingBalance()` sums _every_ `Completed` transaction
 regardless of `type` — it does not exclude `TransactionType::CancellationFee`
 (`app/Enums/TransactionType.php:10`; confirmed no call site anywhere in `app/`
 filters transactions by type before summing). Separately,
@@ -193,10 +194,10 @@ write-off/credit approval, even though no money was actually applied toward
 the print-job debt.
 
 This directly contradicts the invariant `cashier/Dashboard.vue` documents and
-relies on for its own UI copy (lines 103-113 of that file): *"cancelling
+relies on for its own UI copy (lines 103-113 of that file): _"cancelling
 never writes off an existing On-Credit balance — the fee-netting logic above
 only ever looks at completed Transactions, so an Active AccountsReceivable is
-untouched by this action."* The Vue-side netting logic is indeed scoped
+untouched by this action."_ The Vue-side netting logic is indeed scoped
 correctly (it only reads `amount_paid`/`accounts_receivable.balance`
 separately), but the server-side `outstandingBalance()` that the AR pages
 actually render from is not scoped the same way, so the invariant is broken
@@ -268,8 +269,7 @@ public function store(RequestWriteOffRequest $request, AccountsReceivable $accou
 
 **File:** `app/Http/Controllers/Cashier/CancellationController.php:30-87`
 
-**Issue:** The `abort_if($jobOrder->cancelled_at !== null, ...)` guard (line
-32) runs on an unlocked route-model-bound read, before `DB::transaction()`
+**Issue:** The `abort_if($jobOrder->cancelled_at !== null, ...)` guard (line 32) runs on an unlocked route-model-bound read, before `DB::transaction()`
 (line 51). Inside the transaction, `$jobOrder` is never re-fetched under
 `lockForUpdate()`, and `cancelled_at` is never re-checked. Two concurrent
 cancel requests for the same job order (double-click on "Confirm
@@ -296,7 +296,7 @@ line 115 (`$accountsReceivable->jobOrder->number`) — the flash message reads
 `jobOrder` off the original, un-eager-loaded, pre-transaction instance,
 triggering an extra lazy-loaded query outside the transaction. `number` is
 immutable so this happens to render correctly today, but it's a fragile
-pattern — a future field read here that *does* change inside the transaction
+pattern — a future field read here that _does_ change inside the transaction
 (e.g. `balance`) would silently show stale data.
 
 **Fix:** Capture the needed display value (e.g. `$jobOrder->number`) from

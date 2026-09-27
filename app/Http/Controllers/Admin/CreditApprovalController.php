@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Owner;
+namespace App\Http\Controllers\Admin;
 
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Owner\ApproveCreditRequest;
-use App\Http\Requests\Owner\RejectCreditRequest;
+use App\Http\Requests\Admin\ApproveCreditRequest;
+use App\Http\Requests\Admin\RejectCreditRequest;
 use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
 use App\Models\SystemConfiguration;
@@ -19,16 +19,21 @@ use Inertia\Response;
 class CreditApprovalController extends Controller
 {
     /**
-     * Show the Owner's Credit Requests approval queue (POS-08). Admin can
-     * view this page (route-group `role:owner,admin` middleware), but only
-     * Owner can act on it — enforced by AccountsReceivablePolicy.
+     * Show the Admin's Credit Requests approval queue (POS-08). Admin can
+     * view this page (route-group `role:admin` middleware), but only
+     * Admin can act on it — enforced by AccountsReceivablePolicy.
      */
     public function index(Request $request): Response
     {
-        return Inertia::render('owner/CreditRequests', [
+        return Inertia::render('admin/CreditRequests', [
             'creditRequests' => AccountsReceivable::query()
                 ->where('status', AccountsReceivableStatus::PendingApproval->value)
-                ->with(['jobOrder:id,number,description', 'jobOrder.queueEntry.customer:id,name', 'requestedBy:id,name'])
+                // `queue_entry_id` is not optional in this select: without the
+                // foreign key loaded, Eloquent cannot match the nested
+                // queueEntry, `job_order.queue_entry` serialises as null, and
+                // the page's `queue_entry.customer.name` throws — blanking the
+                // whole screen for every pending request.
+                ->with(['jobOrder:id,number,description,queue_entry_id', 'jobOrder.queueEntry.customer:id,name', 'requestedBy:id,name'])
                 ->get(['id', 'job_order_id', 'balance', 'requested_by', 'created_at']),
         ]);
     }
@@ -95,7 +100,7 @@ class CreditApprovalController extends Controller
         DB::transaction(function () use ($request, $accountsReceivable): void {
             // Locked re-read (CR-05) — same idempotency boundary as
             // approve(), so rejecting an already-approved/already-rejected
-            // receivable can never silently reverse a prior Owner decision.
+            // receivable can never silently reverse a prior Admin decision.
             $accountsReceivable = AccountsReceivable::query()->whereKey($accountsReceivable->id)->lockForUpdate()->firstOrFail();
 
             abort_unless(

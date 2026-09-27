@@ -6,11 +6,11 @@ status: milestone_complete
 last_updated: 2026-09-10T03:15:41.584Z
 last_activity: 2026-09-10
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 59
-  completed_plans: 59
-  percent: 100
+    total_phases: 8
+    completed_phases: 8
+    total_plans: 59
+    completed_plans: 59
+    percent: 100
 stopped_at: Milestone complete (Phase 08 was final phase)
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 Phase: 08
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-09-10 - Completed quick task 260910-mbb: Rush flag, printable customer QR handoff, customer job-order history, cashier paid-order filter
+Last activity: 2026-09-27 - Completed quick task 260927-va3: Fix code-review bugs (pricing lock, credit pricing, DPI dims, written-off outstanding)
 
 Progress: [██████████] 100%
 
@@ -43,20 +43,20 @@ Progress: [██████████] 100%
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01 | 12 | - | - |
-| 03 | 2 | - | - |
-| 04 | 13 | - | - |
-| 05 | 7 | - | - |
-| 07 | 8 | - | - |
-| 08 | 5 | - | - |
+| ----- | ----- | ----- | -------- |
+| 01    | 12    | -     | -        |
+| 03    | 2     | -     | -        |
+| 04    | 13    | -     | -        |
+| 05    | 7     | -     | -        |
+| 07    | 8     | -     | -        |
+| 08    | 5     | -     | -        |
 
 **Recent Trend:**
 
 - Last 5 plans: -
 - Trend: -
 
-*Updated after each plan completion*
+_Updated after each plan completion_
 | Phase 01 P01 | 30min | 2 tasks | 13 files |
 | Phase 01 P02 | 12min | 1 tasks | 4 files |
 | Phase 01 P03 | 10min | 2 tasks | 5 files |
@@ -145,25 +145,28 @@ None yet.
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260910-fup | Reskin UI to demo royal-blue Inkspire design system | 2026-09-10 | 63578cf | [260910-fup-reskin-ui-to-demo-royal-blue-inkspire-de](./quick/260910-fup-reskin-ui-to-demo-royal-blue-inkspire-de/) |
-| 260910-iq8 | Frontline intake redesign + owner-managed print specification catalog | 2026-09-10 | uncommitted | [260910-iq8-frontline-staff-ux-polish-job-order-inta](./quick/260910-iq8-frontline-staff-ux-polish-job-order-inta/) |
-| 260910-j7w | Unify role portal layouts behind five shared components | 2026-09-10 | uncommitted | [260910-j7w-unify-role-portal-layouts-shared-page-sh](./quick/260910-j7w-unify-role-portal-layouts-shared-page-sh/) |
-| 260910-k46 | Depth pass on the remaining role portal pages | 2026-09-10 | uncommitted | [260910-k46-apply-the-new-visit-depth-pass-to-the-re](./quick/260910-k46-apply-the-new-visit-depth-pass-to-the-re/) |
-| 260910-klb | Customer organization, real service catalog, size-aware Type A routing, Type B client notes | 2026-09-10 | uncommitted | [260910-klb-customer-organization-field-product-serv](./quick/260910-klb-customer-organization-field-product-serv/) |
-| 260910-l0u | Searchable selects + standing user-friendly check in CLAUDE.md | 2026-09-10 | uncommitted | [260910-l0u-searchable-product-service-dropdown-via-](./quick/260910-l0u-searchable-product-service-dropdown-via-/) |
-| 260910-lgn | Always-available Register New Customer button on New Visit | 2026-09-10 | uncommitted | [260910-lgn-always-available-register-new-customer-b](./quick/260910-lgn-always-available-register-new-customer-b/) |
-| 260910-mbb | Rush flag, printable customer QR handoff, customer job-order history, cashier paid-order filter | 2026-09-10 | 714cb4c | [260910-mbb-frontline-rush-flag-printable-customer-q](./quick/260910-mbb-frontline-rush-flag-printable-customer-q/) |
+| #          | Description                                                                                                                                        | Date       | Commit      | Directory                                                                                                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| 260910-fup | Reskin UI to demo royal-blue Inkspire design system                                                                                                | 2026-09-10 | 63578cf     | [260910-fup-reskin-ui-to-demo-royal-blue-inkspire-de](./quick/260910-fup-reskin-ui-to-demo-royal-blue-inkspire-de/) |
+| 260910-iq8 | Frontline intake redesign + owner-managed print specification catalog                                                                              | 2026-09-10 | uncommitted | [260910-iq8-frontline-staff-ux-polish-job-order-inta](./quick/260910-iq8-frontline-staff-ux-polish-job-order-inta/) |
+| 260910-j7w | Unify role portal layouts behind five shared components                                                                                            | 2026-09-10 | uncommitted | [260910-j7w-unify-role-portal-layouts-shared-page-sh](./quick/260910-j7w-unify-role-portal-layouts-shared-page-sh/) |
+| 260910-k46 | Depth pass on the remaining role portal pages                                                                                                      | 2026-09-10 | uncommitted | [260910-k46-apply-the-new-visit-depth-pass-to-the-re](./quick/260910-k46-apply-the-new-visit-depth-pass-to-the-re/) |
+| 260910-klb | Customer organization, real service catalog, size-aware Type A routing, Type B client notes                                                        | 2026-09-10 | uncommitted | [260910-klb-customer-organization-field-product-serv](./quick/260910-klb-customer-organization-field-product-serv/) |
+| 260910-l0u | Searchable selects + standing user-friendly check in CLAUDE.md                                                                                     | 2026-09-10 | uncommitted | [260910-l0u-searchable-product-service-dropdown-via-](./quick/260910-l0u-searchable-product-service-dropdown-via-/) |
+| 260910-lgn | Always-available Register New Customer button on New Visit                                                                                         | 2026-09-10 | uncommitted | [260910-lgn-always-available-register-new-customer-b](./quick/260910-lgn-always-available-register-new-customer-b/) |
+| 260910-mbb | Rush flag, printable customer QR handoff, customer job-order history, cashier paid-order filter                                                    | 2026-09-10 | 714cb4c     | [260910-mbb-frontline-rush-flag-printable-customer-q](./quick/260910-mbb-frontline-rush-flag-printable-customer-q/) |
+| 260927-ts2 | Price at intake (W×H × qty × rate, quoted_amount), drop Material, price columns + Admin Job Orders page                                            | 2026-09-27 | uncommitted | [260927-ts2-price-at-intake-drop-material-price-colu](./quick/260927-ts2-price-at-intake-drop-material-price-colu/) |
+| 260927-va3 | Fix code-review bugs: one pricing-lock rule (cash/PayMongo/credit/payment page), DPI check uses intake W×H, admin outstanding excludes written-off | 2026-09-27 | uncommitted | [260927-va3-fix-code-review-bugs-pricing-lock-credit](./quick/260927-va3-fix-code-review-bugs-pricing-lock-credit/) |
+| 260927-fx1 | Fix parseNumber crash on numeric input (NewVisit quantity/price + service select reset) | 2026-09-27 | uncommitted | fast |
 
 ## Deferred Items
 
 Items acknowledged and carried forward from previous milestone close:
 
-| Category | Item | Status | Deferred At |
-|----------|------|--------|-------------|
-| Notifications | NOTF-01: SMS/email on order-ready | v2 | Requirements definition |
-| Reporting | RPT-06: Admin non-financial reports beyond listed scope | v2 | Requirements definition |
+| Category      | Item                                                    | Status | Deferred At             |
+| ------------- | ------------------------------------------------------- | ------ | ----------------------- |
+| Notifications | NOTF-01: SMS/email on order-ready                       | v2     | Requirements definition |
+| Reporting     | RPT-06: Admin non-financial reports beyond listed scope | v2     | Requirements definition |
 
 ## Session Continuity
 

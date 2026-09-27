@@ -42,7 +42,8 @@ test('the workspace brief carries the design details an artist needs to start wo
         'type' => 'type_b',
         'status' => JobOrderStatus::InConsultation,
         'print_size' => 'Tarpaulin 3x6ft',
-        'material' => 'Tarpaulin',
+        'width_ft' => 3,
+        'height_ft' => 6,
         'quantity' => 4,
         'deadline' => '2026-10-01',
         'client_notes' => 'Please use the blue logo.',
@@ -57,7 +58,8 @@ test('the workspace brief carries the design details an artist needs to start wo
         ->where('jobOrder.customer_name', 'Marites Dela Cruz')
         ->where('jobOrder.customer_organization', 'Barangay Hall')
         ->where('jobOrder.print_size', 'Tarpaulin 3x6ft')
-        ->where('jobOrder.material', 'Tarpaulin')
+        ->where('jobOrder.width_ft', '3.00')
+        ->where('jobOrder.height_ft', '6.00')
         ->where('jobOrder.quantity', 4)
         ->where('jobOrder.client_notes', 'Please use the blue logo.'));
 });

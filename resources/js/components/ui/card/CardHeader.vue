@@ -1,17 +1,26 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
+import type { Component, HTMLAttributes } from "vue"
 import { cn } from "@/lib/utils"
 
 const props = defineProps<{
   class?: HTMLAttributes["class"]
+  icon?: Component
 }>()
 </script>
 
 <template>
   <div
     data-slot="card-header"
-    :class="cn('@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6', props.class)"
+    :class="cn('bg-muted/40 border-border flex items-center gap-3 border-b px-6 py-4', props.class)"
   >
-    <slot />
+    <span
+      v-if="icon"
+      class="bg-accent text-accent-foreground flex size-9 shrink-0 items-center justify-center rounded-lg"
+    >
+      <component :is="icon" class="size-[18px]" />
+    </span>
+    <div class="min-w-0 flex-1">
+      <slot />
+    </div>
   </div>
 </template>

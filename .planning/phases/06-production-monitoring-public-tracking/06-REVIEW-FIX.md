@@ -17,11 +17,13 @@ status: partial
 **Scope:** `critical_warning` (CR-01..CR-06, WR-01..WR-12; the 7 Info findings were out of scope)
 
 **Summary:**
+
 - Findings in scope: 18
 - Fixed: 16
 - Skipped: 2 (WR-06, WR-12 — reasoning below)
 
 **Verification:**
+
 - `php artisan test --compact` — **385 tests, 382 passed, 3 skipped, 0 failures** (baseline was 352/349/3; +33 tests)
 - `vendor/bin/pint --dirty --format agent` — passed
 - `npm run types:check` (`vue-tsc --noEmit`) — clean
@@ -48,7 +50,7 @@ Replaced `max('number')` + `substr($maxNumber, -4)` with
 `orderByRaw('LENGTH(number) DESC, number DESC')->value('number')` plus a prefix-length-based PHP
 parse. Ordering by length first and the string second restores numeric order for a variable-width
 zero-padded suffix without a `SUBSTR`/`CAST` SQL expression, keeping the SQLite/MySQL portability
-the original docblock was reaching for. `sprintf('JO-%d-%04d', ...)` already pads to a *minimum* of
+the original docblock was reaching for. `sprintf('JO-%d-%04d', ...)` already pads to a _minimum_ of
 four digits, so the generator now produces exactly what `TrackJobOrderRequest`'s `\d{4,}` regex
 already accepted.
 
@@ -78,7 +80,7 @@ only assertable evidence available, since SQLite makes `lockForUpdate()` a no-op
 assertion discriminates (it reads `baseline + 0` without the fix).
 
 **Why flagged for human verification:** as the orchestrator noted, a green SQLite suite does not
-prove the lock survives. The reasoning is: `nextNumberForYear()` opens and *commits* its own
+prove the lock survives. The reasoning is: `nextNumberForYear()` opens and _commits_ its own
 transaction, so on MySQL its gap lock is released at that commit unless an outer transaction turns
 it into a savepoint. The outer transaction is now present at both call sites.
 
@@ -116,7 +118,7 @@ a released order rejects both and produces no log row.
 
 Widened the column list to `['number', 'status', 'released_at', 'cancelled_at']` and made
 `publicStage()` return `'Cancelled'` before consulting `released_at`. Two tests added: cancelled
-while at `printing`, and cancelled *and* released (Cancelled wins).
+while at `printing`, and cancelled _and_ released (Cancelled wins).
 
 The existing PII-boundary test still passes — `cancelled_at` is selected on the model but never
 enters the three-field response shape.
@@ -155,7 +157,7 @@ Hoisted `$endOfBusinessDay = now()->timezone('Asia/Manila')->endOfDay()` out of 
 Manila" case fails against the old `now()->endOfDay()`.
 
 One subtlety worth recording: the tests must call `->utc()` on the `Carbon::parse(..., 'Asia/Manila')`
-value before `forceFill`, because Eloquent's `datetime` cast stores the *wall clock* of whatever
+value before `forceFill`, because Eloquent's `datetime` cast stores the _wall clock_ of whatever
 timezone the Carbon instance carries, without converting.
 
 ---
@@ -201,6 +203,7 @@ Both surfaces now carry `withMax(['productionLogs as ready_at' => ...], 'created
 `jobOrder.ready_at ?? jobOrder.updated_at`.
 
 Three implementation notes:
+
 - Sorting happens in PHP (`->sortBy()->values()`) rather than `orderBy` on the aggregate alias —
   the collections here are small and this avoids relying on alias-in-`ORDER BY` resolution
   differing between SQLite and MySQL.
@@ -282,7 +285,7 @@ cancelled `printing` job order, asserting both `jobsCompleted` and `slaAdherence
 
 `backfillNumbers()` now takes its own `DB::transaction`, filters `whereNull('number')`, adds
 `orderBy('id')` as a same-second tiebreaker, and handles a null `created_at` explicitly instead of
-relying on `Carbon::parse(null)` returning *now*.
+relying on `Carbon::parse(null)` returning _now_.
 
 `whereNull('number')` alone would **not** have made the backfill safely re-runnable — a partial run
 followed by a re-run would restart each year at `0001` and collide on the new unique index. A new
@@ -296,7 +299,7 @@ stays `up()`/`down()` as Laravel expects. `php artisan migrate:fresh` verified c
 
 **Why flagged for human verification:** the transaction cannot undo the `ALTER TABLE` on MySQL
 (implicit commit) — that part of the finding is unfixable in-place. What the change buys is that a
-failed backfill is now atomic *within itself* and safe to re-run. Confirm on MySQL before relying
+failed backfill is now atomic _within itself_ and safe to re-run. Confirm on MySQL before relying
 on it against a table with pre-existing rows.
 
 ---
@@ -322,13 +325,13 @@ One fetch, both values derived from it. The test counts statements binding the
 The review's own fix is "make the tracking key unguessable rather than relying on rate limiting
 alone": a new random `tracking_token` column, a migration + backfill for it, a change to the QR
 payload in `ReceiptController`, a second lookup path in `TrackingController`/`TrackJobOrderRequest`,
-and a separate tighter per-IP limiter keyed on *not-found* responses specifically. That is a schema
+and a separate tighter per-IP limiter keyed on _not-found_ responses specifically. That is a schema
 change plus a new public URL contract, not a repair — and it interacts with the printed-receipt
 format, which is a product decision (a token in the QR but not on the printed line, or both?).
 
 The finding itself is **valid and I am not disputing it**. What Phase 6 ships is a real, if
 low-severity, business-intelligence leak: order volume, current highest order number, and per-order
-production progress are all walkable. The review is also right that it is *not* a PII leak — the
+production progress are all walkable. The review is also right that it is _not_ a PII leak — the
 three-field response shape is tightly scoped and tested.
 
 Two things were done that partially reduce the exposure without pre-empting the design decision:
@@ -355,7 +358,7 @@ primary suggestion is actively harmful:
    A time-window rejection would silently swallow the second one and leave the physical state and
    the log disagreeing — a worse failure than the one it prevents.
 2. **The stated failure mode is already covered.** The review frames it as "the actual failure mode
-   for a double-click". A double-clicked *advance* is genuinely idempotent-by-lock: the second
+   for a double-click". A double-clicked _advance_ is genuinely idempotent-by-lock: the second
    request sees the new status, and `advance()` from `ready_for_pickup` already 422s, as does
    `sendBack()` from `for_production`. Mid-sequence, the second click performs a different, real
    transition — which is what the operator asked for by clicking twice. Both buttons already carry

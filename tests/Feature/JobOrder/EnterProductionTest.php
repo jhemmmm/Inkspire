@@ -115,7 +115,7 @@ test('a client approving remotely via the signed design-review link lands the jo
     expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ForProduction);
 });
 
-test('a type a job order whose file fails validation stays at ValidationFailed and never invokes EnterProduction', function () {
+test('a type a job order whose file is rejected is never created and never invokes EnterProduction', function () {
     Storage::fake('local');
 
     $staff = User::factory()->frontlineStaff()->create();
@@ -125,9 +125,8 @@ test('a type a job order whose file fails validation stays at ValidationFailed a
         'description' => 'Tarpaulin, 3x5ft',
         'type' => 'type_a',
         'file' => UploadedFile::fake()->create('design.xyz', 500),
-    ]);
+    ])->assertSessionHasErrors('file');
 
-    $jobOrder = $queueEntry->jobOrders()->firstOrFail();
-    expect($jobOrder->status)->toBe(JobOrderStatus::ValidationFailed);
-    expect(ProductionLog::where('job_order_id', $jobOrder->id)->count())->toBe(0);
+    expect($queueEntry->jobOrders()->exists())->toBeFalse();
+    expect(ProductionLog::count())->toBe(0);
 });

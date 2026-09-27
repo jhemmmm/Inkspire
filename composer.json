@@ -59,6 +59,11 @@
             "Composer\\Config::disableProcessTimeout",
             "@php artisan dev"
         ],
+        "dev:tunnel": [
+            "Composer\\Config::disableProcessTimeout",
+            "@putenv TUNNEL=1",
+            "@php artisan dev"
+        ],
         "lint": [
             "pint --parallel"
         ],

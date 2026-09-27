@@ -44,7 +44,8 @@ class JobOrderWorkspaceController extends Controller
                 // given.
                 'client_notes' => $jobOrder->client_notes,
                 'print_size' => $jobOrder->print_size,
-                'material' => $jobOrder->material,
+                'width_ft' => $jobOrder->width_ft,
+                'height_ft' => $jobOrder->height_ft,
                 'quantity' => $jobOrder->quantity,
                 // Populated when a Type A file was too low-resolution for the
                 // size ordered -- this is the artist's brief for what to fix.

@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Http\Controllers\Owner;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Owner\FilterAuditTrailRequest;
+use App\Http\Requests\Admin\FilterAuditTrailRequest;
 use App\Models\AuditLog;
 use App\Models\User;
 use Inertia\Inertia;
@@ -12,7 +12,7 @@ use Inertia\Response;
 class AuditTrailController extends Controller
 {
     /**
-     * Show the read-only, filterable audit trail for Owner/Admin.
+     * Show the read-only, filterable audit trail for Admin.
      */
     public function index(FilterAuditTrailRequest $request): Response
     {
@@ -26,7 +26,7 @@ class AuditTrailController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        return Inertia::render('owner/AuditTrail', [
+        return Inertia::render('admin/AuditTrail', [
             'entries' => $entries,
             'filters' => $request->only(['user', 'action', 'from', 'to']),
             'users' => User::query()->select(['id', 'name'])->orderBy('name')->get(),

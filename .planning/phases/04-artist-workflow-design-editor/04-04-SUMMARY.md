@@ -6,41 +6,45 @@ tags: [inertia, vue, tui-image-editor, wayfinder, artist-portal, design-editor]
 
 # Dependency graph
 requires:
-  - phase: 04-artist-workflow-design-editor
-    provides: "Plan 04-02's JobOrderWorkspace.vue/Dashboard.vue shells and artistNavItems; Plan 04-03's design_files/revision_logs schema, InDesign/PendingReview status cases, DesignEditorController::startDesign/sendForReview endpoints, and JobOrderWorkspaceController's design.initialImageUrl/design.canEdit props"
+    - phase: 04-artist-workflow-design-editor
+      provides: "Plan 04-02's JobOrderWorkspace.vue/Dashboard.vue shells and artistNavItems; Plan 04-03's design_files/revision_logs schema, InDesign/PendingReview status cases, DesignEditorController::startDesign/sendForReview endpoints, and JobOrderWorkspaceController's design.initialImageUrl/design.canEdit props"
 provides:
-  - "resources/js/components/ToastImageEditor.vue — thin Vue 3 Composition API wrapper over the vanilla tui-image-editor ImageEditor class, exposing exportPng() via defineExpose"
-  - "resources/js/types/tui-image-editor.d.ts — hand-written ambient module declaration for the untyped tui-image-editor package"
-  - "Design card in JobOrderWorkspace.vue: pre-editor choice, mounted editor, Send for Review submission, locked-state note, pending-review note"
-  - "Dashboard.vue in_design/pending_review badge labels and row-action handling"
-affects: ["04-05 (review/lock/override — reads the same design_files.locked_at gate this plan's canEdit prop is derived from)", "04-06 (Review section — will render inside the same Job Order Workspace, alongside this plan's Design card)"]
+    - 'resources/js/components/ToastImageEditor.vue — thin Vue 3 Composition API wrapper over the vanilla tui-image-editor ImageEditor class, exposing exportPng() via defineExpose'
+    - 'resources/js/types/tui-image-editor.d.ts — hand-written ambient module declaration for the untyped tui-image-editor package'
+    - 'Design card in JobOrderWorkspace.vue: pre-editor choice, mounted editor, Send for Review submission, locked-state note, pending-review note'
+    - 'Dashboard.vue in_design/pending_review badge labels and row-action handling'
+affects:
+    [
+        "04-05 (review/lock/override — reads the same design_files.locked_at gate this plan's canEdit prop is derived from)",
+        "04-06 (Review section — will render inside the same Job Order Workspace, alongside this plan's Design card)",
+    ]
 
 # Tech tracking
 tech-stack:
-  added: ["tui-image-editor@3.15.3", "tui-color-picker@2.2.8"]
-  patterns:
-    - "Vanilla third-party class libraries with no Vue 3 wrapper: mount in onMounted, destroy in onBeforeUnmount, expose an imperative API via defineExpose (ToastImageEditor.vue) — reusable for any future non-Vue canvas/widget library"
-    - "Client-generated Blob/File form submission uses useForm() + forceFormData: true, never Inertia's uncontrolled <Form> (which only supports user-picked native file inputs)"
-    - "Background/fire-and-forget status transitions: flip local UI state immediately, fire the PATCH without awaiting a .then(), so the canvas mount is not blocked on a round-trip"
+    added: ['tui-image-editor@3.15.3', 'tui-color-picker@2.2.8']
+    patterns:
+        - 'Vanilla third-party class libraries with no Vue 3 wrapper: mount in onMounted, destroy in onBeforeUnmount, expose an imperative API via defineExpose (ToastImageEditor.vue) — reusable for any future non-Vue canvas/widget library'
+        - "Client-generated Blob/File form submission uses useForm() + forceFormData: true, never Inertia's uncontrolled <Form> (which only supports user-picked native file inputs)"
+        - 'Background/fire-and-forget status transitions: flip local UI state immediately, fire the PATCH without awaiting a .then(), so the canvas mount is not blocked on a round-trip'
 
 key-files:
-  created:
-    - resources/js/types/tui-image-editor.d.ts
-    - resources/js/components/ToastImageEditor.vue
-  modified:
-    - package.json
-    - package-lock.json
-    - resources/js/pages/artist/JobOrderWorkspace.vue
-    - resources/js/pages/artist/Dashboard.vue
+    created:
+        - resources/js/types/tui-image-editor.d.ts
+        - resources/js/components/ToastImageEditor.vue
+    modified:
+        - package.json
+        - package-lock.json
+        - resources/js/pages/artist/JobOrderWorkspace.vue
+        - resources/js/pages/artist/Dashboard.vue
 
 key-decisions:
-  - "Installed only tui-image-editor + tui-color-picker (framework-agnostic core), not @toast-ui/vue-image-editor, which resolves peerDependencies vue@^2.6.14 and conflicts with this project's Vue 3.5.13 (D-09 amended, per 04-RESEARCH.md)"
-  - "Aliased the imported sendForReview route helper to sendForReviewRoute in JobOrderWorkspace.vue to avoid a duplicate-identifier collision with the plan-specified local async function of the same name"
-  - "Fresh worktree had no vendor/, node_modules/, .env, database.sqlite, or public/build (none tracked in git, per 04-02/04-03 precedent) — hardlink-copied vendor/ and node_modules/ from the main repo checkout (same filesystem, so cp -al is instant and isolates this worktree's npm install from concurrent sibling worktrees), copied .env/database.sqlite/public/build, ran composer dump-autoload and php artisan wayfinder:generate --with-form"
-  - "Worktree branch had NOT been reset to the wave's expected base commit (6cc8d3c) when this agent started — merge-base showed it was still sitting on the bare 'init' commit, missing Plans 04-02/04-03 entirely. Ran the mandated git reset --hard 6cc8d3c... from the branch-check step (the working tree was clean and all untracked dev-infra files were gitignored, so nothing was lost) before any task work began"
+    - "Installed only tui-image-editor + tui-color-picker (framework-agnostic core), not @toast-ui/vue-image-editor, which resolves peerDependencies vue@^2.6.14 and conflicts with this project's Vue 3.5.13 (D-09 amended, per 04-RESEARCH.md)"
+    - 'Aliased the imported sendForReview route helper to sendForReviewRoute in JobOrderWorkspace.vue to avoid a duplicate-identifier collision with the plan-specified local async function of the same name'
+    - "Fresh worktree had no vendor/, node_modules/, .env, database.sqlite, or public/build (none tracked in git, per 04-02/04-03 precedent) — hardlink-copied vendor/ and node_modules/ from the main repo checkout (same filesystem, so cp -al is instant and isolates this worktree's npm install from concurrent sibling worktrees), copied .env/database.sqlite/public/build, ran composer dump-autoload and php artisan wayfinder:generate --with-form"
+    - "Worktree branch had NOT been reset to the wave's expected base commit (6cc8d3c) when this agent started — merge-base showed it was still sitting on the bare 'init' commit, missing Plans 04-02/04-03 entirely. Ran the mandated git reset --hard 6cc8d3c... from the branch-check step (the working tree was clean and all untracked dev-infra files were gitignored, so nothing was lost) before any task work began"
 
 patterns-established:
-  - "ToastImageEditor.vue's mount/destroy-in-lifecycle-hooks + defineExpose(imperative API) shape is the template for any future non-Vue-native library wrapper in this codebase"
+    - "ToastImageEditor.vue's mount/destroy-in-lifecycle-hooks + defineExpose(imperative API) shape is the template for any future non-Vue-native library wrapper in this codebase"
 
 requirements-completed: [JOB-04, JOB-05]
 
@@ -61,6 +65,7 @@ completed: 2026-09-02
 - **Files modified:** 6 (2 created, 4 modified)
 
 ## Accomplishments
+
 - `tui-image-editor@3.15.3` + `tui-color-picker@2.2.8` installed (not the Vue 2-only `@toast-ui/vue-image-editor` wrapper); `npm run types:check` passes cleanly against a hand-written ambient module declaration, zero `@ts-expect-error` needed.
 - `ToastImageEditor.vue`: mounts/destroys the vanilla `ImageEditor` class in `onMounted`/`onBeforeUnmount`, loads an existing signed image URL or starts blank, exposes `exportPng()` for a flattened PNG data URI, and opts out of NHN's default hostname telemetry via `usageStatistics: false`.
 - Job Order Workspace's new "Design" card: four mutually-exclusive states checked in priority order (pending-review note → locked note → pre-editor choice → mounted editor + Send for Review), matching D-06/D-10/D-11's contract that the editor and an outstanding verdict never render together.
@@ -77,6 +82,7 @@ completed: 2026-09-02
 **Plan metadata:** pending (this commit)
 
 ## Files Created/Modified
+
 - `package.json` / `package-lock.json` — added `tui-image-editor`, `tui-color-picker`
 - `resources/js/types/tui-image-editor.d.ts` — ambient module: `ImageEditorOptions` interface, `ImageEditor` class (constructor, `toDataURL`, `destroy`)
 - `resources/js/components/ToastImageEditor.vue` — Composition API wrapper; `initialImageUrl`/`initialImageName` props; `exportPng()` exposed via `defineExpose`
@@ -84,6 +90,7 @@ completed: 2026-09-02
 - `resources/js/pages/artist/Dashboard.vue` — `in_design`/`pending_review` badge mapping, extended action branches
 
 ## Decisions Made
+
 - Installed only the framework-agnostic `tui-image-editor`/`tui-color-picker` packages, per 04-RESEARCH.md Pitfall 1 (the Vue 2-only `@toast-ui/vue-image-editor` wrapper would break against this project's Vue 3.5.13).
 - Aliased the imported `sendForReview` Wayfinder route helper to `sendForReviewRoute` in `JobOrderWorkspace.vue` — see Deviations below.
 - Set up this worktree's dev environment (`vendor/`, `node_modules/`, `.env`, `database.sqlite`, `public/build/`, Wayfinder-generated `resources/js/actions`/`resources/js/routes`) by hardlink-copying from the main repo checkout rather than a fresh install, following the pattern 04-02/04-03 already established for fresh worktrees. `node_modules/` was hardlink-copied (not symlinked) specifically so this plan's `npm install` of two new packages stays isolated from any concurrently-running sibling worktree agent, rather than mutating the shared main-repo `node_modules/`.
@@ -93,6 +100,7 @@ completed: 2026-09-02
 ### Auto-fixed Issues
 
 **1. [Rule 1 - Bug] Aliased the imported `sendForReview` route helper to avoid a duplicate-identifier collision**
+
 - **Found during:** Task 2 (wiring `JobOrderWorkspace.vue`)
 - **Issue:** The plan's action text specifies both `import { start, sendForReview } from '@/routes/artist/job-orders/design';` and `async function sendForReview() { ... sendForReviewForm.post(sendForReview.url(...), ...) }` — two top-level bindings with the identical name `sendForReview` in the same module scope, which is a TypeScript/JavaScript duplicate-identifier compile error.
 - **Fix:** Imported the route helper as `sendForReview as sendForReviewRoute`, keeping the local handler function named `sendForReview` (so the submit button's `@click="sendForReview"` and the Copywriting Contract label are unaffected) and calling `sendForReviewRoute.url(...)` inside it.
@@ -101,6 +109,7 @@ completed: 2026-09-02
 - **Committed in:** `ba78994` (Task 2 commit)
 
 **2. [Rule 3 - Blocking] Reset worktree branch to the correct wave-3 base commit before starting**
+
 - **Found during:** Pre-task setup, before Task 1
 - **Issue:** This worktree's branch was still on the bare `init` commit (`351fb0d`) — `git merge-base HEAD 6cc8d3c...` did not equal `6cc8d3c...`, meaning Plans 04-02 and 04-03's work (this plan's stated dependencies) was entirely absent (no `app/Http/Controllers/Artist/DesignEditorController.php`, no `design.initialImageUrl`/`canEdit` props, no `resources/js/routes/artist/job-orders/design`).
 - **Fix:** Ran the `<worktree_branch_check>` step's mandated `git reset --hard 6cc8d3c54f0d34b43716285398aee684a62b0967` — the working tree was clean at that point and every file I had added up to then (hardlink-copied `vendor/`/`node_modules/`, `.env`, `database.sqlite`, Wayfinder-generated files) was gitignored/untracked, so nothing was lost. Regenerated Wayfinder output and `composer dump-autoload` against the corrected base afterward.
@@ -109,6 +118,7 @@ completed: 2026-09-02
 - **Committed in:** n/a (pre-work environment correction, not a code change)
 
 **3. [Style] Reflowed two Task-1 lines to fit the project's 80-column formatter**
+
 - **Found during:** Running `vp check --fix` (scoped to this plan's 4 touched files) as part of Task 2 verification
 - **Issue:** `ToastImageEditor.vue`'s `menu` array and `tui-image-editor.d.ts`'s constructor signature exceeded the project's `printWidth: 80` prettier setting.
 - **Fix:** Ran `npx vp check --fix` scoped to only this plan's files; the formatter reflowed both onto multiple lines. No logic change.
@@ -138,8 +148,9 @@ None - no external service configuration required. (`usageStatistics: false` mea
 - No blockers.
 
 ---
-*Phase: 04-artist-workflow-design-editor*
-*Completed: 2026-09-02*
+
+_Phase: 04-artist-workflow-design-editor_
+_Completed: 2026-09-02_
 
 ## Self-Check: PASSED
 

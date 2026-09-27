@@ -26,28 +26,28 @@ final class ReportRegistry
                 'subLine' => 'Every payment that cleared in this range, by method and job order.',
                 'badge' => 'Sales',
                 'columns' => ['Date', 'Job Order', 'Customer', 'Type', 'Method', 'Amount'],
-                'roles' => [UserRole::Owner, UserRole::Cashier, UserRole::AccountingStaff],
+                'roles' => [UserRole::Admin, UserRole::Cashier, UserRole::AccountingStaff],
             ],
             'cancellations' => [
                 'title' => 'Cancellations',
                 'subLine' => 'Job orders cancelled in this range, with and without a cancellation fee.',
                 'badge' => 'Cancellations',
                 'columns' => ['Date', 'Job Order', 'Customer', 'Job Order Total', 'Cancellation Fee', 'Payment Status'],
-                'roles' => [UserRole::Owner, UserRole::Cashier],
+                'roles' => [UserRole::Admin, UserRole::Cashier],
             ],
             'production-status' => [
                 'title' => 'Production Status',
                 'subLine' => 'Where each job order stands, with its urgency and stage.',
                 'badge' => 'Production',
                 'columns' => ['Job Order', 'Customer', 'Product', 'Stage', 'Urgency', 'Entered Production', 'Due'],
-                'roles' => [UserRole::Owner, UserRole::ProductionStaff],
+                'roles' => [UserRole::Admin, UserRole::ProductionStaff],
             ],
             'expenses' => [
                 'title' => 'Expenses',
                 'subLine' => 'Every expense recorded in this range, by category.',
                 'badge' => 'Expenses',
                 'columns' => ['Date', 'Category', 'Description', 'Amount', 'Recorded By', 'Status'],
-                'roles' => [UserRole::Owner, UserRole::AccountingStaff],
+                'roles' => [UserRole::Admin, UserRole::AccountingStaff],
             ],
             // Used only by Plan 08-04's xlsx export -- this key has no
             // on-screen row table (rows/rowsTotal stay empty for it).
@@ -56,7 +56,7 @@ final class ReportRegistry
                 'subLine' => 'Revenue less expenses for this range, with the profit result.',
                 'badge' => 'Financial',
                 'columns' => ['Label', 'Amount'],
-                'roles' => [UserRole::Owner, UserRole::AccountingStaff],
+                'roles' => [UserRole::Admin, UserRole::AccountingStaff],
             ],
         ];
     }

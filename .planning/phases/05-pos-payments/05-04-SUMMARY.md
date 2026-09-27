@@ -2,49 +2,62 @@
 phase: 05-pos-payments
 plan: 04
 subsystem: payments
-tags: [laravel, inertia, vue3, pest, pos, payments, paymongo, gcash, maya, reconciliation, dropdown-menu]
+tags:
+    [
+        laravel,
+        inertia,
+        vue3,
+        pest,
+        pos,
+        payments,
+        paymongo,
+        gcash,
+        maya,
+        reconciliation,
+        dropdown-menu,
+    ]
 
 # Dependency graph
 requires:
-  - phase: 05-pos-payments (plan 05-03)
-    provides: ConfirmPaymentIntent idempotency Action, PaymongoWebhookController, PayMongo Payment Intent QR flow, JobOrderPayment.vue's "Check Payment Status" TODO anchor
+    - phase: 05-pos-payments (plan 05-03)
+      provides: ConfirmPaymentIntent idempotency Action, PaymongoWebhookController, PayMongo Payment Intent QR flow, JobOrderPayment.vue's "Check Payment Status" TODO anchor
 provides:
-  - ReconciliationController — store() (manual reconciliation, shared by Cashier and Accounting Staff) and index() (Accounting Staff's pending-confirmation list)
-  - cashier.job-orders.reconcile / accounting-staff.job-orders.reconcile routes, both resolving to the same controller method
-  - ConfirmPaymentIntent's failure branch now recomputes payment_status instead of leaving a job order stuck on PendingConfirmation forever
-  - Accounting Staff Dashboard — first real surface for that role, replacing the empty placeholder
-  - Cashier Dashboard's Actions column converted to a per-row DropdownMenu (Process Payment / Check Payment Status / View Receipt)
+    - ReconciliationController — store() (manual reconciliation, shared by Cashier and Accounting Staff) and index() (Accounting Staff's pending-confirmation list)
+    - cashier.job-orders.reconcile / accounting-staff.job-orders.reconcile routes, both resolving to the same controller method
+    - ConfirmPaymentIntent's failure branch now recomputes payment_status instead of leaving a job order stuck on PendingConfirmation forever
+    - Accounting Staff Dashboard — first real surface for that role, replacing the empty placeholder
+    - Cashier Dashboard's Actions column converted to a per-row DropdownMenu (Process Payment / Check Payment Status / View Receipt)
 affects: [05-05, 05-06, 05-07, 07-accounts-receivable, 08-reporting]
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "Two routes resolving to the same controller method makes Wayfinder's per-controller actions export (resources/js/actions/.../Controller.ts) a URI-keyed dictionary rather than a callable — use the named-route helper (resources/js/routes/{prefix}/job-orders.ts) instead, which stays a plain callable with .form()/.url()"
-    - "A no-body reconciliation POST triggered from inside another page's already-open <Form> (or from a DropdownMenuItem with no navigable href) uses router.post() with a local processing ref, not a nested <Form> — HTML forbids <form> inside <form>"
-    - "Shared Cashier/Accounting Staff mutation routes with role-specific post-success destinations branch on $request->user()->role inside the controller rather than assuming one caller's UX for both — Accounting Staff has no route access to Cashier's role:cashier-gated pages"
+    added: []
+    patterns:
+        - "Two routes resolving to the same controller method makes Wayfinder's per-controller actions export (resources/js/actions/.../Controller.ts) a URI-keyed dictionary rather than a callable — use the named-route helper (resources/js/routes/{prefix}/job-orders.ts) instead, which stays a plain callable with .form()/.url()"
+        - "A no-body reconciliation POST triggered from inside another page's already-open <Form> (or from a DropdownMenuItem with no navigable href) uses router.post() with a local processing ref, not a nested <Form> — HTML forbids <form> inside <form>"
+        - "Shared Cashier/Accounting Staff mutation routes with role-specific post-success destinations branch on $request->user()->role inside the controller rather than assuming one caller's UX for both — Accounting Staff has no route access to Cashier's role:cashier-gated pages"
 
 key-files:
-  created:
-    - app/Http/Controllers/Cashier/ReconciliationController.php
-    - tests/Feature/Cashier/ReconciliationTest.php
-    - resources/js/config/nav/accounting-staff.ts
-  modified:
-    - app/Actions/POS/ConfirmPaymentIntent.php
-    - routes/portals.php
-    - tests/Feature/Webhooks/PaymongoWebhookTest.php
-    - tests/Unit/Actions/ConfirmPaymentIntentTest.php
-    - resources/js/pages/cashier/JobOrderPayment.vue
-    - resources/js/pages/cashier/Dashboard.vue
-    - resources/js/pages/accounting-staff/Dashboard.vue
+    created:
+        - app/Http/Controllers/Cashier/ReconciliationController.php
+        - tests/Feature/Cashier/ReconciliationTest.php
+        - resources/js/config/nav/accounting-staff.ts
+    modified:
+        - app/Actions/POS/ConfirmPaymentIntent.php
+        - routes/portals.php
+        - tests/Feature/Webhooks/PaymongoWebhookTest.php
+        - tests/Unit/Actions/ConfirmPaymentIntentTest.php
+        - resources/js/pages/cashier/JobOrderPayment.vue
+        - resources/js/pages/cashier/Dashboard.vue
+        - resources/js/pages/accounting-staff/Dashboard.vue
 
 key-decisions:
-  - "cancelled is treated as the Payment Intent's failed/expired outcome and every other non-terminal status (awaiting_payment_method, awaiting_next_action, processing) as still pending — PayMongo's API exposes no distinct 'expired' status; re-verify once the user's PayMongo sandbox keys are available"
-  - "Success redirect is role-aware ($request->user()->role === UserRole::Cashier), not the plan's literal unconditional to_route('cashier.job-orders.receipt.show', ...) — that route sits behind role:cashier middleware, so an unconditional redirect would 403 for Accounting Staff"
-  - "Used named-route helpers (@/routes/cashier/job-orders, @/routes/accounting-staff/job-orders) instead of ReconciliationController.store.form() — Wayfinder exports a URI-keyed dictionary, not a callable, when two routes share one controller method"
+    - "cancelled is treated as the Payment Intent's failed/expired outcome and every other non-terminal status (awaiting_payment_method, awaiting_next_action, processing) as still pending — PayMongo's API exposes no distinct 'expired' status; re-verify once the user's PayMongo sandbox keys are available"
+    - "Success redirect is role-aware ($request->user()->role === UserRole::Cashier), not the plan's literal unconditional to_route('cashier.job-orders.receipt.show', ...) — that route sits behind role:cashier middleware, so an unconditional redirect would 403 for Accounting Staff"
+    - 'Used named-route helpers (@/routes/cashier/job-orders, @/routes/accounting-staff/job-orders) instead of ReconciliationController.store.form() — Wayfinder exports a URI-keyed dictionary, not a callable, when two routes share one controller method'
 
 patterns-established:
-  - "Pattern: shared dual-role mutation controllers branch post-action redirects on the acting user's role, never assume the caller is always the role with the richer follow-up UX"
+    - "Pattern: shared dual-role mutation controllers branch post-action redirects on the acting user's role, never assume the caller is always the role with the richer follow-up UX"
 
 requirements-completed: [POS-04]
 
@@ -66,6 +79,7 @@ completed: 2026-09-05
 - **Files modified:** 10 (3 created, 7 modified)
 
 ## Accomplishments
+
 - `ReconciliationController::store()` — one controller method mounted from both `role:cashier` and `role:accounting_staff` route groups, calling `Paymongo::paymentIntent()->find()` and resolving through `ConfirmPaymentIntent` (Plan 05-03's shared idempotency boundary), never a separate independently-written guard
 - Three PayMongo outcomes handled: `succeeded` → confirms and flashes "Payment confirmed."; `cancelled` → confirms as failed and flashes D-13's exact "choose a different payment method" copy; anything else → no state change, flashes the "not received yet" copy
 - `ConfirmPaymentIntent`'s failure branch extended to recompute `payment_status` from any other completed transactions (falls back to `Unpaid`/`PartiallyPaid`) instead of leaving the job order permanently stuck on `PendingConfirmation` — this also fixes the webhook path, since both callers share the Action
@@ -86,6 +100,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ## Files Created/Modified
 
 **Task 1 (backend):**
+
 - `app/Http/Controllers/Cashier/ReconciliationController.php` - `store()` — shared manual reconciliation action for both roles
 - `app/Actions/POS/ConfirmPaymentIntent.php` - failure branch now recomputes `payment_status` (Unpaid/PartiallyPaid) instead of leaving it stuck on PendingConfirmation
 - `routes/portals.php` - `cashier.job-orders.reconcile` and `accounting-staff.job-orders.reconcile` routes, same controller/method, two role-scoped names
@@ -94,6 +109,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - `tests/Feature/Webhooks/PaymongoWebhookTest.php` - updated the failed-payment webhook test to match the corrected shared failure-path behavior
 
 **Task 2 (frontend):**
+
 - `app/Http/Controllers/Cashier/ReconciliationController.php` - added `index()` (Accounting Staff's pending-confirmation list) and made the success redirect role-aware
 - `routes/portals.php` - `accounting-staff.dashboard` now points at `ReconciliationController::index()` instead of the static `Route::inertia()` placeholder
 - `resources/js/pages/cashier/JobOrderPayment.vue` - real "Check Payment Status" button (`router.post`), `Spinner` while in flight
@@ -113,6 +129,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 ### Auto-fixed Issues
 
 **1. [Rule 1 - Bug] `ConfirmPaymentIntent`'s failure branch left `payment_status` permanently stuck on `PendingConfirmation`**
+
 - **Found during:** Task 1, implementing the D-13 failed/expired branch
 - **Issue:** The plan's own action text explicitly required extending `ConfirmPaymentIntent`'s failure branch to recompute `payment_status`, but the plan's `files_modified` frontmatter list omitted `app/Actions/POS/ConfirmPaymentIntent.php` and the two existing tests that encode the old (stuck) behavior (`tests/Unit/Actions/ConfirmPaymentIntentTest.php`, `tests/Feature/Webhooks/PaymongoWebhookTest.php`). Leaving those tests unchanged after the fix would have broken the suite.
 - **Fix:** Added an `else` branch mirroring the `Completed` branch's shape — sums other completed transactions for the job order, falls back to `PartiallyPaid` if any exist, else `Unpaid`. Updated both existing tests' expectations to match (this also corrects the webhook's failure path, since both callers share the Action) and added a new unit test for the `PartiallyPaid` fallback case.
@@ -121,6 +138,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - **Committed in:** `dfeeb1c` (Task 1 commit)
 
 **2. [Rule 1 - Bug] Plan's literal unconditional receipt redirect on reconciliation success would 403 for Accounting Staff**
+
 - **Found during:** Task 2, wiring the frontend redirect requirement
 - **Issue:** The plan's option (a) code sketch was `to_route('cashier.job-orders.receipt.show', $jobOrder)` unconditionally on success. `cashier.job-orders.receipt.show` sits inside the `role:cashier` middleware group only — an Accounting Staff user reconciling from their own dashboard would be redirected into a route they're blocked from, producing a 403 instead of the intended "return to dashboard" UX.
 - **Fix:** Branched the redirect on `$request->user()->role === UserRole::Cashier`: Cashier gets the receipt redirect, Accounting Staff gets `back()` (their own dashboard).
@@ -129,6 +147,7 @@ _No plan-metadata commit yet — SUMMARY.md commit follows this file._
 - **Committed in:** `891bdd9` (Task 2 commit)
 
 **3. [Rule 1 - Bug] `ReconciliationController.store.form(jobOrder.id)` (as literally suggested by the plan) is not a callable**
+
 - **Found during:** Task 2, wiring `JobOrderPayment.vue`'s button
 - **Issue:** Wayfinder generates a URI-keyed dictionary export (`{ '/cashier/...': fn, '/accounting-staff/...': fn }`) for `store` in the per-controller actions file whenever two distinct routes resolve to the same controller method, not a single callable with `.form()`.
 - **Fix:** Imported the named-route helpers instead (`reconcile` from `@/routes/cashier/job-orders` and `@/routes/accounting-staff/job-orders`), each a plain callable with `.url()`/`.form()`, matching this codebase's existing "prefer named route imports" convention.
@@ -159,8 +178,9 @@ None - no external service configuration required beyond what Plan 05-03 already
 - No blockers.
 
 ---
-*Phase: 05-pos-payments*
-*Completed: 2026-09-05*
+
+_Phase: 05-pos-payments_
+_Completed: 2026-09-05_
 
 ## Self-Check: PASSED
 

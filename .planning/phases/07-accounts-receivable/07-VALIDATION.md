@@ -17,13 +17,13 @@ updated: 2026-09-08
 
 ## Test Infrastructure
 
-| Property | Value |
-|----------|-------|
-| **Framework** | Pest 5.1.3 + pestphp/pest-plugin-laravel 5.0.1 |
-| **Config file** | `phpunit.xml` (Pest bootstraps through PHPUnit's config) — testing env: `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`, `MAIL_MAILER=array`, `QUEUE_CONNECTION=sync` |
-| **Quick run command** | `php artisan test --compact --filter={TestName}` |
-| **Full suite command** | `php artisan test --compact` |
-| **Estimated runtime** | ~60 seconds (baseline before this phase: 385 tests, 382 passed, 3 skipped) |
+| Property               | Value                                                                                                                                                                |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Framework**          | Pest 5.1.3 + pestphp/pest-plugin-laravel 5.0.1                                                                                                                       |
+| **Config file**        | `phpunit.xml` (Pest bootstraps through PHPUnit's config) — testing env: `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`, `MAIL_MAILER=array`, `QUEUE_CONNECTION=sync` |
+| **Quick run command**  | `php artisan test --compact --filter={TestName}`                                                                                                                     |
+| **Full suite command** | `php artisan test --compact`                                                                                                                                         |
+| **Estimated runtime**  | ~60 seconds (baseline before this phase: 385 tests, 382 passed, 3 skipped)                                                                                           |
 
 No new test framework or config install is required — Pest plus the existing
 `array` mail transport and `sync` queue already cover every capability this
@@ -42,17 +42,17 @@ phase's tests need.
 
 ## Per-Task Verification Map
 
-*Populated after planning — task IDs do not exist until PLAN.md files are written.
-The requirement-level map below is the binding contract the planner must satisfy.*
+_Populated after planning — task IDs do not exist until PLAN.md files are written.
+The requirement-level map below is the binding contract the planner must satisfy._
 
-| Req ID | Behavior | Test Type | Automated Command | File Exists | Status |
-|--------|----------|-----------|-------------------|-------------|--------|
-| AR-01 | Aging list groups Active receivables into correct brackets; derived balance matches transactions | feature | `php artisan test --filter=AccountsReceivableListTest` | ❌ W0 | ⬜ pending |
-| AR-02 | Daily command sends the correct reminder on bracket-crossing, is idempotent same-day, skips non-reminder-bearing brackets, isolates mail failures | feature | `php artisan test --filter=SendAccountsReceivableRemindersTest` | ❌ W0 | ⬜ pending |
-| AR-03 | Collection status update persists + audits; collection letter renders correct bracket-driven body | feature | `php artisan test --filter=CollectionStatusTest` / `--filter=CollectionLetterTest` | ❌ W0 | ⬜ pending |
-| AR-04 | Write-off request/approve/reject flow, concurrency guard (locked re-read), `PaymentStatus::WrittenOff` propagation | feature | `php artisan test --filter=WriteOffTest` | ❌ W0 | ⬜ pending |
+| Req ID | Behavior                                                                                                                                          | Test Type | Automated Command                                                                  | File Exists | Status     |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------- | ----------- | ---------- |
+| AR-01  | Aging list groups Active receivables into correct brackets; derived balance matches transactions                                                  | feature   | `php artisan test --filter=AccountsReceivableListTest`                             | ❌ W0       | ⬜ pending |
+| AR-02  | Daily command sends the correct reminder on bracket-crossing, is idempotent same-day, skips non-reminder-bearing brackets, isolates mail failures | feature   | `php artisan test --filter=SendAccountsReceivableRemindersTest`                    | ❌ W0       | ⬜ pending |
+| AR-03  | Collection status update persists + audits; collection letter renders correct bracket-driven body                                                 | feature   | `php artisan test --filter=CollectionStatusTest` / `--filter=CollectionLetterTest` | ❌ W0       | ⬜ pending |
+| AR-04  | Write-off request/approve/reject flow, concurrency guard (locked re-read), `PaymentStatus::WrittenOff` propagation                                | feature   | `php artisan test --filter=WriteOffTest`                                           | ❌ W0       | ⬜ pending |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+_Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky_
 
 ---
 
@@ -70,11 +70,11 @@ The requirement-level map below is the binding contract the planner must satisfy
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| Laravel Cloud scheduler cron is enabled for the deployed environment | AR-02 | Dashboard toggle, not code — no automated assertion can reach it | In the Laravel Cloud dashboard, enable the scheduler for the environment; confirm `schedule:list` shows the AR reminder command and that it fires once on the next daily boundary |
-| Collection letter prints correctly to physical paper | AR-03 | Browser `window.print()` output and page-break fidelity cannot be asserted headlessly | Open a collection letter for an entry in each bracket, print to PDF, confirm bracket-driven body copy, amount, and no clipped content |
-| Reminder email renders correctly in a real inbox | AR-02 | `MAIL_MAILER=array` asserts dispatch, not rendered appearance | Send one reminder through the Resend sandbox to a staff address; confirm subject escalation and body render in a real client |
+| Behavior                                                             | Requirement | Why Manual                                                                            | Test Instructions                                                                                                                                                                 |
+| -------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Laravel Cloud scheduler cron is enabled for the deployed environment | AR-02       | Dashboard toggle, not code — no automated assertion can reach it                      | In the Laravel Cloud dashboard, enable the scheduler for the environment; confirm `schedule:list` shows the AR reminder command and that it fires once on the next daily boundary |
+| Collection letter prints correctly to physical paper                 | AR-03       | Browser `window.print()` output and page-break fidelity cannot be asserted headlessly | Open a collection letter for an entry in each bracket, print to PDF, confirm bracket-driven body copy, amount, and no clipped content                                             |
+| Reminder email renders correctly in a real inbox                     | AR-02       | `MAIL_MAILER=array` asserts dispatch, not rendered appearance                         | Send one reminder through the Resend sandbox to a staff address; confirm subject escalation and body render in a real client                                                      |
 
 ---
 

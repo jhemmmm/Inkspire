@@ -64,9 +64,18 @@ test('a cash payment can still be recorded for a job order that has already adva
 
 test('an OnCredit request can still be made for a job order that has already advanced into production', function (JobOrderStatus $status) {
     $cashier = User::factory()->cashier()->create();
-    $jobOrder = JobOrder::factory()->create(['status' => $status->value, 'total_amount' => 1000]);
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->create(['status' => $status->value]);
 
-    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.credit-request.store', $jobOrder));
+    // No transactions exist yet, so pricing is still editable
+    // (JobOrder::pricingIsEditable()) — the pricing fields must be
+    // submitted alongside the credit request, same as the very first
+    // pricing/payment visit.
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.credit-request.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 1000,
+        'rush_fee_applied' => false,
+    ]);
 
     $response->assertRedirect(route('cashier.dashboard'));
     expect($jobOrder->fresh()->payment_status->value)->toBe('credit_pending_approval');

@@ -8,33 +8,127 @@ use Illuminate\Database\Seeder;
 class PricingDatabaseSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Seed SquareFoot Graphics & Ads' actual walk-in price list, as supplied
+     * by the owner.
      *
-     * Seeds a starter catalog of common print-shop products/services so
-     * POS-01's catalog pick has something to select from. No catalog
-     * management UI exists yet this phase — Owner/Admin CRUD over this
-     * table is out of scope until a later phase defines it. Uses
-     * `updateOrCreate` so this seeder is idempotent and safe to re-run,
-     * matching `SystemConfigurationSeeder`'s pattern.
+     * Several source rows carry a compound price — "100 / 150 Installation",
+     * "150 / 250 b2b", "400/sqft + 50/pc CB". `base_price` holds the plain
+     * print figure and `unit` carries the qualifier verbatim, so the Cashier
+     * reads the real terms at the point of pricing. Modelling
+     * installed-vs-supplied as its own priced option is a pricing-engine
+     * change, not an intake one.
+     *
+     * `updateOrCreate` on `name` keeps this idempotent, matching
+     * SystemConfigurationSeeder and SpecificationOptionSeeder.
+     *
+     * @return array<int, array{name: string, base_price: float, unit: string}>
+     */
+    private function walkInEntries(): array
+    {
+        return [
+            ['name' => 'Tarpaulin', 'base_price' => 12, 'unit' => 'sq ft'],
+            ['name' => 'Blackout', 'base_price' => 20, 'unit' => 'sq ft'],
+            ['name' => 'Sticker Vinyl Printed', 'base_price' => 80, 'unit' => 'sq ft'],
+            ['name' => 'Sticker Vinyl Printed (Pre-cut)', 'base_price' => 150, 'unit' => 'sq ft'],
+            ['name' => 'Sticker Vinyl Cutted', 'base_price' => 200, 'unit' => 'sq ft'],
+            ['name' => 'Sticker with Lamination', 'base_price' => 125, 'unit' => 'sq ft'],
+            ['name' => 'Reflectorize Printed', 'base_price' => 200, 'unit' => 'sq ft'],
+            ['name' => 'Reflectorize Cutted', 'base_price' => 300, 'unit' => 'sq ft'],
+            ['name' => 'Transparent Sticker Printed', 'base_price' => 80, 'unit' => 'sq ft'],
+            ['name' => 'Frosted Sticker Printed', 'base_price' => 100, 'unit' => 'sq ft (150 installed)'],
+            ['name' => 'Frosted Sticker Cutted', 'base_price' => 200, 'unit' => 'sq ft (250 installed)'],
+            ['name' => 'Perforated Sticker Printed', 'base_price' => 100, 'unit' => 'sq ft (150 installed)'],
+            ['name' => 'Prismatic Reflective Sticker', 'base_price' => 300, 'unit' => 'sq ft'],
+            ['name' => 'Panaflex Print / UV Print', 'base_price' => 90, 'unit' => 'sq ft (150 UV)'],
+            ['name' => 'Panaflex with Laminate', 'base_price' => 130, 'unit' => 'sq ft'],
+            ['name' => 'Pull up Banner (Big)', 'base_price' => 1500, 'unit' => 'piece'],
+            ['name' => 'Pull up Banner (Small)', 'base_price' => 1200, 'unit' => 'piece'],
+            ['name' => 'X-Stand Banner', 'base_price' => 500, 'unit' => 'piece'],
+            ['name' => 'Sticker on Magnet', 'base_price' => 200, 'unit' => 'sq ft'],
+            ['name' => 'Sticker on Sintraboard', 'base_price' => 150, 'unit' => 'sq ft (250 back-to-back)'],
+            ['name' => 'Sticker on Sintraboard', 'base_price' => 200, 'unit' => 'sq ft (300 back-to-back)'],
+            ['name' => 'Sticker on Foamboard', 'base_price' => 100, 'unit' => 'sq ft'],
+            ['name' => 'Matte Photopaper', 'base_price' => 50, 'unit' => 'sq ft'],
+            ['name' => 'Printed Sticker on Acrylic', 'base_price' => 400, 'unit' => 'sq ft'],
+            ['name' => 'Cutted Sticker on Acrylic', 'base_price' => 500, 'unit' => 'sq ft'],
+            ['name' => 'Tarp with Lamination', 'base_price' => 40, 'unit' => 'sq ft (65 installed)'],
+            ['name' => 'Tarp on Foamboard', 'base_price' => 60, 'unit' => 'sq ft'],
+            ['name' => 'Tarp on Sintraboard', 'base_price' => 80, 'unit' => 'sq ft'],
+            ['name' => 'Tarp with Wood Frame', 'base_price' => 50, 'unit' => 'sq ft'],
+            ['name' => 'Tarp with Metal Frame', 'base_price' => 80, 'unit' => 'sq ft'],
+            ['name' => 'Blackout with Wood Frame', 'base_price' => 60, 'unit' => 'sq ft'],
+            ['name' => 'Blackout with Metal Frame', 'base_price' => 100, 'unit' => 'sq ft'],
+            ['name' => 'Canvas Print Only', 'base_price' => 100, 'unit' => 'sq ft'],
+            ['name' => 'Canvas with Frame', 'base_price' => 200, 'unit' => 'sq ft'],
+            ['name' => 'Backlit Print', 'base_price' => 100, 'unit' => 'sq ft'],
+            ['name' => 'Mug Print', 'base_price' => 100, 'unit' => 'piece'],
+            ['name' => '3mm Acrylic Sandwich', 'base_price' => 400, 'unit' => 'sq ft (+50/pc CB)'],
+        ];
+    }
+
+    /**
+     * The owner's "PLAIN ONLY" table — unprinted media sold by the sheet,
+     * roll or square foot. Suffixed so they never collide with the printed
+     * entry of the same media in the walk-in list above.
+     *
+     * @return array<int, array{name: string, base_price: float, unit: string}>
+     */
+    private function plainEntries(): array
+    {
+        return [
+            ['name' => 'Tarpaulin (Plain)', 'base_price' => 6, 'unit' => 'sq ft'],
+            ['name' => 'Tarpaulin Roll (Plain)', 'base_price' => 6300, 'unit' => 'roll'],
+            ['name' => 'Panaflex (Plain)', 'base_price' => 30, 'unit' => 'sq ft'],
+            ['name' => 'Blackout (Plain)', 'base_price' => 12, 'unit' => 'sq ft'],
+            ['name' => 'Sticker Vinyl (Plain)', 'base_price' => 30, 'unit' => 'sq ft'],
+            ['name' => 'Transparent Sticker (Plain)', 'base_price' => 25, 'unit' => 'sq ft'],
+            ['name' => 'Photopaper (Plain)', 'base_price' => 25, 'unit' => 'sq ft'],
+            ['name' => 'Frosted Sticker (Plain)', 'base_price' => 50, 'unit' => 'sq ft'],
+            ['name' => 'Perforated Sticker (Plain)', 'base_price' => 50, 'unit' => 'sq ft'],
+            ['name' => 'Reflectorize (Plain)', 'base_price' => 100, 'unit' => 'sq ft'],
+            ['name' => 'Sintraboard 3mm (Plain)', 'base_price' => 600, 'unit' => 'piece'],
+            ['name' => 'Sintraboard 5mm (Plain)', 'base_price' => 800, 'unit' => 'piece'],
+        ];
+    }
+
+    /**
+     * Placeholder rows seeded before the owner supplied the real price list.
+     *
+     * Retired by name rather than by "anything not in my list": an Owner's own
+     * additions must survive a re-seed, so only these known-superseded rows are
+     * touched. Deactivated, never deleted — job orders carry
+     * `pricing_entry_id`, and removing the row would orphan that reference.
+     *
+     * @return array<int, string>
+     */
+    private function supersededEntries(): array
+    {
+        return [
+            'Tarpaulin (per sq ft)',
+            'Business Cards (100 pcs)',
+            'Sticker (per piece)',
+            'Flyers A5 (100 pcs)',
+            'ID Cards (per piece)',
+            'Streamer Banner (per linear ft)',
+            'Signage Vinyl (per sq ft)',
+            'Wedding Invitation (per piece)',
+        ];
+    }
+
+    /**
+     * Run the database seeds.
      */
     public function run(): void
     {
-        $entries = [
-            ['name' => 'Tarpaulin (per sq ft)', 'base_price' => 25, 'unit' => 'sq ft', 'is_active' => true],
-            ['name' => 'Business Cards (100 pcs)', 'base_price' => 250, 'unit' => '100 pcs', 'is_active' => true],
-            ['name' => 'Sticker (per piece)', 'base_price' => 15, 'unit' => 'piece', 'is_active' => true],
-            ['name' => 'Flyers A5 (100 pcs)', 'base_price' => 300, 'unit' => '100 pcs', 'is_active' => true],
-            ['name' => 'ID Cards (per piece)', 'base_price' => 40, 'unit' => 'piece', 'is_active' => true],
-            ['name' => 'Streamer Banner (per linear ft)', 'base_price' => 120, 'unit' => 'linear ft', 'is_active' => true],
-            ['name' => 'Signage Vinyl (per sq ft)', 'base_price' => 180, 'unit' => 'sq ft', 'is_active' => true],
-            ['name' => 'Wedding Invitation (per piece)', 'base_price' => 35, 'unit' => 'piece', 'is_active' => true],
-        ];
-
-        foreach ($entries as $entry) {
+        foreach ([...$this->walkInEntries(), ...$this->plainEntries()] as $entry) {
             PricingEntry::query()->updateOrCreate(
                 ['name' => $entry['name']],
-                $entry,
+                [...$entry, 'is_active' => true],
             );
         }
+
+        PricingEntry::query()
+            ->whereIn('name', $this->supersededEntries())
+            ->update(['is_active' => false]);
     }
 }

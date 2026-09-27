@@ -6,30 +6,30 @@ tags: [inertia, vue3, wayfinder, tailwindcss, job-orders, badges, dialog]
 
 # Dependency graph
 requires:
-  - phase: 03-job-order-intake-auto-assignment (plan 03-01)
-    provides: "job_orders.status/validation_failure_reason/assigned_artist_id, JobOrder::assignedArtist() relation, JobOrderController::replaceFile() endpoint, QueueEntryController::index()/CustomerController::index() eager-loading every field this plan reads"
+    - phase: 03-job-order-intake-auto-assignment (plan 03-01)
+      provides: 'job_orders.status/validation_failure_reason/assigned_artist_id, JobOrder::assignedArtist() relation, JobOrderController::replaceFile() endpoint, QueueEntryController::index()/CustomerController::index() eager-loading every field this plan reads'
 provides:
-  - "ReplaceJobOrderFileDialog.vue: shared, prop-driven Dialog+Form component wired to JobOrderController.replaceFile, reused unmodified across both consuming surfaces"
-  - "NewVisit.vue confirmation card renders all four job-order-status badges, the validation_failed AlertError + Replace File trigger, and the assigned-artist secondary text line"
-  - "QueueList.vue gains a durable 'Job Orders' table column with description + type badge + status badge + conditional Replace File trigger per job order"
+    - 'ReplaceJobOrderFileDialog.vue: shared, prop-driven Dialog+Form component wired to JobOrderController.replaceFile, reused unmodified across both consuming surfaces'
+    - 'NewVisit.vue confirmation card renders all four job-order-status badges, the validation_failed AlertError + Replace File trigger, and the assigned-artist secondary text line'
+    - "QueueList.vue gains a durable 'Job Orders' table column with description + type badge + status badge + conditional Replace File trigger per job order"
 affects: [04-artist-workflow-design-editor]
 
 # Tech tracking
 tech-stack:
-  added: []
-  patterns:
-    - "Shared Dialog+Form component with a default trigger slot (ReplaceJobOrderFileDialog.vue) so two unrelated call sites (confirmation card, table cell) reuse identical Dialog/Form markup with only the trigger button differing"
+    added: []
+    patterns:
+        - 'Shared Dialog+Form component with a default trigger slot (ReplaceJobOrderFileDialog.vue) so two unrelated call sites (confirmation card, table cell) reuse identical Dialog/Form markup with only the trigger button differing'
 
 key-files:
-  created:
-    - resources/js/components/ReplaceJobOrderFileDialog.vue
-  modified:
-    - resources/js/pages/frontline-staff/NewVisit.vue
-    - resources/js/pages/frontline-staff/QueueList.vue
+    created:
+        - resources/js/components/ReplaceJobOrderFileDialog.vue
+    modified:
+        - resources/js/pages/frontline-staff/NewVisit.vue
+        - resources/js/pages/frontline-staff/QueueList.vue
 
 key-decisions:
-  - "ReplaceJobOrderFileDialog exposes jobOrderId via a required prop and its trigger via a default slot, letting each caller supply differently-styled trigger buttons (text button in NewVisit.vue, icon-only button in QueueList.vue) around one shared Dialog+Form implementation"
-  - "NewVisit.vue's per-job-order-row status Badge/AlertError/assigned-artist block is wrapped in a <template v-for> (not the outer <li>) so the AlertError and Replace File dialog can render as siblings after the <li>, matching the plan's exact DOM structure"
+    - 'ReplaceJobOrderFileDialog exposes jobOrderId via a required prop and its trigger via a default slot, letting each caller supply differently-styled trigger buttons (text button in NewVisit.vue, icon-only button in QueueList.vue) around one shared Dialog+Form implementation'
+    - "NewVisit.vue's per-job-order-row status Badge/AlertError/assigned-artist block is wrapped in a <template v-for> (not the outer <li>) so the AlertError and Replace File dialog can render as siblings after the <li>, matching the plan's exact DOM structure"
 
 requirements-completed: [JOB-01, JOB-02]
 
@@ -50,6 +50,7 @@ completed: 2026-09-01
 - **Files modified:** 3 (1 created, 2 modified)
 
 ## Accomplishments
+
 - `ReplaceJobOrderFileDialog.vue` created as the single shared Dialog+Form shell wired to `JobOrderController.replaceFile`, consumed unmodified by both `NewVisit.vue` and `QueueList.vue` via a default trigger slot
 - `NewVisit.vue`'s confirmation card renders the exact 03-UI-SPEC.md four-state status badge mapping, the `validation_failed` `AlertError` + Replace File trigger, and the "Assigned to {artist_name}" secondary line for `assigned` job orders
 - `QueueList.vue` gained a new "Job Orders" table column (between Customer and Status, keeping queue-entry status and job-order status visually distinct) showing description + type badge + status badge + a conditional icon-only Replace File trigger, reusing Task 1's dialog component unchanged
@@ -99,8 +100,9 @@ None - no external service configuration required.
 - No blockers.
 
 ---
-*Phase: 03-job-order-intake-auto-assignment*
-*Completed: 2026-09-01*
+
+_Phase: 03-job-order-intake-auto-assignment_
+_Completed: 2026-09-01_
 
 ## Self-Check: PASSED
 

@@ -105,39 +105,41 @@ Deferred to future release. Tracked but not in current roadmap.
 
 Explicitly excluded. Documented to prevent scope creep.
 
-| Feature | Reason |
-|---------|--------|
-| Blade-primary + Vue-islands architecture | Superseded — repo is already scaffolded on Inertia; that's the real architecture |
-| Multi-role-per-user | Approved ERD has a single `role` column on `users`; one role per account |
-| Laravel Echo / Reverb / websocket real-time updates | Client-side polling is sufficient at this shop's scale and concurrency |
-| Multi-tenant / multi-branch support | Single-location system for SquareFoot Graphics & Ads |
-| Materials/inventory management (paper, ink, stock) | Standard in larger print-MIS platforms but absent from the approved 12-table ERD; correct scope decision for a small single-location shop |
-| Quote-to-order workflow, customer self-service ordering | Conflicts with the consultation-driven Type B model; not in the approved scope |
-| Full offset-print preflight (bleed, CMYK, font embedding) | DPI/format/size validation is sufficient for this shop's process; full preflight is a superset not needed here |
-| Loyalty/marketing features | Not part of the approved scope |
+| Feature                                                   | Reason                                                                                                                                    |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Blade-primary + Vue-islands architecture                  | Superseded — repo is already scaffolded on Inertia; that's the real architecture                                                          |
+| Multi-role-per-user                                       | Approved ERD has a single `role` column on `users`; one role per account                                                                  |
+| Laravel Echo / Reverb / websocket real-time updates       | Client-side polling is sufficient at this shop's scale and concurrency                                                                    |
+| Multi-tenant / multi-branch support                       | Single-location system for SquareFoot Graphics & Ads                                                                                      |
+| Materials/inventory management (paper, ink, stock)        | Standard in larger print-MIS platforms but absent from the approved 12-table ERD; correct scope decision for a small single-location shop |
+| Quote-to-order workflow, customer self-service ordering   | Conflicts with the consultation-driven Type B model; not in the approved scope                                                            |
+| Full offset-print preflight (bleed, CMYK, font embedding) | DPI/format/size validation is sufficient for this shop's process; full preflight is a superset not needed here                            |
+| Loyalty/marketing features                                | Not part of the approved scope                                                                                                            |
 
 ## Traceability
 
-| Requirement | Phase | Status |
-|-------------|-------|--------|
-| RBAC-01 through RBAC-08 | Phase 1 - Foundation | Pending |
-| AUDIT-01, AUDIT-02 | Phase 1 - Foundation | Pending |
-| CONFIG-01 | Phase 1 - Foundation | Complete |
-| QUEUE-01 through QUEUE-06 | Phase 2 - Customer & Queue Management | Pending |
-| JOB-01, JOB-02 | Phase 3 - Job Order Intake & Auto-Assignment | Pending |
-| JOB-03 through JOB-10 | Phase 4 - Artist Workflow & Design Editor | Pending |
-| POS-01 through POS-09 | Phase 5 - POS & Payments | Pending |
-| PROD-01 through PROD-03 | Phase 6 - Production Monitoring & Public Tracking | Pending |
-| TRACK-01, TRACK-02 | Phase 6 - Production Monitoring & Public Tracking | Pending |
-| AR-01 through AR-04 | Phase 7 - Accounts Receivable | Pending |
-| EXP-01 | Phase 8 - Expenses & Reporting | Complete |
-| RPT-01 through RPT-05 | Phase 8 - Expenses & Reporting | Pending |
+| Requirement               | Phase                                             | Status   |
+| ------------------------- | ------------------------------------------------- | -------- |
+| RBAC-01 through RBAC-08   | Phase 1 - Foundation                              | Pending  |
+| AUDIT-01, AUDIT-02        | Phase 1 - Foundation                              | Pending  |
+| CONFIG-01                 | Phase 1 - Foundation                              | Complete |
+| QUEUE-01 through QUEUE-06 | Phase 2 - Customer & Queue Management             | Pending  |
+| JOB-01, JOB-02            | Phase 3 - Job Order Intake & Auto-Assignment      | Pending  |
+| JOB-03 through JOB-10     | Phase 4 - Artist Workflow & Design Editor         | Pending  |
+| POS-01 through POS-09     | Phase 5 - POS & Payments                          | Pending  |
+| PROD-01 through PROD-03   | Phase 6 - Production Monitoring & Public Tracking | Pending  |
+| TRACK-01, TRACK-02        | Phase 6 - Production Monitoring & Public Tracking | Pending  |
+| AR-01 through AR-04       | Phase 7 - Accounts Receivable                     | Pending  |
+| EXP-01                    | Phase 8 - Expenses & Reporting                    | Complete |
+| RPT-01 through RPT-05     | Phase 8 - Expenses & Reporting                    | Pending  |
 
 **Coverage:**
+
 - v1 requirements: 51 total (RBAC 8, QUEUE 6, JOB 10, POS 9, PROD 3, AR 4, EXP 1, RPT 5, AUDIT 2, TRACK 2, CONFIG 1)
 - Mapped to phases: 51/51 ✓
 - Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-08-31*
-*Last updated: 2026-09-01 during Phase 2 discussion — added QUEUE-06 (shared queue display), user-requested expansion of Phase 2 scope, reversing the prior Out of Scope call on a lobby/TV board*
+
+_Requirements defined: 2026-08-31_
+_Last updated: 2026-09-01 during Phase 2 discussion — added QUEUE-06 (shared queue display), user-requested expansion of Phase 2 scope, reversing the prior Out of Scope call on a lobby/TV board_

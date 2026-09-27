@@ -4,6 +4,7 @@ import { AlertCircle } from '@lucide/vue';
 import { ref, watch } from 'vue';
 import TrackingController from '@/actions/App/Http/Controllers/Public/TrackingController';
 import InputError from '@/components/InputError.vue';
+import OrderProgress from '@/components/OrderProgress.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,6 +16,7 @@ interface TrackingResult {
     found: boolean;
     number?: string;
     stage?: string;
+    stageStep?: number | null;
 }
 
 const props = defineProps<{
@@ -81,16 +83,21 @@ function checkAnother(): void {
             <CardContent class="flex flex-col gap-6">
                 <template v-if="result?.found === true">
                     <div class="flex flex-col items-center gap-2 text-center">
-                        <p class="text-muted-foreground text-lg font-semibold">
+                        <p class="text-muted-foreground text-sm font-semibold">
                             Job Order {{ result.number }}
                         </p>
-                        <p class="text-[28px] leading-[1.2] font-semibold">
+                        <p class="text-3xl leading-[1.2] font-bold">
                             {{ result.stage }}
                         </p>
-                        <p class="text-muted-foreground text-sm">
-                            This page updates automatically.
-                        </p>
                     </div>
+
+                    <OrderProgress :step="result.stageStep ?? null" />
+
+                    <p class="text-muted-foreground text-center text-sm">
+                        This page updates on its own — leave it open and it will
+                        keep up.
+                    </p>
+
                     <Button
                         variant="outline"
                         data-test="check-another-order-button"
@@ -121,7 +128,9 @@ function checkAnother(): void {
                         v-else
                         class="flex flex-col items-center gap-2 text-center"
                     >
-                        <h1 class="text-[28px] leading-[1.2] font-semibold">
+                        <h1
+                            class="text-primary border-border border-b pb-5 text-4xl leading-[1.15] font-extrabold tracking-tight"
+                        >
                             Track Your Order
                         </h1>
                         <p class="text-muted-foreground text-sm">

@@ -70,8 +70,21 @@ test('an artist who is not available cannot claim', function () {
     expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::Intake);
 });
 
-test('a type a job order is never claimable', function () {
-    $jobOrder = JobOrder::factory()->typeA()->create(['status' => JobOrderStatus::Intake->value]);
+test('a type a job order the scanner sent for artist work is claimable', function () {
+    $jobOrder = JobOrder::factory()->typeA()->create([
+        'status' => JobOrderStatus::Intake->value,
+        'validation_failure_reason' => 'Below the 100 DPI minimum at this print size.',
+    ]);
+
+    expect((new ClaimJobOrderForArtist)($jobOrder, availableArtist()))->toBeTrue();
+    expect($jobOrder->fresh()->assigned_artist_id)->not->toBeNull();
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::Assigned);
+});
+
+test('a type a job order the scanner rejected outright is never claimable', function () {
+    $jobOrder = JobOrder::factory()->typeA()->create([
+        'status' => JobOrderStatus::ValidationFailed->value,
+    ]);
 
     expect((new ClaimJobOrderForArtist)($jobOrder, availableArtist()))->toBeFalse();
     expect($jobOrder->fresh()->assigned_artist_id)->toBeNull();
@@ -84,25 +97,32 @@ test('a cancelled job order is never claimable', function () {
     expect($jobOrder->fresh()->assigned_artist_id)->toBeNull();
 });
 
-test('rush job orders lead the pool, and still queue oldest-first among themselves', function () {
+test('rush job orders lead the pool, and newest leads within each group', function () {
     $oldestNormal = poolJobOrder(['created_at' => now()->subDays(5)]);
     $newerRush = poolJobOrder(['created_at' => now()->subHour(), 'is_rush' => true]);
     $olderRush = poolJobOrder(['created_at' => now()->subDays(2), 'is_rush' => true]);
     $newestNormal = poolJobOrder(['created_at' => now()->subMinute()]);
 
     expect(ClaimJobOrderForArtist::pool()->pluck('id')->all())
-        ->toBe([$olderRush->id, $newerRush->id, $oldestNormal->id, $newestNormal->id]);
+        ->toBe([$newerRush->id, $olderRush->id, $newestNormal->id, $oldestNormal->id]);
 });
 
-test('the pool lists only unclaimed type b job orders, oldest first', function () {
+test('the pool lists every unclaimed job order waiting on an artist, newest first', function () {
     $older = poolJobOrder(['created_at' => now()->subDays(2)]);
     $newer = poolJobOrder(['created_at' => now()->subHour()]);
     $taken = poolJobOrder(['created_at' => now()->subDays(3)]);
-    JobOrder::factory()->typeA()->create(['status' => JobOrderStatus::Intake->value]);
+
+    // The scanner's NeedsArtist verdict parks a Type A here too.
+    $needsArtist = JobOrder::factory()->typeA()->create([
+        'status' => JobOrderStatus::Intake->value,
+        'created_at' => now()->subDays(4),
+        'validation_failure_reason' => 'Below the 100 DPI minimum at this print size.',
+    ]);
+
     poolJobOrder(['cancelled_at' => now()]);
 
     (new ClaimJobOrderForArtist)($taken, availableArtist());
 
     expect(ClaimJobOrderForArtist::pool()->pluck('id')->all())
-        ->toBe([$older->id, $newer->id]);
+        ->toBe([$newer->id, $older->id, $needsArtist->id]);
 });

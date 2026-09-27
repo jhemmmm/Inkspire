@@ -3,6 +3,7 @@
 use App\Models\Customer;
 use App\Models\JobOrder;
 use App\Models\QueueEntry;
+use App\Models\SystemConfiguration;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -85,6 +86,56 @@ test('submitting an empty job orders array fails validation', function () {
 
     $response->assertSessionHasErrors('job_orders');
     expect(QueueEntry::count())->toBe(0);
+});
+
+test('a rejected type a file fails validation on its own row and saves nothing', function () {
+    Storage::fake('local');
+
+    $staff = User::factory()->frontlineStaff()->create();
+    $customer = Customer::factory()->create();
+
+    $response = $this->actingAs($staff)->post(route('frontline-staff.queue-entries.store'), [
+        'customer_id' => $customer->id,
+        'job_orders' => [
+            [
+                'description' => 'Sticker, A4',
+                'type' => 'type_b',
+            ],
+            [
+                'description' => 'Tarpaulin, 3x5ft',
+                'type' => 'type_a',
+                'file' => UploadedFile::fake()->create('design.xyz', 500),
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('job_orders.1.file');
+    $response->assertSessionDoesntHaveErrors('job_orders.0.file');
+    expect(session('errors')->first('job_orders.1.file'))->toContain('isn\'t accepted');
+
+    expect(QueueEntry::count())->toBe(0);
+    expect(JobOrder::count())->toBe(0);
+    expect(Storage::disk('local')->allFiles())->toBeEmpty();
+});
+
+test('the intake screen offers exactly the file formats the type a check accepts', function () {
+    SystemConfiguration::updateOrCreate(
+        ['key' => 'accepted_file_formats'],
+        [
+            'group' => 'file_handling',
+            'value' => ['pdf', 'png'],
+            'type' => 'array',
+            'label' => 'Accepted file formats',
+        ],
+    );
+
+    $staff = User::factory()->frontlineStaff()->create();
+
+    $this->actingAs($staff)->get(route('frontline-staff.new-visit'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('frontline-staff/NewVisit')
+            ->where('acceptedFileFormats', ['pdf', 'png'])
+        );
 });
 
 test('a non frontline staff role is blocked from creating a queue entry', function () {

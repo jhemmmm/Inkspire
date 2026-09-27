@@ -103,7 +103,7 @@ class AccountsReceivableReminder extends Mailable
     private function closingFor(): string
     {
         return match ($this->bracket) {
-            AccountsReceivableAgingBracket::NinetyPlus => 'Accounting Staff: print a final collection letter, or submit a write-off request from the entry. Owner: approved write-off requests are actioned under Write-Off Requests.',
+            AccountsReceivableAgingBracket::NinetyPlus => 'Accounting Staff: print a final collection letter, or submit a write-off request from the entry. Admin: approved write-off requests are actioned under Write-Off Requests.',
             default => 'Accounting Staff: open Accounts Receivable in '.config('app.name').' to update the collection status or print a collection letter.',
         };
     }
@@ -122,13 +122,14 @@ class AccountsReceivableReminder extends Mailable
      */
     private function collectionStatusLabel(): string
     {
-        return match ($this->receivable->collection_status) {
+        return match ($this->receivable->collectionStatus()) {
             AccountsReceivableCollectionStatus::Pending => 'Pending',
             AccountsReceivableCollectionStatus::FollowUp => 'Follow-up',
             AccountsReceivableCollectionStatus::WarningSent => 'Warning Sent',
             AccountsReceivableCollectionStatus::Collections => 'Collections',
             AccountsReceivableCollectionStatus::Paid => 'Paid',
             AccountsReceivableCollectionStatus::WrittenOff => 'Written Off',
+            AccountsReceivableCollectionStatus::Cancelled => 'Cancelled',
         };
     }
 }
