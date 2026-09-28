@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 Phase: 08
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-09-28 - Completed quick task 260928-0gj: light-only login and home pages
+Last activity: 2026-09-28 - Completed quick task 260928-ejs: home page rebuilt to match the login
 
 Progress: [██████████] 100%
 
@@ -161,6 +161,7 @@ None yet.
 | 260927-wca | Print-shop ink panel redesign: navy sidebar, CMYK hero band, ink stat chips, subtle motion | 2026-09-27 | fa1314a | [260927-wca-print-shop-ink-redesign-of-the-portal-sh](./quick/260927-wca-print-shop-ink-redesign-of-the-portal-sh/) |
 | 260928-083 | User Management: Create User dialog closes on success; row button renamed "Deactivate" with icon | 2026-09-28 | 40a97a2 | [260928-083-user-management-create-dialog-auto-close](./quick/260928-083-user-management-create-dialog-auto-close/) |
 | 260928-0gj | Login/auth, Forbidden and home pages always render light; portal keeps the saved theme | 2026-09-28 | ef9b102 | [260928-0gj-light-only-login-and-home-pages](./quick/260928-0gj-light-only-login-and-home-pages/) |
+| 260928-ejs | Home page rebuilt as the login's sibling: white/royal-blue hero card, tracker panel, photo price board and order rules | 2026-09-28 | d4aff6e | [260928-ejs-redesign-public-home-page-to-match-the-l](./quick/260928-ejs-redesign-public-home-page-to-match-the-l/) |
 
 ## Deferred Items
 
