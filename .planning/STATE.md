@@ -163,6 +163,7 @@ None yet.
 | 260928-0gj | Login/auth, Forbidden and home pages always render light; portal keeps the saved theme | 2026-09-28 | ef9b102 | [260928-0gj-light-only-login-and-home-pages](./quick/260928-0gj-light-only-login-and-home-pages/) |
 | 260928-ejs | Home page rebuilt as the login's sibling: white/royal-blue hero card, tracker panel, photo price board and order rules | 2026-09-28 | d4aff6e | [260928-ejs-redesign-public-home-page-to-match-the-l](./quick/260928-ejs-redesign-public-home-page-to-match-the-l/) |
 | 260928-gr4 | Report and dashboard graphs; date-range presets, loading and business-date fix; receipt VAT and balance; artist accept confirmation; New Visit recent/rush orders | 2026-09-28 | uncommitted | [260928-gr4-dashboard-graphs-and-portal-ui-fixes](./quick/260928-gr4-dashboard-graphs-and-portal-ui-fixes/) |
+| 260928-ci | CI tests on PHP 8.4 (openspout v5.12.0 in lock requires ~8.4) | 2026-09-28 | a450672 | — |
 
 ## Deferred Items
 
