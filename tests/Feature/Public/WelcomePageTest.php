@@ -17,6 +17,15 @@ test('a signed in staff member still lands on the same page', function () {
     $response->assertInertia(fn (Assert $page) => $page->component('Welcome'));
 });
 
+test('a mistyped job order number comes back to the landing page with its error', function () {
+    // The home page's tracker keeps the typed value and shows this message
+    // under the field, so the error has to land back on `/`, not /track.
+    $response = $this->from('/')->get(route('public.tracking.show', ['number' => '2026-0001']));
+
+    $response->assertRedirect('/');
+    $response->assertSessionHasErrors(['number' => 'Enter a job order number like JO-2026-0001.']);
+});
+
 test('the landing page points customers at nothing staff-only', function () {
     // The shop hands staff the portal address privately. Nothing on the
     // public page should advertise the sign-in screen or the queue board.

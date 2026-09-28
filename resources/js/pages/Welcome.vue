@@ -1,593 +1,699 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import {
-    ArrowRight,
-    Banknote,
-    CircleCheckBig,
-    ClipboardList,
-    CreditCard,
-    FileCheck2,
-    Frame,
-    IdCard,
-    Image as ImageIcon,
-    Palette,
-    PencilRuler,
-    Printer,
-    QrCode,
-    Search,
-    Signpost,
-    Sticker,
-    Store,
-    Zap,
-} from '@lucide/vue';
-import { ref } from 'vue';
+import { Head, router, usePage } from '@inertiajs/vue3';
+import { ArrowRight, QrCode } from '@lucide/vue';
+import { computed, ref } from 'vue';
+import InputError from '@/components/InputError.vue';
+import OrderProgress from '@/components/OrderProgress.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    authErrorClass,
+    authInputClass,
+    authSubmitClass,
+} from '@/layouts/auth/fields';
 import { show as trackingShow } from '@/routes/public/tracking';
 
 /**
- * The shop's public front door.
+ * Squarefoot's public front door, built as the login's sibling: a white
+ * panel and a royal-blue panel on one card, then two calm sections.
  *
- * Two audiences, in this order: a customer holding a job order number who
- * wants to know where their print is, and a staff member signing in. The
- * customer comes first because they are the ones arriving cold — staff know
- * where the login is.
+ * Whoever lands here is usually holding a paper slip and wants to know if
+ * their print is ready, so the blue tracker panel is the first thing on a
+ * phone. Staff reach the portal privately, so nothing here links to sign-in
+ * or the queue board (WelcomePageTest).
+ *
+ * Every claim is backed by the app. The price board is PricingDatabaseSeeder's
+ * walk-in list (retired rows left out), the tarp sizes are
+ * SpecificationOptionSeeder's, and the rules describe the queue, file check,
+ * design review and payment code as it stands. Prices and config values
+ * (file types, DPI floor, rush fee) stay off on purpose: they change, and
+ * the counter quotes them.
+ *
+ * The photos are Unsplash License placeholders until the shop has its own:
+ * banner-printing (CYrYxz-uvE4), blank-billboard (Dnkr_lmdKi8),
+ * sticker-printing (4kv2XrHkUoY), hanging-sign (KXwFJV2Nkyw), photo-printer
+ * (k1WVgtr2zDA) and cmyk-proof (eWuUwZWuWvE), all unsplash.com/photos/{id}.
+ * They are decorative, so every one has an empty alt.
  */
-const trackingNumber = ref('');
 
+interface PriceUnit {
+    visible: string;
+    spoken: string;
+}
+
+interface PriceBoardItem {
+    name: string;
+    unit?: PriceUnit;
+}
+
+interface PriceBoardGroup {
+    title: string;
+    unit: PriceUnit | null;
+    image: { src: string; width: number; height: number; position: string };
+    items: readonly PriceBoardItem[];
+}
+
+interface OrderRule {
+    label: string;
+    body: string;
+}
+
+const page = usePage();
+const trackingNumber = ref('');
+const isOpeningOrder = ref(false);
+
+/** Follows JobOrder's JO-{year}-{0000} format, so the example never looks stale. */
+const placeholderNumber = `JO-${new Date().getFullYear()}-0001`;
+
+/** TrackJobOrderRequest's "Enter a job order number like …" message. */
+const numberError = computed(() => page.props.errors?.number);
+
+/**
+ * Open the tracking page for the typed number. The field displays
+ * upper-case and TrackJobOrderRequest's regex is case-sensitive, so the
+ * value is upper-cased to match what the customer sees; spaces and the
+ * en/em dashes phone keyboards substitute become the hyphen it expects.
+ *
+ * A number in the wrong shape redirects back here with an error, so state
+ * is kept on errors only: the typed value survives and the message shows
+ * under the field.
+ */
 function trackOrder(): void {
-    const number = trackingNumber.value.trim();
+    const number = trackingNumber.value
+        .trim()
+        .toUpperCase()
+        .replace(/[\s–—-]+/g, '-');
 
     if (number === '') {
         return;
     }
 
-    router.get(trackingShow.url(), { number });
+    router.get(
+        trackingShow.url(),
+        { number },
+        {
+            preserveState: 'errors',
+            onStart: () => (isOpeningOrder.value = true),
+            onError: () =>
+                document.getElementById('welcome-tracking-number')?.focus(),
+            onFinish: () => (isOpeningOrder.value = false),
+        },
+    );
 }
 
-/**
- * Sample data for the hero artwork only. It is decorative — the whole block
- * is `aria-hidden` so a screen reader never reads out a job order that does
- * not exist.
- */
-const HERO_TIMELINE = [
-    { label: 'Queued at the counter', state: 'done' },
-    { label: 'Design approved by you', state: 'done' },
-    { label: 'Printing', state: 'done' },
-    { label: 'Quality check', state: 'current' },
-    { label: 'Ready for pickup', state: 'todo' },
-] as const;
+const TARP_SIZES: readonly string[] = ['2x3', '3x5', '3x6', '4x8', '6x10'];
 
-const PROMISES = [
-    { icon: Zap, label: 'Rush lane for urgent jobs' },
-    { icon: QrCode, label: 'Track by QR — no phone calls' },
-    { icon: Banknote, label: 'Cash, transfer, GCash or Maya' },
-] as const;
+const PER_SQ_FT: PriceUnit = {
+    visible: 'per sq ft',
+    spoken: 'per square foot',
+};
+const PER_PIECE: PriceUnit = { visible: 'per piece', spoken: 'per piece' };
 
-const SERVICES = [
+const PRICE_BOARD: readonly PriceBoardGroup[] = [
     {
-        icon: Frame,
-        title: 'Tarpaulins & banners',
-        body: 'Wide-format prints for events, promos and storefronts, at the size you need.',
+        title: 'Tarp',
+        unit: PER_SQ_FT,
+        image: {
+            src: '/images/blank-billboard.webp',
+            width: 800,
+            height: 533,
+            position: 'object-center',
+        },
+        items: [
+            { name: 'Tarpaulin' },
+            { name: 'Blackout' },
+            { name: 'Tarp with lamination' },
+            { name: 'Tarp on sintraboard or foamboard' },
+            { name: 'Tarp or blackout with wood or metal frame' },
+        ],
     },
     {
-        icon: Sticker,
-        title: 'Stickers & decals',
-        body: 'Vinyl stickers, labels and window decals cut to your artwork.',
+        title: 'Stickers',
+        unit: PER_SQ_FT,
+        image: {
+            src: '/images/sticker-printing.webp',
+            width: 800,
+            height: 1196,
+            position: 'object-[50%_60%]',
+        },
+        items: [
+            { name: 'Printed vinyl sticker' },
+            { name: 'Pre-cut vinyl sticker' },
+            { name: 'Cut vinyl sticker' },
+            { name: 'Sticker with lamination' },
+            { name: 'Transparent sticker' },
+            { name: 'Frosted sticker, printed or cut' },
+            { name: 'Perforated sticker' },
+            { name: 'Reflectorized sticker, printed or cut' },
+            { name: 'Prismatic reflective sticker' },
+        ],
     },
     {
-        icon: IdCard,
-        title: 'Cards & stationery',
-        body: 'Calling cards, IDs and loyalty cards, printed and finished in house.',
+        title: 'Signs and boards',
+        unit: PER_SQ_FT,
+        image: {
+            src: '/images/hanging-sign.webp',
+            width: 800,
+            height: 1093,
+            position: 'object-[50%_40%]',
+        },
+        items: [
+            { name: 'Panaflex print or UV print' },
+            { name: 'Panaflex with laminate' },
+            { name: 'Backlit print' },
+            { name: '3mm acrylic sandwich' },
+            { name: 'Sticker on sintraboard, one side or back to back' },
+            { name: 'Sticker on foamboard' },
+            { name: 'Sticker on acrylic, printed or cut' },
+            { name: 'Sticker on magnet' },
+        ],
     },
     {
-        icon: Signpost,
-        title: 'Signage & panels',
-        body: 'Shop, office and event signage built to your measurements.',
+        title: 'Stands, photo and mugs',
+        unit: null,
+        image: {
+            src: '/images/photo-printer.webp',
+            width: 800,
+            height: 1202,
+            position: 'object-[50%_45%]',
+        },
+        items: [
+            { name: 'Pull-up banner, big or small', unit: PER_PIECE },
+            { name: 'X-stand banner', unit: PER_PIECE },
+            { name: 'Mug print', unit: PER_PIECE },
+            { name: 'Matte photopaper', unit: PER_SQ_FT },
+            { name: 'Canvas, print only or framed', unit: PER_SQ_FT },
+        ],
     },
-    {
-        icon: ImageIcon,
-        title: 'Photo & poster printing',
-        body: 'Posters, photo prints and mounted panels for display.',
-    },
-    {
-        icon: Palette,
-        title: 'Layout & design',
-        body: 'No file yet? Sit down with one of our artists and design it together.',
-    },
-] as const;
+];
 
-const PROOF_POINTS = [
+const ORDER_RULES: readonly OrderRule[] = [
     {
-        icon: FileCheck2,
-        title: 'Checked before it prints',
-        body: 'Every file is measured against the size you ordered, so nothing prints soft.',
+        label: 'Queue',
+        body: 'Get a queue number at the counter. Rush jobs get an R number and are called first.',
     },
     {
-        icon: QrCode,
-        title: 'You approve the artwork',
-        body: 'Scan your slip, see the design, and say yes before the press runs.',
+        label: 'Your file',
+        body: 'Bring a print-ready file. We check image files against the size you ordered. If one would print blurry at that size, one of our artists works on it first.',
     },
     {
-        icon: Zap,
-        title: 'Rush lane available',
-        body: 'Urgent jobs get their own queue and are called ahead of the regular lane.',
+        label: 'No file yet',
+        body: 'Sit down with one of our artists and lay it out together.',
     },
     {
-        icon: Banknote,
-        title: 'Pay how you like',
-        body: 'Cash, bank transfer, GCash or Maya, with a receipt for every payment.',
+        label: 'Approval',
+        body: 'If our artist made or fixed your layout, nothing prints until you approve it. Approve it at the counter or from a link we can email you. You can ask for changes instead.',
     },
-] as const;
+    {
+        label: 'Payment',
+        body: 'Pay by cash, bank transfer, GCash or Maya. For GCash and Maya, scan the QR code we show you at the counter. Pay in full, or start with a down payment.',
+    },
+    {
+        label: 'Tracking',
+        body: 'Your slip has your job order number and a QR code. Check your order on this page any time. You don’t need an account.',
+    },
+    {
+        label: 'Pickup',
+        body: 'When your order shows Ready for pickup, come to the shop and bring your slip.',
+    },
+];
 
-const PROCESS = [
-    {
-        icon: ClipboardList,
-        title: 'Walk in and queue',
-        body: 'Take a number at the counter. Rush jobs get their own lane and are called first.',
-    },
-    {
-        icon: PencilRuler,
-        title: 'Bring a file, or design it here',
-        body: 'Hand over a print-ready file, or work it out on the spot with one of our artists.',
-    },
-    {
-        icon: QrCode,
-        title: 'Approve before we print',
-        body: 'Scan the QR on your slip to see the design. Nothing goes on the press until you say so.',
-    },
-    {
-        icon: Printer,
-        title: 'Printing and quality check',
-        body: 'Your order goes on the press, then gets checked before it leaves the shop.',
-    },
-    {
-        icon: CreditCard,
-        title: 'Pay how you like',
-        body: 'Cash, bank transfer, GCash or Maya. Approved accounts can take terms and settle later.',
-    },
-    {
-        icon: Store,
-        title: 'Collect it',
-        body: "We mark it ready the moment it's done, so you never have to ring up and ask.",
-    },
-] as const;
+/** Keyboard focus on the light ground: a solid ring-blue outline. */
+const linkFocusClass =
+    'rounded-md transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none';
+
+/** The login's soft royal-blue-tinted lift, shared by the two big cards. */
+const panelShadowClass =
+    'shadow-[0_20px_60px_rgba(0,40,142,0.12),0_4px_16px_rgba(0,0,0,0.08)]';
 </script>
 
 <template>
-    <Head title="Inkspire — Squarefoot Graphics & Ads" />
-
     <div
-        class="bg-background text-foreground flex min-h-screen flex-col overflow-x-clip"
+        class="bg-muted text-foreground flex min-h-screen flex-col overflow-x-clip"
     >
-        <header
-            class="border-border/60 bg-background/80 sticky top-0 z-50 border-b backdrop-blur"
-        >
-            <div
-                class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-3"
-            >
-                <!-- The wordmark bakes "spire" in near-black, so it
-                     disappears on a dark header. Flatten it to white there. -->
-                <img
-                    src="/logo.png"
-                    alt="Inkspire"
-                    class="h-8 w-auto object-contain"
-                />
+        <Head title="Squarefoot Graphics & Ads">
+            <meta
+                head-key="description"
+                name="description"
+                content="Tarpaulin, Panaflex, sticker and signage printing, priced by the square foot. Check your job order with the number on your slip."
+            />
+        </Head>
 
-                <nav class="flex items-center gap-1 sm:gap-2">
-                    <a
-                        href="#what-we-print"
-                        class="text-muted-foreground hover:text-foreground hidden rounded-md px-3 py-2 text-sm font-medium transition-colors md:inline-flex"
-                    >
-                        What we print
-                    </a>
-                    <a
-                        href="#how-it-works"
-                        class="text-muted-foreground hover:text-foreground hidden rounded-md px-3 py-2 text-sm font-medium transition-colors md:inline-flex"
-                    >
-                        How it works
-                    </a>
-                    <Button as-child size="sm" data-test="welcome-track-link">
-                        <a href="#track">
-                            Track my order
-                            <ArrowRight class="size-4" />
-                        </a>
-                    </Button>
-                </nav>
-            </div>
+        <header
+            class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5"
+        >
+            <img
+                src="/logo.png"
+                alt="Inkspire"
+                width="824"
+                height="303"
+                class="h-8 w-auto sm:h-9"
+            />
+            <nav
+                aria-label="On this page"
+                class="flex items-center gap-1 text-sm font-semibold"
+            >
+                <a
+                    href="#what-we-print"
+                    :class="[
+                        linkFocusClass,
+                        'text-muted-foreground hover:text-foreground hidden px-3 py-2 md:inline-flex',
+                    ]"
+                >
+                    What we print
+                </a>
+                <a
+                    href="#how-to-order"
+                    :class="[
+                        linkFocusClass,
+                        'text-muted-foreground hover:text-foreground hidden px-3 py-2 md:inline-flex',
+                    ]"
+                >
+                    How to order
+                </a>
+                <a
+                    href="#track"
+                    data-test="welcome-track-link"
+                    :class="[
+                        linkFocusClass,
+                        'bg-card text-primary border-border hover:border-primary/40 ml-1 inline-flex items-center rounded-full border px-3.5 py-1.5 shadow-xs',
+                    ]"
+                >
+                    Track an order
+                </a>
+            </nav>
         </header>
 
         <main class="flex-1">
-            <!-- Hero: the one thing a customer actually came here to do,
-                 next to a picture of what they will get back. -->
-            <section class="border-border/60 relative border-b">
-                <!-- Decorative background: a faint grid, faded out from the
-                     bottom so it never competes with the copy. -->
+            <div class="mx-auto w-full max-w-6xl px-4 sm:px-6">
                 <div
-                    aria-hidden="true"
-                    class="pointer-events-none absolute inset-0 overflow-hidden"
+                    :class="[
+                        panelShadowClass,
+                        'bg-card grid overflow-hidden rounded-[20px] lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]',
+                    ]"
                 >
+                    <!-- White panel: what this is, and what the customer gets back. -->
                     <div
-                        class="from-primary/10 absolute inset-0 bg-gradient-to-b to-transparent"
-                    ></div>
-                    <div
-                        class="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] [background-size:56px_56px] opacity-50"
-                    ></div>
-                    <div
-                        class="to-background absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent"
-                    ></div>
-                    <div
-                        class="bg-primary/15 absolute -top-24 -right-24 size-96 rounded-full blur-3xl"
-                    ></div>
-                </div>
-
-                <div
-                    class="relative mx-auto grid w-full max-w-6xl gap-12 px-6 py-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-16 lg:py-24"
-                >
-                    <div class="flex flex-col gap-6">
-                        <span
-                            class="bg-accent text-accent-foreground border-primary/10 flex w-fit items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold tracking-[0.08em] uppercase"
-                        >
-                            <Printer class="size-3.5" />
-                            Squarefoot Graphics &amp; Ads
-                        </span>
-
-                        <h1
-                            class="text-4xl leading-[1.05] font-extrabold tracking-tight text-balance sm:text-5xl lg:text-6xl"
-                        >
-                            Printing you can
-                            <span class="text-primary">follow</span>, from the
-                            counter to the shelf.
-                        </h1>
-
-                        <p
-                            class="text-muted-foreground max-w-prose text-base leading-relaxed sm:text-lg"
-                        >
-                            Tarpaulins, stickers, cards and signage — designed,
-                            printed and finished in house. Every order gets a
-                            number you can check any time, so you never have to
-                            ring up and ask if it's ready.
-                        </p>
-
-                        <div
-                            id="track"
-                            class="bg-card border-border shadow-primary/5 flex scroll-mt-24 flex-col gap-3 rounded-2xl border p-5 shadow-lg"
-                        >
-                            <div class="flex flex-col gap-1">
-                                <Label
-                                    for="welcome-tracking-number"
-                                    class="text-base font-semibold"
-                                >
-                                    Where is my order?
-                                </Label>
-                                <p class="text-muted-foreground text-sm">
-                                    Enter the job order number from your receipt
-                                    or slip.
-                                </p>
-                            </div>
-                            <form
-                                class="flex flex-col gap-2 sm:flex-row"
-                                @submit.prevent="trackOrder"
-                            >
-                                <div class="relative flex-1">
-                                    <Search
-                                        class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-                                    />
-                                    <Input
-                                        id="welcome-tracking-number"
-                                        v-model="trackingNumber"
-                                        class="h-11 pl-9"
-                                        placeholder="JO-2026-1234"
-                                        autocomplete="off"
-                                        data-test="welcome-tracking-input"
-                                    />
-                                </div>
-                                <Button
-                                    type="submit"
-                                    size="lg"
-                                    class="h-11"
-                                    data-test="welcome-tracking-submit"
-                                >
-                                    Track my order
-                                    <ArrowRight class="size-4" />
-                                </Button>
-                            </form>
-                            <p
-                                class="text-muted-foreground flex items-start gap-2 text-sm"
-                            >
-                                <QrCode class="mt-0.5 size-4 shrink-0" />
-                                <span>
-                                    Got a QR code on your slip? Just scan it —
-                                    it opens the same page, no typing.
-                                </span>
-                            </p>
-                        </div>
-
-                        <ul
-                            class="text-muted-foreground flex flex-wrap gap-x-6 gap-y-2 text-sm"
-                        >
-                            <li
-                                v-for="promise in PROMISES"
-                                :key="promise.label"
-                                class="flex items-center gap-2"
-                            >
-                                <component
-                                    :is="promise.icon"
-                                    class="text-primary size-4"
-                                />
-                                {{ promise.label }}
-                            </li>
-                        </ul>
-                    </div>
-
-                    <!--
-                        Hero photograph: large-format roll printing, which is
-                        what most of the price list actually is (tarpaulin,
-                        blackout, panaflex, sticker vinyl). Self-hosted rather
-                        than hotlinked so the page does not depend on a third
-                        party staying up.
-
-                        Source: Unsplash (unsplash.com/photos/bd429a57f115),
-                        Unsplash License — free for commercial use, no
-                        attribution required. Swap in a photo of the actual
-                        shop when there is one; nothing else has to change.
-
-                        Intrinsic width/height are set so the browser reserves
-                        the space before the image loads and the copy beside it
-                        does not jump (CLS).
-                    -->
-                    <div class="relative mx-auto w-full max-w-xl lg:max-w-none">
+                        class="relative flex min-w-0 flex-col px-6 pt-8 sm:px-10 sm:pt-12 lg:px-14 lg:pt-14"
+                    >
                         <div
                             aria-hidden="true"
-                            class="bg-primary/20 absolute -inset-x-4 -top-6 h-40 rounded-full blur-3xl"
-                        ></div>
-                        <img
-                            src="/images/large-format-printing.jpg"
-                            alt="A wide-format printer running a full-colour banner through the press"
-                            width="1400"
-                            height="933"
-                            fetchpriority="high"
-                            class="border-border relative w-full rounded-[28px] border object-cover shadow-xl"
+                            class="absolute inset-x-0 top-0 grid h-1 grid-cols-4"
+                        >
+                            <span class="bg-ink-cyan" />
+                            <span class="bg-ink-magenta" />
+                            <span class="bg-ink-yellow" />
+                            <span class="bg-ink-key" />
+                        </div>
+                        <div
+                            class="bg-primary mb-5 h-[3px] w-10 rounded-full"
                         />
-                    </div>
-                </div>
-            </section>
+                        <h1
+                            class="max-w-[30rem] text-[1.75rem] leading-[1.1] font-extrabold tracking-tight text-balance sm:text-[2.25rem] lg:text-[2.625rem]"
+                        >
+                            Know where your print is.
+                        </h1>
+                        <p
+                            class="text-muted-foreground mt-3 max-w-[32rem] text-sm leading-relaxed lg:text-base"
+                        >
+                            Squarefoot Graphics &amp; Ads prints tarpaulin,
+                            Panaflex, stickers and signage. Every order gets a
+                            job order number, so you can check on it here any
+                            time instead of calling the shop.
+                        </p>
 
+                        <!--
+                            The tracking page's own card (Tracking.vue's header
+                            over the real OrderProgress) laid on a photo and
+                            cropped by the panel edge. Sample data, so the whole
+                            block is hidden from screen readers.
+                        -->
+                        <div
+                            aria-hidden="true"
+                            class="relative mt-8 h-72 select-none sm:mt-10 sm:h-80"
+                        >
+                            <img
+                                src="/images/banner-printing.webp"
+                                alt=""
+                                width="1200"
+                                height="800"
+                                class="absolute inset-0 size-full rounded-t-2xl object-cover object-[70%_50%]"
+                            />
+                            <div
+                                class="absolute inset-0 rounded-t-2xl ring-1 ring-black/5 ring-inset"
+                            />
+                            <div
+                                class="bg-card border-border absolute top-16 left-4 w-[min(calc(100%-3rem),21rem)] rounded-xl border px-5 pt-5 pb-6 shadow-[0_18px_40px_rgba(0,20,70,0.22),0_2px_6px_rgba(0,0,0,0.08)] sm:top-10 sm:left-6"
+                            >
+                                <div
+                                    class="mb-5 flex flex-col items-center gap-0.5 text-center"
+                                >
+                                    <p
+                                        class="text-muted-foreground text-xs font-semibold"
+                                    >
+                                        Job Order
+                                        <span class="tabular-nums">
+                                            {{ placeholderNumber }}
+                                        </span>
+                                    </p>
+                                    <p class="text-2xl leading-tight font-bold">
+                                        Printing
+                                    </p>
+                                </div>
+                                <OrderProgress :step="2" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Royal-blue tracker panel: first until the hero splits, then right. -->
+                    <section
+                        id="track"
+                        aria-labelledby="track-heading"
+                        class="bg-primary text-primary-foreground flex scroll-mt-4 flex-col items-center justify-center px-6 py-9 text-center max-lg:order-first sm:px-10 sm:py-12 lg:px-14"
+                    >
+                        <span
+                            class="inline-flex items-center rounded-full border border-white/25 bg-white/15 px-3.5 py-1 text-[10px] font-bold tracking-widest text-white/90 uppercase"
+                        >
+                            No account needed
+                        </span>
+                        <h2
+                            id="track-heading"
+                            class="mt-4 text-[1.625rem] leading-tight font-extrabold tracking-tight sm:text-[1.875rem]"
+                        >
+                            Is my print ready?
+                        </h2>
+                        <p
+                            id="welcome-tracking-help"
+                            class="mt-1.5 max-w-[20rem] text-sm text-white/75"
+                        >
+                            Type the job order number from your slip or receipt.
+                        </p>
+
+                        <form
+                            class="mt-7 flex w-full max-w-[20rem] flex-col gap-2 text-left"
+                            @submit.prevent="trackOrder"
+                        >
+                            <Label
+                                for="welcome-tracking-number"
+                                class="text-[11px] font-bold tracking-widest text-white/70 uppercase"
+                            >
+                                Job order number
+                            </Label>
+                            <Input
+                                id="welcome-tracking-number"
+                                v-model="trackingNumber"
+                                :placeholder="placeholderNumber"
+                                required
+                                autocomplete="off"
+                                autocapitalize="characters"
+                                spellcheck="false"
+                                enterkeyhint="go"
+                                :aria-invalid="numberError ? 'true' : undefined"
+                                :aria-describedby="
+                                    numberError
+                                        ? 'welcome-tracking-help welcome-tracking-error'
+                                        : 'welcome-tracking-help'
+                                "
+                                data-test="welcome-tracking-input"
+                                :class="[
+                                    authInputClass,
+                                    'h-12 text-lg font-bold tracking-wide uppercase tabular-nums placeholder:font-semibold placeholder:text-white/45 aria-invalid:border-red-300 md:text-lg',
+                                ]"
+                            />
+                            <!-- Always mounted, so a screen reader announces
+                                 the message when it appears. -->
+                            <div role="alert">
+                                <InputError
+                                    id="welcome-tracking-error"
+                                    :message="numberError"
+                                    :class="authErrorClass"
+                                />
+                            </div>
+                            <Button
+                                type="submit"
+                                size="lg"
+                                :disabled="isOpeningOrder"
+                                data-test="welcome-tracking-submit"
+                                :class="[
+                                    authSubmitClass,
+                                    'mt-2 h-11 font-bold focus-visible:ring-white/70 motion-reduce:transition-none',
+                                ]"
+                            >
+                                <template v-if="isOpeningOrder">
+                                    Checking…
+                                </template>
+                                <template v-else>
+                                    Track my order
+                                    <ArrowRight class="size-4" />
+                                </template>
+                            </Button>
+                        </form>
+
+                        <p
+                            class="mt-6 flex max-w-[20rem] items-start gap-2.5 text-left text-[13px] leading-snug text-white/75"
+                        >
+                            <QrCode
+                                aria-hidden="true"
+                                class="mt-0.5 size-5 shrink-0 stroke-[1.75]"
+                            />
+                            The number is printed under the QR code on your
+                            slip. Or scan the code to open your order directly.
+                        </p>
+                    </section>
+                </div>
+            </div>
+
+            <!-- The price board. Names and units only; the counter quotes prices. -->
             <section
                 id="what-we-print"
-                class="mx-auto w-full max-w-6xl scroll-mt-20 px-6 py-16 lg:py-20"
+                aria-labelledby="what-we-print-heading"
+                class="mx-auto w-full max-w-6xl scroll-mt-4 px-4 pt-16 sm:px-6 lg:pt-24"
             >
-                <div class="mb-10 flex flex-col gap-2">
-                    <span
-                        class="text-primary text-xs font-bold tracking-[0.12em] uppercase"
+                <div
+                    class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-end lg:gap-16"
+                >
+                    <div>
+                        <div
+                            class="bg-primary mb-4 h-[3px] w-10 rounded-full"
+                        />
+                        <h2
+                            id="what-we-print-heading"
+                            class="text-2xl leading-tight font-extrabold tracking-tight sm:text-3xl"
+                        >
+                            What we print
+                        </h2>
+                    </div>
+                    <p
+                        class="text-muted-foreground text-sm leading-relaxed lg:text-base"
                     >
-                        What we print
-                    </span>
-                    <h2
-                        class="text-2xl leading-tight font-bold tracking-tight sm:text-3xl"
-                    >
-                        Large format, small format, and the design in between
-                    </h2>
-                    <p class="text-muted-foreground max-w-prose">
-                        Everything below is produced in house, so the same
-                        people who lay it out are the ones who print it.
+                        Most of what we print is charged by area. A 3x5 ft tarp
+                        is 15 sq ft. Stands and mugs are priced per piece. Bring
+                        the width and height, and we’ll quote you at the
+                        counter.
                     </p>
                 </div>
 
-                <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    <div
-                        v-for="service in SERVICES"
-                        :key="service.title"
-                        class="group bg-card border-border hover:border-primary/40 flex flex-col gap-4 rounded-2xl border p-6 shadow-sm transition-colors"
+                <div class="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                    <article
+                        v-for="group in PRICE_BOARD"
+                        :key="group.title"
+                        class="bg-card border-border flex flex-col overflow-hidden rounded-2xl border shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_30px_rgba(0,40,142,0.07)]"
                     >
-                        <span
-                            class="from-primary to-primary/70 text-primary-foreground flex size-12 items-center justify-center rounded-xl bg-gradient-to-br shadow-sm"
+                        <img
+                            :src="group.image.src"
+                            alt=""
+                            :width="group.image.width"
+                            :height="group.image.height"
+                            loading="lazy"
+                            :class="[
+                                group.image.position,
+                                'aspect-[16/10] w-full object-cover',
+                            ]"
+                        />
+                        <div
+                            class="flex items-baseline justify-between gap-3 px-5 pt-4 pb-1"
                         >
-                            <component :is="service.icon" class="size-6" />
-                        </span>
-                        <h3 class="font-semibold">{{ service.title }}</h3>
-                        <p
-                            class="text-muted-foreground text-sm leading-relaxed"
-                        >
-                            {{ service.body }}
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <section class="border-border/60 border-y">
-                <div
-                    class="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 lg:grid-cols-2 lg:items-center lg:gap-14 lg:py-20"
-                >
-                    <!--
-                        Source: Unsplash (unsplash.com/photos/8a2fa686963a),
-                        Unsplash License — free for commercial use, no
-                        attribution required.
-                    -->
-                    <img
-                        src="/images/printing-press.jpg"
-                        alt="A commercial printing press running sheets at speed"
-                        width="1200"
-                        height="801"
-                        loading="lazy"
-                        class="border-border w-full rounded-[28px] border object-cover shadow-lg"
-                    />
-
-                    <div class="flex flex-col gap-6">
-                        <span
-                            class="text-primary text-xs font-bold tracking-[0.12em] uppercase"
-                        >
-                            About Squarefoot
-                        </span>
-                        <h2
-                            class="text-2xl leading-tight font-bold tracking-tight text-balance sm:text-3xl lg:text-4xl"
-                        >
-                            Printed in house, start to finish.
-                        </h2>
-                        <p
-                            class="text-muted-foreground max-w-prose leading-relaxed"
-                        >
-                            Layout, printing and finishing all happen under one
-                            roof, so the people who set your file are the people
-                            who run it. Nothing goes on the press until the
-                            artwork is right and you have said yes to it.
-                        </p>
-
-                        <ul class="grid gap-4 sm:grid-cols-2">
-                            <li
-                                v-for="point in PROOF_POINTS"
-                                :key="point.title"
-                                class="flex gap-3"
+                            <h3 class="text-lg font-extrabold tracking-tight">
+                                {{ group.title }}
+                            </h3>
+                            <span
+                                v-if="group.unit"
+                                class="text-muted-foreground shrink-0 text-xs font-semibold"
                             >
-                                <span
-                                    class="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg"
-                                >
-                                    <component
-                                        :is="point.icon"
-                                        class="size-4"
-                                    />
+                                <span aria-hidden="true">
+                                    {{ group.unit.visible }}
                                 </span>
-                                <div class="flex flex-col gap-0.5">
-                                    <span class="text-sm font-semibold">
-                                        {{ point.title }}
+                                <span class="sr-only">
+                                    {{ group.unit.spoken }}
+                                </span>
+                            </span>
+                        </div>
+                        <ul class="px-5 pb-4 text-sm leading-snug">
+                            <li
+                                v-for="item in group.items"
+                                :key="item.name"
+                                class="border-border flex items-baseline justify-between gap-3 border-b py-2 last:border-b-0"
+                            >
+                                <span class="min-w-0">{{ item.name }}</span>
+                                <span
+                                    v-if="item.unit"
+                                    class="text-muted-foreground shrink-0 text-xs"
+                                >
+                                    <span aria-hidden="true">
+                                        {{ item.unit.visible }}
                                     </span>
-                                    <span
-                                        class="text-muted-foreground text-sm leading-relaxed"
-                                    >
-                                        {{ point.body }}
+                                    <span class="sr-only">
+                                        {{ item.unit.spoken }}
                                     </span>
-                                </div>
+                                </span>
                             </li>
                         </ul>
-                    </div>
+                    </article>
                 </div>
+
+                <dl
+                    class="bg-card border-border mt-5 grid overflow-hidden rounded-2xl border sm:grid-cols-3"
+                >
+                    <div
+                        class="border-border border-b p-5 sm:border-r sm:border-b-0"
+                    >
+                        <dt class="text-sm font-bold">Standard tarp sizes</dt>
+                        <dd
+                            class="text-primary mt-1 text-lg font-extrabold tracking-tight tabular-nums"
+                        >
+                            <span aria-hidden="true">
+                                {{ TARP_SIZES.join(' · ') }}&nbsp;ft
+                            </span>
+                            <span class="sr-only">
+                                {{ TARP_SIZES.join(', ') }} feet
+                            </span>
+                        </dd>
+                        <dd class="text-muted-foreground mt-0.5 text-sm">
+                            We print custom sizes too.
+                        </dd>
+                    </div>
+                    <div
+                        class="border-border border-b p-5 sm:border-r sm:border-b-0"
+                    >
+                        <dt class="text-sm font-bold">Installation</dt>
+                        <dd
+                            class="text-muted-foreground mt-1 text-sm leading-relaxed"
+                        >
+                            We can install frosted and perforated stickers and
+                            laminated tarp for you.
+                        </dd>
+                    </div>
+                    <div class="p-5">
+                        <dt class="text-sm font-bold">Plain media</dt>
+                        <dd
+                            class="text-muted-foreground mt-1 text-sm leading-relaxed"
+                        >
+                            Unprinted tarp, blackout, Panaflex, sticker vinyl
+                            and photopaper. Tarp also comes by the roll and
+                            sintraboard by the sheet.
+                        </dd>
+                    </div>
+                </dl>
             </section>
 
             <section
-                id="how-it-works"
-                class="bg-muted/40 border-border/60 scroll-mt-20 border-y"
+                id="how-to-order"
+                aria-labelledby="how-to-order-heading"
+                class="mx-auto w-full max-w-6xl scroll-mt-4 px-4 py-16 sm:px-6 lg:py-24"
             >
-                <div class="mx-auto w-full max-w-6xl px-6 py-16 lg:py-20">
-                    <div class="mb-10 flex flex-col gap-2">
-                        <span
-                            class="text-primary text-xs font-bold tracking-[0.12em] uppercase"
+                <div
+                    class="bg-card grid overflow-hidden rounded-[20px] shadow-[0_20px_60px_rgba(0,40,142,0.08),0_4px_16px_rgba(0,0,0,0.05)] lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]"
+                >
+                    <div
+                        class="border-border relative flex flex-col border-b px-6 pt-9 pb-7 sm:px-10 lg:border-r lg:border-b-0 lg:py-12"
+                    >
+                        <div
+                            aria-hidden="true"
+                            class="absolute inset-x-0 top-0 grid h-1 grid-cols-4"
                         >
-                            How it works
-                        </span>
+                            <span class="bg-ink-cyan" />
+                            <span class="bg-ink-magenta" />
+                            <span class="bg-ink-yellow" />
+                            <span class="bg-ink-key" />
+                        </div>
+                        <div
+                            class="bg-primary mb-4 h-[3px] w-10 rounded-full"
+                        />
                         <h2
-                            class="text-2xl leading-tight font-bold tracking-tight sm:text-3xl"
+                            id="how-to-order-heading"
+                            class="text-2xl leading-tight font-extrabold tracking-tight sm:text-3xl"
                         >
-                            No guesswork, no lost paper slips
+                            How to order
                         </h2>
-                        <p class="text-muted-foreground max-w-prose">
-                            Here's what happens between handing us your file and
-                            walking out with the print.
-                        </p>
-                    </div>
-
-                    <ol class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        <li
-                            v-for="(step, index) in PROCESS"
-                            :key="step.title"
-                            class="bg-card border-border relative flex flex-col gap-3 overflow-hidden rounded-2xl border p-6 shadow-sm"
+                        <p
+                            class="text-muted-foreground mt-2 text-sm leading-relaxed"
                         >
-                            <span
-                                aria-hidden="true"
-                                class="text-primary/10 absolute -top-2 right-3 text-6xl font-black tabular-nums"
+                            From the counter to pickup.
+                        </p>
+                        <img
+                            src="/images/cmyk-proof.webp"
+                            alt=""
+                            width="800"
+                            height="1203"
+                            loading="lazy"
+                            class="mt-6 h-44 w-full rounded-xl object-cover sm:h-56 lg:h-auto lg:min-h-0 lg:flex-1"
+                        />
+                    </div>
+                    <dl class="divide-border divide-y px-6 sm:px-10">
+                        <div
+                            v-for="rule in ORDER_RULES"
+                            :key="rule.label"
+                            class="grid gap-1 py-4 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-6 sm:py-5"
+                        >
+                            <dt class="text-primary text-sm font-bold">
+                                {{ rule.label }}
+                            </dt>
+                            <dd
+                                class="text-muted-foreground text-sm leading-relaxed"
                             >
-                                {{ index + 1 }}
-                            </span>
-                            <span
-                                class="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-xl"
-                            >
-                                <component :is="step.icon" class="size-5" />
-                            </span>
-                            <h3 class="relative font-semibold">
-                                {{ step.title }}
-                            </h3>
-                            <p
-                                class="text-muted-foreground relative text-sm leading-relaxed"
-                            >
-                                {{ step.body }}
-                            </p>
-                        </li>
-                    </ol>
+                                {{ rule.body }}
+                            </dd>
+                        </div>
+                    </dl>
                 </div>
             </section>
         </main>
 
-        <!-- Closing band and footer share one dark surface. `dark` is scoped
-             here (the same trick the queue display uses) so the band looks
-             identical in both themes — and so the Squarefoot logo, whose
-             "Graphics & Ads" line is baked in white, always has something
-             dark to sit on. -->
-        <div class="dark bg-background text-foreground">
-            <section class="border-border/60 border-b">
-                <div
-                    class="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-6 py-16 text-center"
-                >
-                    <img
-                        src="/business_logo.png"
-                        alt="Squarefoot Graphics &amp; Ads"
-                        class="h-auto w-56 object-contain"
-                    />
-                    <h2
-                        class="max-w-2xl text-2xl leading-tight font-bold tracking-tight text-balance sm:text-3xl"
-                    >
-                        Drop by the shop, or check an order you already have
-                        with us.
-                    </h2>
-                    <p class="text-muted-foreground max-w-prose">
-                        Order tracking is open to everyone — no account needed,
-                        just the number on your slip.
+        <footer class="border-border border-t">
+            <div
+                class="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-8 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6"
+            >
+                <div>
+                    <p class="font-bold">Squarefoot Graphics &amp; Ads</p>
+                    <p class="text-muted-foreground mt-0.5 text-xs">
+                        Job orders and tracking run on Inkspire.
                     </p>
-                    <div
-                        class="flex flex-wrap items-center justify-center gap-3"
-                    >
-                        <Button as-child size="lg">
-                            <a href="#track">
-                                Track an order
-                                <ArrowRight class="size-4" />
-                            </a>
-                        </Button>
-                        <Button as-child size="lg" variant="outline">
-                            <a href="#what-we-print">See what we print</a>
-                        </Button>
-                    </div>
                 </div>
-            </section>
-
-            <footer>
-                <div
-                    class="text-muted-foreground mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 py-8 text-sm sm:flex-row sm:items-center sm:justify-between"
+                <nav
+                    aria-label="Footer"
+                    class="text-muted-foreground flex flex-wrap gap-x-6 gap-y-2 font-semibold"
                 >
-                    <p>
-                        Inkspire — the order management system for Squarefoot
-                        Graphics &amp; Ads.
-                    </p>
-                    <nav class="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        <a
-                            href="#what-we-print"
-                            class="hover:text-foreground transition-colors"
-                        >
-                            What we print
-                        </a>
-                        <a
-                            href="#how-it-works"
-                            class="hover:text-foreground transition-colors"
-                        >
-                            How it works
-                        </a>
-                        <a
-                            href="#track"
-                            class="hover:text-foreground transition-colors"
-                        >
-                            Track an order
-                        </a>
-                    </nav>
-                </div>
-            </footer>
-        </div>
+                    <a
+                        href="#track"
+                        :class="[linkFocusClass, 'hover:text-foreground']"
+                    >
+                        Track an order
+                    </a>
+                    <a
+                        href="#what-we-print"
+                        :class="[linkFocusClass, 'hover:text-foreground']"
+                    >
+                        What we print
+                    </a>
+                    <a
+                        href="#how-to-order"
+                        :class="[linkFocusClass, 'hover:text-foreground']"
+                    >
+                        How to order
+                    </a>
+                </nav>
+            </div>
+        </footer>
     </div>
 </template>
