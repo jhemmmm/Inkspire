@@ -61,3 +61,26 @@ test('production staff requesting a report key it is not entitled to gets a 403'
 
     $this->actingAs($productionStaff)->get(route('production-staff.reports.index', ['report' => 'sales']))->assertForbidden();
 });
+
+test('the production chart counts jobs per stage in workflow order, empty stages included', function () {
+    $productionStaff = User::factory()->productionStaff()->create();
+
+    foreach ([JobOrderStatus::Printing, JobOrderStatus::Printing, JobOrderStatus::ReadyForPickup] as $stage) {
+        ProductionLog::factory()->for(JobOrder::factory()->create(['status' => $stage->value]))->create([
+            'to_status' => JobOrderStatus::ForProduction->value,
+            'created_at' => now(),
+        ]);
+    }
+
+    $response = $this->actingAs($productionStaff)
+        ->withHeaders(productionReportHeaders())
+        ->get(route('production-staff.reports.index', ['report' => 'production-status']));
+
+    $response->assertOk();
+    expect($response->json('props.chart.items'))->toEqual([
+        ['label' => 'For Production', 'value' => 0],
+        ['label' => 'Printing', 'value' => 2],
+        ['label' => 'Quality Check', 'value' => 0],
+        ['label' => 'Ready for Pickup', 'value' => 1],
+    ]);
+});

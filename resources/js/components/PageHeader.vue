@@ -26,7 +26,7 @@ const props = defineProps<{
     <div
         :class="
             cn(
-                'bg-card border-border relative isolate flex flex-wrap items-end justify-between gap-x-6 gap-y-4 overflow-hidden rounded-2xl border px-5 pt-6 pb-5 shadow-sm sm:px-7 sm:pt-7 sm:pb-6 print:rounded-none print:border-0 print:p-0 print:shadow-none',
+                'bg-card border-border relative isolate flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-4 overflow-hidden rounded-2xl border px-5 pt-6 pb-5 shadow-sm sm:px-7 sm:pt-7 sm:pb-6 print:rounded-none print:border-0 print:p-0 print:shadow-none',
                 props.class,
             )
         "

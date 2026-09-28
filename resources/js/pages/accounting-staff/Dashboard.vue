@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ArrowRight } from '@lucide/vue';
 import { ref } from 'vue';
+import BarChart from '@/components/BarChart.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
     Table,
     TableBody,
@@ -17,8 +20,10 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
+import type { ChartSeries } from '@/lib/charts';
 import { dashboard } from '@/routes/accounting-staff';
 import { reconcile } from '@/routes/accounting-staff/job-orders';
+import { index as reportsIndex } from '@/routes/accounting-staff/reports';
 
 interface PendingConfirmationTransaction {
     payment_method: string;
@@ -35,6 +40,7 @@ interface PendingConfirmationJobOrder {
 
 defineProps<{
     jobOrders: PendingConfirmationJobOrder[];
+    cashFlow: { labels: string[]; series: ChartSeries[] };
 }>();
 
 defineOptions({
@@ -92,7 +98,7 @@ function money(value: number | null): string {
     <PageContainer>
         <PageHeader
             title="Accounting Dashboard"
-            description="Payments taken at the counter that still need your confirmation."
+            description="Payments that still need your confirmation, and how money has moved over the last two weeks."
         />
 
         <SectionHeading
@@ -154,5 +160,34 @@ function money(value: number | null): string {
                 </TableBody>
             </Table>
         </DataTableCard>
+
+        <div class="flex flex-wrap items-end justify-between gap-4">
+            <SectionHeading
+                title="Revenue and Expenses"
+                description="The last 14 days, by the day money arrived or was spent."
+            />
+            <Button as-child variant="outline" size="sm">
+                <Link
+                    :href="
+                        reportsIndex({ query: { report: 'financial-summary' } })
+                    "
+                >
+                    Full report
+                    <ArrowRight class="size-4" />
+                </Link>
+            </Button>
+        </div>
+
+        <Card>
+            <CardContent>
+                <BarChart
+                    label="Revenue and expenses, last 14 days"
+                    :labels="cashFlow.labels"
+                    :series="cashFlow.series"
+                    format="money"
+                    empty-text="No money in or out in the last 14 days."
+                />
+            </CardContent>
+        </Card>
     </PageContainer>
 </template>

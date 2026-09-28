@@ -104,6 +104,7 @@ interface CustomerJobOrder {
     description: string;
     type: string;
     status: string;
+    is_rush: boolean;
     created_at: string;
 }
 
@@ -186,6 +187,30 @@ const newJobOrderRequested = ref(false);
 // form with no extra click; a returning one sees their history first.
 const showJobOrderForm = computed(
     () => newJobOrderRequested.value || props.customerJobOrders.length === 0,
+);
+
+/**
+ * The past week's orders, rush in their own table above the rest, so a rush
+ * job already in progress is the first thing staff see rather than a badge
+ * somewhere down the list. An empty group is left out.
+ */
+const recentOrderGroups = computed(() =>
+    [
+        {
+            key: 'rush',
+            title: 'Rush Orders',
+            rows: props.customerJobOrders.filter(
+                (jobOrder) => jobOrder.is_rush,
+            ),
+        },
+        {
+            key: 'regular',
+            title: 'Regular Orders',
+            rows: props.customerJobOrders.filter(
+                (jobOrder) => !jobOrder.is_rush,
+            ),
+        },
+    ].filter((group) => group.rows.length > 0),
 );
 
 // Inertia can preserve this component instance across the post-registration
@@ -994,8 +1019,8 @@ function jobOrderStatusLabel(status: string): string {
         <template v-if="selected && !confirmedQueueEntry && !showJobOrderForm">
             <div class="flex flex-wrap items-end justify-between gap-4">
                 <SectionHeading
-                    title="Previous Job Orders"
-                    description="This customer's most recent orders. Start a new one at any time."
+                    title="Recent Orders"
+                    description="This customer's orders from the past 7 days, rush orders first. Start a new one at any time."
                 />
                 <Button
                     size="lg"
@@ -1008,50 +1033,70 @@ function jobOrderStatusLabel(status: string): string {
                 </Button>
             </div>
 
-            <DataTableCard>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Job Order</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Date</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow
-                            v-for="jobOrder in customerJobOrders"
-                            :key="jobOrder.id"
-                            class="hover:bg-accent/50 cursor-pointer"
-                            tabindex="0"
-                            :data-test="`customer-job-order-${jobOrder.id}-row`"
-                            @click="router.visit(jobOrderShow(jobOrder.id))"
-                            @keyup.enter="
-                                router.visit(jobOrderShow(jobOrder.id))
-                            "
-                        >
-                            <TableCell class="tabular-nums">
-                                {{ jobOrder.number ?? '—' }}
-                            </TableCell>
-                            <TableCell>{{ jobOrder.description }}</TableCell>
-                            <TableCell>
-                                <Badge variant="outline">
-                                    {{ jobOrderTypeLabel(jobOrder.type) }}
-                                </Badge>
-                            </TableCell>
-                            <TableCell class="text-muted-foreground">
-                                {{ jobOrderStatusLabel(jobOrder.status) }}
-                            </TableCell>
-                            <TableCell
-                                class="text-muted-foreground tabular-nums"
+            <section
+                v-for="group in recentOrderGroups"
+                :key="group.key"
+                class="flex flex-col gap-2"
+                :data-test="`recent-orders-${group.key}`"
+            >
+                <h3 class="flex items-center gap-2 text-sm font-semibold">
+                    <Zap
+                        v-if="group.key === 'rush'"
+                        class="text-brand size-4"
+                        aria-hidden="true"
+                    />
+                    {{ group.title }}
+                    <Badge variant="secondary" class="tabular-nums">
+                        {{ group.rows.length }}
+                    </Badge>
+                </h3>
+                <DataTableCard>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Job Order</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Date</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            <TableRow
+                                v-for="jobOrder in group.rows"
+                                :key="jobOrder.id"
+                                class="hover:bg-accent/50 cursor-pointer"
+                                tabindex="0"
+                                :data-test="`customer-job-order-${jobOrder.id}-row`"
+                                @click="router.visit(jobOrderShow(jobOrder.id))"
+                                @keyup.enter="
+                                    router.visit(jobOrderShow(jobOrder.id))
+                                "
                             >
-                                {{ formatSlipDate(jobOrder.created_at) }}
-                            </TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
-            </DataTableCard>
+                                <TableCell class="tabular-nums">
+                                    {{ jobOrder.number ?? '—' }}
+                                </TableCell>
+                                <TableCell>{{
+                                    jobOrder.description
+                                }}</TableCell>
+                                <TableCell>
+                                    <Badge variant="outline">
+                                        {{ jobOrderTypeLabel(jobOrder.type) }}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell class="text-muted-foreground">
+                                    {{ jobOrderStatusLabel(jobOrder.status) }}
+                                </TableCell>
+                                <TableCell
+                                    class="text-muted-foreground tabular-nums"
+                                >
+                                    {{ formatSlipDate(jobOrder.created_at) }}
+                                </TableCell>
+                            </TableRow>
+                        </TableBody>
+                    </Table>
+                </DataTableCard>
+            </section>
         </template>
 
         <template v-if="selected && !confirmedQueueEntry && showJobOrderForm">

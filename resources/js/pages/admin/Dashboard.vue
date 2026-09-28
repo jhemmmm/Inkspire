@@ -3,9 +3,11 @@ import { Head, Link } from '@inertiajs/vue3';
 import {
     Activity,
     ArrowRight,
+    ChartColumn,
     CreditCard,
     FileMinus,
     Factory,
+    Layers,
     Lock,
     Ticket,
     Unlock,
@@ -13,6 +15,8 @@ import {
     Wallet,
 } from '@lucide/vue';
 import { computed } from 'vue';
+import BarChart from '@/components/BarChart.vue';
+import BreakdownChart from '@/components/BreakdownChart.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
@@ -20,6 +24,13 @@ import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
 import StatCard from '@/components/StatCard.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import {
     Table,
     TableBody,
@@ -30,11 +41,13 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { adminNavItems } from '@/config/nav/admin';
-import { money } from '@/lib/jobOrders';
+import type { ChartSeries } from '@/lib/charts';
+import { jobOrderStatusLabel, money } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/admin';
 import { index as auditTrailIndex } from '@/routes/admin/audit-trail';
 import { index as creditRequestsIndex } from '@/routes/admin/credit-requests';
 import { index as designOverridesIndex } from '@/routes/admin/design-overrides';
+import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as writeOffRequestsIndex } from '@/routes/admin/write-off-requests';
 
@@ -53,6 +66,9 @@ const props = defineProps<{
         activeStaff: number;
         totalStaff: number;
     };
+    cashFlow: { labels: string[]; series: ChartSeries[] };
+    /** Open job orders per status, in workflow order. */
+    pipeline: Record<string, number>;
     recentActivity: {
         id: number;
         action: string;
@@ -113,6 +129,16 @@ const attentionTiles = computed(() => [
         href: usersIndex(),
     },
 ]);
+
+/** Only the stages that hold work, still in workflow order. */
+const pipelineItems = computed(() =>
+    Object.entries(props.pipeline)
+        .filter(([, count]) => count > 0)
+        .map(([status, count]) => ({
+            label: jobOrderStatusLabel(status),
+            value: count,
+        })),
+);
 
 const nothingWaiting = computed(() =>
     attentionTiles.value.every((tile) => tile.value === 0),
@@ -219,6 +245,59 @@ function actionLabel(action: string): string {
                 :icon="UserCheck"
                 ink="magenta"
             />
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            <Card>
+                <CardHeader :icon="ChartColumn">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex flex-col gap-1">
+                            <CardTitle>Revenue and Expenses</CardTitle>
+                            <CardDescription>
+                                The last 14 days, by the day money arrived or
+                                was spent.
+                            </CardDescription>
+                        </div>
+                        <Button as-child variant="outline" size="sm">
+                            <Link
+                                :href="
+                                    reportsIndex({
+                                        query: { report: 'financial-summary' },
+                                    })
+                                "
+                            >
+                                Report
+                                <ArrowRight class="size-4" />
+                            </Link>
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <BarChart
+                        label="Revenue and expenses, last 14 days"
+                        :labels="cashFlow.labels"
+                        :series="cashFlow.series"
+                        format="money"
+                        empty-text="No money in or out in the last 14 days."
+                    />
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader :icon="Layers">
+                    <CardTitle>Open Job Orders by Stage</CardTitle>
+                    <CardDescription>
+                        Where the work is sitting right now, from intake to
+                        pickup.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <BreakdownChart
+                        label="Open job orders by stage"
+                        :items="pipelineItems"
+                        empty-text="No open job orders."
+                    />
+                </CardContent>
+            </Card>
         </div>
 
         <div class="flex flex-wrap items-end justify-between gap-4">

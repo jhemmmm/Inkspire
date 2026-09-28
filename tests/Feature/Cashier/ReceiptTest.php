@@ -2,6 +2,7 @@
 
 use App\Models\JobOrder;
 use App\Models\PricingEntry;
+use App\Models\SystemConfiguration;
 use App\Models\Transaction;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -93,4 +94,47 @@ test('the receipt includes the job order number and a tracking URL deep-linking 
         ->component('cashier/Receipt')
         ->where('jobOrder.number', 'JO-2026-0007')
         ->where('trackingUrl', fn ($url) => str_contains($url, '/track') && str_contains($url, 'JO-2026-0007')));
+});
+
+test('the receipt splits the VAT out of the total rather than adding it on top', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1120, 'payment_status' => 'paid']);
+    Transaction::factory()->create([
+        'job_order_id' => $jobOrder->id,
+        'amount' => 1120,
+        'status' => 'completed',
+        'recorded_by' => $cashier->id,
+    ]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.job-orders.receipt.show', $jobOrder));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('jobOrder.total_amount', '1120.00')
+        ->where('vat.rate', 12)
+        ->where('vat.vatable_sales', 1000)
+        ->where('vat.amount', 120));
+});
+
+test('a shop that sets VAT to 0 gets no VAT on the receipt', function () {
+    SystemConfiguration::create([
+        'key' => 'vat_percentage',
+        'group' => 'business_rules',
+        'value' => 0,
+        'type' => 'decimal',
+        'label' => 'VAT (%)',
+    ]);
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1120, 'payment_status' => 'paid']);
+    Transaction::factory()->create([
+        'job_order_id' => $jobOrder->id,
+        'amount' => 1120,
+        'status' => 'completed',
+        'recorded_by' => $cashier->id,
+    ]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.job-orders.receipt.show', $jobOrder));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('vat.vatable_sales', 1120)
+        ->where('vat.amount', 0));
 });

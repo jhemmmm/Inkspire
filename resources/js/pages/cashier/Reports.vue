@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/vue3';
 import ReportsWorkspace from '@/components/reports/ReportsWorkspace.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
+import type { ReportChart } from '@/lib/charts';
 import { cashierNavItems } from '@/config/nav/cashier';
 import {
     pdf as reportsExportPdf,
@@ -34,6 +35,7 @@ const props = defineProps<{
     rowsTotal: number;
     rowsAmountTotal: number | null;
     summary: FinancialSummary | null;
+    chart: ReportChart;
     filters: { from: string; to: string };
 }>();
 

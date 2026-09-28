@@ -61,6 +61,14 @@ class SystemConfigurationSeeder extends Seeder
                 'description' => null,
             ],
             [
+                'key' => 'vat_percentage',
+                'group' => 'business_rules',
+                'value' => 12,
+                'type' => 'decimal',
+                'label' => 'VAT (%)',
+                'description' => 'Prices already include VAT. The receipt shows the VAT portion of the total; set 0 if the shop is not VAT-registered.',
+            ],
+            [
                 'key' => 'large_format_minimum_dpi',
                 'group' => 'business_rules',
                 'value' => 100,

@@ -11,6 +11,7 @@ use App\Models\JobOrder;
 use App\Models\ProductionLog;
 use App\Models\Transaction;
 use Carbon\CarbonInterface;
+use Carbon\CarbonPeriod;
 use Illuminate\Support\Collection;
 
 /**
@@ -86,6 +87,146 @@ final class ReportBuilder
             'expenses_total' => $expensesTotal,
             'result' => round($revenueTotal - $expensesTotal, 2),
             'write_off_total' => round($writeOffTotal, 2),
+        ];
+    }
+
+    /**
+     * The chart drawn above a report, built from the report's FULL row set --
+     * never the 100 rows the table renders, for the same reason the amount
+     * total is not.
+     *
+     * Sales, cancellations and the financial summary are trends over the
+     * range. Expenses break down by category and production by stage,
+     * because where the money and the work sit is the question those two
+     * reports answer.
+     *
+     * @param  Collection<int, array<string, mixed>>  $rows
+     * @return array<string, mixed>
+     */
+    public function chart(string $key, Collection $rows, CarbonInterface $from, CarbonInterface $to): array
+    {
+        $to = $to->copy()->endOfDay();
+
+        return match ($key) {
+            'sales' => $this->trend('Sales', 'money', $from, $to, [
+                'Sales' => $rows->groupBy('date')->map(fn (Collection $day): float => (float) $day->sum('amount'))->all(),
+            ]),
+            'cancellations' => $this->trend('Cancellations', 'count', $from, $to, [
+                'Cancellations' => $rows->countBy('date')->all(),
+            ]),
+            'production-status' => $this->breakdown('Jobs by stage', 'count', [
+                'For Production' => $rows->where('stage', JobOrderStatus::ForProduction->value)->count(),
+                'Printing' => $rows->where('stage', JobOrderStatus::Printing->value)->count(),
+                'Quality Check' => $rows->where('stage', JobOrderStatus::QualityCheck->value)->count(),
+                'Ready for Pickup' => $rows->where('stage', JobOrderStatus::ReadyForPickup->value)->count(),
+            ]),
+            'expenses' => $this->breakdown('Expenses by category', 'money', $rows
+                ->whereNull('status')
+                ->groupBy('category')
+                ->map(fn (Collection $category): float => (float) $category->sum('amount'))
+                ->sortDesc()
+                ->all()),
+            'financial-summary' => $this->trend('Revenue and expenses', 'money', $from, $to, [
+                'Revenue' => $this->dailyRevenue($from, $to),
+                'Expenses' => Expense::query()
+                    ->active()
+                    ->whereBetween('expense_date', [$from, $to])
+                    ->get(['expense_date', 'amount'])
+                    ->groupBy(fn (Expense $expense): string => $expense->expense_date->toDateString())
+                    ->map(fn (Collection $day): float => (float) $day->sum('amount'))
+                    ->all(),
+            ]),
+            default => $this->breakdown('', 'count', []),
+        };
+    }
+
+    /**
+     * Every completed payment and cancellation fee confirmed in the range,
+     * totalled per day -- the same money summary() counts as revenue.
+     *
+     * @return array<array-key, float>
+     */
+    private function dailyRevenue(CarbonInterface $from, CarbonInterface $to): array
+    {
+        return Transaction::query()
+            ->where('status', TransactionStatus::Completed->value)
+            ->whereIn('type', [
+                TransactionType::DownPayment->value,
+                TransactionType::BalancePayment->value,
+                TransactionType::FullPayment->value,
+                TransactionType::CancellationFee->value,
+            ])
+            ->whereBetween('confirmed_at', [$from, $to])
+            ->get(['confirmed_at', 'amount'])
+            ->groupBy(fn (Transaction $transaction): string => $transaction->confirmed_at->toDateString())
+            ->map(fn (Collection $day): float => (float) $day->sum('amount'))
+            ->all();
+    }
+
+    /**
+     * Lays each series' daily totals out over every day of the range,
+     * zero-filled so a quiet day still shows as a gap rather than vanishing.
+     *
+     * ponytail: day or month buckets only -- past ~3 months a day per bar is
+     * too thin to read, so it switches to months. Add weekly buckets if a
+     * 3-to-12-month range ever needs finer grain.
+     *
+     * @param  array<string, array<array-key, float|int>>  $series  series name => [Y-m-d => total]
+     * @return array{type: string, title: string, format: string, labels: list<string>, series: list<array{name: string, values: list<float>}>}
+     */
+    private function trend(string $subject, string $format, CarbonInterface $from, CarbonInterface $to, array $series): array
+    {
+        $monthly = $from->diffInDays($to) > 93;
+        $bucketFormat = $monthly ? 'Y-m' : 'Y-m-d';
+
+        $labels = [];
+
+        foreach (CarbonPeriod::create($monthly ? $from->copy()->startOfMonth() : $from->copy()->startOfDay(), $monthly ? '1 month' : '1 day', $to) as $date) {
+            $labels[$date->format($bucketFormat)] = $date->format($monthly ? 'M Y' : 'M j');
+        }
+
+        $payload = [];
+
+        foreach ($series as $name => $dailyTotals) {
+            $bucketed = [];
+
+            foreach ($dailyTotals as $date => $total) {
+                $bucket = $monthly ? substr((string) $date, 0, 7) : (string) $date;
+                $bucketed[$bucket] = ($bucketed[$bucket] ?? 0) + $total;
+            }
+
+            $payload[] = [
+                'name' => $name,
+                'values' => array_map(fn (string $bucket): float => round((float) ($bucketed[$bucket] ?? 0), 2), array_keys($labels)),
+            ];
+        }
+
+        return [
+            'type' => 'trend',
+            'title' => $subject.($monthly ? ' by month' : ' by day'),
+            'format' => $format,
+            'labels' => array_values($labels),
+            'series' => $payload,
+        ];
+    }
+
+    /**
+     * @param  array<array-key, float|int>  $totals  label => value, already in display order
+     * @return array{type: string, title: string, format: string, items: list<array{label: string, value: float}>}
+     */
+    private function breakdown(string $title, string $format, array $totals): array
+    {
+        $items = [];
+
+        foreach ($totals as $label => $value) {
+            $items[] = ['label' => (string) $label, 'value' => round((float) $value, 2)];
+        }
+
+        return [
+            'type' => 'breakdown',
+            'title' => $title,
+            'format' => $format,
+            'items' => $items,
         ];
     }
 

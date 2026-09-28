@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Reports;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Reports\FilterReportRequest;
+use App\Models\QueueEntry;
 use App\Services\Reports\ReportBuilder;
 use App\Services\Reports\ReportRegistry;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,8 +31,9 @@ class ReportController extends Controller
             $from = $request->date('from')->startOfDay();
             $to = $request->date('to')->endOfDay();
         } else {
-            $from = now()->startOfMonth()->startOfDay();
-            $to = now()->endOfDay();
+            $today = CarbonImmutable::parse(QueueEntry::currentBusinessDate());
+            $from = $today->startOfMonth();
+            $to = $today->endOfDay();
         }
 
         $key = (string) ($request->query('report') ?? array_key_first(ReportRegistry::entitledFor($user)));
@@ -39,6 +42,7 @@ class ReportController extends Controller
 
         if ($key === 'financial-summary') {
             $summary = $reportBuilder->summary($from, $to);
+            $all = collect();
             $rows = [];
             $rowsTotal = 0;
             $rowsAmountTotal = null;
@@ -66,6 +70,7 @@ class ReportController extends Controller
             'rowsTotal' => $rowsTotal,
             'rowsAmountTotal' => $rowsAmountTotal,
             'summary' => $summary,
+            'chart' => $reportBuilder->chart($key, $all, $from, $to),
             'filters' => [
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),

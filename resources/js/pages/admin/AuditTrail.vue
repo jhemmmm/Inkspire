@@ -142,7 +142,8 @@ function visit(page?: number): void {
             ...(toDate.value ? { to: toDate.value } : {}),
             ...(page ? { page } : {}),
         },
-        { preserveState: true, preserveScroll: true, replace: true },
+        // A new page starts at the top; a filter change keeps its place.
+        { preserveState: true, preserveScroll: !page, replace: true },
     );
 }
 

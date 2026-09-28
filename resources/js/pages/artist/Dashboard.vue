@@ -10,6 +10,16 @@ import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
 import StatCard from '@/components/StatCard.vue';
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -494,26 +504,69 @@ function artistStatusLabel(artistStatus: string): string {
                             </TableCell>
                             <TableCell>
                                 <div class="flex items-center justify-end">
-                                    <Form
-                                        v-bind="
-                                            JobOrderQueueController.accept.form(
-                                                jobOrder.id,
-                                            )
-                                        "
-                                        :options="{ preserveScroll: true }"
-                                        v-slot="{ processing }"
-                                    >
-                                        <Button
-                                            type="submit"
-                                            :disabled="
-                                                processing ||
-                                                artistStatus !== 'available'
-                                            "
-                                            :data-test="`accept-${jobOrder.id}-button`"
-                                        >
-                                            Accept
-                                        </Button>
-                                    </Form>
+                                    <!--
+                                        Accepting is first-come and moves the
+                                        job into this artist's queue, so it
+                                        asks first rather than claiming on a
+                                        stray click.
+                                    -->
+                                    <AlertDialog>
+                                        <AlertDialogTrigger as-child>
+                                            <Button
+                                                type="button"
+                                                :disabled="
+                                                    artistStatus !== 'available'
+                                                "
+                                                :data-test="`accept-${jobOrder.id}-button`"
+                                            >
+                                                Accept
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>
+                                                    Accept this job order?
+                                                </AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    {{ jobOrder.number }} —
+                                                    {{ jobOrder.description }}
+                                                    for
+                                                    {{
+                                                        jobOrder.queue_entry
+                                                            ?.customer?.name ??
+                                                        'a walk-in customer'
+                                                    }}
+                                                    moves into your queue and
+                                                    off the shared list.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>
+                                                    Cancel
+                                                </AlertDialogCancel>
+                                                <Form
+                                                    v-bind="
+                                                        JobOrderQueueController.accept.form(
+                                                            jobOrder.id,
+                                                        )
+                                                    "
+                                                    :options="{
+                                                        preserveScroll: true,
+                                                    }"
+                                                    v-slot="{ processing }"
+                                                >
+                                                    <Button
+                                                        type="submit"
+                                                        class="w-full"
+                                                        :disabled="processing"
+                                                        :data-test="`confirm-accept-${jobOrder.id}-button`"
+                                                    >
+                                                        Accept Job Order
+                                                    </Button>
+                                                </Form>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -686,44 +739,45 @@ function artistStatusLabel(artistStatus: string): string {
                                                 Forward
                                             </Button>
                                         </Form>
-                                        <Link
-                                            v-if="isOnShift"
-                                            :href="show(jobOrder.id).url"
-                                            :data-test="`continue-${jobOrder.id}-link`"
-                                        >
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
+                                        <Button v-if="isOnShift" as-child>
+                                            <Link
+                                                :href="show(jobOrder.id).url"
+                                                :data-test="`continue-${jobOrder.id}-link`"
                                             >
                                                 Continue
-                                            </Button>
-                                        </Link>
+                                            </Link>
+                                        </Button>
                                     </template>
-                                    <Link
+                                    <Button
                                         v-else-if="
                                             jobOrder.status ===
                                                 'pending_review' && isOnShift
                                         "
-                                        :href="show(jobOrder.id).url"
-                                        :data-test="`continue-${jobOrder.id}-link`"
+                                        as-child
                                     >
-                                        <Button type="button" variant="ghost">
+                                        <Link
+                                            :href="show(jobOrder.id).url"
+                                            :data-test="`continue-${jobOrder.id}-link`"
+                                        >
                                             Continue
-                                        </Button>
-                                    </Link>
-                                    <Link
+                                        </Link>
+                                    </Button>
+                                    <Button
                                         v-else-if="
                                             POST_APPROVAL_STATUSES.includes(
                                                 jobOrder.status,
                                             )
                                         "
-                                        :href="show(jobOrder.id).url"
-                                        :data-test="`view-${jobOrder.id}-link`"
+                                        as-child
+                                        variant="outline"
                                     >
-                                        <Button type="button" variant="ghost">
+                                        <Link
+                                            :href="show(jobOrder.id).url"
+                                            :data-test="`view-${jobOrder.id}-link`"
+                                        >
                                             View
-                                        </Button>
-                                    </Link>
+                                        </Link>
+                                    </Button>
                                 </div>
                             </TableCell>
                         </TableRow>

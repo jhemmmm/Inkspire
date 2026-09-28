@@ -9,6 +9,8 @@ import {
     Zap,
 } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
+import BarChart from '@/components/BarChart.vue';
+import BreakdownChart from '@/components/BreakdownChart.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import SectionHeading from '@/components/SectionHeading.vue';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +23,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
 import {
     Table,
     TableBody,
@@ -32,6 +35,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import DateRangeControl from '@/components/reports/DateRangeControl.vue';
+import type { ReportChart } from '@/lib/charts';
 
 interface ReportDefinition {
     title: string;
@@ -62,6 +66,7 @@ const props = defineProps<{
     rowsTotal: number;
     rowsAmountTotal: number | null;
     summary: FinancialSummary | null;
+    chart: ReportChart;
     filters: ReportFilters;
     indexUrl: string;
     exportPdfUrl: (key: string) => string;
@@ -300,29 +305,37 @@ const generatedAtLabel = computed(() =>
     }),
 );
 
+/** Which report card or range is loading, so only that control spins. */
+const loading = ref<'range' | string | null>(null);
+
+function load(
+    query: { report: string; from: string; to: string },
+    source: string,
+): void {
+    router.get(props.indexUrl, query, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        onStart: () => (loading.value = source),
+        onFinish: () => (loading.value = null),
+    });
+}
+
 function selectReport(key: string): void {
-    if (key === props.selected) {
+    if (key === props.selected || loading.value !== null) {
         return;
     }
 
-    router.get(
-        props.indexUrl,
-        { report: key, from: props.filters.from, to: props.filters.to },
-        { preserveState: true, preserveScroll: true, replace: true },
-    );
+    load({ report: key, from: props.filters.from, to: props.filters.to }, key);
 }
 
 function onApplyRange({ from, to }: { from: string; to: string }): void {
-    router.get(
-        props.indexUrl,
-        { report: props.selected, from, to },
-        { preserveState: true, preserveScroll: true, replace: true },
-    );
+    load({ report: props.selected, from, to }, 'range');
 }
 </script>
 
 <template>
-    <div class="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
         <div class="flex flex-col gap-4">
             <SectionHeading
                 title="Available Reports"
@@ -334,7 +347,8 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                     :key="key"
                     type="button"
                     :aria-pressed="key === selected"
-                    class="bg-card text-card-foreground hover:bg-accent/50 flex flex-col gap-1 rounded-xl border p-4 text-left shadow-sm transition-colors"
+                    :aria-busy="loading === key"
+                    class="bg-card text-card-foreground hover:bg-accent/50 focus-visible:ring-ring/50 flex flex-col gap-1 rounded-xl border p-4 text-left shadow-sm transition-colors outline-none focus-visible:ring-[3px]"
                     :class="
                         key === selected
                             ? 'border-primary'
@@ -343,9 +357,12 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                     @click="selectReport(key)"
                 >
                     <div class="flex items-center justify-between gap-2">
-                        <span class="text-sm font-semibold">{{
-                            report.title
-                        }}</span>
+                        <span
+                            class="flex items-center gap-2 text-sm font-semibold"
+                        >
+                            <Spinner v-if="loading === key" />
+                            {{ report.title }}
+                        </span>
                         <Badge variant="secondary">{{ report.badge }}</Badge>
                     </div>
                     <p class="text-muted-foreground text-sm">
@@ -367,12 +384,19 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                     <DateRangeControl
                         :from="filters.from"
                         :to="filters.to"
+                        :loading="loading === 'range'"
                         @apply="onApplyRange"
                     />
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card
+                :aria-busy="loading !== null"
+                class="transition-opacity"
+                :class="
+                    loading !== null ? 'pointer-events-none opacity-60' : ''
+                "
+            >
                 <CardHeader :icon="ChartColumn">
                     <CardTitle>{{ selectedReport?.title }}</CardTitle>
                     <CardDescription>{{
@@ -411,6 +435,25 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                         Exports carry every row in this range and are recorded
                         in the audit trail.
                     </p>
+
+                    <section
+                        class="border-border/70 dark:border-border flex flex-col gap-3 rounded-xl border p-4"
+                    >
+                        <h3 class="text-sm font-semibold">{{ chart.title }}</h3>
+                        <BarChart
+                            v-if="chart.type === 'trend'"
+                            :label="chart.title"
+                            :labels="chart.labels"
+                            :series="chart.series"
+                            :format="chart.format"
+                        />
+                        <BreakdownChart
+                            v-else
+                            :label="chart.title"
+                            :items="chart.items"
+                            :format="chart.format"
+                        />
+                    </section>
 
                     <template v-if="selected === 'financial-summary'">
                         <div v-if="summary" class="flex flex-col gap-6">

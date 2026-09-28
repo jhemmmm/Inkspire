@@ -114,7 +114,8 @@ function visit(page?: number): void {
         },
         {
             preserveState: true,
-            preserveScroll: true,
+            // A new page starts at the top; a filter change keeps its place.
+            preserveScroll: !page,
             replace: true,
             onStart: () => (searching.value = true),
             onFinish: () => (searching.value = false),

@@ -138,3 +138,110 @@ test('a report with no money column gets no total rather than a meaningless zero
     $response->assertOk();
     expect($response->json('props.rowsAmountTotal'))->toBeNull();
 });
+
+test('a range ending on the Manila business date is accepted while that date is still tomorrow in UTC', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $this->travelTo('2026-09-28 17:00:00');
+
+    $response = $this->actingAs($accountingStaff)
+        ->withHeaders(accountingReportHeaders())
+        ->get(route('accounting-staff.reports.index', ['report' => 'sales', 'from' => '2026-09-29', 'to' => '2026-09-29']));
+
+    $response->assertOk();
+    expect($response->json('props.filters'))->toBe(['from' => '2026-09-29', 'to' => '2026-09-29']);
+});
+
+test('the sales chart totals every sale per day across the whole range, with quiet days at zero', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $this->travelTo('2026-09-10 12:00:00');
+
+    Transaction::factory()->count(101)->create([
+        'amount' => 10,
+        'type' => TransactionType::FullPayment->value,
+        'confirmed_at' => '2026-09-01 09:00:00',
+    ]);
+    Transaction::factory()->create([
+        'amount' => 250,
+        'type' => TransactionType::DownPayment->value,
+        'confirmed_at' => '2026-09-03 15:00:00',
+    ]);
+
+    $response = $this->actingAs($accountingStaff)
+        ->withHeaders(accountingReportHeaders())
+        ->get(route('accounting-staff.reports.index', ['report' => 'sales', 'from' => '2026-09-01', 'to' => '2026-09-03']));
+
+    $response->assertOk();
+    expect($response->json('props.chart'))->toMatchArray([
+        'type' => 'trend',
+        'title' => 'Sales by day',
+        'labels' => ['Sep 1', 'Sep 2', 'Sep 3'],
+        'series' => [['name' => 'Sales', 'values' => [1010, 0, 250]]],
+    ]);
+});
+
+test('a range longer than three months charts by month instead of by day', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $this->travelTo('2026-09-10 12:00:00');
+
+    Transaction::factory()->create([
+        'amount' => 300,
+        'type' => TransactionType::FullPayment->value,
+        'confirmed_at' => '2026-07-15 09:00:00',
+    ]);
+
+    $response = $this->actingAs($accountingStaff)
+        ->withHeaders(accountingReportHeaders())
+        ->get(route('accounting-staff.reports.index', ['report' => 'sales', 'from' => '2026-05-01', 'to' => '2026-09-10']));
+
+    $response->assertOk();
+    expect($response->json('props.chart'))->toMatchArray([
+        'title' => 'Sales by month',
+        'labels' => ['May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026', 'Sep 2026'],
+        'series' => [['name' => 'Sales', 'values' => [0, 0, 300, 0, 0]]],
+    ]);
+});
+
+test('the expenses chart breaks spending down by category, largest first, leaving out voided entries', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+
+    Expense::factory()->create(['category' => 'Utilities', 'amount' => 100, 'expense_date' => now()]);
+    Expense::factory()->create(['category' => 'Rent', 'amount' => 900, 'expense_date' => now()]);
+    Expense::factory()->voided()->create(['category' => 'Supplies', 'amount' => 50, 'expense_date' => now()]);
+
+    $response = $this->actingAs($accountingStaff)
+        ->withHeaders(accountingReportHeaders())
+        ->get(route('accounting-staff.reports.index', ['report' => 'expenses']));
+
+    $response->assertOk();
+    expect($response->json('props.chart'))->toMatchArray([
+        'type' => 'breakdown',
+        'items' => [['label' => 'Rent', 'value' => 900], ['label' => 'Utilities', 'value' => 100]],
+    ]);
+});
+
+test('the financial summary chart pairs revenue, cancellation fees included, with expenses per day', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $this->travelTo('2026-09-02 12:00:00');
+
+    Transaction::factory()->create([
+        'amount' => 400,
+        'type' => TransactionType::DownPayment->value,
+        'confirmed_at' => '2026-09-01 09:00:00',
+    ]);
+    Transaction::factory()->create([
+        'amount' => 200,
+        'type' => TransactionType::CancellationFee->value,
+        'confirmed_at' => '2026-09-02 09:00:00',
+    ]);
+    Expense::factory()->create(['amount' => 75, 'expense_date' => '2026-09-02']);
+
+    $response = $this->actingAs($accountingStaff)
+        ->withHeaders(accountingReportHeaders())
+        ->get(route('accounting-staff.reports.index', ['report' => 'financial-summary', 'from' => '2026-09-01', 'to' => '2026-09-02']));
+
+    $response->assertOk();
+    expect($response->json('props.chart.series'))->toBe([
+        ['name' => 'Revenue', 'values' => [400, 200]],
+        ['name' => 'Expenses', 'values' => [0, 75]],
+    ]);
+});

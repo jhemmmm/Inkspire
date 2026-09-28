@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Models\QueueEntry;
 use App\Models\SystemConfiguration;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
@@ -11,7 +12,9 @@ trait ExpenseValidationRules
     /**
      * Get the validation rules for recording/editing an expense (D-13/D-14).
      * `category` is validated against the current
-     * `expense_categories` config list, never a hardcoded set.
+     * `expense_categories` config list, never a hardcoded set. The date
+     * limit is the Asia/Manila business date, so an expense dated today is
+     * accepted before 8am too.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
@@ -20,7 +23,7 @@ trait ExpenseValidationRules
         return [
             'category' => ['required', 'string', Rule::in(SystemConfiguration::getArray('expense_categories', []))],
             'amount' => ['required', 'numeric', 'gt:0'],
-            'expense_date' => ['required', 'date', 'before_or_equal:today'],
+            'expense_date' => ['required', 'date', 'before_or_equal:'.QueueEntry::currentBusinessDate()],
             'description' => ['nullable', 'string', 'max:1000'],
         ];
     }

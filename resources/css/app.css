@@ -85,6 +85,12 @@
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
     }
+
+    /* Tailwind v4 dropped v3's pointer cursor on buttons. */
+    button:not(:disabled),
+    [role='button']:not(:disabled) {
+        cursor: pointer;
+    }
 }
 
 @layer utilities {
@@ -135,6 +141,12 @@
   Yellow is an ochre, not a true process yellow: real #ffec00 is 1.2:1 on
   white and would vanish as an icon.
 
+  `--chart-1` and `--chart-2` are the chart series colours, in that fixed
+  order (BarChart, BreakdownChart): a blue and an orange checked for
+  colour-blind separation and 3:1 contrast against the card in each theme.
+  They are not the brand blue and red -- red would read as "bad" on a
+  revenue-vs-expenses chart.
+
   The sidebar is a deep navy frame in both themes. `--sidebar-primary` is the
   brand red lifted for that navy ground (the logo red is 2.4:1 on it) and
   only ever draws marks, never controls: the active-page rail and the
@@ -164,8 +176,8 @@
     --border: hsl(220 20% 87%);
     --input: hsl(220 20% 87%);
     --ring: hsl(223.6 69.2% 33.1%);
-    --chart-1: hsl(223.6 69.2% 33.1%);
-    --chart-2: hsl(0 69% 46%);
+    --chart-1: #2a78d6;
+    --chart-2: #eb6834;
     --chart-3: hsl(219.7 82.2% 64.7%);
     --chart-4: hsl(14 80% 57%);
     --chart-5: hsl(219.2 62% 76.3%);
@@ -213,8 +225,8 @@
     --border: hsl(225 14% 21%);
     --input: hsl(225 14% 21%);
     --ring: hsl(224 76% 66%);
-    --chart-1: hsl(224 76% 66%);
-    --chart-2: hsl(0 79% 63%);
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
     --chart-3: hsl(255 70% 72%);
     --chart-4: hsl(172 60% 52%);
     --chart-5: hsl(43 84% 66%);

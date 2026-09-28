@@ -73,8 +73,10 @@ class CustomerController extends Controller
     }
 
     /**
-     * The selected customer's 20 most recent job orders, so staff can see
-     * what they ordered last time before starting a new one (HIST-01).
+     * The selected customer's job orders from the past 7 days, so staff can
+     * see what is already in progress before starting a new one (HIST-01).
+     * A week rather than a fixed count: the counter asks "did they already
+     * order this?", and an order from months back only buries that answer.
      *
      * Expressed as ONE constrained query over the customer → queueEntries →
      * jobOrders path rather than eager-loading the visit tree and flattening
@@ -98,9 +100,9 @@ class CustomerController extends Controller
 
         return JobOrder::query()
             ->whereRelation('queueEntry', 'customer_id', $customer->id)
+            ->where('created_at', '>=', now()->subWeek())
             ->latest('id')
-            ->limit(20)
-            ->get(['id', 'number', 'description', 'type', 'status', 'created_at']);
+            ->get(['id', 'number', 'description', 'type', 'status', 'is_rush', 'created_at']);
     }
 
     /**

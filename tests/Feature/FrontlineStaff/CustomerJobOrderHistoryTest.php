@@ -69,23 +69,21 @@ test('another customer\'s job orders never appear in the history', function () {
     $response->assertDontSee('Belongs to somebody else entirely', false);
 });
 
-test('the history is capped at 20, newest first, across several visits', function () {
+test('the history holds only the past 7 days of orders, each flagged rush or not', function () {
     $staff = User::factory()->frontlineStaff()->create();
     $customer = Customer::factory()->create();
+    $queueEntry = QueueEntry::factory()->for($customer)->create();
+    $this->travelTo('2026-09-28 12:00:00');
 
-    $created = collect([
-        QueueEntry::factory()->for($customer)->create(),
-        QueueEntry::factory()->for($customer)->create(),
-    ])->flatMap(fn (QueueEntry $entry) => collect(range(1, 13))
-        ->map(fn () => JobOrder::factory()->for($entry)->create()));
-
-    expect($created)->toHaveCount(26);
+    JobOrder::factory()->for($queueEntry)->create(['created_at' => '2026-09-21 11:00:00']);
+    $withinWeek = JobOrder::factory()->for($queueEntry)->create(['created_at' => '2026-09-21 13:00:00', 'is_rush' => true]);
 
     $response = $this->actingAs($staff)->get(route('frontline-staff.new-visit', ['customer' => $customer->id]));
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->has('customerJobOrders', 20)
-        ->where('customerJobOrders.0.id', $created->last()->id));
+        ->has('customerJobOrders', 1)
+        ->where('customerJobOrders.0.id', $withinWeek->id)
+        ->where('customerJobOrders.0.is_rush', true));
 });
 
 test('the history costs one query no matter how many visits the customer has', function () {

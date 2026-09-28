@@ -1,12 +1,16 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 
 const props = defineProps<{
     from: string;
     to: string;
+    /** True while the range the user just picked is loading. */
+    loading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -32,13 +36,16 @@ function todayRange(): { from: string; to: string } {
     return { from: today, to: today };
 }
 
-function thisWeekRange(): { from: string; to: string } {
+/**
+ * Today and the six days before it. A Monday-to-date "This Week" was just
+ * today's date every Monday, so the button looked broken at the start of
+ * each week.
+ */
+function lastSevenDaysRange(): { from: string; to: string } {
     const now = new Date();
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? 6 : day - 1;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - diffToMonday);
-    return { from: toIsoDate(monday), to: toIsoDate(now) };
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 6);
+    return { from: toIsoDate(weekAgo), to: toIsoDate(now) };
 }
 
 function thisMonthRange(): { from: string; to: string } {
@@ -56,18 +63,37 @@ function thisQuarterRange(): { from: string; to: string } {
 
 const presets: Preset[] = [
     { key: 'today', label: 'Today', compute: todayRange },
-    { key: 'week', label: 'This Week', compute: thisWeekRange },
+    { key: 'week', label: 'Last 7 Days', compute: lastSevenDaysRange },
     { key: 'month', label: 'This Month', compute: thisMonthRange },
     { key: 'quarter', label: 'This Quarter', compute: thisQuarterRange },
 ];
 
-const activePresetKey = computed<string | null>(() => {
-    const match = presets.find((preset) => {
-        const range = preset.compute();
-        return range.from === props.from && range.to === props.to;
-    });
+/**
+ * The preset the user last clicked, or the one being loaded.
+ *
+ * Two presets can resolve to the same range -- on the 1st "This Month" is
+ * just today -- so matching the range alone lit up "Today" after a click on
+ * "This Month". The clicked preset wins while it still matches; a fresh page
+ * load falls back to the first match.
+ */
+const chosenPresetKey = ref<string | null>(null);
+const pendingKey = ref<string | null>(null);
 
-    return match?.key ?? null;
+function matches(preset: Preset): boolean {
+    const range = preset.compute();
+    return range.from === props.from && range.to === props.to;
+}
+
+const activePresetKey = computed<string | null>(() => {
+    const chosen = presets.find(
+        (preset) => preset.key === chosenPresetKey.value,
+    );
+
+    if (chosen && matches(chosen)) {
+        return chosen.key;
+    }
+
+    return presets.find(matches)?.key ?? null;
 });
 
 const customFrom = ref(props.from);
@@ -99,8 +125,26 @@ function variantFor(key: string): 'default' | 'outline' {
 function selectPreset(preset: Preset): void {
     manualCustom.value = false;
     errorMessage.value = '';
+    chosenPresetKey.value = preset.key;
+    pendingKey.value = preset.key;
     emit('apply', preset.compute());
 }
+
+watch(
+    () => props.loading,
+    (loading) => {
+        if (!loading) {
+            pendingKey.value = null;
+        }
+    },
+);
+
+const page = usePage();
+
+/** The server's own date check, e.g. a range ending after today. */
+const serverError = computed(
+    () => page.props.errors?.from ?? page.props.errors?.to ?? '',
+);
 
 function selectCustom(): void {
     manualCustom.value = true;
@@ -135,6 +179,7 @@ function applyCustomRange(): void {
     }
 
     errorMessage.value = '';
+    pendingKey.value = 'custom';
     emit('apply', { from: customFrom.value, to: customTo.value });
 }
 
@@ -164,11 +209,19 @@ const rangeLabel = computed(() => {
                 :key="preset.key"
                 type="button"
                 :variant="variantFor(preset.key)"
+                :disabled="loading"
+                :aria-pressed="activePresetKey === preset.key"
                 @click="selectPreset(preset)"
             >
+                <Spinner v-if="loading && pendingKey === preset.key" />
                 {{ preset.label }}
             </Button>
-            <Button type="button" variant="outline" @click="selectCustom">
+            <Button
+                type="button"
+                variant="outline"
+                :disabled="loading"
+                @click="selectCustom"
+            >
                 Custom
             </Button>
         </div>
@@ -194,11 +247,18 @@ const rangeLabel = computed(() => {
                 />
             </div>
 
-            <Button type="button" @click="applyCustomRange">Apply Range</Button>
+            <Button type="button" :disabled="loading" @click="applyCustomRange">
+                <Spinner v-if="loading && pendingKey === 'custom'" />
+                Apply Range
+            </Button>
         </div>
 
-        <p v-if="errorMessage" class="text-destructive text-sm">
-            {{ errorMessage }}
+        <p
+            v-if="errorMessage || serverError"
+            class="text-destructive text-sm"
+            role="alert"
+        >
+            {{ errorMessage || serverError }}
         </p>
 
         <p class="text-muted-foreground text-sm">Showing {{ rangeLabel }}</p>

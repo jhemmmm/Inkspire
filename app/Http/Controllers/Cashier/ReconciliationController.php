@@ -8,6 +8,7 @@ use App\Enums\TransactionStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\JobOrder;
+use App\Services\Reports\ReportBuilder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -23,8 +24,11 @@ class ReconciliationController extends Controller
     /**
      * List job orders awaiting GCash/Maya payment confirmation (POS-04) —
      * Accounting Staff's dashboard, D-12's "filtered list view".
+     *
+     * Below it, the Financial Summary report's revenue and expenses chart
+     * over the last 14 days.
      */
-    public function index(Request $request): Response
+    public function index(Request $request, ReportBuilder $reportBuilder): Response
     {
         return Inertia::render('accounting-staff/Dashboard', [
             'jobOrders' => JobOrder::query()
@@ -38,6 +42,7 @@ class ReconciliationController extends Controller
                 ])
                 ->orderBy('created_at')
                 ->get(['id', 'description', 'payment_status', 'total_amount', 'queue_entry_id', 'created_at']),
+            'cashFlow' => $reportBuilder->chart('financial-summary', collect(), now()->subDays(13)->startOfDay(), now()),
         ]);
     }
 

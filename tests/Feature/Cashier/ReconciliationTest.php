@@ -171,3 +171,16 @@ test('a frontline staff user cannot reach the accounting staff reconcile route',
 
     $response->assertStatus(403);
 });
+
+test('the accounting dashboard carries the last 14 days of revenue and expenses', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $this->travelTo('2026-09-28 12:00:00');
+    Transaction::factory()->create(['amount' => 500, 'confirmed_at' => '2026-09-28 09:00:00']);
+
+    $this->actingAs($accountingStaff)
+        ->get(route('accounting-staff.dashboard'))
+        ->assertInertia(fn ($page) => $page
+            ->has('cashFlow.labels', 14)
+            ->where('cashFlow.series.0.values.13', 500)
+            ->where('cashFlow.series.1.name', 'Expenses'));
+});

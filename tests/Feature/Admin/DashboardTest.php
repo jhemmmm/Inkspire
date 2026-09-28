@@ -135,3 +135,32 @@ test('another portal cannot reach the admin dashboard', function () {
         ->get(route('admin.dashboard'))
         ->assertForbidden();
 });
+
+test('the revenue chart covers the last 14 days, today included', function () {
+    $admin = User::factory()->admin()->create();
+    $this->travelTo('2026-09-28 12:00:00');
+    Transaction::factory()->create(['amount' => 500, 'confirmed_at' => '2026-09-15 09:00:00']);
+    Transaction::factory()->create(['amount' => 80, 'confirmed_at' => '2026-09-14 09:00:00']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('cashFlow.labels', 14)
+            ->where('cashFlow.labels.0', 'Sep 15')
+            ->where('cashFlow.labels.13', 'Sep 28')
+            ->where('cashFlow.series.0.name', 'Revenue')
+            ->where('cashFlow.series.0.values.0', 500));
+});
+
+test('the pipeline counts open job orders per status, leaving out released and cancelled ones', function () {
+    $admin = User::factory()->admin()->create();
+    JobOrder::factory()->count(2)->create(['status' => JobOrderStatus::Printing->value]);
+    JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value, 'cancelled_at' => now()]);
+    JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value, 'released_at' => now()]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('pipeline.printing', 2)
+            ->where('pipeline.ready_for_pickup', 0));
+});

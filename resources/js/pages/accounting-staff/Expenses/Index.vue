@@ -125,11 +125,19 @@ const totalHint = computed(() => {
     return `${expenseCountLabel.value} · ${props.voidedCount} voided ${entries} excluded`;
 });
 
+const loadingRange = ref(false);
+
 function onApplyRange(range: { from: string; to: string }): void {
     router.get(
         expensesIndex.url(),
         { from: range.from, to: range.to },
-        { preserveState: true, preserveScroll: true, replace: true },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onStart: () => (loadingRange.value = true),
+            onFinish: () => (loadingRange.value = false),
+        },
     );
 }
 
@@ -298,17 +306,29 @@ function openVoidDialog(row: ExpenseRow): void {
         <DateRangeControl
             :from="filters.from"
             :to="filters.to"
+            :loading="loadingRange"
             @apply="onApplyRange"
         />
 
-        <StatCard
-            :label="`Total for ${rangeLabel}`"
-            :value="money(total)"
-            :hint="totalHint"
-            ink="yellow"
-        />
+        <!--
+            StatCard is `h-full` so tiles in a grid row match heights. Bare in
+            this flex column it stretched to the page's height and squeezed
+            the page header shut, hiding Record Expense.
+        -->
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+                :label="`Total for ${rangeLabel}`"
+                :value="money(total)"
+                :hint="totalHint"
+                ink="yellow"
+            />
+        </div>
 
-        <DataTableCard>
+        <DataTableCard
+            :aria-busy="loadingRange"
+            class="transition-opacity"
+            :class="loadingRange ? 'opacity-60' : ''"
+        >
             <Table>
                 <TableHeader>
                     <TableRow>

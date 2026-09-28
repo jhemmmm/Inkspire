@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 Phase: 08
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-09-28 - Completed quick task 260928-ejs: home page rebuilt to match the login
+Last activity: 2026-09-28 - Completed quick task 260928-gr4: dashboard graphs and portal UI fixes
 
 Progress: [██████████] 100%
 
@@ -162,6 +162,7 @@ None yet.
 | 260928-083 | User Management: Create User dialog closes on success; row button renamed "Deactivate" with icon | 2026-09-28 | 40a97a2 | [260928-083-user-management-create-dialog-auto-close](./quick/260928-083-user-management-create-dialog-auto-close/) |
 | 260928-0gj | Login/auth, Forbidden and home pages always render light; portal keeps the saved theme | 2026-09-28 | ef9b102 | [260928-0gj-light-only-login-and-home-pages](./quick/260928-0gj-light-only-login-and-home-pages/) |
 | 260928-ejs | Home page rebuilt as the login's sibling: white/royal-blue hero card, tracker panel, photo price board and order rules | 2026-09-28 | d4aff6e | [260928-ejs-redesign-public-home-page-to-match-the-l](./quick/260928-ejs-redesign-public-home-page-to-match-the-l/) |
+| 260928-gr4 | Report and dashboard graphs; date-range presets, loading and business-date fix; receipt VAT and balance; artist accept confirmation; New Visit recent/rush orders | 2026-09-28 | uncommitted | [260928-gr4-dashboard-graphs-and-portal-ui-fixes](./quick/260928-gr4-dashboard-graphs-and-portal-ui-fixes/) |
 
 ## Deferred Items
 

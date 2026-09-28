@@ -13,6 +13,7 @@ use App\Models\AuditLog;
 use App\Models\JobOrder;
 use App\Models\QueueEntry;
 use App\Models\User;
+use App\Services\Reports\ReportBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -33,8 +34,11 @@ class DashboardController extends Controller
      * not expressible in SQL alone -- write-offs, whose collection status is
      * derived from aging rather than stored -- the same PHP re-check runs
      * here too.
+     *
+     * The revenue chart is the Financial Summary report's own chart over the
+     * last 14 days, so it cannot disagree with that report.
      */
-    public function index(): Response
+    public function index(ReportBuilder $reportBuilder): Response
     {
         return Inertia::render('admin/Dashboard', [
             'attention' => [
@@ -44,6 +48,8 @@ class DashboardController extends Controller
                 'lockedAccounts' => $this->lockedOutAccounts(),
             ],
             'shop' => $this->shopHealth(),
+            'cashFlow' => $reportBuilder->chart('financial-summary', collect(), now()->subDays(13)->startOfDay(), now()),
+            'pipeline' => $this->pipeline(),
             'recentActivity' => $this->recentActivity(),
         ]);
     }
@@ -133,6 +139,27 @@ class DashboardController extends Controller
             'activeStaff' => User::query()->where('is_active', true)->count(),
             'totalStaff' => User::query()->count(),
         ];
+    }
+
+    /**
+     * Open job orders per status, in workflow order, so the Admin can see
+     * where work is piling up. Released and cancelled job orders have left
+     * the pipeline.
+     *
+     * @return array<string, int>
+     */
+    private function pipeline(): array
+    {
+        $counts = JobOrder::query()
+            ->whereNull('cancelled_at')
+            ->whereNull('released_at')
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        return collect(JobOrderStatus::cases())
+            ->mapWithKeys(fn (JobOrderStatus $status): array => [$status->value => (int) ($counts[$status->value] ?? 0)])
+            ->all();
     }
 
     /**

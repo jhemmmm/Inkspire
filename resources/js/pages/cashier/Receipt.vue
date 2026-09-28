@@ -31,12 +31,20 @@ interface ReceiptLatestTransaction {
     payment_method: string;
 }
 
+/** The VAT already inside the total -- prices are VAT-inclusive. */
+interface ReceiptVat {
+    rate: number;
+    vatable_sales: number;
+    amount: number;
+}
+
 const props = defineProps<{
     jobOrder: ReceiptJobOrder;
     customerName: string | null;
     latestTransaction: ReceiptLatestTransaction | null;
     amountPaid: number;
     balance: number;
+    vat: ReceiptVat;
     cashierName: string | null;
     trackingUrl: string;
 }>();
@@ -100,7 +108,7 @@ function printReceipt(): void {
             Print Receipt
         </Button>
 
-        <Card class="mx-auto w-full max-w-sm">
+        <Card class="mx-auto w-full max-w-md">
             <CardContent class="grid gap-4">
                 <div class="flex items-center justify-between">
                     <span class="font-semibold">Job Order No.</span>
@@ -161,6 +169,28 @@ function printReceipt(): void {
                         <span>Total</span>
                         <span>{{ money(jobOrder.total_amount) }}</span>
                     </div>
+                    <template v-if="vat.rate > 0">
+                        <div
+                            class="text-muted-foreground flex items-center justify-between text-sm"
+                        >
+                            <span>VATable Sales</span>
+                            <span class="tabular-nums">{{
+                                money(vat.vatable_sales)
+                            }}</span>
+                        </div>
+                        <div
+                            class="text-muted-foreground flex items-center justify-between text-sm"
+                            data-test="receipt-vat"
+                        >
+                            <span>VAT ({{ vat.rate }}%)</span>
+                            <span class="tabular-nums">{{
+                                money(vat.amount)
+                            }}</span>
+                        </div>
+                        <p class="text-muted-foreground text-xs">
+                            Prices include VAT.
+                        </p>
+                    </template>
                 </div>
 
                 <div class="flex flex-col gap-1 border-t pt-4">
@@ -181,13 +211,39 @@ function printReceipt(): void {
                         <span>{{ money(amountPaid) }}</span>
                     </div>
                     <div class="flex items-center justify-between">
-                        <span class="font-semibold">Balance</span>
-                        <span>{{ money(balance) }}</span>
-                    </div>
-                    <div class="flex items-center justify-between">
                         <span class="font-semibold">Cashier</span>
                         <span>{{ cashierName ?? '—' }}</span>
                     </div>
+                </div>
+
+                <!--
+                    The one figure the customer and the counter both need at
+                    a glance, so it is boxed and set large. A border, not only
+                    a tint, because browsers drop backgrounds when printing.
+                -->
+                <div
+                    class="flex items-center justify-between gap-4 rounded-lg border-2 px-4 py-3"
+                    :class="
+                        balance > 0
+                            ? 'border-destructive/60 bg-destructive/5 text-destructive'
+                            : 'border-primary/40 bg-primary/5 text-primary'
+                    "
+                    data-test="receipt-balance"
+                >
+                    <span class="flex flex-col">
+                        <span class="text-lg font-bold">
+                            {{ balance > 0 ? 'Balance Due' : 'Balance' }}
+                        </span>
+                        <span
+                            v-if="balance <= 0"
+                            class="text-muted-foreground text-sm"
+                        >
+                            Paid in full
+                        </span>
+                    </span>
+                    <span class="text-3xl font-extrabold tabular-nums">
+                        {{ money(balance) }}
+                    </span>
                 </div>
 
                 <!--

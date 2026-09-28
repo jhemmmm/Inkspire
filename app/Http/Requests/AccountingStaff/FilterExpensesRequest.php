@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\AccountingStaff;
 
+use App\Models\QueueEntry;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -25,13 +26,20 @@ class FilterExpensesRequest extends FormRequest
      * the two dates -- the controller treats "both absent" as "apply the
      * This Month default" and anything else as a fully-specified range.
      *
+     * "Today" is the shop's Asia/Manila business date, not the server's
+     * UTC one -- from midnight to 8am Manila time the browser's today is
+     * already tomorrow in UTC, and a plain `before_or_equal:today` rejected
+     * the "Today" preset.
+     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
+        $today = QueueEntry::currentBusinessDate();
+
         return [
-            'from' => ['nullable', 'date', 'before_or_equal:today', 'required_with:to'],
-            'to' => ['nullable', 'date', 'before_or_equal:today', 'after_or_equal:from', 'required_with:from'],
+            'from' => ['nullable', 'date', "before_or_equal:{$today}", 'required_with:to'],
+            'to' => ['nullable', 'date', "before_or_equal:{$today}", 'after_or_equal:from', 'required_with:from'],
         ];
     }
 

@@ -8,7 +8,9 @@ use App\Http\Requests\AccountingStaff\StoreExpenseRequest;
 use App\Http\Requests\AccountingStaff\UpdateExpenseRequest;
 use App\Http\Requests\AccountingStaff\VoidExpenseRequest;
 use App\Models\Expense;
+use App\Models\QueueEntry;
 use App\Models\SystemConfiguration;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,8 +30,9 @@ class ExpenseController extends Controller
             $from = $request->date('from')->startOfDay();
             $to = $request->date('to')->endOfDay();
         } else {
-            $from = now()->startOfMonth()->startOfDay();
-            $to = now()->endOfDay();
+            $today = CarbonImmutable::parse(QueueEntry::currentBusinessDate());
+            $from = $today->startOfMonth();
+            $to = $today->endOfDay();
         }
 
         $rows = Expense::query()

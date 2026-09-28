@@ -88,10 +88,25 @@ test('recording an expense with a future expense_date returns a 422 validation e
     $response = $this->actingAs($accountingStaff)->post(route('accounting-staff.expenses.store'), [
         'category' => 'Utilities',
         'amount' => 100,
-        'expense_date' => now()->addDay()->toDateString(),
+        'expense_date' => now('Asia/Manila')->addDay()->toDateString(),
     ]);
 
     $response->assertSessionHasErrors('expense_date');
+});
+
+test('an expense dated on the Manila business date is accepted while that date is still tomorrow in UTC', function () {
+    seedExpenseCategories();
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $this->travelTo('2026-09-28 17:00:00');
+
+    $response = $this->actingAs($accountingStaff)->post(route('accounting-staff.expenses.store'), [
+        'category' => 'Utilities',
+        'amount' => 100,
+        'expense_date' => '2026-09-29',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    expect(Expense::query()->whereDate('expense_date', '2026-09-29')->exists())->toBeTrue();
 });
 
 test('Accounting Staff can edit a non-voided expense', function () {
