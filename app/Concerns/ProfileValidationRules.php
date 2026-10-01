@@ -48,4 +48,18 @@ trait ProfileValidationRules
                 : Rule::unique(User::class)->ignore($userId),
         ];
     }
+
+    /**
+     * Get the validation rules used to validate an uploaded profile picture.
+     *
+     * `image` and `mimes` together reject SVG twice over: Laravel's `image`
+     * rule already excludes it unless `allow_svg` is set, and the explicit
+     * extension list excludes it again.
+     *
+     * @return array<int, ValidationRule|array<mixed>|string>
+     */
+    protected function avatarRules(): array
+    {
+        return ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'];
+    }
 }

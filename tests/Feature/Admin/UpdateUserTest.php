@@ -2,8 +2,10 @@
 
 use App\Enums\UserRole;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 test('admin can update a user name, email and role', function () {
     $admin = User::factory()->admin()->create();
@@ -186,6 +188,85 @@ test('a staff role is forbidden from the update user route', function () {
 
     $response->assertForbidden();
     expect($target->refresh()->role)->toBe(UserRole::ProductionStaff);
+});
+
+test('updating with a new picture stores it and deletes the previous one', function () {
+    Storage::fake('public');
+    $admin = User::factory()->admin()->create();
+    $target = User::factory()->cashier()->create();
+    $target->replaceAvatar(UploadedFile::fake()->image('old.jpg'), false);
+    $oldPath = $target->avatar_path;
+
+    $response = $this->actingAs($admin)->patch(route('admin.users.update', $target), [
+        'name' => $target->name,
+        'email' => $target->email,
+        'role' => UserRole::Cashier->value,
+        'avatar' => UploadedFile::fake()->image('new.jpg'),
+    ]);
+
+    $response->assertSessionHasNoErrors();
+
+    $target->refresh();
+    expect($target->avatar_path)->not->toBe($oldPath);
+    Storage::disk('public')->assertExists($target->avatar_path);
+    Storage::disk('public')->assertMissing($oldPath);
+});
+
+test('remove_avatar deletes the file and nulls the column', function () {
+    Storage::fake('public');
+    $admin = User::factory()->admin()->create();
+    $target = User::factory()->cashier()->create();
+    $target->replaceAvatar(UploadedFile::fake()->image('old.jpg'), false);
+    $oldPath = $target->avatar_path;
+
+    $response = $this->actingAs($admin)->patch(route('admin.users.update', $target), [
+        'name' => $target->name,
+        'email' => $target->email,
+        'role' => UserRole::Cashier->value,
+        'remove_avatar' => '1',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+
+    expect($target->refresh()->avatar_path)->toBeNull();
+    Storage::disk('public')->assertMissing($oldPath);
+});
+
+test('updating without touching the picture leaves it in place', function () {
+    Storage::fake('public');
+    $admin = User::factory()->admin()->create();
+    $target = User::factory()->cashier()->create();
+    $target->replaceAvatar(UploadedFile::fake()->image('old.jpg'), false);
+    $originalPath = $target->avatar_path;
+
+    $response = $this->actingAs($admin)->patch(route('admin.users.update', $target), [
+        'name' => 'Untouched Picture',
+        'email' => $target->email,
+        'role' => UserRole::Cashier->value,
+    ]);
+
+    $response->assertSessionHasNoErrors();
+
+    expect($target->refresh()->avatar_path)->toBe($originalPath);
+    Storage::disk('public')->assertExists($originalPath);
+});
+
+test('a non-admin cannot change another user\'s picture', function () {
+    Storage::fake('public');
+    $cashier = User::factory()->cashier()->create();
+    $target = User::factory()->productionStaff()->create();
+    $target->replaceAvatar(UploadedFile::fake()->image('old.jpg'), false);
+    $originalPath = $target->avatar_path;
+
+    $response = $this->actingAs($cashier)->patch(route('admin.users.update', $target), [
+        'name' => 'Hijacked',
+        'email' => $target->email,
+        'role' => UserRole::Admin->value,
+        'avatar' => UploadedFile::fake()->image('hijack.jpg'),
+    ]);
+
+    $response->assertForbidden();
+    expect($target->refresh()->avatar_path)->toBe($originalPath);
 });
 
 test('updating a user writes an audit_trail row', function () {

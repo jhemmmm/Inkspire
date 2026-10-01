@@ -27,7 +27,7 @@ class UserManagementController extends Controller
 
         return Inertia::render('admin/UserManagement', [
             'users' => User::query()
-                ->select(['id', 'name', 'email', 'role', 'artist_label', 'is_active', 'artist_status', 'break_started_at', 'locked_until'])
+                ->select(['id', 'name', 'email', 'role', 'artist_label', 'avatar_path', 'is_active', 'artist_status', 'break_started_at', 'locked_until'])
                 ->orderBy('name')
                 ->get()
                 ->map(fn (User $user) => [
@@ -35,6 +35,7 @@ class UserManagementController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role,
+                    'avatar' => $user->avatar,
                     // The name a customer is sent to ("Artist 3"), so the
                     // Admin can see at a glance which numbers are in use.
                     'artist_label' => $user->role === UserRole::Artist ? $user->artist_label : null,
@@ -80,6 +81,8 @@ class UserManagementController extends Controller
             'is_active' => true,
         ])->save();
 
+        $user->replaceAvatar($request->file('avatar'), $request->boolean('remove_avatar'));
+
         Inertia::flash('toast', ['type' => 'success', 'message' => __(":name's account has been created.", ['name' => $user->name])]);
 
         return back();
@@ -115,6 +118,8 @@ class UserManagementController extends Controller
         }
 
         $user->save();
+
+        $user->replaceAvatar($request->file('avatar'), $request->boolean('remove_avatar'));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __(":name's account has been updated.", ['name' => $user->name])]);
 

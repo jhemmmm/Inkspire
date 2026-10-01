@@ -7,13 +7,18 @@ use App\Enums\ArtistStatus;
 use App\Enums\UserRole;
 use App\Observers\AuditObserver;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Attributes\Appends;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 /**
  * @property int $id
@@ -27,6 +32,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $remember_token
  * @property UserRole $role
  * @property string|null $artist_label
+ * @property string|null $avatar_path
+ * @property string|null $avatar
  * @property bool $is_active
  * @property int $failed_login_attempts
  * @property Carbon|null $locked_until
@@ -42,6 +49,7 @@ use Illuminate\Support\Carbon;
 #[Fillable(['name', 'email', 'password', 'role', 'artist_label'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 #[ObservedBy(AuditObserver::class)]
+#[Appends(['avatar'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -91,5 +99,49 @@ class User extends Authenticatable
         }
 
         return 'Artist '.$number;
+    }
+
+    /**
+     * The public URL for the user's profile picture, or null if they have
+     * none set.
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function avatar(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?string => $this->avatar_path !== null
+                ? Storage::disk('public')->url($this->avatar_path)
+                : null,
+        );
+    }
+
+    /**
+     * Store, replace, or remove the user's profile picture. The only place
+     * that writes an avatar file -- the new file is stored and the new state
+     * persisted before the previous file is ever touched, so a failure never
+     * leaves the user pointing at a deleted file.
+     */
+    public function replaceAvatar(?UploadedFile $file, bool $remove): void
+    {
+        if ($file === null && ! $remove) {
+            return;
+        }
+
+        $previousPath = $this->avatar_path;
+
+        // ponytail: no server-side resize or re-encode -- a 2MB original is
+        // served as-is and displayed with object-cover. No image library is
+        // installed. If page weight becomes a problem, resize on upload here.
+        $newPath = $file !== null ? $file->store('avatars', 'public') : null;
+
+        throw_if($newPath === false, RuntimeException::class, 'Failed to store the uploaded avatar.');
+
+        $this->avatar_path = $newPath;
+        $this->save();
+
+        if ($previousPath !== null) {
+            Storage::disk('public')->delete($previousPath);
+        }
     }
 }

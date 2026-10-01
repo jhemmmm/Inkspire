@@ -45,6 +45,8 @@ class UpdateUserRequest extends FormRequest
             ...$this->profileRules($target->id),
             'role' => $roleRules,
             'password' => ['nullable', 'string', Password::default(), 'confirmed'],
+            'avatar' => $this->avatarRules(),
+            'remove_avatar' => ['nullable', 'boolean'],
         ];
     }
 

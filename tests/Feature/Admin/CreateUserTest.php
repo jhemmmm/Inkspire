@@ -2,7 +2,9 @@
 
 use App\Enums\UserRole;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 test('admin can create an artist', function () {
     $admin = User::factory()->admin()->create();
@@ -167,6 +169,87 @@ test('the created user can log in', function () {
     ]);
 
     $this->assertAuthenticated();
+});
+
+test('creating a user with a picture stores the file, sets avatar_path, and the avatar appears in the Inertia user list', function () {
+    Storage::fake('public');
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+        'name' => 'Picture Person',
+        'email' => 'picture.person@example.com',
+        'role' => UserRole::Cashier->value,
+        'password' => 'NewP@ssw0rd2026',
+        'password_confirmation' => 'NewP@ssw0rd2026',
+        'avatar' => UploadedFile::fake()->image('avatar.jpg'),
+    ]);
+
+    $response->assertRedirect();
+
+    $created = User::where('email', 'picture.person@example.com')->firstOrFail();
+    expect($created->avatar_path)->not->toBeNull();
+    Storage::disk('public')->assertExists($created->avatar_path);
+
+    $indexResponse = $this->actingAs($admin)->get(route('admin.users.index'));
+
+    $indexResponse->assertInertia(fn ($page) => $page->where(
+        'users',
+        fn ($users) => $users->firstWhere('id', $created->id)['avatar'] === Storage::disk('public')->url($created->avatar_path),
+    ));
+});
+
+test('a non-image upload is rejected and stores nothing', function () {
+    Storage::fake('public');
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+        'name' => 'Bad Upload',
+        'email' => 'bad.upload@example.com',
+        'role' => UserRole::Cashier->value,
+        'password' => 'NewP@ssw0rd2026',
+        'password_confirmation' => 'NewP@ssw0rd2026',
+        'avatar' => UploadedFile::fake()->create('not-an-image.pdf', 10, 'application/pdf'),
+    ]);
+
+    $response->assertSessionHasErrors('avatar');
+    expect(User::where('email', 'bad.upload@example.com')->exists())->toBeFalse();
+    expect(Storage::disk('public')->allFiles())->toBeEmpty();
+});
+
+test('an oversized picture is rejected and stores nothing', function () {
+    Storage::fake('public');
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+        'name' => 'Oversized Upload',
+        'email' => 'oversized.upload@example.com',
+        'role' => UserRole::Cashier->value,
+        'password' => 'NewP@ssw0rd2026',
+        'password_confirmation' => 'NewP@ssw0rd2026',
+        'avatar' => UploadedFile::fake()->create('oversized.jpg', 3000),
+    ]);
+
+    $response->assertSessionHasErrors('avatar');
+    expect(User::where('email', 'oversized.upload@example.com')->exists())->toBeFalse();
+    expect(Storage::disk('public')->allFiles())->toBeEmpty();
+});
+
+test('an svg upload is rejected and stores nothing', function () {
+    Storage::fake('public');
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+        'name' => 'Svg Upload',
+        'email' => 'svg.upload@example.com',
+        'role' => UserRole::Cashier->value,
+        'password' => 'NewP@ssw0rd2026',
+        'password_confirmation' => 'NewP@ssw0rd2026',
+        'avatar' => UploadedFile::fake()->create('evil.svg', 10, 'image/svg+xml'),
+    ]);
+
+    $response->assertSessionHasErrors('avatar');
+    expect(User::where('email', 'svg.upload@example.com')->exists())->toBeFalse();
+    expect(Storage::disk('public')->allFiles())->toBeEmpty();
 });
 
 test('creating a user writes an audit_trail row', function () {

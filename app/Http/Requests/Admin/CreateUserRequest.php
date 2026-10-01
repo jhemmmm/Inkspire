@@ -35,6 +35,8 @@ class CreateUserRequest extends FormRequest
             ...$this->profileRules(),
             'role' => ['required', Rule::enum(UserRole::class)],
             'password' => $this->passwordRules(),
+            'avatar' => $this->avatarRules(),
+            'remove_avatar' => ['nullable', 'boolean'],
         ];
     }
 }
