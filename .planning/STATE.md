@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 Phase: 08
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-10-01 - Completed quick task 261001-gkq: User profile pictures, editable by Admin and by the user
+Last activity: 2026-10-01 - Completed quick task 261001-he2: Search and filters on the admin list pages
 
 Progress: [██████████] 100%
 
@@ -167,6 +167,7 @@ None yet.
 | 261001-er9 | Report export parity: one row definition feeds PDF and Excel (Rush/Normal and headlined labels in Excel, Total row in PDF) | 2026-10-01 | f253aa3 | [261001-er9-report-export-parity-one-row-definition-](./quick/261001-er9-report-export-parity-one-row-definition-/) |
 | 261001-few | Admin Job Orders and Audit Trail exports to PDF and Excel; payment-status and date filters on Job Orders; PDF landscape, page-number and shop-time fixes | 2026-10-01 | 3ec85ba | [261001-few-admin-job-orders-and-audit-trail-exports](./quick/261001-few-admin-job-orders-and-audit-trail-exports/) |
 | 261001-gkq | User profile pictures: avatar_path column, public-disk storage, AvatarField in User Management and Settings > Profile | 2026-10-01 | 505c0db | [261001-gkq-user-profile-pictures-editable-by-admin-](./quick/261001-gkq-user-profile-pictures-editable-by-admin-/) |
+| 261001-he2 | Search and filters on the admin list pages: shared useTableFilter + TableFilterBar; User Management, Specifications, Design Overrides, Credit and Write-Off Requests; searchable Audit Trail user select; locked-out deep link | 2026-10-01 | c711dd3 | [261001-he2-search-and-filters-on-the-admin-list-pag](./quick/261001-he2-search-and-filters-on-the-admin-list-pag/) |
 
 ## Deferred Items
 
