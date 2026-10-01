@@ -441,15 +441,14 @@ defineOptions({
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
+                        <TableHead>User</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead class="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <TableEmpty v-if="users.length === 0" :colspan="5">
+                    <TableEmpty v-if="users.length === 0" :colspan="4">
                         <EmptyState
                             title="No users yet"
                             description="Staff accounts will appear here once created."
@@ -457,7 +456,7 @@ defineOptions({
                     </TableEmpty>
                     <TableEmpty
                         v-else-if="filteredUsers.length === 0"
-                        :colspan="5"
+                        :colspan="4"
                     >
                         <EmptyState
                             title="No matches"
@@ -497,10 +496,22 @@ defineOptions({
                                         {{ getInitials(user.name) }}
                                     </AvatarFallback>
                                 </Avatar>
-                                <span>{{ user.name }}</span>
+                                <!--
+                                    Email sits under the name rather than in
+                                    its own column: with both, the table was
+                                    wider than its card on a 1280px laptop and
+                                    Edit / Deactivate scrolled out of view.
+                                -->
+                                <div class="flex flex-col">
+                                    <span class="font-medium">
+                                        {{ user.name }}
+                                    </span>
+                                    <span class="text-muted-foreground text-sm">
+                                        {{ user.email }}
+                                    </span>
+                                </div>
                             </div>
                         </TableCell>
-                        <TableCell>{{ user.email }}</TableCell>
                         <TableCell>
                             <div class="flex flex-wrap items-center gap-2">
                                 <span>{{ roleLabel(user.role) }}</span>
