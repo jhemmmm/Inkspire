@@ -8,6 +8,8 @@ import InputError from '@/components/InputError.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import TableFilterBar from '@/components/TableFilterBar.vue';
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -40,7 +42,17 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { useInitials } from '@/composables/useInitials';
+import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
 import { roleLabel } from '@/lib/roles';
 import { index as usersIndex } from '@/routes/admin/users';
@@ -108,7 +120,7 @@ const creatableRoles = [
     'accounting_staff',
 ];
 
-defineProps<{
+const props = defineProps<{
     users: ManagedUser[];
 }>();
 
@@ -122,6 +134,79 @@ const newUserAvatarName = ref('');
 
 const page = usePage();
 const currentUserId = computed(() => page.props.auth.user.id);
+
+const ALL = 'all';
+
+const STATUS_FILTER_VALUES = ['active', 'deactivated', 'locked'] as const;
+
+/**
+ * Seeds the Status filter from `?status=locked` on first load (D7) — the
+ * Admin dashboard's "Locked-Out Accounts" tile links here with that query
+ * param. `page.url` is the Inertia-shared current URL, available on both
+ * server and client, so this needs no `window` access and is SSR-safe.
+ * Any value outside the three known ones is ignored.
+ */
+function initialStatusFilter(): string {
+    const status = new URLSearchParams(page.url.split('?')[1] ?? '').get(
+        'status',
+    );
+
+    return status !== null &&
+        (STATUS_FILTER_VALUES as readonly string[]).includes(status)
+        ? status
+        : ALL;
+}
+
+const roleFilter = ref(ALL);
+const statusFilter = ref(initialStatusFilter());
+
+const roleFilterOptions = [
+    { value: ALL, label: 'All roles' },
+    ...creatableRoles.map((role) => ({ value: role, label: roleLabel(role) })),
+];
+
+const statusFilterOptions = [
+    { value: ALL, label: 'All statuses' },
+    { value: 'active', label: 'Active' },
+    { value: 'deactivated', label: 'Deactivated' },
+    { value: 'locked', label: 'Locked out' },
+];
+
+const { searchTerm, filtered: filteredUsers } = useTableFilter(
+    () => props.users,
+    (user) => [user.name, user.email, user.artist_label, roleLabel(user.role)],
+    {
+        filters: [
+            (user) =>
+                roleFilter.value === ALL || user.role === roleFilter.value,
+            (user) => {
+                if (statusFilter.value === ALL) {
+                    return true;
+                }
+                if (statusFilter.value === 'active') {
+                    return user.is_active;
+                }
+                if (statusFilter.value === 'deactivated') {
+                    return !user.is_active;
+                }
+                return user.is_locked_out;
+            },
+        ],
+    },
+);
+
+const filtersActive = computed(
+    () =>
+        searchTerm.value.trim() !== '' ||
+        roleFilter.value !== ALL ||
+        statusFilter.value !== ALL,
+);
+
+function clearFilters(): void {
+    searchTerm.value = '';
+    roleFilter.value = ALL;
+    statusFilter.value = ALL;
+}
 
 /**
  * One shared edit dialog, driven by the row that opened it. The role lives
@@ -306,24 +391,96 @@ defineOptions({
             </template>
         </PageHeader>
 
+        <TableFilterBar
+            v-if="users.length > 0"
+            v-model:search="searchTerm"
+            search-label="Search users"
+            search-placeholder="Name, email, artist label or role"
+            :shown="filteredUsers.length"
+            :total="users.length"
+            :active="filtersActive"
+            @clear="clearFilters"
+        >
+            <div class="flex min-w-0 flex-col gap-2 sm:w-48">
+                <Label for="user-role-filter">Role</Label>
+                <Select v-model="roleFilter">
+                    <SelectTrigger id="user-role-filter" class="w-full">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in roleFilterOptions"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div class="flex min-w-0 flex-col gap-2 sm:w-48">
+                <Label for="user-status-filter">Status</Label>
+                <Select v-model="statusFilter">
+                    <SelectTrigger id="user-status-filter" class="w-full">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in statusFilterOptions"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        </TableFilterBar>
+
         <DataTableCard>
-            <table class="w-full text-sm">
-                <thead class="bg-muted">
-                    <tr>
-                        <th class="p-4 text-left font-semibold">Name</th>
-                        <th class="p-4 text-left font-semibold">Email</th>
-                        <th class="p-4 text-left font-semibold">Role</th>
-                        <th class="p-4 text-left font-semibold">Status</th>
-                        <th class="p-4 text-left font-semibold"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="user in users"
-                        :key="user.id"
-                        class="border-border/70 dark:border-border border-t"
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead class="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <TableEmpty v-if="users.length === 0" :colspan="5">
+                        <EmptyState
+                            title="No users yet"
+                            description="Staff accounts will appear here once created."
+                        />
+                    </TableEmpty>
+                    <TableEmpty
+                        v-else-if="filteredUsers.length === 0"
+                        :colspan="5"
                     >
-                        <td class="p-4">
+                        <EmptyState
+                            title="No matches"
+                            description="No users match that search, role or status filter."
+                        >
+                            <template #actions>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    data-test="clear-user-filters-button"
+                                    @click="clearFilters"
+                                >
+                                    Clear filters
+                                </Button>
+                            </template>
+                        </EmptyState>
+                    </TableEmpty>
+                    <TableRow
+                        v-for="user in filteredUsers"
+                        v-else
+                        :key="user.id"
+                    >
+                        <TableCell>
                             <div class="flex items-center gap-3">
                                 <Avatar
                                     class="h-8 w-8 overflow-hidden rounded-full"
@@ -342,9 +499,9 @@ defineOptions({
                                 </Avatar>
                                 <span>{{ user.name }}</span>
                             </div>
-                        </td>
-                        <td class="p-4">{{ user.email }}</td>
-                        <td class="p-4">
+                        </TableCell>
+                        <TableCell>{{ user.email }}</TableCell>
+                        <TableCell>
                             <div class="flex flex-wrap items-center gap-2">
                                 <span>{{ roleLabel(user.role) }}</span>
                                 <Badge
@@ -355,8 +512,8 @@ defineOptions({
                                     {{ user.artist_label }}
                                 </Badge>
                             </div>
-                        </td>
-                        <td class="p-4">
+                        </TableCell>
+                        <TableCell>
                             <div class="flex flex-wrap items-center gap-2">
                                 <Badge
                                     v-if="!user.is_active"
@@ -397,8 +554,8 @@ defineOptions({
                                     Exceeded break time
                                 </Badge>
                             </div>
-                        </td>
-                        <td class="p-4 text-right">
+                        </TableCell>
+                        <TableCell class="text-right">
                             <div
                                 class="flex flex-wrap items-center justify-end gap-2"
                             >
@@ -484,10 +641,10 @@ defineOptions({
                                     </Button>
                                 </Form>
                             </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
         </DataTableCard>
 
         <Dialog v-model:open="editDialogOpen">

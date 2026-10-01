@@ -126,7 +126,7 @@ const attentionTiles = computed(() => [
         value: props.attention.lockedAccounts,
         hint: 'Staff currently shut out by failed sign-ins.',
         icon: Lock,
-        href: usersIndex(),
+        href: usersIndex({ query: { status: 'locked' } }),
     },
 ]);
 
