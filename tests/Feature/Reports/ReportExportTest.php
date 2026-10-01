@@ -1,8 +1,13 @@
 <?php
 
+use App\Enums\JobOrderStatus;
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentStatus;
+use App\Enums\TransactionType;
 use App\Models\AuditLog;
 use App\Models\Expense;
 use App\Models\JobOrder;
+use App\Models\ProductionLog;
 use App\Models\Transaction;
 use App\Models\User;
 use OpenSpout\Reader\XLSX\Reader;
@@ -133,8 +138,14 @@ test('xlsx export of a non-financial-summary report is not capped at 100 rows, u
     $cashier = User::factory()->cashier()->create();
     Transaction::factory()->count(150)->for(JobOrder::factory()->create(['total_amount' => 1000]))->create();
 
-    // On-screen preview caps at 100.
-    $onScreen = $this->actingAs($cashier)->withHeaders(reportExportHeaders())->get(route('cashier.reports.index', ['report' => 'sales']));
+    // On-screen preview caps at 100. Headers are passed per-call (not via
+    // withHeaders()) so the X-Inertia header doesn't leak into the xlsx
+    // request below -- Inertia\Middleware::handle() treats a GET request
+    // that carries X-Inertia but gets back an unsent StreamedResponse
+    // (empty getContent()) as a stale/empty Inertia response and redirects
+    // it with Redirect::back(), which withHeaders()'s persisted header
+    // would otherwise trigger on a real file-download response.
+    $onScreen = $this->actingAs($cashier)->get(route('cashier.reports.index', ['report' => 'sales']), reportExportHeaders());
     $onScreen->assertOk();
     expect($onScreen->json('props.rows'))->toHaveCount(100);
     expect($onScreen->json('props.rowsTotal'))->toBe(150);
@@ -209,4 +220,88 @@ test('the xlsx expenses Total row excludes voided expenses (mirrors Expense::act
     expect((float) $totalRow[3])->toBe(1500.0);
     // The voided row is still present in the sheet, just not in the Total.
     expect(count($rows))->toBe(5); // header + 3 expenses + total
+});
+
+test('exporting sales to xlsx resolves type and method to the same labels the PDF shows (export parity)', function () {
+    $this->skipUnlessZipAvailable();
+
+    $cashier = User::factory()->cashier()->create();
+    Transaction::factory()->for(JobOrder::factory()->create(['total_amount' => 1000]))->create(['type' => TransactionType::DownPayment, 'payment_method' => PaymentMethod::Gcash]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.reports.export.xlsx', 'sales'));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    expect($rows[1][3])->toBe('Down Payment');
+    expect($rows[1][4])->toBe('Gcash');
+});
+
+test('exporting cancellations to xlsx resolves payment status to the same label the PDF shows (export parity)', function () {
+    $this->skipUnlessZipAvailable();
+
+    $cashier = User::factory()->cashier()->create();
+    JobOrder::factory()->create(['cancelled_at' => now(), 'payment_status' => PaymentStatus::PartiallyPaid]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.reports.export.xlsx', 'cancellations'));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    expect($rows[1][5])->toBe('Partially Paid');
+});
+
+test('exporting production-status to xlsx resolves urgency and stage to the same labels the PDF shows (export parity)', function () {
+    $this->skipUnlessZipAvailable();
+
+    $productionStaff = User::factory()->productionStaff()->create();
+
+    $rush = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $rush->forceFill(['due_at' => now()->subDay()])->save();
+    ProductionLog::factory()->for($rush)->create(['to_status' => JobOrderStatus::ForProduction->value, 'created_at' => now()]);
+
+    $normal = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $normal->forceFill(['due_at' => now()->addWeek()])->save();
+    ProductionLog::factory()->for($normal)->create(['to_status' => JobOrderStatus::ForProduction->value, 'created_at' => now()]);
+
+    $response = $this->actingAs($productionStaff)->get(route('production-staff.reports.export.xlsx', 'production-status'));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    expect([$rows[1][4], $rows[2][4]])
+        ->toContain('Rush')
+        ->toContain('Normal');
+    expect($rows[1][3])->toBe('For Production');
+    expect($rows[2][3])->toBe('For Production');
+});
+
+test('exporting expenses to xlsx resolves an active expense\'s status to "Active" (export parity)', function () {
+    $this->skipUnlessZipAvailable();
+
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    Expense::factory()->create(['expense_date' => now()]);
+
+    $response = $this->actingAs($accountingStaff)->get(route('accounting-staff.reports.export.xlsx', 'expenses'));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    expect($rows[1][5])->toBe('Active');
+});
+
+test('exporting production-status to PDF renders through the generic table view in place of the deleted per-report Blade view', function () {
+    $productionStaff = User::factory()->productionStaff()->create();
+
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
+    ProductionLog::factory()->for($jobOrder)->create(['to_status' => JobOrderStatus::ForProduction->value, 'created_at' => now()]);
+
+    $response = $this->actingAs($productionStaff)->get(route('production-staff.reports.export.pdf', 'production-status'));
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'application/pdf');
 });
