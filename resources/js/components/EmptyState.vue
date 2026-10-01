@@ -17,17 +17,23 @@ const props = defineProps<{
         a dead end -- an empty queue should still offer "New Visit".
     -->
     <!--
-        `sticky left-0` needs a scrolling ancestor (the `overflow-x-auto`
-        wrapper `DataTableCard` provides when nested in a table) and is
-        otherwise inert; `w-[calc(100cqw-2rem)]` sizes to the nearest
-        `@container` minus the table cell's `2rem` horizontal padding
-        (confirmed in `TableCell.vue`/`TableEmpty.vue`); `max-w-full` caps
-        it at the parent for bare-panel (non-table) usages, per D6.
+        Inside a table wider than its card, `TableEmpty` centres this across
+        the table's full scroll width, which on a phone is off-screen. So the
+        box is as wide as the visible card (`100cqw` of `DataTableCard`, less
+        the cell's 1rem padding each side) and sticky on BOTH edges: `left`
+        alone only holds a box that has scrolled past the left edge, it is
+        the `right` inset that pulls a centred box back into view.
+
+        Outside a table nothing scrolls, so the insets are inert and
+        `max-w-full` caps the width at the parent.
+
+        `whitespace-normal` because table cells are `nowrap`, which this
+        would otherwise inherit and run its description off both edges.
     -->
     <div
         :class="
             cn(
-                'sticky left-0 flex w-[calc(100cqw-2rem)] max-w-full flex-col items-center gap-2 py-6 text-center',
+                'sticky right-4 left-4 flex w-[calc(100cqw-2rem)] max-w-full flex-col items-center gap-2 py-6 text-center whitespace-normal',
                 props.class,
             )
         "

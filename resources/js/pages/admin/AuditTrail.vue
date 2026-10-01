@@ -341,7 +341,10 @@ const exportXlsxUrl = computed(() =>
             show-edges
             @update:page="visit"
         >
-            <PaginationContent v-slot="{ items }">
+            <PaginationContent
+                v-slot="{ items }"
+                class="flex-wrap justify-center"
+            >
                 <PaginationFirst />
                 <PaginationPrevious />
 

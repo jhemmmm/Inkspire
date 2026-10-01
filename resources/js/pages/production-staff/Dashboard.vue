@@ -345,13 +345,24 @@ onUnmounted(() => {
         </div>
 
         <Tabs :model-value="activeFilter" @update:model-value="onTabChange">
-            <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="rush">Rush</TabsTrigger>
+            <!--
+                Wraps rather than running off the edge: on a phone the last
+                two stages were unreachable. A trigger's default height is
+                100% of the list, so each gets a fixed height or a wrapped
+                list stretches them to the height of every row combined.
+            -->
+            <TabsList class="h-auto max-w-full flex-wrap justify-start">
+                <TabsTrigger value="all" class="h-8 flex-none">
+                    All
+                </TabsTrigger>
+                <TabsTrigger value="rush" class="h-8 flex-none">
+                    Rush
+                </TabsTrigger>
                 <TabsTrigger
                     v-for="stage in stages"
                     :key="stage.value"
                     :value="stage.value"
+                    class="h-8 flex-none"
                 >
                     {{ stage.label }}
                 </TabsTrigger>

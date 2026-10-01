@@ -315,7 +315,9 @@ function dueSubLine(row: AccountsReceivableRow): string {
             search/collection-status filter below — they describe the shop's
             receivables work, not the current view (D4).
         -->
-        <div class="grid grid-cols-2 gap-4 @2xl:grid-cols-3 @5xl:grid-cols-6">
+        <div
+            class="grid grid-cols-1 gap-4 @sm:grid-cols-2 @2xl:grid-cols-3 @6xl:grid-cols-6"
+        >
             <StatCard
                 v-for="bracket in BRACKETS"
                 :key="bracket"
@@ -328,16 +330,26 @@ function dueSubLine(row: AccountsReceivableRow): string {
         </div>
 
         <Tabs :model-value="activeFilter" @update:model-value="onTabChange">
-            <TabsList class="h-auto flex-wrap">
-                <TabsTrigger value="all">All</TabsTrigger>
+            <!--
+                A trigger's default height is 100% of the list, so in a
+                wrapped list each one stretched to the height of every row
+                combined. A fixed height keeps them the size of one row.
+            -->
+            <TabsList class="h-auto max-w-full flex-wrap justify-start">
+                <TabsTrigger value="all" class="h-8 flex-none">
+                    All
+                </TabsTrigger>
                 <TabsTrigger
                     v-for="bracket in BRACKETS"
                     :key="bracket"
                     :value="bracket"
+                    class="h-8 flex-none"
                 >
                     {{ BRACKET_LABELS[bracket] }}
                 </TabsTrigger>
-                <TabsTrigger value="closed">Closed</TabsTrigger>
+                <TabsTrigger value="closed" class="h-8 flex-none">
+                    Closed
+                </TabsTrigger>
             </TabsList>
         </Tabs>
 
