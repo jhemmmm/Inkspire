@@ -571,7 +571,7 @@ function jobOrderStatusLabel(status: string): string {
                 </span>
                 <span
                     v-if="stepIndex < STEPS.length - 1"
-                    class="bg-border hidden h-px w-8 sm:block"
+                    class="bg-border hidden h-px w-8 @lg:block"
                     aria-hidden="true"
                 />
             </li>
@@ -584,7 +584,7 @@ function jobOrderStatusLabel(status: string): string {
                 </CardHeader>
                 <CardContent>
                     <form
-                        class="flex flex-col gap-4 sm:flex-row sm:items-end"
+                        class="flex flex-col gap-4 @lg:flex-row @lg:items-end"
                         @submit.prevent="search"
                     >
                         <div class="flex min-w-0 flex-1 flex-col gap-2">
@@ -595,7 +595,7 @@ function jobOrderStatusLabel(status: string): string {
                                 id="customer-search"
                                 v-model="searchTerm"
                                 type="search"
-                                class="w-full sm:max-w-md"
+                                class="w-full @lg:max-w-md"
                                 placeholder="Name, organization or contact number"
                             />
                             <p
@@ -674,7 +674,7 @@ function jobOrderStatusLabel(status: string): string {
                 <CardContent>
                     <Form
                         v-bind="CustomerController.store.form()"
-                        class="grid gap-6 md:grid-cols-2"
+                        class="grid gap-6 @2xl:grid-cols-2"
                         v-slot="{ errors, processing }"
                     >
                         <div class="grid gap-2">
@@ -727,7 +727,7 @@ function jobOrderStatusLabel(status: string): string {
                             <InputError :message="errors.email" />
                         </div>
 
-                        <div class="grid gap-2 md:col-span-2">
+                        <div class="grid gap-2 @2xl:col-span-2">
                             <Label for="address">Address</Label>
                             <Textarea
                                 id="address"
@@ -740,7 +740,7 @@ function jobOrderStatusLabel(status: string): string {
                         </div>
 
                         <div
-                            class="flex flex-wrap items-center gap-2 md:col-span-2"
+                            class="flex flex-wrap items-center gap-2 @2xl:col-span-2"
                         >
                             <Button
                                 type="submit"
@@ -1121,7 +1121,7 @@ function jobOrderStatusLabel(status: string): string {
                     <fieldset class="grid gap-2">
                         <legend class="sr-only">Job Order Type</legend>
                         <p class="text-sm font-medium">Job Order Type</p>
-                        <div class="grid gap-4 md:grid-cols-2">
+                        <div class="grid gap-4 @2xl:grid-cols-2">
                             <label
                                 v-for="option in jobOrderTypeOptions"
                                 :key="option.value"
@@ -1189,8 +1189,8 @@ function jobOrderStatusLabel(status: string): string {
                             <h3 class="font-semibold">Print Specifications</h3>
                         </div>
 
-                        <div class="grid gap-6 p-6 md:grid-cols-2">
-                            <div class="md:col-span-2">
+                        <div class="grid gap-6 p-6 @2xl:grid-cols-2">
+                            <div class="@2xl:col-span-2">
                                 <JobOrderPriceFields
                                     :row="row"
                                     :pricing-entries="pricingEntries"
@@ -1227,7 +1227,7 @@ function jobOrderStatusLabel(status: string): string {
                                 />
                             </div>
 
-                            <div class="grid gap-2 md:col-span-2">
+                            <div class="grid gap-2 @2xl:col-span-2">
                                 <div class="flex items-center gap-3">
                                     <Switch
                                         :id="`job-order-rush-${index}`"
@@ -1255,7 +1255,7 @@ function jobOrderStatusLabel(status: string): string {
                                 />
                             </div>
 
-                            <div class="grid gap-2 md:col-span-2">
+                            <div class="grid gap-2 @2xl:col-span-2">
                                 <Label :for="`job-order-notes-${index}`">
                                     {{
                                         row.type === 'type_b'
@@ -1296,7 +1296,7 @@ function jobOrderStatusLabel(status: string): string {
 
                             <div
                                 v-if="row.type === 'type_a'"
-                                class="grid gap-2 md:col-span-2"
+                                class="grid gap-2 @2xl:col-span-2"
                             >
                                 <Label :for="`job-order-file-${index}`">
                                     Source File

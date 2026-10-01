@@ -238,7 +238,7 @@ const completedPaid = computed((): number =>
             </div>
         </div>
 
-        <div class="grid gap-6 lg:grid-cols-2">
+        <div class="grid gap-6 @3xl:grid-cols-2">
             <Card>
                 <CardHeader :icon="User">
                     <CardTitle>Customer</CardTitle>

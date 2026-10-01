@@ -393,7 +393,7 @@ function openVoidDialog(row: ExpenseRow): void {
             range (ExpenseController::index) and must stay that way — they
             describe the range, not the filtered table below.
         -->
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 @lg:grid-cols-2 @3xl:grid-cols-3">
             <StatCard
                 :label="`Total for ${rangeLabel}`"
                 :value="money(total)"
@@ -412,7 +412,7 @@ function openVoidDialog(row: ExpenseRow): void {
             :active="filtersActive"
             @clear="clearFilters"
         >
-            <div class="flex min-w-0 flex-col gap-2 sm:w-56">
+            <div class="flex min-w-0 flex-col gap-2 @lg:w-56">
                 <Label for="expense-category-filter">Category</Label>
                 <SearchableSelect
                     id="expense-category-filter"
@@ -421,7 +421,7 @@ function openVoidDialog(row: ExpenseRow): void {
                     placeholder="All categories"
                 />
             </div>
-            <div class="flex min-w-0 flex-col gap-2 sm:w-40">
+            <div class="flex min-w-0 flex-col gap-2 @lg:w-40">
                 <Label for="expense-status-filter">Status</Label>
                 <Select v-model="statusFilter">
                     <SelectTrigger id="expense-status-filter" class="w-full">

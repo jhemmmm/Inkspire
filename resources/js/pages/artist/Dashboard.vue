@@ -406,7 +406,7 @@ function artistStatusLabel(artistStatus: string): string {
             </CardContent>
         </Card>
 
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 @lg:grid-cols-2 @3xl:grid-cols-3">
             <StatCard
                 label="In your queue"
                 :value="jobOrders.length"

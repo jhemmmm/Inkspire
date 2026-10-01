@@ -315,7 +315,7 @@ function dueSubLine(row: AccountsReceivableRow): string {
             search/collection-status filter below — they describe the shop's
             receivables work, not the current view (D4).
         -->
-        <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <div class="grid grid-cols-2 gap-4 @2xl:grid-cols-3 @5xl:grid-cols-6">
             <StatCard
                 v-for="bracket in BRACKETS"
                 :key="bracket"
@@ -351,7 +351,7 @@ function dueSubLine(row: AccountsReceivableRow): string {
             :active="filtersActive"
             @clear="clearFilters"
         >
-            <div class="flex min-w-0 flex-col gap-2 sm:w-56">
+            <div class="flex min-w-0 flex-col gap-2 @lg:w-56">
                 <Label for="receivable-collection-status-filter">
                     Collection status
                 </Label>

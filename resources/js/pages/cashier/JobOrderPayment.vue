@@ -342,7 +342,7 @@ const discountCapHelper = computed(() =>
         <Form
             v-bind="PaymentController.store.form(jobOrder.id)"
             :options="{ preserveScroll: true }"
-            class="grid gap-6 xl:grid-cols-2 xl:items-start"
+            class="grid gap-6 @3xl:grid-cols-2 @3xl:items-start"
             v-slot="{ errors, processing }"
         >
             <Card>

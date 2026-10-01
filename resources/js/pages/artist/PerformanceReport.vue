@@ -114,7 +114,7 @@ function clearFilters(): void {
             </CardHeader>
             <CardContent>
                 <form
-                    class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                    class="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-4"
                     @submit.prevent="visit()"
                 >
                     <div class="flex min-w-0 flex-col gap-2">
@@ -138,7 +138,7 @@ function clearFilters(): void {
                     </div>
 
                     <div
-                        class="flex flex-wrap items-center gap-2 sm:col-span-2"
+                        class="flex flex-wrap items-center gap-2 @md:col-span-2"
                     >
                         <Button
                             type="submit"
@@ -159,7 +159,7 @@ function clearFilters(): void {
             </CardContent>
         </Card>
 
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 @lg:grid-cols-2 @3xl:grid-cols-3">
             <StatCard
                 :value="stats.jobsCompleted"
                 label="Jobs Completed"

@@ -335,7 +335,7 @@ onUnmounted(() => {
             search/Rush only filter below — it describes the whole board's
             workload, not the current view.
         -->
-        <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4 @2xl:grid-cols-4">
             <StatCard
                 v-for="stage in stages"
                 :key="stage.value"

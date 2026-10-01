@@ -236,7 +236,9 @@ function outcomeLabel(outcome: string | null): string {
                 <CardTitle>Job Brief</CardTitle>
             </CardHeader>
             <CardContent class="flex flex-col gap-4">
-                <dl class="grid gap-4 sm:grid-cols-3">
+                <dl
+                    class="grid grid-cols-1 gap-4 @lg:grid-cols-2 @3xl:grid-cols-3"
+                >
                     <div class="flex flex-col gap-1">
                         <dt class="text-muted-foreground text-sm">Job Order</dt>
                         <dd class="font-medium tabular-nums">
