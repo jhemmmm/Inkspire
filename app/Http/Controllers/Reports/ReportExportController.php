@@ -48,7 +48,7 @@ class ReportExportController extends Controller
                 'title' => $title,
                 'from' => $from,
                 'to' => $to,
-                'generatedAt' => now(),
+                'generatedAt' => now()->timezone('Asia/Manila'),
                 'generatedBy' => $user->name,
                 'summary' => $reportBuilder->summary($from, $to),
             ])
@@ -62,7 +62,7 @@ class ReportExportController extends Controller
         return TableExport::pdf($title, $columns, $built['rows'], $this->moneyColumnIndexes($reportKey), [
             'from' => $from,
             'to' => $to,
-            'generatedAt' => now(),
+            'generatedAt' => now()->timezone('Asia/Manila'),
             'generatedBy' => $user->name,
         ], $built['totalRow'], $filename);
     }

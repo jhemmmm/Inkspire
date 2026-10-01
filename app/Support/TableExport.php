@@ -30,7 +30,7 @@ final class TableExport
      * @param  array{from?: CarbonInterface, to?: CarbonInterface, generatedAt?: CarbonInterface, generatedBy?: string, note?: string}|null  $meta  Merged into reports.layout's view data.
      * @param  list<CarbonInterface|null|float|int|string>|null  $totalRow  One cell per heading, or null when the report has no total row.
      * @param  string  $filename  Base name with no extension -- `.pdf` is appended.
-     * @param  bool  $landscape  Render the page in landscape instead of dompdf's a4/portrait default. No existing caller passes this, so every current report export is unaffected.
+     * @param  bool  $landscape  Render the page in landscape. Passed to `reports.layout`, whose `@page { size }` rule decides the orientation -- that CSS rule overrides dompdf's `setPaper()`, so setting it there is the only thing that works.
      */
     public static function pdf(string $title, array $headings, array $rows, array $moneyColumns, ?array $meta, ?array $totalRow, string $filename, bool $landscape = false): Response
     {
@@ -40,15 +40,10 @@ final class TableExport
             'rows' => $rows,
             'moneyColumns' => $moneyColumns,
             'totalRow' => $totalRow,
+            'landscape' => $landscape,
         ], $meta ?? []);
 
-        $pdf = Pdf::loadView('reports.table', $data);
-
-        if ($landscape) {
-            $pdf->setPaper('a4', 'landscape');
-        }
-
-        return $pdf
+        return Pdf::loadView('reports.table', $data)
             ->setOption('isPhpEnabled', true)
             ->download("{$filename}.pdf");
     }

@@ -64,7 +64,7 @@ class JobOrderController extends Controller
         $matched = $query->count();
         $jobOrders = $query->limit(self::PDF_ROW_CAP)->get();
 
-        $meta = ['generatedAt' => now(), 'generatedBy' => $user->name];
+        $meta = ['generatedAt' => now()->timezone('Asia/Manila'), 'generatedBy' => $user->name];
 
         if ($from !== null && $to !== null) {
             $meta['from'] = $from;
@@ -80,7 +80,7 @@ class JobOrderController extends Controller
 
         $built = $this->buildTableRows($jobOrders);
 
-        return TableExport::pdf('Job Orders', $this->exportColumns(), $built['rows'], $this->moneyColumnIndexes(), $meta, $built['totalRow'], 'job-orders_'.now()->toDateString(), landscape: true);
+        return TableExport::pdf('Job Orders', $this->exportColumns(), $built['rows'], $this->moneyColumnIndexes(), $meta, $built['totalRow'], 'job-orders_'.now()->timezone('Asia/Manila')->toDateString(), landscape: true);
     }
 
     /**
@@ -99,7 +99,7 @@ class JobOrderController extends Controller
         $jobOrders = $this->filteredQuery($request)->latest('id')->get();
         $built = $this->buildTableRows($jobOrders);
 
-        return TableExport::xlsx('Job Orders', $this->exportColumns(), $built['rows'], $this->moneyColumnIndexes(), null, $built['totalRow'], 'job-orders_'.now()->toDateString());
+        return TableExport::xlsx('Job Orders', $this->exportColumns(), $built['rows'], $this->moneyColumnIndexes(), null, $built['totalRow'], 'job-orders_'.now()->timezone('Asia/Manila')->toDateString());
     }
 
     /**
@@ -116,8 +116,8 @@ class JobOrderController extends Controller
             ->when($request->filled('q'), fn (Builder $query) => $query->search((string) $request->string('q')))
             ->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->string('status')))
             ->when($request->filled('payment_status'), fn (Builder $query) => $query->where('payment_status', $request->string('payment_status')))
-            ->when($this->resolveFrom($request), fn (Builder $query, CarbonInterface $from) => $query->where('created_at', '>=', $from))
-            ->when($this->resolveTo($request), fn (Builder $query, CarbonInterface $to) => $query->where('created_at', '<=', $to))
+            ->when($this->resolveFrom($request), fn (Builder $query, CarbonInterface $from) => $query->where('created_at', '>=', $from->copy()->utc()))
+            ->when($this->resolveTo($request), fn (Builder $query, CarbonInterface $to) => $query->where('created_at', '<=', $to->copy()->utc()))
             ->with([
                 'queueEntry:id,customer_id',
                 'queueEntry.customer:id,name',
@@ -131,10 +131,15 @@ class JobOrderController extends Controller
      * Full timestamp lower bound against created_at — never whereDate(),
      * which truncates to a bare date and misses same-day records on
      * SQLite's string-stored datetimes.
+     *
+     * The day is the shop's Asia/Manila day, not a UTC one: timestamps are
+     * stored in UTC, so a UTC bound would file an order taken before 8 AM
+     * under the previous date. filteredQuery() converts the bound to UTC
+     * for the comparison; the Manila instance is kept for display.
      */
     private function resolveFrom(FilterJobOrdersRequest $request): ?CarbonInterface
     {
-        return $request->filled('from') ? $request->date('from')->startOfDay() : null;
+        return $request->filled('from') ? $request->date('from', null, 'Asia/Manila')->startOfDay() : null;
     }
 
     /**
@@ -142,7 +147,7 @@ class JobOrderController extends Controller
      */
     private function resolveTo(FilterJobOrdersRequest $request): ?CarbonInterface
     {
-        return $request->filled('to') ? $request->date('to')->endOfDay() : null;
+        return $request->filled('to') ? $request->date('to', null, 'Asia/Manila')->endOfDay() : null;
     }
 
     /** @return list<string> */
@@ -206,7 +211,7 @@ class JobOrderController extends Controller
             $total,
             $paid,
             $total === null ? null : max(0.0, $total - $paid),
-            $jobOrder->created_at,
+            $jobOrder->created_at?->timezone('Asia/Manila'),
         ];
     }
 

@@ -5,7 +5,7 @@
     <title>{{ $title }}</title>
     <style>
         @page {
-            size: A4 portrait;
+            size: A4 {{ ($landscape ?? false) ? 'landscape' : 'portrait' }};
             margin: 18mm;
         }
 
@@ -90,7 +90,13 @@
 
     <script type="text/php">
     if (isset($pdf)) {
-        $text = "{{ addslashes(config('app.name')) }} \xC2\xB7 {{ addslashes($title) }} \xC2\xB7 Page {$PAGE_NUM} of {$PAGE_COUNT}";
+        // {PAGE_NUM} / {PAGE_COUNT} are page_text()'s own per-page placeholders.
+        // The PHP variables of the same name hold the LAST page's values when
+        // this script runs, which stamped "Page 2 of 2" on every page.
+        // The title is unescaped because this is a PDF text run, not HTML
+        // ("Sales &amp; Expenses" printed literally). It is always a
+        // server-defined report title, never user input.
+        $text = "{{ addslashes(config('app.name')) }} \xC2\xB7 {!! addslashes($title) !!} \xC2\xB7 Page {PAGE_NUM} of {PAGE_COUNT}";
         $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
         $size = 8;
         $width = $fontMetrics->getTextWidth($text, $font, $size);

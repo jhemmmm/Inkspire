@@ -168,6 +168,9 @@ test('exporting job orders to pdf returns a real PDF and audits exactly one row'
 
     $response->assertOk();
     $response->assertHeader('Content-Type', 'application/pdf');
+    // Landscape A4. Eleven columns do not fit a portrait page, and the
+    // layout's own `@page` rule silently overrides dompdf's setPaper().
+    expect($response->getContent())->toContain('/MediaBox [0.000 0.000 841.890 595.280]');
 
     expect(AuditLog::where('action', 'report_exported')->count())->toBe(1);
 

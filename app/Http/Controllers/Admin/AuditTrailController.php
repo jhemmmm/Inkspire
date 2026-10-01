@@ -58,7 +58,7 @@ class AuditTrailController extends Controller
         $matched = $query->count();
         $entries = $query->limit(self::PDF_ROW_CAP)->get();
 
-        $meta = ['generatedAt' => now(), 'generatedBy' => $user->name];
+        $meta = ['generatedAt' => now()->timezone('Asia/Manila'), 'generatedBy' => $user->name];
 
         // ponytail: a 1,000-row PDF cap keeps dompdf's render time bounded.
         // If the shop ever needs the full list in PDF past this ceiling,
@@ -67,7 +67,7 @@ class AuditTrailController extends Controller
             $meta['note'] = 'Showing '.number_format(self::PDF_ROW_CAP).' of '.number_format($matched).' — narrow the filters or use Excel.';
         }
 
-        return TableExport::pdf('Audit Trail', $this->exportColumns(), $this->exportRows($entries), [], $meta, null, 'audit-trail_'.now()->toDateString(), landscape: true);
+        return TableExport::pdf('Audit Trail', $this->exportColumns(), $this->exportRows($entries), [], $meta, null, 'audit-trail_'.now()->timezone('Asia/Manila')->toDateString(), landscape: true);
     }
 
     /**
@@ -84,7 +84,7 @@ class AuditTrailController extends Controller
 
         $entries = $this->filteredQuery($request)->latest('created_at')->get();
 
-        return TableExport::xlsx('Audit Trail', $this->exportColumns(), $this->exportRows($entries), [], null, null, 'audit-trail_'.now()->toDateString());
+        return TableExport::xlsx('Audit Trail', $this->exportColumns(), $this->exportRows($entries), [], null, null, 'audit-trail_'.now()->timezone('Asia/Manila')->toDateString());
     }
 
     /**
@@ -121,7 +121,9 @@ class AuditTrailController extends Controller
 
         foreach ($entries as $entry) {
             $rows[] = [
-                $entry->created_at?->format('M j, Y g:i A') ?? '—', // string, not Carbon -- TableExport would otherwise strip the time
+                // A string, not Carbon -- TableExport would strip the time. Shop
+                // time, not UTC, so it matches what the page shows.
+                $entry->created_at?->timezone('Asia/Manila')->format('M j, Y g:i A') ?? '—',
                 $entry->user === null ? '—' : $entry->user->name,
                 $entry->user !== null ? Str::headline($entry->user->role->value) : '—',
                 Str::headline($entry->action),
