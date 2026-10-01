@@ -159,18 +159,13 @@ function clearFilters(): void {
     visit();
 }
 
-const exportQuery = computed(() => ({
-    ...(selectedUser.value !== ALL ? { user: selectedUser.value } : {}),
-    ...(selectedAction.value !== ALL ? { action: selectedAction.value } : {}),
-    ...(fromDate.value ? { from: fromDate.value } : {}),
-    ...(toDate.value ? { to: toDate.value } : {}),
-}));
-
+// The export follows the filters the table is showing (`props.filters`), not
+// edits still sitting in the form waiting for Apply.
 const exportPdfUrl = computed(() =>
-    auditTrailExportPdf.url({ query: exportQuery.value }),
+    auditTrailExportPdf.url({ query: { ...props.filters } }),
 );
 const exportXlsxUrl = computed(() =>
-    auditTrailExportXlsx.url({ query: exportQuery.value }),
+    auditTrailExportXlsx.url({ query: { ...props.filters } }),
 );
 </script>
 

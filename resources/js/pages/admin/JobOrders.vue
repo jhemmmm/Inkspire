@@ -157,7 +157,6 @@ function clearFilters(): void {
     selectedPaymentStatus.value = ALL;
     fromDate.value = '';
     toDate.value = '';
-    visit();
 }
 
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -169,10 +168,13 @@ watch(searchTerm, () => {
     searchTimer = setTimeout(() => visit(), 300);
 });
 
-watch(selectedStatus, () => visit());
-watch(selectedPaymentStatus, () => visit());
-watch(fromDate, () => visit());
-watch(toDate, () => visit());
+// One watcher for the instant filters, so "Clear filters" resetting all of
+// them at once is a single request. It also drops a pending search debounce,
+// which this visit already carries.
+watch([selectedStatus, selectedPaymentStatus, fromDate, toDate], () => {
+    clearTimeout(searchTimer);
+    visit();
+});
 
 const exportQuery = computed(() => ({
     ...(searchTerm.value.trim() !== '' ? { q: searchTerm.value.trim() } : {}),
