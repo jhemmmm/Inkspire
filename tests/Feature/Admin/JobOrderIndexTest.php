@@ -140,6 +140,25 @@ test('the from and to filters narrow results by created_at', function () {
     expect($after)->not->toBeNull();
 });
 
+test('the from and to filters use the shop\'s Asia/Manila day, not the UTC one', function () {
+    $admin = User::factory()->admin()->create();
+
+    // 23:30 UTC on Sep 9 is 07:30 on Sep 10 at the shop.
+    $earlyMorning = JobOrder::factory()->create();
+    $earlyMorning->forceFill(['created_at' => '2026-09-09 23:30:00'])->save();
+
+    $this->actingAs($admin)
+        ->get(route('admin.job-orders.index', ['from' => '2026-09-10', 'to' => '2026-09-10']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('jobOrders.data', 1)
+            ->where('jobOrders.data.0.id', $earlyMorning->id)
+        );
+
+    $this->actingAs($admin)
+        ->get(route('admin.job-orders.index', ['from' => '2026-09-09', 'to' => '2026-09-09']))
+        ->assertInertia(fn (Assert $page) => $page->has('jobOrders.data', 0));
+});
+
 test('the xlsx export honours the active filters', function () {
     $this->skipUnlessZipAvailable();
 
