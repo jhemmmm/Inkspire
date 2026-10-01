@@ -2,6 +2,7 @@
 import { Form, Head, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
+import AvatarField from '@/components/AvatarField.vue';
 import DeleteUser from '@/components/DeleteUser.vue';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
@@ -42,6 +43,13 @@ const user = computed(() => page.props.auth.user);
             class="space-y-6"
             v-slot="{ errors, processing }"
         >
+            <AvatarField
+                id="profile-avatar"
+                :name="user.name"
+                :avatar-url="user.avatar ?? null"
+                :error="errors.avatar"
+            />
+
             <div class="grid gap-2">
                 <Label for="name">Name</Label>
                 <Input

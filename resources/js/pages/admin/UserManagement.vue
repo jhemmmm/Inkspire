@@ -3,6 +3,7 @@ import { Form, Head, usePage } from '@inertiajs/vue3';
 import { Clock, Lock, Pencil, Plus, UserX } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import UserManagementController from '@/actions/App/Http/Controllers/Admin/UserManagementController';
+import AvatarField from '@/components/AvatarField.vue';
 import InputError from '@/components/InputError.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import PageContainer from '@/components/PageContainer.vue';
@@ -17,6 +18,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,6 +40,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useInitials } from '@/composables/useInitials';
 import { adminNavItems } from '@/config/nav/admin';
 import { roleLabel } from '@/lib/roles';
 import { index as usersIndex } from '@/routes/admin/users';
@@ -48,11 +51,14 @@ interface ManagedUser {
     email: string;
     role: string;
     artist_label: string | null;
+    avatar: string | null;
     is_active: boolean;
     is_locked_out: boolean;
     artist_status: string | null;
     exceeded_break_time: boolean;
 }
+
+const { getInitials } = useInitials();
 
 function artistStatusBadgeVariant(
     artistStatus: string,
@@ -112,6 +118,7 @@ defineProps<{
  */
 const createDialogOpen = ref(false);
 const newUserRole = ref('');
+const newUserAvatarName = ref('');
 
 const page = usePage();
 const currentUserId = computed(() => page.props.auth.user.id);
@@ -160,7 +167,10 @@ defineOptions({
                     <DialogTrigger as-child>
                         <Button
                             data-test="new-user-button"
-                            @click="newUserRole = ''"
+                            @click="
+                                newUserRole = '';
+                                newUserAvatarName = '';
+                            "
                         >
                             <Plus class="size-4" />
                             New User
@@ -182,6 +192,13 @@ defineOptions({
                                 </DialogDescription>
                             </DialogHeader>
 
+                            <AvatarField
+                                id="create-user-avatar"
+                                :name="newUserAvatarName"
+                                :avatar-url="null"
+                                :error="errors.avatar"
+                            />
+
                             <div class="grid gap-2">
                                 <Label for="create-user-name">Name</Label>
                                 <Input
@@ -189,6 +206,11 @@ defineOptions({
                                     name="name"
                                     autocomplete="name"
                                     placeholder="Full name"
+                                    @input="
+                                        newUserAvatarName = (
+                                            $event.target as HTMLInputElement
+                                        ).value
+                                    "
                                 />
                                 <InputError :message="errors.name" />
                             </div>
@@ -301,7 +323,26 @@ defineOptions({
                         :key="user.id"
                         class="border-border/70 dark:border-border border-t"
                     >
-                        <td class="p-4">{{ user.name }}</td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <Avatar
+                                    class="h-8 w-8 overflow-hidden rounded-full"
+                                >
+                                    <AvatarImage
+                                        v-if="user.avatar"
+                                        :src="user.avatar"
+                                        :alt="user.name"
+                                        class="object-cover"
+                                    />
+                                    <AvatarFallback
+                                        class="from-ink-cyan to-primary text-primary-foreground bg-linear-to-br text-xs font-semibold"
+                                    >
+                                        {{ getInitials(user.name) }}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <span>{{ user.name }}</span>
+                            </div>
+                        </td>
                         <td class="p-4">{{ user.email }}</td>
                         <td class="p-4">
                             <div class="flex flex-wrap items-center gap-2">
@@ -468,6 +509,13 @@ defineOptions({
                             recorded in the audit trail.
                         </DialogDescription>
                     </DialogHeader>
+
+                    <AvatarField
+                        id="edit-user-avatar"
+                        :name="editingUser.name"
+                        :avatar-url="editingUser.avatar"
+                        :error="errors.avatar"
+                    />
 
                     <div class="grid gap-2">
                         <Label for="edit-user-name">Name</Label>
