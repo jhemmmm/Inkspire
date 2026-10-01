@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { Filter } from '@lucide/vue';
-import { ref } from 'vue';
+import { FileSpreadsheet, FileText, Filter } from '@lucide/vue';
+import { computed, ref } from 'vue';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
@@ -38,6 +38,10 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { index as auditTrailIndex } from '@/routes/admin/audit-trail';
+import {
+    pdf as auditTrailExportPdf,
+    xlsx as auditTrailExportXlsx,
+} from '@/routes/admin/audit-trail/export';
 
 interface AuditTrailUser {
     id: number;
@@ -154,6 +158,20 @@ function clearFilters(): void {
     toDate.value = '';
     visit();
 }
+
+const exportQuery = computed(() => ({
+    ...(selectedUser.value !== ALL ? { user: selectedUser.value } : {}),
+    ...(selectedAction.value !== ALL ? { action: selectedAction.value } : {}),
+    ...(fromDate.value ? { from: fromDate.value } : {}),
+    ...(toDate.value ? { to: toDate.value } : {}),
+}));
+
+const exportPdfUrl = computed(() =>
+    auditTrailExportPdf.url({ query: exportQuery.value }),
+);
+const exportXlsxUrl = computed(() =>
+    auditTrailExportXlsx.url({ query: exportQuery.value }),
+);
 </script>
 
 <template>
@@ -163,7 +181,28 @@ function clearFilters(): void {
         <PageHeader
             title="Audit Trail"
             description="Every recorded change, append-only. Filter by user, action or date to trace what happened."
-        />
+        >
+            <template #actions>
+                <Button
+                    as="a"
+                    variant="outline"
+                    :href="exportPdfUrl"
+                    data-test="export-audit-trail-pdf-button"
+                >
+                    <FileText class="size-4" />
+                    Export PDF
+                </Button>
+                <Button
+                    as="a"
+                    variant="outline"
+                    :href="exportXlsxUrl"
+                    data-test="export-audit-trail-xlsx-button"
+                >
+                    <FileSpreadsheet class="size-4" />
+                    Export Excel
+                </Button>
+            </template>
+        </PageHeader>
 
         <Card>
             <CardHeader :icon="Filter">

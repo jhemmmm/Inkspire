@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -135,4 +136,115 @@ test('deleting a user does not leak the password hash into the audit trail', fun
     expect($oldValues)
         ->not->toHaveKey('password')
         ->not->toHaveKey('remember_token');
+});
+
+test('the xlsx export honours the active filters', function () {
+    $this->skipUnlessZipAvailable();
+
+    $admin = User::factory()->admin()->create();
+
+    DB::table('audit_trail')->insert([
+        'user_id' => $admin->id,
+        'action' => 'login',
+        'auditable_type' => null,
+        'auditable_id' => null,
+        'ip_address' => '127.0.0.1',
+        'created_at' => now(),
+    ]);
+
+    DB::table('audit_trail')->insert([
+        'user_id' => null,
+        'action' => 'lockout',
+        'auditable_type' => null,
+        'auditable_id' => null,
+        'ip_address' => '127.0.0.1',
+        'created_at' => now(),
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.export.xlsx', ['action' => 'login']));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    // Header + the 1 matching login row -- no Total row for Audit Trail,
+    // and the export's own report_exported self-row doesn't match the
+    // `login` filter so it's excluded.
+    expect($rows)->toHaveCount(2);
+});
+
+test('exporting audit trail to pdf returns a real PDF and audits exactly one row, and viewing the index writes none', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)->get(route('admin.audit-trail.index'));
+    expect(AuditLog::where('action', 'report_exported')->count())->toBe(0);
+
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.export.pdf'));
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'application/pdf');
+
+    $audit = AuditLog::where('action', 'report_exported')->sole();
+    expect($audit->new_values['report'])->toBe('audit-trail');
+    expect($audit->new_values['format'])->toBe('pdf');
+});
+
+test('every other role gets 403 on the audit trail export routes and writes no audit row', function (string $factoryState) {
+    $user = User::factory()->{$factoryState}()->create();
+
+    $this->actingAs($user)->get(route('admin.audit-trail.export.pdf'))->assertForbidden();
+    $this->actingAs($user)->get(route('admin.audit-trail.export.xlsx'))->assertForbidden();
+
+    expect(AuditLog::where('action', 'report_exported')->count())->toBe(0);
+})->with(['frontlineStaff', 'artist', 'cashier', 'productionStaff', 'accountingStaff']);
+
+test('the xlsx export is uncapped past the 25-row page size', function () {
+    $this->skipUnlessZipAvailable();
+
+    $admin = User::factory()->admin()->create();
+
+    for ($i = 0; $i < 30; $i++) {
+        DB::table('audit_trail')->insert([
+            'user_id' => $admin->id,
+            'action' => 'login',
+            'auditable_type' => null,
+            'auditable_id' => null,
+            'ip_address' => '127.0.0.1',
+            'created_at' => now(),
+        ]);
+    }
+
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.export.xlsx', ['action' => 'login']));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    // Header + 30 -- no Total row, the export's own report_exported
+    // self-row excluded by the `login` filter.
+    expect($rows)->toHaveCount(31);
+});
+
+test('exported label cells are display-ready -- headlined role and action, not raw snake_case', function () {
+    $this->skipUnlessZipAvailable();
+
+    $admin = User::factory()->admin()->create();
+
+    DB::table('audit_trail')->insert([
+        'user_id' => $admin->id,
+        'action' => 'failed_login',
+        'auditable_type' => null,
+        'auditable_id' => null,
+        'ip_address' => '127.0.0.1',
+        'created_at' => now(),
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.export.xlsx', ['action' => 'failed_login']));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    expect($rows[1][2])->toBe('Admin');
+    expect($rows[1][3])->toBe('Failed Login');
 });
