@@ -7,11 +7,11 @@ use App\Http\Requests\Reports\FilterReportRequest;
 use App\Services\Reports\ReportBuilder;
 use App\Services\Reports\ReportRegistry;
 use App\Support\AuditLogger;
+use App\Support\TableExport;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use OpenSpout\Common\Entity\Row;
-use OpenSpout\Writer\XLSX\Writer;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -40,34 +40,38 @@ class ReportExportController extends Controller
 
         AuditLogger::recordReportExport($user, $reportKey, 'pdf', $from, $to);
 
-        $data = [
-            'title' => ReportRegistry::definitions()[$reportKey]['title'],
+        $title = ReportRegistry::definitions()[$reportKey]['title'];
+        $filename = "{$reportKey}_{$from->toDateString()}_{$to->toDateString()}";
+
+        if ($reportKey === 'financial-summary') {
+            return Pdf::loadView('reports.financial-summary', [
+                'title' => $title,
+                'from' => $from,
+                'to' => $to,
+                'generatedAt' => now(),
+                'generatedBy' => $user->name,
+                'summary' => $reportBuilder->summary($from, $to),
+            ])
+                ->setOption('isPhpEnabled', true)
+                ->download("{$filename}.pdf");
+        }
+
+        $columns = ReportRegistry::definitions()[$reportKey]['columns'];
+        $built = $this->buildTableRows($reportKey, $reportBuilder->rows($reportKey, $from, $to));
+
+        return TableExport::pdf($title, $columns, $built['rows'], $this->moneyColumnIndexes($reportKey), [
             'from' => $from,
             'to' => $to,
             'generatedAt' => now(),
             'generatedBy' => $user->name,
-        ];
-
-        if ($reportKey === 'financial-summary') {
-            $data['summary'] = $reportBuilder->summary($from, $to);
-        } else {
-            $data['rows'] = $reportBuilder->rows($reportKey, $from, $to)->all();
-        }
-
-        return Pdf::loadView("reports.{$reportKey}", $data)
-            ->setOption('isPhpEnabled', true)
-            ->download("{$reportKey}_{$from->toDateString()}_{$to->toDateString()}.pdf");
+        ], $built['totalRow'], $filename);
     }
 
     /**
      * Export any role-scoped report to a real, streamed .xlsx (RPT-05).
      * Same entitlement check and audit-before-any-output ordering as
-     * exportPdf(). Uses openspout's `openToFile('php://output')` inside
-     * Laravel's own `response()->streamDownload()` -- deliberately not the
-     * writer's browser-direct convenience method, which bypasses Laravel's
-     * response lifecycle and could let bytes stream before the D-02 audit
-     * write lands (T-08-16, RESEARCH.md Pitfall 3). The row set is always
-     * uncapped, even for reports whose on-screen preview caps at 100.
+     * exportPdf(). The row set is always uncapped, even for reports whose
+     * on-screen preview caps at 100.
      */
     public function exportXlsx(FilterReportRequest $request, ReportBuilder $reportBuilder, string $reportKey): StreamedResponse
     {
@@ -85,41 +89,35 @@ class ReportExportController extends Controller
 
         AuditLogger::recordReportExport($user, $reportKey, 'xlsx', $from, $to);
 
-        $sheetRows = $reportKey === 'financial-summary'
-            ? $this->financialSummaryXlsxRows($reportBuilder->summary($from, $to))
-            : $this->tabularXlsxRows($reportKey, $reportBuilder->rows($reportKey, $from, $to));
+        $title = ReportRegistry::definitions()[$reportKey]['title'];
+        $filename = "{$reportKey}_{$from->toDateString()}_{$to->toDateString()}";
 
-        $filename = "{$reportKey}_{$from->toDateString()}_{$to->toDateString()}.xlsx";
+        if ($reportKey === 'financial-summary') {
+            return TableExport::xlsx($title, ['Label', 'Amount'], $this->financialSummaryRows($reportBuilder->summary($from, $to)), [1], null, null, $filename);
+        }
 
-        return response()->streamDownload(function () use ($sheetRows): void {
-            $writer = new Writer;
-            $writer->openToFile('php://output');
+        $columns = ReportRegistry::definitions()[$reportKey]['columns'];
+        $built = $this->buildTableRows($reportKey, $reportBuilder->rows($reportKey, $from, $to));
 
-            foreach ($sheetRows as $row) {
-                $writer->addRow(Row::fromValues($row));
-            }
-
-            $writer->close();
-        }, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ]);
+        return TableExport::xlsx($title, $columns, $built['rows'], $this->moneyColumnIndexes($reportKey), null, $built['totalRow'], $filename);
     }
 
     /**
-     * The two-column Label/Amount sheet for `financial-summary` -- figure
+     * The two-column Label/Amount body for `financial-summary` -- figure
      * block rows in the same top-to-bottom order as
      * `resources/views/reports/financial-summary.blade.php`, money cells
      * as raw numeric values (no currency symbol, no thousands separator).
-     * The write-off disclosure is its own labelled row, only present when
-     * write-offs occurred in range (D-09: disclosed, never subtracted).
+     * The `['Label', 'Amount']` header is no longer part of this body --
+     * `TableExport::xlsx()` supplies it via `$headings`. The write-off
+     * disclosure is its own labelled row, only present when write-offs
+     * occurred in range (D-09: disclosed, never subtracted).
      *
      * @param  array{job_sales: float, cancellation_fees: float, revenue_total: float, expenses_total: float, result: float, write_off_total: float}  $summary
-     * @return list<list<null|bool|float|int|string>>
+     * @return list<list<float|string>>
      */
-    private function financialSummaryXlsxRows(array $summary): array
+    private function financialSummaryRows(array $summary): array
     {
         $rows = [
-            ['Label', 'Amount'],
             ['Job Sales', $summary['job_sales']],
             ['Cancellation Fees', $summary['cancellation_fees']],
             ['Total Revenue', $summary['revenue_total']],
@@ -135,33 +133,29 @@ class ReportExportController extends Controller
     }
 
     /**
-     * Row 1 = the registry's `columns` array verbatim. Rows 2..n = the full
-     * uncapped row set from `ReportBuilder::rows()`, positionally reordered
-     * to match the column order, with money cells as raw numbers and date
-     * cells as ISO `YYYY-MM-DD` strings. Final row = a 'Total' label plus
-     * the range total in each money column, other cells empty.
+     * Row set for a tabular report, positionally reordered to match that
+     * report's `columns` order via exportRowValues(), plus the range Total
+     * row both exportPdf() and exportXlsx() now render identically. A
+     * voided row stays visible in the table but must never reach the
+     * Total, mirroring `Expense::active()` -- the same exclusion the
+     * on-screen ledger total and the Financial Summary's `expenses_total`
+     * already apply.
      *
      * @param  Collection<int, array<string, mixed>>  $rows
-     * @return list<list<null|bool|float|int|string>>
+     * @return array{rows: list<list<mixed>>, totalRow: list<mixed>}
      */
-    private function tabularXlsxRows(string $reportKey, Collection $rows): array
+    private function buildTableRows(string $reportKey, Collection $rows): array
     {
         $columns = ReportRegistry::definitions()[$reportKey]['columns'];
-        $moneyIndexes = $this->xlsxMoneyColumnIndexes($reportKey);
+        $moneyIndexes = $this->moneyColumnIndexes($reportKey);
 
-        $sheetRows = [$columns];
+        $tableRows = [];
         $totals = array_fill_keys($moneyIndexes, 0.0);
 
         foreach ($rows as $row) {
-            $values = $this->xlsxRowValues($reportKey, $row);
-            $sheetRows[] = $values;
+            $values = $this->exportRowValues($reportKey, $row);
+            $tableRows[] = $values;
 
-            /**
-             * A voided row stays visible in the sheet but must never reach the
-             * Total, mirroring `Expense::active()` -- the same exclusion the
-             * on-screen ledger total and the Financial Summary's
-             * `expenses_total` already apply.
-             */
             if (($row['status'] ?? null) === 'Voided') {
                 continue;
             }
@@ -171,16 +165,16 @@ class ReportExportController extends Controller
             }
         }
 
-        $totalRow = array_fill(0, count($columns), null);
-        $totalRow[0] = 'Total';
+        $totalRow = array_map(
+            fn (int $index): mixed => match (true) {
+                $index === 0 => 'Total',
+                in_array($index, $moneyIndexes, true) => $totals[$index],
+                default => null,
+            },
+            array_keys($columns)
+        );
 
-        foreach ($moneyIndexes as $index) {
-            $totalRow[$index] = $totals[$index];
-        }
-
-        $sheetRows[] = $totalRow;
-
-        return $sheetRows;
+        return ['rows' => $tableRows, 'totalRow' => $totalRow];
     }
 
     /**
@@ -189,7 +183,7 @@ class ReportExportController extends Controller
      *
      * @return list<int>
      */
-    private function xlsxMoneyColumnIndexes(string $reportKey): array
+    private function moneyColumnIndexes(string $reportKey): array
     {
         return match ($reportKey) {
             'sales' => [5],
@@ -200,57 +194,54 @@ class ReportExportController extends Controller
     }
 
     /**
-     * Reorders one `ReportBuilder::rows()` row into the positional order
-     * of that report's `columns` array, converting any remaining Carbon
-     * instances to ISO date strings (production-status's `entered_production`
-     * / `due` are the only fields ReportBuilder leaves as Carbon, since the
-     * on-screen Inertia props format them client-side).
+     * Reorders one `ReportBuilder::rows()` row into the positional order of
+     * that report's `columns` array, resolving every label PDF and Excel
+     * must show IDENTICALLY -- enum values via `Str::headline()`, booleans
+     * to their display word, dates via `Carbon::parse()`. `TableExport`
+     * owns the remaining per-format formatting (money, CarbonInterface).
+     * `entered_production`/`due` stay the `CarbonInterface`/`null`
+     * instances `ReportBuilder` already returns for that reason.
      *
      * @param  array<string, mixed>  $row
-     * @return list<null|bool|float|int|string>
+     * @return list<mixed>
      */
-    private function xlsxRowValues(string $reportKey, array $row): array
+    private function exportRowValues(string $reportKey, array $row): array
     {
         return match ($reportKey) {
             'sales' => [
-                $row['date'],
+                Carbon::parse($row['date']),
                 $row['job_order'],
                 $row['customer'],
-                $row['type'],
-                $row['method'],
-                $row['amount'],
+                Str::headline($row['type']),
+                Str::headline($row['method']),
+                (float) $row['amount'],
             ],
             'cancellations' => [
-                $row['date'],
+                Carbon::parse($row['date']),
                 $row['job_order'],
                 $row['customer'],
-                $row['job_order_total'],
-                $row['cancellation_fee'],
-                $row['payment_status'],
+                (float) $row['job_order_total'],
+                (float) $row['cancellation_fee'],
+                Str::headline($row['payment_status']),
             ],
             'production-status' => [
                 $row['job_order'],
                 $row['customer'],
                 $row['product'],
-                $row['stage'],
-                $row['urgency'],
-                $this->xlsxDate($row['entered_production']),
-                $this->xlsxDate($row['due']),
+                Str::headline($row['stage']),
+                $row['urgency'] ? 'Rush' : 'Normal',
+                $row['entered_production'],
+                $row['due'],
             ],
             'expenses' => [
-                $row['date'],
+                Carbon::parse($row['date']),
                 $row['category'],
                 $row['description'],
-                $row['amount'],
+                (float) $row['amount'],
                 $row['recorded_by'],
-                $row['status'],
+                $row['status'] === 'Voided' ? 'Voided' : 'Active',
             ],
             default => [],
         };
-    }
-
-    private function xlsxDate(?CarbonInterface $value): ?string
-    {
-        return $value?->toDateString();
     }
 }
