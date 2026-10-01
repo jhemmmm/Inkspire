@@ -51,6 +51,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { newVisit } from '@/routes/frontline-staff';
 import { queueNumberLabel } from '@/lib/utils';
+import { uuid } from '@/lib/uuid';
 import { jobOrderTypeLabel, money, rowLineAmount } from '@/lib/jobOrders';
 import { show as jobOrderShow } from '@/routes/frontline-staff/job-orders';
 
@@ -294,7 +295,7 @@ function emptyJobOrderRow(): JobOrderRow {
         deadline: '',
         is_rush: false,
         file: null,
-        _key: crypto.randomUUID(),
+        _key: uuid(),
     };
 }
 

@@ -1,0 +1,112 @@
+name: release
+
+# Builds the Windows-ready app bundle (production vendor/ + the Vite build) that Inkspire Control Panel
+# installs and updates from. Publish a release by pushing a tag:
+#
+#     git tag v1.2.3 && git push origin v1.2.3
+#
+# The zip and its .sha256 appear on the GitHub release page. A manual run uploads them as workflow artifacts.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
+          extensions: mbstring, intl, zip, gd, curl, sqlite3, pdo_sqlite, fileinfo, sodium
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Resolve the tag
+        id: ver
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then tag="$GITHUB_REF_NAME"; else tag="v0.0.0-${GITHUB_SHA::7}"; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Building $tag"
+
+      - name: Install PHP dependencies (production only)
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+
+      - name: Build the frontend
+        run: |
+          # artisan needs an .env to boot (wayfinder:generate runs during the Vite build). APP_NAME is baked into the page titles.
+          cp .env.example .env
+          sed -i 's/^APP_NAME=.*/APP_NAME=Inkspire/' .env
+          php artisan key:generate --force
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          npm run build
+          test -f public/build/manifest.json
+
+      - name: Assemble the bundle
+        run: |
+          tag="${{ steps.ver.outputs.tag }}"
+          mkdir -p dist/inkspire
+          rsync -a \
+            --exclude='/.git' --exclude='/.github' --exclude='/.claude' --exclude='/.planning' --exclude='/.env' \
+            --exclude='/node_modules' --exclude='/tests' --exclude='/demo' --exclude='/dist' --exclude='/storage' \
+            --exclude='/.mcp.json' --exclude='/.npmrc' --exclude='/.editorconfig' --exclude='/.gitignore' --exclude='/.gitattributes' \
+            --exclude='/AGENTS.md' --exclude='/CLAUDE.md' --exclude='/README.md' --exclude='/boost.json' --exclude='/components.json' \
+            --exclude='/phpstan.neon' --exclude='/phpunit.xml' --exclude='/pint.json' --exclude='/pnpm-workspace.yaml' \
+            --exclude='/tsconfig.json' --exclude='/vite.config.ts' --exclude='/package.json' --exclude='/package-lock.json' \
+            --exclude='/tools' --exclude='/bootstrap/cache/*.php' \
+            ./ dist/inkspire/
+          printf '{"tag":"%s","commit":"%s","built":"%s"}\n' "$tag" "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > dist/inkspire/bundle.json
+          cd dist
+          zip -r -q -X "inkspire-app-${tag}.zip" inkspire
+          sha256sum "inkspire-app-${tag}.zip" > "inkspire-app-${tag}.zip.sha256"
+          ls -lh inkspire-app-*
+          cat "inkspire-app-${tag}.zip.sha256"
+
+      - name: Smoke test the bundle
+        run: |
+          tag="${{ steps.ver.outputs.tag }}"
+          rm -rf /tmp/smoke && mkdir /tmp/smoke
+          unzip -q "dist/inkspire-app-${tag}.zip" -d /tmp/smoke
+          cd /tmp/smoke/inkspire
+          test -f artisan && test -f vendor/autoload.php && test -f public/build/manifest.json
+          cp .env.example .env
+          php artisan key:generate --force
+          mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          php artisan about --no-ansi
+          php artisan optimize --no-ansi
+
+      - name: Publish release assets
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Inkspire ${{ steps.ver.outputs.tag }}
+          files: |
+            dist/inkspire-app-${{ steps.ver.outputs.tag }}.zip
+            dist/inkspire-app-${{ steps.ver.outputs.tag }}.zip.sha256
+
+      - name: Upload workflow artifact
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: inkspire-app-${{ steps.ver.outputs.tag }}
+          path: |
+            dist/inkspire-app-*.zip
+            dist/inkspire-app-*.zip.sha256
+          if-no-files-found: error
