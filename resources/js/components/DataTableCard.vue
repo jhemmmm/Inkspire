@@ -19,11 +19,15 @@ const props = defineProps<{
 
         The column-heading row takes the accent tint so it reads as a
         header band, not as one more data row.
+
+        Also the query container for `EmptyState` inside `TableEmpty` -- see
+        `EmptyState.vue` -- so a wide table's empty message sizes to the
+        visible card, not the full scroll width.
     -->
     <div
         :class="
             cn(
-                'bg-card border-border [&_th]:text-accent-foreground/80 [&_thead]:bg-accent/70 dark:[&_thead]:bg-accent/40 overflow-hidden rounded-xl border shadow-sm',
+                'bg-card border-border [&_th]:text-accent-foreground/80 [&_thead]:bg-accent/70 dark:[&_thead]:bg-accent/40 @container overflow-hidden rounded-xl border shadow-sm',
                 props.class,
             )
         "

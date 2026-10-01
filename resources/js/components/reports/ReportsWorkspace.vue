@@ -335,7 +335,7 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
 </script>
 
 <template>
-    <div class="grid grid-cols-1 gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+    <div class="grid grid-cols-1 gap-6 @3xl:grid-cols-[300px_minmax(0,1fr)]">
         <div class="flex flex-col gap-4">
             <SectionHeading
                 title="Available Reports"

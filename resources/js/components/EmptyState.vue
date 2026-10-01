@@ -16,9 +16,20 @@ const props = defineProps<{
         A named `actions` slot keeps the empty state actionable rather than
         a dead end -- an empty queue should still offer "New Visit".
     -->
+    <!--
+        `sticky left-0` needs a scrolling ancestor (the `overflow-x-auto`
+        wrapper `DataTableCard` provides when nested in a table) and is
+        otherwise inert; `w-[calc(100cqw-2rem)]` sizes to the nearest
+        `@container` minus the table cell's `2rem` horizontal padding
+        (confirmed in `TableCell.vue`/`TableEmpty.vue`); `max-w-full` caps
+        it at the parent for bare-panel (non-table) usages, per D6.
+    -->
     <div
         :class="
-            cn('flex flex-col items-center gap-2 py-6 text-center', props.class)
+            cn(
+                'sticky left-0 flex w-[calc(100cqw-2rem)] max-w-full flex-col items-center gap-2 py-6 text-center',
+                props.class,
+            )
         "
     >
         <span

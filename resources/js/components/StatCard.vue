@@ -117,7 +117,7 @@ const valueSizeClass = computed((): string => {
                     on the same vertical rails as the numbers change.
                 -->
                 <span
-                    class="leading-none font-bold tabular-nums"
+                    class="leading-none font-bold whitespace-nowrap tabular-nums"
                     :class="[
                         valueSizeClass,
                         tone === 'attention'

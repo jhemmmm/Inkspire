@@ -218,7 +218,7 @@ function useComputed(): void {
             <InputError :message="errors.print_size" />
         </div>
 
-        <div v-if="isSqFt" class="grid gap-4 sm:grid-cols-2">
+        <div v-if="isSqFt" class="grid gap-4 @2xl:grid-cols-2">
             <div class="grid gap-2">
                 <Label :for="`${idPrefix}-width-ft`">Width (ft)</Label>
                 <Input

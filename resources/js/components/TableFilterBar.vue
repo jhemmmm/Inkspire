@@ -30,10 +30,10 @@ const searchInputId = useId();
     <Card>
         <CardContent class="flex flex-col gap-4">
             <div
-                class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end"
+                class="flex flex-col gap-3 @lg:flex-row @lg:flex-wrap @lg:items-end"
             >
                 <div
-                    class="flex w-full min-w-0 flex-col gap-2 sm:max-w-sm sm:flex-1"
+                    class="flex w-full min-w-0 flex-col gap-2 @lg:max-w-sm @lg:flex-1"
                 >
                     <Label :for="searchInputId" class="sr-only">
                         {{ searchLabel }}
@@ -59,7 +59,7 @@ const searchInputId = useId();
                     v-if="active"
                     type="button"
                     variant="secondary"
-                    class="sm:ml-auto"
+                    class="@lg:ml-auto"
                     data-test="table-filter-clear-button"
                     @click="emit('clear')"
                 >

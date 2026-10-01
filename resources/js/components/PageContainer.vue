@@ -21,11 +21,15 @@ const props = defineProps<{
         Each page visit fades the content up into place. tw-animate's fill
         mode is `none`, so no transform lingers after 300ms to trap a
         sticky footer or a fixed child.
+
+        `@container` makes this the query container every page grid below
+        sizes itself against -- real content width, not the viewport the
+        sidebar is also competing for.
     -->
     <div
         :class="
             cn(
-                'animate-in fade-in slide-in-from-bottom-2 mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-6 p-4 duration-300 ease-out motion-reduce:animate-none sm:p-6 lg:p-8',
+                'animate-in fade-in slide-in-from-bottom-2 @container mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-6 p-4 duration-300 ease-out motion-reduce:animate-none sm:p-6 lg:p-8',
                 props.class,
             )
         "
