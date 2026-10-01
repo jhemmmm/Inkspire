@@ -139,10 +139,12 @@ class ReportExportController extends Controller
      * voided row stays visible in the table but must never reach the
      * Total, mirroring `Expense::active()` -- the same exclusion the
      * on-screen ledger total and the Financial Summary's `expenses_total`
-     * already apply.
+     * already apply. A report with no money column (production-status) has
+     * nothing to total, so it gets no Total row at all rather than a bare
+     * label.
      *
      * @param  Collection<int, array<string, mixed>>  $rows
-     * @return array{rows: list<list<mixed>>, totalRow: list<mixed>}
+     * @return array{rows: list<list<mixed>>, totalRow: list<mixed>|null}
      */
     private function buildTableRows(string $reportKey, Collection $rows): array
     {
@@ -174,7 +176,7 @@ class ReportExportController extends Controller
             array_keys($columns)
         );
 
-        return ['rows' => $tableRows, 'totalRow' => $totalRow];
+        return ['rows' => $tableRows, 'totalRow' => $moneyIndexes === [] ? null : $totalRow];
     }
 
     /**

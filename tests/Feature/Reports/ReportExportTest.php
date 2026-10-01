@@ -277,6 +277,8 @@ test('exporting production-status to xlsx resolves urgency and stage to the same
         ->toContain('Normal');
     expect($rows[1][3])->toBe('For Production');
     expect($rows[2][3])->toBe('For Production');
+    // No money column, so no Total row: header + the two job orders only.
+    expect($rows)->toHaveCount(3);
 });
 
 test('exporting expenses to xlsx resolves an active expense\'s status to "Active" (export parity)', function () {
