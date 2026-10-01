@@ -27,11 +27,12 @@ final class TableExport
      * @param  list<string>  $headings  Column labels, in display order.
      * @param  list<list<CarbonInterface|null|float|int|string>>  $rows  Display-ready cells, except money-column and CarbonInterface cells.
      * @param  list<int>  $moneyColumns  0-based indexes into $headings/every row that are money.
-     * @param  array{from?: CarbonInterface, to?: CarbonInterface, generatedAt?: CarbonInterface, generatedBy?: string}|null  $meta  Merged into reports.layout's view data.
+     * @param  array{from?: CarbonInterface, to?: CarbonInterface, generatedAt?: CarbonInterface, generatedBy?: string, note?: string}|null  $meta  Merged into reports.layout's view data.
      * @param  list<CarbonInterface|null|float|int|string>|null  $totalRow  One cell per heading, or null when the report has no total row.
      * @param  string  $filename  Base name with no extension -- `.pdf` is appended.
+     * @param  bool  $landscape  Render the page in landscape instead of dompdf's a4/portrait default. No existing caller passes this, so every current report export is unaffected.
      */
-    public static function pdf(string $title, array $headings, array $rows, array $moneyColumns, ?array $meta, ?array $totalRow, string $filename): Response
+    public static function pdf(string $title, array $headings, array $rows, array $moneyColumns, ?array $meta, ?array $totalRow, string $filename, bool $landscape = false): Response
     {
         $data = array_merge([
             'title' => $title,
@@ -41,7 +42,13 @@ final class TableExport
             'totalRow' => $totalRow,
         ], $meta ?? []);
 
-        return Pdf::loadView('reports.table', $data)
+        $pdf = Pdf::loadView('reports.table', $data);
+
+        if ($landscape) {
+            $pdf->setPaper('a4', 'landscape');
+        }
+
+        return $pdf
             ->setOption('isPhpEnabled', true)
             ->download("{$filename}.pdf");
     }
@@ -54,7 +61,7 @@ final class TableExport
      * @param  list<string>  $headings  Column labels, in display order.
      * @param  list<list<CarbonInterface|null|float|int|string>>  $rows  Display-ready cells, except money-column and CarbonInterface cells.
      * @param  list<int>  $moneyColumns  0-based indexes into $headings/every row that are money.
-     * @param  array{from?: CarbonInterface, to?: CarbonInterface, generatedAt?: CarbonInterface, generatedBy?: string}|null  $meta  Unused -- signature parity with pdf() only.
+     * @param  array{from?: CarbonInterface, to?: CarbonInterface, generatedAt?: CarbonInterface, generatedBy?: string, note?: string}|null  $meta  Unused -- signature parity with pdf() only.
      * @param  list<CarbonInterface|null|float|int|string>|null  $totalRow  One cell per heading, or null when the report has no total row.
      * @param  string  $filename  Base name with no extension -- `.xlsx` is appended.
      */

@@ -10,7 +10,6 @@ use App\Models\JobOrder;
 use App\Models\ProductionLog;
 use App\Models\Transaction;
 use App\Models\User;
-use OpenSpout\Reader\XLSX\Reader;
 
 /**
  * Matches Inertia\Middleware::version()'s default resolver exactly, so a
@@ -25,35 +24,6 @@ function reportExportHeaders(): array
         'X-Inertia' => 'true',
         'X-Inertia-Version' => file_exists($manifest) ? hash_file('xxh128', $manifest) : null,
     ];
-}
-
-/**
- * Reads a streamed xlsx TestResponse's content back into row arrays via
- * openspout's own reader -- the most direct way to assert cell contents
- * without hand-parsing OOXML. Only called from tests already guarded by
- * skipUnlessZipAvailable().
- *
- * @return list<list<mixed>>
- */
-function readXlsxRows(string $content): array
-{
-    $path = tempnam(sys_get_temp_dir(), 'xlsx-test-').'.xlsx';
-    file_put_contents($path, $content);
-
-    $reader = new Reader;
-    $reader->open($path);
-
-    $rows = [];
-    foreach ($reader->getSheetIterator() as $sheet) {
-        foreach ($sheet->getRowIterator() as $row) {
-            $rows[] = $row->toArray();
-        }
-    }
-
-    $reader->close();
-    unlink($path);
-
-    return $rows;
 }
 
 test('exporting sales to PDF for an entitled cashier returns a real PDF and audits exactly one row (D-02)', function () {

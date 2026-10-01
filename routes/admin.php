@@ -24,12 +24,16 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('job-orders', [JobOrderController::class, 'index'])->name('job-orders.index');
+    Route::get('job-orders/export/pdf', [JobOrderController::class, 'exportPdf'])->name('job-orders.export.pdf');
+    Route::get('job-orders/export/xlsx', [JobOrderController::class, 'exportXlsx'])->name('job-orders.export.xlsx');
     Route::get('users', [UserManagementController::class, 'index'])->name('users.index');
     Route::post('users', [UserManagementController::class, 'store'])->name('users.store');
     Route::patch('users/{user}', [UserManagementController::class, 'update'])->name('users.update');
     Route::patch('users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
     Route::patch('users/{user}/reactivate', [UserManagementController::class, 'reactivate'])->name('users.reactivate');
     Route::get('audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');
+    Route::get('audit-trail/export/pdf', [AuditTrailController::class, 'exportPdf'])->name('audit-trail.export.pdf');
+    Route::get('audit-trail/export/xlsx', [AuditTrailController::class, 'exportXlsx'])->name('audit-trail.export.xlsx');
     Route::get('system-configuration', [SystemConfigurationController::class, 'edit'])->name('system-configuration.edit');
     Route::patch('system-configuration/{configuration}', [SystemConfigurationController::class, 'update'])->name('system-configuration.update');
     Route::get('specifications', [SpecificationOptionController::class, 'index'])->name('specifications.index');

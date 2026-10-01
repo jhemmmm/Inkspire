@@ -83,6 +83,7 @@
     @isset($generatedAt, $generatedBy)
         <div class="meta-line">Generated {{ $generatedAt->format('M j, Y g:i A') }} by {{ $generatedBy }}</div>
     @endisset
+    @isset($note)<div class="meta-line">{{ $note }}</div>@endisset
     <hr class="header-rule">
 
     @yield('content')

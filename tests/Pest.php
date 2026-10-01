@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use OpenSpout\Reader\XLSX\Reader;
 use Tests\TestCase;
 
 /*
@@ -47,4 +48,33 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Reads a streamed xlsx TestResponse's content back into row arrays via
+ * openspout's own reader -- the most direct way to assert cell contents
+ * without hand-parsing OOXML. Only called from tests already guarded by
+ * skipUnlessZipAvailable().
+ *
+ * @return list<list<mixed>>
+ */
+function readXlsxRows(string $content): array
+{
+    $path = tempnam(sys_get_temp_dir(), 'xlsx-test-').'.xlsx';
+    file_put_contents($path, $content);
+
+    $reader = new Reader;
+    $reader->open($path);
+
+    $rows = [];
+    foreach ($reader->getSheetIterator() as $sheet) {
+        foreach ($sheet->getRowIterator() as $row) {
+            $rows[] = $row->toArray();
+        }
+    }
+
+    $reader->close();
+    unlink($path);
+
+    return $rows;
 }
