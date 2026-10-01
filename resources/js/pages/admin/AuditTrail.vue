@@ -6,6 +6,9 @@ import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
+import SearchableSelect, {
+    type SearchableOption,
+} from '@/components/SearchableSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { adminNavItems } from '@/config/nav/admin';
@@ -104,6 +107,14 @@ const selectedUser = ref(props.filters.user ?? ALL);
 const selectedAction = ref(props.filters.action ?? ALL);
 const fromDate = ref(props.filters.from ?? '');
 const toDate = ref(props.filters.to ?? '');
+
+const userOptions = computed<SearchableOption[]>(() => [
+    { value: ALL, label: 'All users' },
+    ...props.users.map((user) => ({
+        value: String(user.id),
+        label: user.name,
+    })),
+]);
 
 function actionLabel(action: string): string {
     return action
@@ -210,24 +221,12 @@ const exportXlsxUrl = computed(() =>
                 >
                     <div class="flex min-w-0 flex-col gap-2">
                         <Label for="audit-filter-user">User</Label>
-                        <Select v-model="selectedUser">
-                            <SelectTrigger
-                                id="audit-filter-user"
-                                class="w-full"
-                            >
-                                <SelectValue placeholder="All users" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem :value="ALL">All users</SelectItem>
-                                <SelectItem
-                                    v-for="user in users"
-                                    :key="user.id"
-                                    :value="String(user.id)"
-                                >
-                                    {{ user.name }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                            id="audit-filter-user"
+                            v-model="selectedUser"
+                            :options="userOptions"
+                            placeholder="All users"
+                        />
                     </div>
 
                     <div class="flex min-w-0 flex-col gap-2">

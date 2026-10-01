@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
 import { Check, Pencil, Plus, Ruler, Trash2, X } from '@lucide/vue';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import type { ComputedRef } from 'vue';
 import SpecificationOptionController from '@/actions/App/Http/Controllers/Admin/SpecificationOptionController';
+import EmptyState from '@/components/EmptyState.vue';
 import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
+import TableFilterBar from '@/components/TableFilterBar.vue';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -22,6 +25,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import {
     Table,
@@ -32,6 +42,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
 import { index as specificationsIndex } from '@/routes/admin/specifications';
 
@@ -77,6 +88,71 @@ function categoryIcon(category: string): typeof Ruler {
 
 function optionsFor(category: string): SpecificationOption[] {
     return props.options[category] ?? [];
+}
+
+const ALL = 'all';
+
+const searchTerm = ref('');
+const statusFilter = ref(ALL);
+
+const statusFilterOptions = [
+    { value: ALL, label: 'All statuses' },
+    { value: 'active', label: 'Active' },
+    { value: 'retired', label: 'Retired' },
+];
+
+/**
+ * One useTableFilter instance per category, all sharing the same
+ * `searchTerm` ref (one search box, D3's "share one search box between two
+ * lists" clause) and the same status predicate. Built once at setup time,
+ * mirroring this file's existing per-category `createForms` object.
+ */
+const filteredByCategory: Record<
+    string,
+    ComputedRef<SpecificationOption[]>
+> = Object.fromEntries(
+    props.categories.map((category) => [
+        category.value,
+        useTableFilter(
+            () => optionsFor(category.value),
+            (option) => [option.label],
+            {
+                searchTerm,
+                filters: [
+                    (option) =>
+                        statusFilter.value === ALL ||
+                        option.is_active === (statusFilter.value === 'active'),
+                ],
+            },
+        ).filtered,
+    ]),
+);
+
+function filteredOptionsFor(category: string): SpecificationOption[] {
+    return filteredByCategory[category]?.value ?? [];
+}
+
+const totalOptionsCount = computed(() =>
+    props.categories.reduce(
+        (sum, category) => sum + optionsFor(category.value).length,
+        0,
+    ),
+);
+
+const shownOptionsCount = computed(() =>
+    props.categories.reduce(
+        (sum, category) => sum + filteredOptionsFor(category.value).length,
+        0,
+    ),
+);
+
+const filtersActive = computed(
+    () => searchTerm.value.trim() !== '' || statusFilter.value !== ALL,
+);
+
+function clearFilters(): void {
+    searchTerm.value = '';
+    statusFilter.value = ALL;
 }
 
 /**
@@ -178,9 +254,48 @@ function deleteOption(option: SpecificationOption): void {
             description="The lists Frontline Staff pick from when creating a job order. Retiring an option hides it from new job orders without touching the ones already printed at that spec."
         />
 
+        <TableFilterBar
+            v-model:search="searchTerm"
+            search-label="Search specification options"
+            search-placeholder="Search by option name"
+            :shown="shownOptionsCount"
+            :total="totalOptionsCount"
+            :active="filtersActive"
+            @clear="clearFilters"
+        >
+            <div class="flex min-w-0 flex-col gap-2 sm:w-48">
+                <Label for="specification-status-filter">Status</Label>
+                <Select v-model="statusFilter">
+                    <SelectTrigger
+                        id="specification-status-filter"
+                        class="w-full"
+                    >
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in statusFilterOptions"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        </TableFilterBar>
+
         <Card v-for="category in categories" :key="category.value">
             <CardHeader :icon="categoryIcon(category.value)">
-                <CardTitle>{{ category.label }}</CardTitle>
+                <CardTitle>
+                    {{ category.label }}
+                    <span
+                        class="text-muted-foreground text-sm font-normal tabular-nums"
+                    >
+                        ({{ filteredOptionsFor(category.value).length }} of
+                        {{ optionsFor(category.value).length }})
+                    </span>
+                </CardTitle>
             </CardHeader>
             <CardContent class="flex flex-col gap-6 p-0">
                 <Table>
@@ -209,8 +324,30 @@ function deleteOption(option: SpecificationOption): void {
                                 </p>
                             </div>
                         </TableEmpty>
+                        <TableEmpty
+                            v-else-if="
+                                filteredOptionsFor(category.value).length === 0
+                            "
+                            :colspan="category.value === 'print_size' ? 4 : 3"
+                        >
+                            <EmptyState
+                                title="No matches"
+                                :description="`No ${category.label.toLowerCase()} match the current search or status filter.`"
+                            >
+                                <template #actions>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        data-test="clear-specification-filters-button"
+                                        @click="clearFilters"
+                                    >
+                                        Clear filters
+                                    </Button>
+                                </template>
+                            </EmptyState>
+                        </TableEmpty>
                         <TableRow
-                            v-for="option in optionsFor(category.value)"
+                            v-for="option in filteredOptionsFor(category.value)"
                             v-else
                             :key="option.id"
                             :data-test="`specification-${option.id}-row`"

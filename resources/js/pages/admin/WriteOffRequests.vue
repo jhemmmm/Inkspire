@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, Head } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import WriteOffApprovalController from '@/actions/App/Http/Controllers/Admin/WriteOffApprovalController';
 import {
     AlertDialog,
@@ -15,7 +16,12 @@ import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
+import SearchableSelect, {
+    type SearchableOption,
+} from '@/components/SearchableSelect.vue';
+import TableFilterBar from '@/components/TableFilterBar.vue';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
     Table,
     TableBody,
@@ -25,6 +31,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
 import { index as writeOffRequestsIndex } from '@/routes/admin/write-off-requests';
 
@@ -43,7 +50,7 @@ interface WriteOffRequest {
     };
 }
 
-defineProps<{
+const props = defineProps<{
     writeOffRequests: WriteOffRequest[];
 }>();
 
@@ -65,6 +72,52 @@ function money(value: number): string {
         maximumFractionDigits: 2,
     })}`;
 }
+
+const ALL = 'all';
+
+const requesterOptions = computed<SearchableOption[]>(() => {
+    const names = Array.from(
+        new Set(
+            props.writeOffRequests
+                .map((request) => request.write_off_requested_by.name)
+                .filter((name): name is string => name !== null),
+        ),
+    ).sort((a, b) => a.localeCompare(b));
+
+    return [
+        { value: ALL, label: 'All requesters' },
+        ...names.map((name) => ({ value: name, label: name })),
+    ];
+});
+
+const requesterFilter = ref(ALL);
+
+const { searchTerm, filtered: filteredWriteOffRequests } = useTableFilter(
+    () => props.writeOffRequests,
+    (request) => [
+        request.job_order.number,
+        request.job_order.queue_entry.customer?.name,
+        request.job_order.description,
+        request.write_off_reason,
+        request.write_off_requested_by.name,
+    ],
+    {
+        filters: [
+            (request) =>
+                requesterFilter.value === ALL ||
+                request.write_off_requested_by.name === requesterFilter.value,
+        ],
+    },
+);
+
+const filtersActive = computed(
+    () => searchTerm.value.trim() !== '' || requesterFilter.value !== ALL,
+);
+
+function clearFilters(): void {
+    searchTerm.value = '';
+    requesterFilter.value = ALL;
+}
 </script>
 
 <template>
@@ -75,6 +128,27 @@ function money(value: number): string {
             title="Write-Off Requests"
             description="Receivables staff consider uncollectable. Approving one writes off the balance for good."
         />
+
+        <TableFilterBar
+            v-if="writeOffRequests.length > 0"
+            v-model:search="searchTerm"
+            search-label="Search write-off requests"
+            search-placeholder="Job order, customer, reason or requester"
+            :shown="filteredWriteOffRequests.length"
+            :total="writeOffRequests.length"
+            :active="filtersActive"
+            @clear="clearFilters"
+        >
+            <div class="flex min-w-0 flex-col gap-2 sm:w-56">
+                <Label for="write-off-requester-filter">Requested by</Label>
+                <SearchableSelect
+                    id="write-off-requester-filter"
+                    v-model="requesterFilter"
+                    :options="requesterOptions"
+                    placeholder="All requesters"
+                />
+            </div>
+        </TableFilterBar>
 
         <DataTableCard>
             <Table>
@@ -100,8 +174,28 @@ function money(value: number): string {
                             description="Requests appear here when Accounting Staff asks to write off a balance they can't collect."
                         />
                     </TableEmpty>
+                    <TableEmpty
+                        v-else-if="filteredWriteOffRequests.length === 0"
+                        :colspan="8"
+                    >
+                        <EmptyState
+                            title="No matches"
+                            description="No write-off requests match that search or the Requested By filter."
+                        >
+                            <template #actions>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    data-test="clear-write-off-filters-button"
+                                    @click="clearFilters"
+                                >
+                                    Clear filters
+                                </Button>
+                            </template>
+                        </EmptyState>
+                    </TableEmpty>
                     <TableRow
-                        v-for="writeOffRequest in writeOffRequests"
+                        v-for="writeOffRequest in filteredWriteOffRequests"
                         v-else
                         :key="writeOffRequest.id"
                     >
