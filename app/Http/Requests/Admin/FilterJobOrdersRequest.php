@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\JobOrderStatus;
+use App\Enums\PaymentStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -19,6 +20,9 @@ class FilterJobOrdersRequest extends FormRequest
         return [
             'q' => ['nullable', 'string'],
             'status' => ['nullable', Rule::enum(JobOrderStatus::class)],
+            'payment_status' => ['nullable', Rule::enum(PaymentStatus::class)],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
         ];
     }
 }

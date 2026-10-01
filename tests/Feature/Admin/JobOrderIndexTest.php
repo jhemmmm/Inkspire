@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\JobOrderStatus;
+use App\Enums\PaymentStatus;
+use App\Models\AuditLog;
 use App\Models\Customer;
 use App\Models\JobOrder;
 use App\Models\PricingEntry;
@@ -96,3 +99,134 @@ test('every other role gets 403 on the admin job orders index', function (string
 
     $this->actingAs($user)->get(route('admin.job-orders.index'))->assertForbidden();
 })->with(['frontlineStaff', 'artist', 'cashier', 'productionStaff', 'accountingStaff']);
+
+test('the payment_status filter narrows results', function () {
+    $admin = User::factory()->admin()->create();
+
+    $unpaid = JobOrder::factory()->create(['payment_status' => PaymentStatus::Unpaid]);
+    JobOrder::factory()->create(['payment_status' => PaymentStatus::Paid]);
+
+    $response = $this->actingAs($admin)->get(route('admin.job-orders.index', ['payment_status' => PaymentStatus::Unpaid->value]));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->has('jobOrders.data', 1)
+        ->where('jobOrders.data.0.id', $unpaid->id)
+    );
+});
+
+test('the from and to filters narrow results by created_at', function () {
+    $admin = User::factory()->admin()->create();
+
+    $before = JobOrder::factory()->create();
+    $before->forceFill(['created_at' => now()->subDays(10)])->save();
+
+    $inRange = JobOrder::factory()->create();
+    $inRange->forceFill(['created_at' => now()->subDays(5)])->save();
+
+    $after = JobOrder::factory()->create();
+    $after->forceFill(['created_at' => now()])->save();
+
+    $response = $this->actingAs($admin)->get(route('admin.job-orders.index', [
+        'from' => now()->subDays(6)->toDateString(),
+        'to' => now()->subDays(4)->toDateString(),
+    ]));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->has('jobOrders.data', 1)
+        ->where('jobOrders.data.0.id', $inRange->id)
+    );
+
+    expect($before)->not->toBeNull();
+    expect($after)->not->toBeNull();
+});
+
+test('the xlsx export honours the active filters', function () {
+    $this->skipUnlessZipAvailable();
+
+    $admin = User::factory()->admin()->create();
+
+    $matching = JobOrder::factory()->readyForProduction()->create();
+    JobOrder::factory()->create(['status' => JobOrderStatus::Intake->value]);
+
+    $response = $this->actingAs($admin)->get(route('admin.job-orders.export.xlsx', ['status' => JobOrderStatus::ReadyForProduction->value]));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    expect($rows)->toHaveCount(3); // header + 1 matching + Total
+    expect($rows[1][0])->toBe($matching->number);
+});
+
+test('exporting job orders to pdf returns a real PDF and audits exactly one row', function () {
+    $admin = User::factory()->admin()->create();
+    JobOrder::factory()->create();
+
+    expect(AuditLog::where('action', 'report_exported')->count())->toBe(0);
+
+    $response = $this->actingAs($admin)->get(route('admin.job-orders.export.pdf'));
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'application/pdf');
+
+    expect(AuditLog::where('action', 'report_exported')->count())->toBe(1);
+
+    $audit = AuditLog::where('action', 'report_exported')->sole();
+    expect($audit->new_values['report'])->toBe('job-orders');
+    expect($audit->new_values['format'])->toBe('pdf');
+});
+
+test('exporting job orders to xlsx audits exactly one row, and viewing the index writes none', function () {
+    $this->skipUnlessZipAvailable();
+
+    $admin = User::factory()->admin()->create();
+    JobOrder::factory()->create();
+
+    $this->actingAs($admin)->get(route('admin.job-orders.index'));
+    expect(AuditLog::where('action', 'report_exported')->count())->toBe(0);
+
+    $response = $this->actingAs($admin)->get(route('admin.job-orders.export.xlsx'));
+
+    $response->assertOk();
+    expect(AuditLog::where('action', 'report_exported')->count())->toBe(1);
+});
+
+test('every other role gets 403 on the job orders export routes and writes no audit row', function (string $factoryState) {
+    $user = User::factory()->{$factoryState}()->create();
+
+    $this->actingAs($user)->get(route('admin.job-orders.export.pdf'))->assertForbidden();
+    $this->actingAs($user)->get(route('admin.job-orders.export.xlsx'))->assertForbidden();
+
+    expect(AuditLog::where('action', 'report_exported')->count())->toBe(0);
+})->with(['frontlineStaff', 'artist', 'cashier', 'productionStaff', 'accountingStaff']);
+
+test('the xlsx export is uncapped past the 25-row page size', function () {
+    $this->skipUnlessZipAvailable();
+
+    $admin = User::factory()->admin()->create();
+    JobOrder::factory()->count(30)->create();
+
+    $response = $this->actingAs($admin)->get(route('admin.job-orders.export.xlsx'));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    expect($rows)->toHaveCount(32); // header + 30 + Total
+});
+
+test('exported label cells are display-ready, not raw enum values or booleans', function () {
+    $this->skipUnlessZipAvailable();
+
+    $admin = User::factory()->admin()->create();
+    JobOrder::factory()->rush()->create(['status' => JobOrderStatus::ForProduction->value]);
+
+    $response = $this->actingAs($admin)->get(route('admin.job-orders.export.xlsx'));
+
+    $response->assertOk();
+
+    $rows = readXlsxRows($response->streamedContent());
+
+    expect($rows[1][4])->toBe('For Production');
+    expect($rows[1][6])->toBe('Rush');
+});

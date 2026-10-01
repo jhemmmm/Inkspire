@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { Filter, Search } from '@lucide/vue';
+import { FileSpreadsheet, FileText, Filter, Search } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import JobOrderTotal from '@/components/JobOrderTotal.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
@@ -11,6 +11,7 @@ import SearchableSelect, {
     type SearchableOption,
 } from '@/components/SearchableSelect.vue';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +42,10 @@ import {
     paymentStatusLabel,
 } from '@/lib/jobOrders';
 import { index as jobOrdersIndex } from '@/routes/admin/job-orders';
+import {
+    pdf as jobOrdersExportPdf,
+    xlsx as jobOrdersExportXlsx,
+} from '@/routes/admin/job-orders/export';
 
 interface AdminJobOrder {
     id: number;
@@ -70,8 +75,15 @@ interface PaginatedJobOrders {
 
 const props = defineProps<{
     jobOrders: PaginatedJobOrders;
-    filters: { q?: string; status?: string };
+    filters: {
+        q?: string;
+        status?: string;
+        payment_status?: string;
+        from?: string;
+        to?: string;
+    };
     statuses: string[];
+    paymentStatuses: string[];
 }>();
 
 defineOptions({
@@ -90,6 +102,9 @@ const ALL = 'all';
 
 const searchTerm = ref(props.filters.q ?? '');
 const selectedStatus = ref(props.filters.status ?? ALL);
+const selectedPaymentStatus = ref(props.filters.payment_status ?? ALL);
+const fromDate = ref(props.filters.from ?? '');
+const toDate = ref(props.filters.to ?? '');
 const searching = ref(false);
 
 const statusOptions = computed<SearchableOption[]>(() => [
@@ -97,6 +112,14 @@ const statusOptions = computed<SearchableOption[]>(() => [
     ...props.statuses.map((status) => ({
         value: status,
         label: jobOrderStatusLabel(status),
+    })),
+]);
+
+const paymentStatusOptions = computed<SearchableOption[]>(() => [
+    { value: ALL, label: 'All payment statuses' },
+    ...props.paymentStatuses.map((status) => ({
+        value: status,
+        label: paymentStatusLabel(status),
     })),
 ]);
 
@@ -110,6 +133,11 @@ function visit(page?: number): void {
             ...(selectedStatus.value !== ALL
                 ? { status: selectedStatus.value }
                 : {}),
+            ...(selectedPaymentStatus.value !== ALL
+                ? { payment_status: selectedPaymentStatus.value }
+                : {}),
+            ...(fromDate.value ? { from: fromDate.value } : {}),
+            ...(toDate.value ? { to: toDate.value } : {}),
             ...(page ? { page } : {}),
         },
         {
@@ -123,6 +151,15 @@ function visit(page?: number): void {
     );
 }
 
+function clearFilters(): void {
+    searchTerm.value = '';
+    selectedStatus.value = ALL;
+    selectedPaymentStatus.value = ALL;
+    fromDate.value = '';
+    toDate.value = '';
+    visit();
+}
+
 let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Debounced so an Admin typing a job order number or customer name fires
@@ -133,6 +170,26 @@ watch(searchTerm, () => {
 });
 
 watch(selectedStatus, () => visit());
+watch(selectedPaymentStatus, () => visit());
+watch(fromDate, () => visit());
+watch(toDate, () => visit());
+
+const exportQuery = computed(() => ({
+    ...(searchTerm.value.trim() !== '' ? { q: searchTerm.value.trim() } : {}),
+    ...(selectedStatus.value !== ALL ? { status: selectedStatus.value } : {}),
+    ...(selectedPaymentStatus.value !== ALL
+        ? { payment_status: selectedPaymentStatus.value }
+        : {}),
+    ...(fromDate.value ? { from: fromDate.value } : {}),
+    ...(toDate.value ? { to: toDate.value } : {}),
+}));
+
+const exportPdfUrl = computed(() =>
+    jobOrdersExportPdf.url({ query: exportQuery.value }),
+);
+const exportXlsxUrl = computed(() =>
+    jobOrdersExportXlsx.url({ query: exportQuery.value }),
+);
 
 function sizeLabel(jobOrder: AdminJobOrder): string {
     if (jobOrder.width_ft && jobOrder.height_ft) {
@@ -156,14 +213,35 @@ function sizeLabel(jobOrder: AdminJobOrder): string {
         <PageHeader
             title="Job Orders"
             description="Every job order across every stage, with the price the shop is quoting or has charged. Read-only — make changes from the role portal that owns each order."
-        />
+        >
+            <template #actions>
+                <Button
+                    as="a"
+                    variant="outline"
+                    :href="exportPdfUrl"
+                    data-test="export-job-orders-pdf-button"
+                >
+                    <FileText class="size-4" />
+                    Export PDF
+                </Button>
+                <Button
+                    as="a"
+                    variant="outline"
+                    :href="exportXlsxUrl"
+                    data-test="export-job-orders-xlsx-button"
+                >
+                    <FileSpreadsheet class="size-4" />
+                    Export Excel
+                </Button>
+            </template>
+        </PageHeader>
 
         <Card>
             <CardHeader :icon="Filter">
                 <CardTitle>Filters</CardTitle>
             </CardHeader>
             <CardContent>
-                <div class="grid gap-4 sm:grid-cols-2">
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <div class="flex min-w-0 flex-col gap-2">
                         <Label for="job-order-search">
                             Search by number or customer
@@ -191,6 +269,47 @@ function sizeLabel(jobOrder: AdminJobOrder): string {
                             :options="statusOptions"
                             placeholder="All statuses"
                         />
+                    </div>
+
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <Label for="job-order-payment-status-filter">
+                            Payment Status
+                        </Label>
+                        <SearchableSelect
+                            id="job-order-payment-status-filter"
+                            v-model="selectedPaymentStatus"
+                            :options="paymentStatusOptions"
+                            placeholder="All payment statuses"
+                        />
+                    </div>
+
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <Label for="job-order-from-filter">From</Label>
+                        <Input
+                            id="job-order-from-filter"
+                            v-model="fromDate"
+                            type="date"
+                        />
+                    </div>
+
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <Label for="job-order-to-filter">To</Label>
+                        <Input
+                            id="job-order-to-filter"
+                            v-model="toDate"
+                            type="date"
+                        />
+                    </div>
+
+                    <div class="flex min-w-0 flex-col justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            data-test="clear-job-order-filters-button"
+                            @click="clearFilters"
+                        >
+                            Clear filters
+                        </Button>
                     </div>
                 </div>
             </CardContent>
