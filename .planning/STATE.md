@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 Phase: 08
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-09-28 - Completed quick task 260928-gr4: dashboard graphs and portal UI fixes
+Last activity: 2026-10-01 - Completed quick task 261001-er9: Report export parity: one row definition feeds PDF and Excel
 
 Progress: [██████████] 100%
 
@@ -164,6 +164,7 @@ None yet.
 | 260928-ejs | Home page rebuilt as the login's sibling: white/royal-blue hero card, tracker panel, photo price board and order rules | 2026-09-28 | d4aff6e | [260928-ejs-redesign-public-home-page-to-match-the-l](./quick/260928-ejs-redesign-public-home-page-to-match-the-l/) |
 | 260928-gr4 | Report and dashboard graphs; date-range presets, loading and business-date fix; receipt VAT and balance; artist accept confirmation; New Visit recent/rush orders | 2026-09-28 | uncommitted | [260928-gr4-dashboard-graphs-and-portal-ui-fixes](./quick/260928-gr4-dashboard-graphs-and-portal-ui-fixes/) |
 | 260928-ci | CI tests on PHP 8.4 (openspout v5.12.0 in lock requires ~8.4) | 2026-09-28 | a450672 | — |
+| 261001-er9 | Report export parity: one row definition feeds PDF and Excel (Rush/Normal and headlined labels in Excel, Total row in PDF) | 2026-10-01 | f253aa3 | [261001-er9-report-export-parity-one-row-definition-](./quick/261001-er9-report-export-parity-one-row-definition-/) |
 
 ## Deferred Items
 
