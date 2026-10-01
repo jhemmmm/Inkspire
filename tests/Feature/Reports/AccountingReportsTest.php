@@ -54,6 +54,10 @@ test('a voided expense is excluded from financial-summary\'s expenses_total but 
 });
 
 test('the same sales report ranged to a single day vs. a full month returns the days subset, not a separate report type (D-06)', function () {
+    // Mid-month, so "three days ago" below is still inside the month-to-date
+    // range. Unanchored, this failed on the 1st to 3rd of every month.
+    $this->travelTo('2026-09-10 12:00:00');
+
     $accountingStaff = User::factory()->accountingStaff()->create();
     $today = now();
 
