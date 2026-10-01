@@ -3,12 +3,22 @@ import { Head, Link } from '@inertiajs/vue3';
 import { Clock } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import StatCard from '@/components/StatCard.vue';
+import TableFilterBar from '@/components/TableFilterBar.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -19,6 +29,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTableFilter } from '@/composables/useTableFilter';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
 import {
     index as accountsReceivableIndex,
@@ -137,6 +148,68 @@ const filteredRows = computed(() => {
     );
 });
 
+const ALL = 'all';
+
+/**
+ * Derived from every row on the page (open + closed), not just the
+ * currently selected tab — so the option list doesn't reshuffle as the
+ * Admin switches tabs (D3).
+ */
+const collectionStatusOptions = computed(() => {
+    const statuses = Array.from(
+        new Set(
+            [...props.receivables, ...props.closedReceivables].map(
+                (row) => row.collection_status,
+            ),
+        ),
+    ).sort((a, b) => a.localeCompare(b));
+
+    return [
+        { value: ALL, label: 'All collection statuses' },
+        ...statuses.map((status) => ({
+            value: status,
+            label: COLLECTION_STATUS_LABELS[status] ?? status,
+        })),
+    ];
+});
+
+const collectionStatusFilter = ref(ALL);
+
+/**
+ * Search + the new Collection status filter apply ON TOP of the existing
+ * bracket/closed tab filter (D2) — `filteredRows` (the tab layer) is the
+ * input here, not `props.receivables` directly.
+ */
+const { searchTerm, filtered: visibleRows } = useTableFilter(
+    () => filteredRows.value,
+    (row) => [
+        row.job_order.number,
+        row.job_order.queue_entry.customer?.name,
+        row.job_order.description,
+    ],
+    {
+        filters: [
+            (row) =>
+                collectionStatusFilter.value === ALL ||
+                row.collection_status === collectionStatusFilter.value,
+        ],
+    },
+);
+
+const filtersActive = computed(
+    () =>
+        searchTerm.value.trim() !== '' ||
+        collectionStatusFilter.value !== ALL ||
+        activeFilter.value !== 'all',
+);
+
+/** Resets the tab filter too (D2), in addition to search and the select. */
+function clearFilters(): void {
+    searchTerm.value = '';
+    collectionStatusFilter.value = ALL;
+    activeFilter.value = 'all';
+}
+
 function money(value: number): string {
     return `₱${Number(value).toLocaleString('en-PH', {
         minimumFractionDigits: 2,
@@ -237,6 +310,11 @@ function dueSubLine(row: AccountsReceivableRow): string {
             description="Admin-approved credit balances, grouped by how far past due they are. Older brackets need chasing first."
         />
 
+        <!--
+            These totals always summarise the whole open aging set, not the
+            search/collection-status filter below — they describe the shop's
+            receivables work, not the current view (D4).
+        -->
         <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
             <StatCard
                 v-for="bracket in BRACKETS"
@@ -262,6 +340,40 @@ function dueSubLine(row: AccountsReceivableRow): string {
                 <TabsTrigger value="closed">Closed</TabsTrigger>
             </TabsList>
         </Tabs>
+
+        <TableFilterBar
+            v-if="receivables.length > 0 || closedReceivables.length > 0"
+            v-model:search="searchTerm"
+            search-label="Search receivables"
+            search-placeholder="Job order, customer or description"
+            :shown="visibleRows.length"
+            :total="filteredRows.length"
+            :active="filtersActive"
+            @clear="clearFilters"
+        >
+            <div class="flex min-w-0 flex-col gap-2 sm:w-56">
+                <Label for="receivable-collection-status-filter">
+                    Collection status
+                </Label>
+                <Select v-model="collectionStatusFilter">
+                    <SelectTrigger
+                        id="receivable-collection-status-filter"
+                        class="w-full"
+                    >
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in collectionStatusOptions"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        </TableFilterBar>
 
         <DataTableCard>
             <Table>
@@ -303,7 +415,27 @@ function dueSubLine(row: AccountsReceivableRow): string {
                             {{ BRACKET_LABELS[activeFilter] ?? activeFilter }}.
                         </p>
                     </TableEmpty>
-                    <TableRow v-for="row in filteredRows" v-else :key="row.id">
+                    <TableEmpty
+                        v-else-if="visibleRows.length === 0"
+                        :colspan="9"
+                    >
+                        <EmptyState
+                            title="No matches"
+                            description="No receivables in this view match that search or collection status filter."
+                        >
+                            <template #actions>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    data-test="clear-receivable-filters-button"
+                                    @click="clearFilters"
+                                >
+                                    Clear filters
+                                </Button>
+                            </template>
+                        </EmptyState>
+                    </TableEmpty>
+                    <TableRow v-for="row in visibleRows" v-else :key="row.id">
                         <TableCell>
                             <div class="flex flex-col">
                                 <span
