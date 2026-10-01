@@ -263,7 +263,7 @@ function deleteOption(option: SpecificationOption): void {
             :active="filtersActive"
             @clear="clearFilters"
         >
-            <div class="flex min-w-0 flex-col gap-2 sm:w-48">
+            <div class="flex min-w-0 flex-col gap-2 @lg:w-48">
                 <Label for="specification-status-filter">Status</Label>
                 <Select v-model="statusFilter">
                     <SelectTrigger
@@ -488,7 +488,7 @@ function deleteOption(option: SpecificationOption): void {
                 </Table>
 
                 <form
-                    class="flex flex-col gap-4 px-6 pb-6 sm:flex-row sm:items-end"
+                    class="flex flex-col gap-4 px-6 pb-6 @lg:flex-row @lg:items-end"
                     @submit.prevent="addOption(category.value)"
                 >
                     <div class="flex min-w-0 flex-1 flex-col gap-2">
@@ -498,7 +498,7 @@ function deleteOption(option: SpecificationOption): void {
                         <Input
                             :id="`new-${category.value}`"
                             v-model="createForms[category.value].label"
-                            class="w-full sm:max-w-sm"
+                            class="w-full @lg:max-w-sm"
                             :placeholder="`New ${category.label.toLowerCase().replace(/s$/, '')}`"
                         />
                         <InputError
@@ -518,7 +518,7 @@ function deleteOption(option: SpecificationOption): void {
                                 type="number"
                                 step="0.1"
                                 min="0.1"
-                                class="w-full sm:w-28"
+                                class="w-full @lg:w-28"
                                 placeholder="36"
                             />
                         </div>
@@ -534,7 +534,7 @@ function deleteOption(option: SpecificationOption): void {
                                 type="number"
                                 step="0.1"
                                 min="0.1"
-                                class="w-full sm:w-28"
+                                class="w-full @lg:w-28"
                                 placeholder="72"
                             />
                         </div>

@@ -127,7 +127,7 @@ function clearFilters(): void {
             :active="filtersActive"
             @clear="clearFilters"
         >
-            <div class="flex min-w-0 flex-col gap-2 sm:w-56">
+            <div class="flex min-w-0 flex-col gap-2 @lg:w-56">
                 <Label for="credit-request-requester-filter">
                     Requested by
                 </Label>

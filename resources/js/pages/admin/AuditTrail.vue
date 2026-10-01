@@ -216,7 +216,7 @@ const exportXlsxUrl = computed(() =>
             </CardHeader>
             <CardContent>
                 <form
-                    class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                    class="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-4"
                     @submit.prevent="visit()"
                 >
                     <div class="flex min-w-0 flex-col gap-2">
@@ -274,7 +274,7 @@ const exportXlsxUrl = computed(() =>
                     </div>
 
                     <div
-                        class="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-4"
+                        class="flex flex-wrap items-center gap-2 @md:col-span-2 @3xl:col-span-4"
                     >
                         <Button
                             type="submit"

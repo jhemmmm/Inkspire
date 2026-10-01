@@ -194,7 +194,7 @@ function actionLabel(action: string): string {
             Nothing is waiting on you right now.
         </p>
 
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-4 @lg:grid-cols-2 @5xl:grid-cols-4">
             <Link
                 v-for="tile in attentionTiles"
                 :key="tile.key"
@@ -218,7 +218,7 @@ function actionLabel(action: string): string {
             description="Live counts, derived on read — nothing here is stored or needs syncing."
         />
 
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-4 @lg:grid-cols-2 @5xl:grid-cols-4">
             <StatCard
                 label="Queued Today"
                 :value="shop.queuedToday"
@@ -247,7 +247,7 @@ function actionLabel(action: string): string {
             />
         </div>
 
-        <div class="grid gap-4 lg:grid-cols-2">
+        <div class="grid gap-4 @3xl:grid-cols-2">
             <Card>
                 <CardHeader :icon="ChartColumn">
                     <div class="flex items-center justify-between gap-2">

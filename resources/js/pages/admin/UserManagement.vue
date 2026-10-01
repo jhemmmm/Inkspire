@@ -401,7 +401,7 @@ defineOptions({
             :active="filtersActive"
             @clear="clearFilters"
         >
-            <div class="flex min-w-0 flex-col gap-2 sm:w-48">
+            <div class="flex min-w-0 flex-col gap-2 @lg:w-48">
                 <Label for="user-role-filter">Role</Label>
                 <Select v-model="roleFilter">
                     <SelectTrigger id="user-role-filter" class="w-full">
@@ -418,7 +418,7 @@ defineOptions({
                     </SelectContent>
                 </Select>
             </div>
-            <div class="flex min-w-0 flex-col gap-2 sm:w-48">
+            <div class="flex min-w-0 flex-col gap-2 @lg:w-48">
                 <Label for="user-status-filter">Status</Label>
                 <Select v-model="statusFilter">
                     <SelectTrigger id="user-status-filter" class="w-full">

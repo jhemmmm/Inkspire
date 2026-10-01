@@ -243,7 +243,7 @@ function sizeLabel(jobOrder: AdminJobOrder): string {
                 <CardTitle>Filters</CardTitle>
             </CardHeader>
             <CardContent>
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-3">
                     <div class="flex min-w-0 flex-col gap-2">
                         <Label for="job-order-search">
                             Search by number or customer
