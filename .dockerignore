@@ -1,0 +1,24 @@
+.git
+.github
+.planning
+.claude
+.ai
+.env*
+node_modules
+vendor
+tests
+demo
+
+# Rebuilt in the image. A stray public/hot would point the app at a Vite dev
+# server, and a dev bootstrap/cache would name providers --no-dev leaves out.
+public/build
+public/hot
+public/storage
+bootstrap/ssr
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+
+storage/app/**
+storage/framework/**
+storage/logs/**
+!storage/**/.gitignore
