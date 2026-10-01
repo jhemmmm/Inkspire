@@ -395,7 +395,7 @@ defineOptions({
             v-if="users.length > 0"
             v-model:search="searchTerm"
             search-label="Search users"
-            search-placeholder="Name, email, artist label or role"
+            search-placeholder="Name, email or role"
             :shown="filteredUsers.length"
             :total="users.length"
             :active="filtersActive"
