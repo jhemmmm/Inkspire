@@ -35,7 +35,7 @@ const user = computed(() => page.props.auth.user);
         <Heading
             variant="small"
             title="Profile"
-            description="Update your name and email address"
+            description="Update your picture, name and email address"
         />
 
         <Form

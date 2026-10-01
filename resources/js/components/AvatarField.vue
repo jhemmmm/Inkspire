@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, computed, ref } from 'vue';
+import { onBeforeUnmount, computed, ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -44,9 +44,8 @@ function onFileChange(event: Event): void {
     }
 }
 
-function removePicture(): void {
-    pendingRemoval.value = true;
-
+/** Drop a newly chosen file and fall back to whatever was saved before. */
+function discardChosenFile(): void {
     if (fileInputRef.value) {
         fileInputRef.value.value = '';
     }
@@ -54,9 +53,28 @@ function removePicture(): void {
     revokePreview();
 }
 
+function removePicture(): void {
+    pendingRemoval.value = true;
+    discardChosenFile();
+}
+
 function keepPicture(): void {
     pendingRemoval.value = false;
 }
+
+/**
+ * A saved change comes back as a new `avatarUrl`. The Profile page stays
+ * mounted across that save, so without this the chosen file would be
+ * re-uploaded with the next unrelated edit and "Keep picture" would linger
+ * with nothing left to keep.
+ */
+watch(
+    () => props.avatarUrl,
+    () => {
+        pendingRemoval.value = false;
+        discardChosenFile();
+    },
+);
 
 onBeforeUnmount(() => {
     revokePreview();
@@ -88,31 +106,50 @@ onBeforeUnmount(() => {
                     name="avatar"
                     accept="image/png,image/jpeg,image/webp"
                     class="sr-only"
+                    tabindex="-1"
                     @change="onFileChange"
                 />
+                <!--
+                    The button is the keyboard path; the input itself is out
+                    of the tab order so focus never lands on something
+                    invisible.
+                -->
                 <Button
                     type="button"
                     variant="outline"
                     size="sm"
+                    :data-test="`${id}-choose`"
                     @click="fileInputRef?.click()"
                 >
                     {{ displayUrl ? 'Change picture' : 'Add picture' }}
                 </Button>
                 <Button
-                    v-if="avatarUrl && !pendingRemoval"
+                    v-if="previewUrl"
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    :data-test="`${id}-undo`"
+                    @click="discardChosenFile"
+                >
+                    Undo
+                </Button>
+                <Button
+                    v-else-if="avatarUrl && !pendingRemoval"
                     type="button"
                     variant="ghost"
                     size="sm"
                     class="text-destructive hover:text-destructive"
+                    :data-test="`${id}-remove`"
                     @click="removePicture"
                 >
                     Remove
                 </Button>
                 <Button
-                    v-if="pendingRemoval"
+                    v-else-if="pendingRemoval"
                     type="button"
                     variant="ghost"
                     size="sm"
+                    :data-test="`${id}-keep`"
                     @click="keepPicture"
                 >
                     Keep picture
