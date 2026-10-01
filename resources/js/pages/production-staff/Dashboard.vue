@@ -5,10 +5,12 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ProductionStageController from '@/actions/App/Http/Controllers/ProductionStaff/ProductionStageController';
 import AlertError from '@/components/AlertError.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import StatCard from '@/components/StatCard.vue';
+import TableFilterBar from '@/components/TableFilterBar.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { Switch } from '@/components/ui/switch';
 import {
     Table,
     TableBody,
@@ -35,6 +38,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { useTableFilter } from '@/composables/useTableFilter';
 import { productionStaffNavItems } from '@/config/nav/production-staff';
 import { dashboard } from '@/routes/production-staff';
 
@@ -127,6 +131,41 @@ const activeFilterLabel = computed(
 
 function onTabChange(value: unknown): void {
     activeFilter.value = value as FilterValue;
+}
+
+const rushOnly = ref(false);
+
+/**
+ * Search and the Rush only toggle apply ON TOP of the existing tab filter
+ * (D2) — `filteredJobOrders` (the tab layer) is the input here, not
+ * `props.jobOrders` directly. This stays useful even on a specific stage
+ * tab (e.g. "Printing" + Rush only), which the existing "Rush" tab alone
+ * cannot express since it ignores stage.
+ */
+const { searchTerm, filtered: visibleJobOrders } = useTableFilter(
+    () => filteredJobOrders.value,
+    (jobOrder) => [
+        jobOrder.number,
+        jobOrder.queue_entry?.customer?.name,
+        jobOrder.description,
+    ],
+    {
+        filters: [(jobOrder) => !rushOnly.value || jobOrder.is_rush],
+    },
+);
+
+const filtersActive = computed(
+    () =>
+        searchTerm.value.trim() !== '' ||
+        rushOnly.value ||
+        activeFilter.value !== 'all',
+);
+
+/** Resets the tab filter too (D2), in addition to search and the toggle. */
+function clearFilters(): void {
+    searchTerm.value = '';
+    rushOnly.value = false;
+    activeFilter.value = 'all';
 }
 
 function dueTimeOnly(dueAt: string | null): string {
@@ -291,6 +330,11 @@ onUnmounted(() => {
             :errors="[staleMoveMessage]"
         />
 
+        <!--
+            stageCounts always summarises every job order on the board, not the
+            search/Rush only filter below — it describes the whole board's
+            workload, not the current view.
+        -->
         <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
             <StatCard
                 v-for="stage in stages"
@@ -313,6 +357,26 @@ onUnmounted(() => {
                 </TabsTrigger>
             </TabsList>
         </Tabs>
+
+        <TableFilterBar
+            v-if="jobOrders.length > 0"
+            v-model:search="searchTerm"
+            search-label="Search job orders"
+            search-placeholder="Job order, customer or description"
+            :shown="visibleJobOrders.length"
+            :total="filteredJobOrders.length"
+            :active="filtersActive"
+            @clear="clearFilters"
+        >
+            <div class="flex items-center gap-2 sm:h-9">
+                <Switch
+                    id="production-rush-only-filter"
+                    v-model="rushOnly"
+                    data-test="production-rush-only-toggle"
+                />
+                <Label for="production-rush-only-filter">Rush only</Label>
+            </div>
+        </TableFilterBar>
 
         <DataTableCard>
             <Table>
@@ -347,8 +411,28 @@ onUnmounted(() => {
                         </p>
                         <p v-else>No job orders in {{ activeFilterLabel }}.</p>
                     </TableEmpty>
+                    <TableEmpty
+                        v-else-if="visibleJobOrders.length === 0"
+                        :colspan="7"
+                    >
+                        <EmptyState
+                            title="No matches"
+                            description="No job orders in this view match that search or the Rush only filter."
+                        >
+                            <template #actions>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    data-test="clear-production-filters-button"
+                                    @click="clearFilters"
+                                >
+                                    Clear filters
+                                </Button>
+                            </template>
+                        </EmptyState>
+                    </TableEmpty>
                     <TableRow
-                        v-for="jobOrder in filteredJobOrders"
+                        v-for="jobOrder in visibleJobOrders"
                         v-else
                         :key="jobOrder.id"
                         :class="{

@@ -21,6 +21,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
+import TableFilterBar from '@/components/TableFilterBar.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +30,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -38,6 +47,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useTableFilter } from '@/composables/useTableFilter';
 import { cashierNavItems } from '@/config/nav/cashier';
 import { balanceLabel, money } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/cashier';
@@ -66,10 +76,59 @@ const props = defineProps<{
     cancellationFeeAmount: number;
 }>();
 
+const ALL = 'all';
+
+const paymentStatusOptions = computed(() => {
+    const statuses = Array.from(
+        new Set(props.jobOrders.map((jobOrder) => jobOrder.payment_status)),
+    );
+
+    return [
+        { value: ALL, label: 'All payment statuses' },
+        ...statuses.map((status) => ({
+            value: status,
+            label: paymentStatusLabel(status),
+        })),
+    ];
+});
+
+const paymentStatusFilter = ref(ALL);
+
+const { searchTerm, filtered: filteredJobOrders } = useTableFilter(
+    () => props.jobOrders,
+    (jobOrder) => [
+        jobOrder.number,
+        jobOrder.queue_entry.customer.name,
+        jobOrder.description,
+    ],
+    {
+        filters: [
+            (jobOrder) =>
+                paymentStatusFilter.value === ALL ||
+                jobOrder.payment_status === paymentStatusFilter.value,
+        ],
+    },
+);
+
+const filtersActive = computed(
+    () => searchTerm.value.trim() !== '' || paymentStatusFilter.value !== ALL,
+);
+
+function clearFilters(): void {
+    searchTerm.value = '';
+    paymentStatusFilter.value = ALL;
+}
+
 /**
  * Rush and regular as two lists. The cashier's decision on a rush job is
  * different — the rush fee toggle is theirs to set — so the two are worth
  * separating rather than distinguishing by a badge partway down one table.
+ *
+ * `baseCount` is the unfiltered rush/regular split (D5) — it drives which
+ * "nothing at all" empty state a section shows, kept separate from `rows`
+ * (the search/payment-status-filtered set) so an empty filtered section on a
+ * non-empty rush/regular split renders "No matches," not the all-time-empty
+ * copy.
  */
 const paymentGroups = computed(() => [
     {
@@ -77,7 +136,9 @@ const paymentGroups = computed(() => [
         title: 'Ready for Payment — Rush Print',
         description:
             'Priority jobs. Decide the rush fee here, then hand over the receipt.',
-        rows: props.jobOrders.filter((jobOrder) => jobOrder.is_rush),
+        baseCount: props.jobOrders.filter((jobOrder) => jobOrder.is_rush)
+            .length,
+        rows: filteredJobOrders.value.filter((jobOrder) => jobOrder.is_rush),
         emptyTitle: 'No rush jobs waiting on payment',
         emptyDescription:
             'Rush jobs appear here once they are validated or design-approved.',
@@ -86,7 +147,9 @@ const paymentGroups = computed(() => [
         key: 'regular',
         title: 'Ready for Payment — Regular',
         description: 'Take payment here, then hand the customer their receipt.',
-        rows: props.jobOrders.filter((jobOrder) => !jobOrder.is_rush),
+        baseCount: props.jobOrders.filter((jobOrder) => !jobOrder.is_rush)
+            .length,
+        rows: filteredJobOrders.value.filter((jobOrder) => !jobOrder.is_rush),
         emptyTitle: 'No job orders ready for payment',
         emptyDescription:
             "Job orders will appear here once they're validated or design-approved.",
@@ -261,6 +324,40 @@ function paymentStatusLabel(status: string): string {
             description="Job orders waiting to be paid for."
         />
 
+        <TableFilterBar
+            v-if="jobOrders.length > 0"
+            v-model:search="searchTerm"
+            search-label="Search job orders"
+            search-placeholder="Job order, customer or description"
+            :shown="filteredJobOrders.length"
+            :total="jobOrders.length"
+            :active="filtersActive"
+            @clear="clearFilters"
+        >
+            <div class="flex min-w-0 flex-col gap-2 sm:w-56">
+                <Label for="cashier-payment-status-filter"
+                    >Payment status</Label
+                >
+                <Select v-model="paymentStatusFilter">
+                    <SelectTrigger
+                        id="cashier-payment-status-filter"
+                        class="w-full"
+                    >
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in paymentStatusOptions"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        </TableFilterBar>
+
         <template v-for="group in paymentGroups" :key="group.key">
             <SectionHeading
                 :title="group.title"
@@ -281,11 +378,31 @@ function paymentStatusLabel(status: string): string {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableEmpty v-if="group.rows.length === 0" :colspan="7">
+                        <TableEmpty v-if="group.baseCount === 0" :colspan="7">
                             <EmptyState
                                 :title="group.emptyTitle"
                                 :description="group.emptyDescription"
                             />
+                        </TableEmpty>
+                        <TableEmpty
+                            v-else-if="group.rows.length === 0"
+                            :colspan="7"
+                        >
+                            <EmptyState
+                                title="No matches"
+                                description="No job orders in this section match that search or payment status filter."
+                            >
+                                <template #actions>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        :data-test="`clear-cashier-${group.key}-filters-button`"
+                                        @click="clearFilters"
+                                    >
+                                        Clear filters
+                                    </Button>
+                                </template>
+                            </EmptyState>
                         </TableEmpty>
                         <TableRow
                             v-for="jobOrder in group.rows"
