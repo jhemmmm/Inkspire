@@ -4,11 +4,16 @@ import { Ban, Plus } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import ExpenseController from '@/actions/App/Http/Controllers/AccountingStaff/ExpenseController';
 import DataTableCard from '@/components/DataTableCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import StatCard from '@/components/StatCard.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import DateRangeControl from '@/components/reports/DateRangeControl.vue';
+import SearchableSelect, {
+    type SearchableOption,
+} from '@/components/SearchableSelect.vue';
+import TableFilterBar from '@/components/TableFilterBar.vue';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,6 +47,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { useTableFilter } from '@/composables/useTableFilter';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
 import { index as expensesIndex } from '@/routes/accounting-staff/expenses';
 
@@ -124,6 +130,73 @@ const totalHint = computed(() => {
 
     return `${expenseCountLabel.value} · ${props.voidedCount} voided ${entries} excluded`;
 });
+
+const ALL = 'all';
+
+/**
+ * Starts from the Admin-managed category list (System Configuration) and
+ * appends any category still present on a row but no longer configured —
+ * so a renamed/removed category doesn't silently vanish from the filter
+ * for rows still carrying the old value (D3).
+ */
+const categoryOptions = computed<SearchableOption[]>(() => {
+    const configured = new Set(props.categories);
+    const extra = Array.from(
+        new Set(props.rows.map((row) => row.category)),
+    ).filter((category) => !configured.has(category));
+
+    const all = [...props.categories, ...extra].sort((a, b) =>
+        a.localeCompare(b),
+    );
+
+    return [
+        { value: ALL, label: 'All categories' },
+        ...all.map((category) => ({ value: category, label: category })),
+    ];
+});
+
+const categoryFilter = ref(ALL);
+
+const statusFilterOptions = [
+    { value: ALL, label: 'All statuses' },
+    { value: 'active', label: 'Active' },
+    { value: 'voided', label: 'Voided' },
+];
+
+const statusFilter = ref(ALL);
+
+const { searchTerm, filtered: filteredRows } = useTableFilter(
+    () => props.rows,
+    (row) => [row.description, row.category, row.recorded_by],
+    {
+        filters: [
+            (row) =>
+                categoryFilter.value === ALL ||
+                row.category === categoryFilter.value,
+            (row) => {
+                if (statusFilter.value === ALL) {
+                    return true;
+                }
+                return statusFilter.value === 'voided'
+                    ? row.voided_at !== null
+                    : row.voided_at === null;
+            },
+        ],
+    },
+);
+
+const filtersActive = computed(
+    () =>
+        searchTerm.value.trim() !== '' ||
+        categoryFilter.value !== ALL ||
+        statusFilter.value !== ALL,
+);
+
+function clearFilters(): void {
+    searchTerm.value = '';
+    categoryFilter.value = ALL;
+    statusFilter.value = ALL;
+}
 
 const loadingRange = ref(false);
 
@@ -315,6 +388,11 @@ function openVoidDialog(row: ExpenseRow): void {
             this flex column it stretched to the page's height and squeezed
             the page header shut, hiding Record Expense.
         -->
+        <!--
+            total/activeCount/voidedCount are server-computed over the full date
+            range (ExpenseController::index) and must stay that way — they
+            describe the range, not the filtered table below.
+        -->
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <StatCard
                 :label="`Total for ${rangeLabel}`"
@@ -323,6 +401,44 @@ function openVoidDialog(row: ExpenseRow): void {
                 ink="yellow"
             />
         </div>
+
+        <TableFilterBar
+            v-if="rows.length > 0"
+            v-model:search="searchTerm"
+            search-label="Search expenses"
+            search-placeholder="Description, category or recorded by"
+            :shown="filteredRows.length"
+            :total="rows.length"
+            :active="filtersActive"
+            @clear="clearFilters"
+        >
+            <div class="flex min-w-0 flex-col gap-2 sm:w-56">
+                <Label for="expense-category-filter">Category</Label>
+                <SearchableSelect
+                    id="expense-category-filter"
+                    v-model="categoryFilter"
+                    :options="categoryOptions"
+                    placeholder="All categories"
+                />
+            </div>
+            <div class="flex min-w-0 flex-col gap-2 sm:w-40">
+                <Label for="expense-status-filter">Status</Label>
+                <Select v-model="statusFilter">
+                    <SelectTrigger id="expense-status-filter" class="w-full">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem
+                            v-for="option in statusFilterOptions"
+                            :key="option.value"
+                            :value="option.value"
+                        >
+                            {{ option.label }}
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+        </TableFilterBar>
 
         <DataTableCard
             :aria-busy="loadingRange"
@@ -367,7 +483,27 @@ function openVoidDialog(row: ExpenseRow): void {
                             </p>
                         </div>
                     </TableEmpty>
-                    <TableRow v-for="row in rows" v-else :key="row.id">
+                    <TableEmpty
+                        v-else-if="filteredRows.length === 0"
+                        :colspan="7"
+                    >
+                        <EmptyState
+                            title="No matches"
+                            description="No expenses in this range match that search, category or status filter."
+                        >
+                            <template #actions>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    data-test="clear-expense-filters-button"
+                                    @click="clearFilters"
+                                >
+                                    Clear filters
+                                </Button>
+                            </template>
+                        </EmptyState>
+                    </TableEmpty>
+                    <TableRow v-for="row in filteredRows" v-else :key="row.id">
                         <TableCell>{{ dateLabel(row.expense_date) }}</TableCell>
                         <TableCell>{{ row.category }}</TableCell>
                         <TableCell>
