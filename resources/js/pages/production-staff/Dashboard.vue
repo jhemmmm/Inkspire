@@ -83,7 +83,9 @@ const tabs: {
     {
         value: 'awaiting_payment',
         label: 'Awaiting Payment',
-        matches: (jobOrder) => !jobOrder.cleared_for_production,
+        matches: (jobOrder) =>
+            !jobOrder.cleared_for_production &&
+            jobOrder.status !== 'ready_for_pickup',
         emptyTitle: 'No orders waiting on payment',
         emptyDescription:
             'Approved orders the customer has not paid for yet appear here, locked until the Cashier records a payment.',
@@ -175,36 +177,33 @@ function dueTimeOnly(dueAt: string | null): string {
 }
 
 /**
- * "Today, 2:14 PM" / "Tomorrow, 9:00 AM" / a full date for anything further
- * out, per the Copywriting Contract.
+ * "Today" / "Tomorrow" / a full date for anything further out. The time is
+ * rendered on its own line beneath it, which keeps the column narrow.
  */
-function dueLabel(dueAt: string | null): string {
+function dueDay(dueAt: string | null): string {
     if (!dueAt) {
         return '—';
     }
 
     const date = new Date(dueAt);
     const now = new Date();
-    const time = dueTimeOnly(dueAt);
 
     if (date.toDateString() === now.toDateString()) {
-        return `Today, ${time}`;
+        return 'Today';
     }
 
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     if (date.toDateString() === tomorrow.toDateString()) {
-        return `Tomorrow, ${time}`;
+        return 'Tomorrow';
     }
 
-    const fullDate = date.toLocaleDateString('en-PH', {
+    return date.toLocaleDateString('en-PH', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
     });
-
-    return `${fullDate}, ${time}`;
 }
 
 function isOverdue(dueAt: string | null): boolean {
@@ -333,16 +332,14 @@ onUnmounted(() => {
                 <TableHeader>
                     <TableRow>
                         <TableHead>Job Order</TableHead>
-                        <TableHead>Customer</TableHead>
                         <TableHead>Description</TableHead>
-                        <TableHead>Payment</TableHead>
-                        <TableHead>Stage</TableHead>
+                        <TableHead>Status</TableHead>
                         <TableHead>Due</TableHead>
                         <TableHead class="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <TableEmpty v-if="tabJobOrders.length === 0" :colspan="7">
+                    <TableEmpty v-if="tabJobOrders.length === 0" :colspan="5">
                         <EmptyState
                             :title="activeTabConfig.emptyTitle"
                             :description="activeTabConfig.emptyDescription"
@@ -350,7 +347,7 @@ onUnmounted(() => {
                     </TableEmpty>
                     <TableEmpty
                         v-else-if="visibleJobOrders.length === 0"
-                        :colspan="7"
+                        :colspan="5"
                     >
                         <EmptyState
                             title="No matches"
@@ -377,61 +374,80 @@ onUnmounted(() => {
                                 jobOrder.is_rush,
                         }"
                     >
+                        <!--
+                            Five compact columns, not seven nowrap ones: the
+                            customer sits under the job order number, stage
+                            and payment share a cell, the description wraps
+                            and the due time drops to a second line. As seven
+                            columns the table was wider than its card below
+                            1536px and Start / Done scrolled out of view.
+                        -->
                         <TableCell>
-                            <div class="flex items-center gap-2">
-                                <span class="tabular-nums">
-                                    {{ jobOrder.number ?? '—' }}
+                            <div class="flex flex-col gap-0.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium tabular-nums">
+                                        {{ jobOrder.number ?? '—' }}
+                                    </span>
+                                    <Badge
+                                        v-if="jobOrder.is_rush"
+                                        variant="outline"
+                                        class="border-brand/40 text-brand"
+                                    >
+                                        <Zap class="size-3" />
+                                        Rush
+                                    </Badge>
+                                </div>
+                                <span class="text-muted-foreground text-sm">
+                                    {{ jobOrder.queue_entry?.customer?.name }}
                                 </span>
+                            </div>
+                        </TableCell>
+                        <TableCell class="min-w-32 whitespace-normal">
+                            {{ jobOrder.description }}
+                        </TableCell>
+                        <TableCell>
+                            <div class="flex flex-col items-start gap-1">
                                 <Badge
-                                    v-if="jobOrder.is_rush"
-                                    variant="outline"
-                                    class="border-brand/40 text-brand"
+                                    :variant="
+                                        jobOrder.status === 'for_production'
+                                            ? 'outline'
+                                            : 'secondary'
+                                    "
+                                    :class="{
+                                        'text-green-600 dark:text-green-400':
+                                            jobOrder.status ===
+                                            'ready_for_pickup',
+                                    }"
                                 >
-                                    <Zap class="size-3" />
-                                    Rush
+                                    {{
+                                        STAGE_LABELS[jobOrder.status] ??
+                                        jobOrder.status
+                                    }}
+                                </Badge>
+                                <Badge
+                                    :variant="
+                                        jobOrder.cleared_for_production
+                                            ? 'secondary'
+                                            : 'outline'
+                                    "
+                                    :data-test="`payment-badge-${jobOrder.id}`"
+                                >
+                                    {{
+                                        paymentStatusLabel(
+                                            jobOrder.payment_status,
+                                        )
+                                    }}
                                 </Badge>
                             </div>
                         </TableCell>
                         <TableCell>
-                            {{ jobOrder.queue_entry?.customer?.name }}
-                        </TableCell>
-                        <TableCell>{{ jobOrder.description }}</TableCell>
-                        <TableCell>
-                            <Badge
-                                :variant="
-                                    jobOrder.cleared_for_production
-                                        ? 'secondary'
-                                        : 'outline'
-                                "
-                                :data-test="`payment-badge-${jobOrder.id}`"
-                            >
-                                {{
-                                    paymentStatusLabel(jobOrder.payment_status)
-                                }}
-                            </Badge>
-                        </TableCell>
-                        <TableCell>
-                            <Badge
-                                :variant="
-                                    jobOrder.status === 'for_production'
-                                        ? 'outline'
-                                        : 'secondary'
-                                "
-                                :class="{
-                                    'text-green-600 dark:text-green-400':
-                                        jobOrder.status === 'ready_for_pickup',
-                                }"
-                            >
-                                {{
-                                    STAGE_LABELS[jobOrder.status] ??
-                                    jobOrder.status
-                                }}
-                            </Badge>
-                        </TableCell>
-                        <TableCell>
-                            <div class="flex flex-col">
-                                <span class="tabular-nums">
-                                    {{ dueLabel(jobOrder.due_at) }}
+                            <div class="flex flex-col tabular-nums">
+                                <span>{{ dueDay(jobOrder.due_at) }}</span>
+                                <span
+                                    v-if="jobOrder.due_at"
+                                    class="text-muted-foreground text-sm"
+                                >
+                                    {{ dueTimeOnly(jobOrder.due_at) }}
                                 </span>
                                 <span
                                     v-if="isOverdue(jobOrder.due_at)"
@@ -442,8 +458,16 @@ onUnmounted(() => {
                             </div>
                         </TableCell>
                         <TableCell class="text-right">
+                            <!--
+                                A finished order is never "awaiting payment"
+                                here: the counter's release gate collects the
+                                balance, and Undo must stay reachable.
+                            -->
                             <p
-                                v-if="!jobOrder.cleared_for_production"
+                                v-if="
+                                    !jobOrder.cleared_for_production &&
+                                    jobOrder.status !== 'ready_for_pickup'
+                                "
                                 class="text-muted-foreground text-sm"
                                 :data-test="`awaiting-payment-${jobOrder.id}`"
                             >
@@ -453,15 +477,6 @@ onUnmounted(() => {
                                 v-else
                                 class="flex items-center justify-end gap-2"
                             >
-                                <p
-                                    v-if="
-                                        jobOrder.status === 'ready_for_pickup'
-                                    "
-                                    class="text-muted-foreground text-sm"
-                                >
-                                    Awaiting release
-                                </p>
-
                                 <Form
                                     v-if="jobOrder.status === 'for_production'"
                                     v-bind="

@@ -453,7 +453,7 @@ function outcomeLabel(outcome: string | null): string {
                             v-if="chosenFilePreviewUrl"
                             :src="chosenFilePreviewUrl"
                             alt="Preview of the chosen design"
-                            class="w-full rounded-lg border"
+                            class="bg-muted max-h-[60vh] w-full rounded-lg border object-contain"
                             data-test="chosen-file-preview"
                         />
                         <p class="text-muted-foreground text-sm break-all">
@@ -489,7 +489,7 @@ function outcomeLabel(outcome: string | null): string {
                     </div>
 
                     <div
-                        v-else-if="!started"
+                        v-if="!started && !chosenFile"
                         class="flex flex-col items-start gap-3"
                     >
                         <p class="text-muted-foreground text-sm">
@@ -519,7 +519,12 @@ function outcomeLabel(outcome: string | null): string {
                         </div>
                     </div>
 
-                    <div v-else class="space-y-4">
+                    <!--
+                        Hidden, not unmounted, while an upload is being
+                        previewed: unmounting would throw away whatever the
+                        artist had drawn in the editor.
+                    -->
+                    <div v-if="started" v-show="!chosenFile" class="space-y-4">
                         <PhotopeaEditor
                             ref="editorRef"
                             :initial-image-url="design.initialImageUrl"
