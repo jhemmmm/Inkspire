@@ -128,7 +128,7 @@ test('sending for review a second time while the first submission is still pendi
     expect(RevisionLog::where('job_order_id', $jobOrder->id)->count())->toBe($countBefore);
 });
 
-test('sending for review with a non-png file fails validation', function () {
+test('a JPG is accepted', function () {
     Storage::fake('local');
     $artist = User::factory()->artist()->create();
     $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'in_consultation']);
@@ -137,7 +137,24 @@ test('sending for review with a non-png file fails validation', function () {
         'file' => UploadedFile::fake()->image('design.jpg'),
     ]);
 
+    $response->assertSessionHasNoErrors();
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::PendingReview);
+    expect(DesignFile::where('job_order_id', $jobOrder->id)->count())->toBe(1);
+    expect(RevisionLog::where('job_order_id', $jobOrder->id)->count())->toBe(1);
+});
+
+test('a non-image (PDF) fails validation and changes nothing', function () {
+    Storage::fake('local');
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'in_consultation']);
+
+    $response = $this->actingAs($artist)->post(route('artist.job-orders.design.send-for-review', $jobOrder), [
+        'file' => UploadedFile::fake()->create('design.pdf', 100, 'application/pdf'),
+    ]);
+
     $response->assertSessionHasErrors('file');
+    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::InConsultation);
+    expect(RevisionLog::where('job_order_id', $jobOrder->id)->count())->toBe(0);
 });
 
 test('sending for review on a job order still at assigned (not yet claimed) returns 422', function () {

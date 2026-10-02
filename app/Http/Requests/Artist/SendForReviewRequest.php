@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Artist;
 
+use App\Models\SystemConfiguration;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -12,15 +13,18 @@ class SendForReviewRequest extends FormRequest
      * is the access gate, matching every other non-Admin FormRequest.
      *
      * Tighter than FrontlineStaff's ReplaceJobOrderFileRequest (T-04-08):
-     * this endpoint's only legitimate producer is the app's own canvas
-     * export (Plan 04-04), not an arbitrary user upload.
+     * the file is either an artist-uploaded PNG or JPG or the app's own
+     * canvas export. PSD, PDF and AI are intentionally not accepted because
+     * neither the artist nor the customer review page can preview them.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
+        $maxKilobytes = SystemConfiguration::getInt('max_file_size_mb', 50) * 1024;
+
         return [
-            'file' => ['required', 'file', 'image', 'mimes:png'],
+            'file' => ['required', 'file', 'image', 'mimes:png,jpg,jpeg', 'max:'.$maxKilobytes],
         ];
     }
 }

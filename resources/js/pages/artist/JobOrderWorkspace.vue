@@ -4,11 +4,12 @@ import {
     ClipboardList,
     CircleCheck,
     FileDown,
+    ImageUp,
     MessagesSquare,
     Palette,
     Zap,
 } from '@lucide/vue';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import DesignEditorController from '@/actions/App/Http/Controllers/Artist/DesignEditorController';
 import JobOrderWorkspaceController from '@/actions/App/Http/Controllers/Artist/JobOrderWorkspaceController';
@@ -140,8 +141,57 @@ async function onStartBlankCanvas(): Promise<void> {
 
 const isExporting = ref(false);
 
+const chosenFile = ref<File | null>(null);
+const chosenFilePreviewUrl = ref<string | null>(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+watch(chosenFile, (file) => {
+    if (chosenFilePreviewUrl.value !== null) {
+        URL.revokeObjectURL(chosenFilePreviewUrl.value);
+    }
+
+    chosenFilePreviewUrl.value =
+        file === null ? null : URL.createObjectURL(file);
+});
+
+onBeforeUnmount(() => {
+    if (chosenFilePreviewUrl.value !== null) {
+        URL.revokeObjectURL(chosenFilePreviewUrl.value);
+    }
+});
+
+function openFilePicker(): void {
+    fileInputRef.value?.click();
+}
+
+function onFileChosen(event: Event): void {
+    const input = event.target as HTMLInputElement;
+
+    chosenFile.value = input.files?.[0] ?? null;
+    sendForReviewForm.clearErrors();
+    input.value = '';
+}
+
+function clearChosenFile(): void {
+    chosenFile.value = null;
+    sendForReviewForm.clearErrors();
+}
+
 /** D-10: exports and submits a flattened raster snapshot, never a re-editable layered project. */
 async function sendForReview(): Promise<void> {
+    if (chosenFile.value !== null) {
+        sendForReviewForm.file = chosenFile.value;
+        sendForReviewForm.post(sendForReviewRoute.url(props.jobOrder.id), {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                chosenFile.value = null;
+            },
+        });
+
+        return;
+    }
+
     isExporting.value = true;
 
     try {
@@ -361,13 +411,21 @@ function outcomeLabel(outcome: string | null): string {
                 <CardTitle>Design</CardTitle>
             </CardHeader>
             <CardContent class="space-y-4">
-                <p
-                    v-if="isPendingReview"
-                    class="text-muted-foreground text-sm"
-                    data-test="design-pending-review-note"
-                >
-                    Waiting on the client's verdict.
-                </p>
+                <div v-if="isPendingReview" class="space-y-2">
+                    <img
+                        v-if="design.initialImageUrl"
+                        :src="design.initialImageUrl"
+                        alt="Submitted design"
+                        class="w-full rounded-lg border"
+                        data-test="design-pending-review-image"
+                    />
+                    <p
+                        class="text-muted-foreground text-sm"
+                        data-test="design-pending-review-note"
+                    >
+                        Waiting on the client's verdict.
+                    </p>
+                </div>
                 <div v-else-if="!design.canEdit" class="space-y-2">
                     <img
                         v-if="design.initialImageUrl"
@@ -379,41 +437,121 @@ function outcomeLabel(outcome: string | null): string {
                         This design is locked.
                     </p>
                 </div>
-                <div
-                    v-else-if="!started"
-                    class="flex flex-col items-start gap-3"
-                >
-                    <p class="text-muted-foreground text-sm">
-                        Opens Photopea full screen. It reads PSD, AI, XD, Sketch
-                        and the usual image formats, and you can leave full
-                        screen at any time.
-                    </p>
-                    <Button
-                        type="button"
-                        data-test="start-blank-canvas-button"
-                        @click="onStartBlankCanvas"
-                    >
-                        <Palette class="size-4" />
-                        Start from Blank Canvas
-                    </Button>
-                </div>
                 <div v-else class="space-y-4">
-                    <PhotopeaEditor
-                        ref="editorRef"
-                        :initial-image-url="design.initialImageUrl"
+                    <input
+                        ref="fileInputRef"
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        class="sr-only"
+                        tabindex="-1"
+                        data-test="design-file-input"
+                        @change="onFileChosen"
                     />
-                    <Button
-                        type="button"
-                        :disabled="sendForReviewForm.processing || isExporting"
-                        data-test="send-for-review-button"
-                        @click="sendForReview"
+
+                    <div v-if="chosenFile" class="space-y-3">
+                        <img
+                            v-if="chosenFilePreviewUrl"
+                            :src="chosenFilePreviewUrl"
+                            alt="Preview of the chosen design"
+                            class="w-full rounded-lg border"
+                            data-test="chosen-file-preview"
+                        />
+                        <p class="text-muted-foreground text-sm break-all">
+                            {{ chosenFile.name }}
+                        </p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <Button
+                                type="button"
+                                :disabled="sendForReviewForm.processing"
+                                data-test="send-for-review-button"
+                                @click="sendForReview"
+                            >
+                                Send for Review
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                data-test="choose-different-file-button"
+                                @click="openFilePicker"
+                            >
+                                <ImageUp class="size-4" />
+                                Choose a different file
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                data-test="use-editor-instead-button"
+                                @click="clearChosenFile"
+                            >
+                                Use the editor instead
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div
+                        v-else-if="!started"
+                        class="flex flex-col items-start gap-3"
                     >
-                        {{
-                            isExporting
-                                ? 'Reading the design…'
-                                : 'Send for Review'
-                        }}
-                    </Button>
+                        <p class="text-muted-foreground text-sm">
+                            Upload a finished PNG or JPG, or open Photopea full
+                            screen. Photopea reads PSD, AI, XD, Sketch and the
+                            usual image formats, and you can leave full screen
+                            at any time.
+                        </p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <Button
+                                type="button"
+                                data-test="upload-design-button"
+                                @click="openFilePicker"
+                            >
+                                <ImageUp class="size-4" />
+                                Upload a Design
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                data-test="start-blank-canvas-button"
+                                @click="onStartBlankCanvas"
+                            >
+                                <Palette class="size-4" />
+                                Start from Blank Canvas
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div v-else class="space-y-4">
+                        <PhotopeaEditor
+                            ref="editorRef"
+                            :initial-image-url="design.initialImageUrl"
+                        />
+                        <div class="flex flex-wrap items-center gap-2">
+                            <Button
+                                type="button"
+                                :disabled="
+                                    sendForReviewForm.processing || isExporting
+                                "
+                                data-test="send-for-review-button"
+                                @click="sendForReview"
+                            >
+                                {{
+                                    isExporting
+                                        ? 'Reading the design…'
+                                        : 'Send for Review'
+                                }}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                data-test="upload-design-button"
+                                @click="openFilePicker"
+                            >
+                                <ImageUp class="size-4" />
+                                Upload a Design
+                            </Button>
+                        </div>
+                    </div>
+
+                    <InputError :message="sendForReviewForm.errors.file" />
                 </div>
             </CardContent>
         </Card>
