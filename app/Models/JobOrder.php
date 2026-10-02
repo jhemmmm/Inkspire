@@ -258,6 +258,28 @@ class JobOrder extends Model
     }
 
     /**
+     * Payment statuses that unlock an order for printing: the single source
+     * of truth for the production gate.
+     *
+     * @var array<int, PaymentStatus>
+     */
+    private const CLEARED_FOR_PRODUCTION = [
+        PaymentStatus::PartiallyPaid,
+        PaymentStatus::Paid,
+        PaymentStatus::OnCredit,
+    ];
+
+    /**
+     * Whether production staff may start or finish this order. This is the
+     * production gate: an order unlocks on a down payment, full payment, or
+     * Admin-approved credit, and stays locked in every other payment status.
+     */
+    public function isClearedForProduction(): bool
+    {
+        return in_array($this->payment_status, self::CLEARED_FOR_PRODUCTION, true);
+    }
+
+    /**
      * Load `amount_paid`: the sum of this job order's Completed
      * transactions, the same money outstandingBalance() subtracts.
      *

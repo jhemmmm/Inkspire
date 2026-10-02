@@ -13,10 +13,10 @@ use Inertia\Response;
  * The Production Board (PROD-01/PROD-02) — every job order currently in
  * production, color-coded by urgency.
  *
- * This board never selects or eager-loads any payment column
- * (`payment_status`, `total_amount`) — per the UI-SPEC's explicit "no
- * payment hint on this surface" rule, Production Staff act on production
- * stage alone.
+ * The board exposes `payment_status` and a `cleared_for_production` flag
+ * so unpaid orders show locked, but never selects or eager-loads an amount
+ * (`total_amount`) — Production Staff see whether an order may be printed,
+ * not what it costs.
  */
 class ProductionBoardController extends Controller
 {
@@ -56,9 +56,12 @@ class ProductionBoardController extends Controller
                 ->whereNull('cancelled_at')
                 ->with('queueEntry.customer:id,name')
                 ->orderByRaw('due_at IS NULL, due_at ASC')
-                ->get(['id', 'number', 'description', 'status', 'due_at', 'queue_entry_id', 'is_rush'])
-                ->each(fn (JobOrder $jobOrder) => $jobOrder->is_rush = $jobOrder->is_rush
-                    || ($jobOrder->due_at !== null && $jobOrder->due_at->lessThanOrEqualTo($endOfBusinessDay))),
+                ->get(['id', 'number', 'description', 'status', 'due_at', 'queue_entry_id', 'is_rush', 'payment_status'])
+                ->each(function (JobOrder $jobOrder) use ($endOfBusinessDay): void {
+                    $jobOrder->is_rush = $jobOrder->is_rush
+                        || ($jobOrder->due_at !== null && $jobOrder->due_at->lessThanOrEqualTo($endOfBusinessDay));
+                    $jobOrder->setAttribute('cleared_for_production', $jobOrder->isClearedForProduction());
+                }),
         ]);
     }
 }

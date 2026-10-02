@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\JobOrderStatus;
+use App\Enums\PaymentStatus;
 use App\Models\JobOrder;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -136,19 +137,21 @@ test('a cancelled job order does not appear on the board even if its status is a
         ->has('jobOrders', 0));
 });
 
-test('the board response never leaks payment or pricing data', function () {
+test('the board exposes payment_status and cleared_for_production but never total_amount', function () {
     $staff = User::factory()->productionStaff()->create();
-    JobOrder::factory()->create([
-        'status' => JobOrderStatus::ForProduction->value,
-        'description' => 'Confidential customer description text',
-    ]);
+    $paid = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $paid->forceFill(['payment_status' => PaymentStatus::Paid])->save();
+    $unpaid = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
 
     $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
 
     $response->assertOk();
-    $content = $response->getContent();
-    expect($content)->not->toContain('payment_status');
-    expect($content)->not->toContain('total_amount');
+    expect($response->getContent())->not->toContain('total_amount');
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('jobOrders', fn ($rows) => collect($rows)->firstWhere('id', $paid->id)['cleared_for_production'] === true
+            && collect($rows)->firstWhere('id', $paid->id)['payment_status'] === 'paid'
+            && collect($rows)->firstWhere('id', $unpaid->id)['cleared_for_production'] === false
+            && collect($rows)->firstWhere('id', $unpaid->id)['payment_status'] === 'unpaid'));
 });
 
 test('a non-production-staff role is forbidden from the board', function () {

@@ -71,8 +71,9 @@ Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')
 
 Route::middleware(['auth', 'role:production_staff'])->prefix('production-staff')->name('production-staff.')->group(function () {
     Route::get('dashboard', [ProductionBoardController::class, 'index'])->name('dashboard');
-    Route::patch('job-orders/{jobOrder}/advance', [ProductionStageController::class, 'advance'])->name('job-orders.advance');
-    Route::patch('job-orders/{jobOrder}/send-back', [ProductionStageController::class, 'sendBack'])->name('job-orders.send-back');
+    Route::patch('job-orders/{jobOrder}/start', [ProductionStageController::class, 'start'])->name('job-orders.start');
+    Route::patch('job-orders/{jobOrder}/done', [ProductionStageController::class, 'done'])->name('job-orders.done');
+    Route::patch('job-orders/{jobOrder}/undo', [ProductionStageController::class, 'undo'])->name('job-orders.undo');
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/{reportKey}/export/pdf', [ReportExportController::class, 'exportPdf'])->name('reports.export.pdf');
     Route::get('reports/{reportKey}/export/xlsx', [ReportExportController::class, 'exportXlsx'])->name('reports.export.xlsx');
