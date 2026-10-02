@@ -6,27 +6,13 @@ import ProductionStageController from '@/actions/App/Http/Controllers/Production
 import AlertError from '@/components/AlertError.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
-import StatCard from '@/components/StatCard.vue';
 import TableFilterBar from '@/components/TableFilterBar.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import { Switch } from '@/components/ui/switch';
 import {
     Table,
     TableBody,
@@ -37,9 +23,9 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { productionStaffNavItems } from '@/config/nav/production-staff';
+import { paymentStatusLabel } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/production-staff';
 
 interface ProductionJobOrder {
@@ -49,6 +35,8 @@ interface ProductionJobOrder {
     status: string;
     due_at: string | null;
     is_rush: boolean;
+    payment_status: string;
+    cleared_for_production: boolean;
     queue_entry_id: number;
     queue_entry: { customer: { name: string } };
 }
@@ -73,100 +61,107 @@ defineOptions({
 // two polled surfaces built in this phase.
 usePoll(5000, { only: ['jobOrders'] });
 
-type FilterValue =
-    | 'all'
-    | 'rush'
-    | 'for_production'
-    | 'printing'
-    | 'quality_check'
-    | 'ready_for_pickup';
+type TabValue = 'to_print' | 'awaiting_payment' | 'done' | 'all';
 
-const stages: {
-    value: 'for_production' | 'printing' | 'quality_check' | 'ready_for_pickup';
+const tabs: {
+    value: TabValue;
     label: string;
+    matches: (jobOrder: ProductionJobOrder) => boolean;
+    emptyTitle: string;
+    emptyDescription: string;
 }[] = [
-    { value: 'for_production', label: 'For Production' },
-    { value: 'printing', label: 'Printing' },
-    { value: 'quality_check', label: 'Quality Check' },
-    { value: 'ready_for_pickup', label: 'Ready for Pickup' },
+    {
+        value: 'to_print',
+        label: 'To Print',
+        matches: (jobOrder) =>
+            jobOrder.cleared_for_production &&
+            jobOrder.status !== 'ready_for_pickup',
+        emptyTitle: 'Nothing to print',
+        emptyDescription:
+            'Paid or down-paid orders waiting to be printed appear here.',
+    },
+    {
+        value: 'awaiting_payment',
+        label: 'Awaiting Payment',
+        matches: (jobOrder) => !jobOrder.cleared_for_production,
+        emptyTitle: 'No orders waiting on payment',
+        emptyDescription:
+            'Approved orders the customer has not paid for yet appear here, locked until the Cashier records a payment.',
+    },
+    {
+        value: 'done',
+        label: 'Done',
+        matches: (jobOrder) => jobOrder.status === 'ready_for_pickup',
+        emptyTitle: 'Nothing waiting for pickup',
+        emptyDescription:
+            'Orders you mark Done wait here until the counter releases them.',
+    },
+    {
+        value: 'all',
+        label: 'All',
+        matches: () => true,
+        emptyTitle: 'Nothing in production',
+        emptyDescription:
+            'Job orders appear here automatically once a file is validated or a design is approved.',
+    },
 ];
 
-const activeFilter = ref<FilterValue>('all');
+const activeTab = ref<TabValue>('to_print');
+
+const tabCounts = computed(
+    () =>
+        Object.fromEntries(
+            tabs.map((tab) => [
+                tab.value,
+                props.jobOrders.filter((jobOrder) => tab.matches(jobOrder))
+                    .length,
+            ]),
+        ) as Record<TabValue, number>,
+);
+
+const activeTabConfig = computed(
+    () => tabs.find((tab) => tab.value === activeTab.value) ?? tabs[0],
+);
+
+const tabJobOrders = computed(() =>
+    props.jobOrders.filter((jobOrder) =>
+        activeTabConfig.value.matches(jobOrder),
+    ),
+);
+
+function onTabChange(value: unknown): void {
+    activeTab.value = value as TabValue;
+}
 
 const rushJobOrders = computed(() =>
     props.jobOrders.filter((jobOrder) => jobOrder.is_rush),
 );
 
-const stageCounts = computed(() =>
-    Object.fromEntries(
-        stages.map((stage) => [
-            stage.value,
-            props.jobOrders.filter(
-                (jobOrder) => jobOrder.status === stage.value,
-            ).length,
-        ]),
-    ),
-);
-
-// D-14/UI-SPEC: the whole board is a handful of rows — filtering is always
-// client-side, never a server round-trip.
-const filteredJobOrders = computed(() => {
-    if (activeFilter.value === 'all') {
-        return props.jobOrders;
-    }
-
-    if (activeFilter.value === 'rush') {
-        return rushJobOrders.value;
-    }
-
-    return props.jobOrders.filter(
-        (jobOrder) => jobOrder.status === activeFilter.value,
-    );
-});
-
-const activeFilterLabel = computed(
-    () =>
-        stages.find((stage) => stage.value === activeFilter.value)?.label ?? '',
-);
-
-function onTabChange(value: unknown): void {
-    activeFilter.value = value as FilterValue;
-}
-
-const rushOnly = ref(false);
-
 /**
- * Search and the Rush only toggle apply ON TOP of the existing tab filter
- * (D2) — `filteredJobOrders` (the tab layer) is the input here, not
- * `props.jobOrders` directly. This stays useful even on a specific stage
- * tab (e.g. "Printing" + Rush only), which the existing "Rush" tab alone
- * cannot express since it ignores stage.
+ * Search applies on top of the tab filter — the whole board is a handful of
+ * rows, so filtering is always client-side.
  */
 const { searchTerm, filtered: visibleJobOrders } = useTableFilter(
-    () => filteredJobOrders.value,
+    () => tabJobOrders.value,
     (jobOrder) => [
         jobOrder.number,
         jobOrder.queue_entry?.customer?.name,
         jobOrder.description,
     ],
-    {
-        filters: [(jobOrder) => !rushOnly.value || jobOrder.is_rush],
-    },
 );
 
-const filtersActive = computed(
-    () =>
-        searchTerm.value.trim() !== '' ||
-        rushOnly.value ||
-        activeFilter.value !== 'all',
-);
+const filtersActive = computed(() => searchTerm.value.trim() !== '');
 
-/** Resets the tab filter too (D2), in addition to search and the toggle. */
 function clearFilters(): void {
     searchTerm.value = '';
-    rushOnly.value = false;
-    activeFilter.value = 'all';
 }
+
+const STAGE_LABELS: Record<string, string> = {
+    for_production: 'For Production',
+    printing: 'Printing',
+    quality_check: 'Quality Check',
+    ready_for_pickup: 'Ready for Pickup',
+};
 
 function dueTimeOnly(dueAt: string | null): string {
     if (!dueAt) {
@@ -231,8 +226,7 @@ function rushBannerTitle(): string {
 
 /**
  * Names the first two rush job orders with their due time, appending
- * "and {n} more" only once a third rush order exists — mirrors
- * QueueList.vue's readyForPickupBannerBody() shape.
+ * "and {n} more" only once a third rush order exists.
  */
 function rushBannerBody(): string {
     const items = rushJobOrders.value.slice(0, 2);
@@ -251,42 +245,13 @@ function rushBannerBody(): string {
     return `${subject}. Work these first.`;
 }
 
-// Mirrors ProductionStageController::SEQUENCE (PROD-02, D-10) — used only to
-// compute the destination/previous stage label shown on each row's action
-// button, never to decide what the server does.
-const SEQUENCE = [
-    'for_production',
-    'printing',
-    'quality_check',
-    'ready_for_pickup',
-];
-const STAGE_LABELS: Record<string, string> = {
-    for_production: 'For Production',
-    printing: 'Printing',
-    quality_check: 'Quality Check',
-    ready_for_pickup: 'Ready for Pickup',
-};
-
-function nextStageLabel(status: string): string {
-    const next = SEQUENCE[SEQUENCE.indexOf(status) + 1];
-
-    return next ? STAGE_LABELS[next] : '';
-}
-
-function previousStageLabel(status: string): string {
-    const previous = SEQUENCE[SEQUENCE.indexOf(status) - 1];
-
-    return previous ? STAGE_LABELS[previous] : '';
-}
-
 /**
- * A stale-move message ("This job order already moved on...") set from the
- * server's flashed error toast (D-10/D-11 boundary rejection) — kept as a
- * page-level Alert in addition to the global toast, since a toast can be
- * dismissed or missed before it's read. Cleared on the next flash of any
- * kind (including a subsequent successful move).
+ * A failed-move message (stale stage, "Awaiting payment", cancelled...) set
+ * from the server's flashed error toast — kept as a page-level Alert in
+ * addition to the global toast, since a toast can be dismissed or missed
+ * before it's read. Cleared on the next flash of any kind.
  */
-const staleMoveMessage = ref<string | null>(null);
+const failedMoveMessage = ref<string | null>(null);
 let removeFlashListener: (() => void) | undefined;
 
 onMounted(() => {
@@ -296,7 +261,7 @@ onMounted(() => {
             | { type: string; message: string }
             | undefined;
 
-        staleMoveMessage.value = data?.type === 'error' ? data.message : null;
+        failedMoveMessage.value = data?.type === 'error' ? data.message : null;
     });
 });
 
@@ -311,7 +276,7 @@ onUnmounted(() => {
     <PageContainer>
         <PageHeader
             title="Production Board"
-            description="Everything on the press, by stage. Rush jobs are flagged in the Urgency column."
+            description="Print what is paid for. Start an order when it hits the press, mark it Done when it is ready for the counter, and Undo if you tapped too soon."
         />
 
         <Alert v-if="rushJobOrders.length > 0" variant="default">
@@ -325,102 +290,63 @@ onUnmounted(() => {
         </Alert>
 
         <AlertError
-            v-if="staleMoveMessage"
+            v-if="failedMoveMessage"
             title="This move didn't go through"
-            :errors="[staleMoveMessage]"
+            :errors="[failedMoveMessage]"
         />
 
-        <!--
-            stageCounts always summarises every job order on the board, not the
-            search/Rush only filter below — it describes the whole board's
-            workload, not the current view.
-        -->
-        <div class="grid grid-cols-2 gap-4 @2xl:grid-cols-4">
-            <StatCard
-                v-for="stage in stages"
-                :key="stage.value"
-                :value="stageCounts[stage.value]"
-                :label="stage.label"
-            />
-        </div>
-
-        <Tabs :model-value="activeFilter" @update:model-value="onTabChange">
+        <Tabs :model-value="activeTab" @update:model-value="onTabChange">
             <!--
-                Wraps rather than running off the edge: on a phone the last
-                two stages were unreachable. A trigger's default height is
-                100% of the list, so each gets a fixed height or a wrapped
-                list stretches them to the height of every row combined.
+                Wraps rather than running off the edge on a phone. A trigger's
+                default height is 100% of the list, so each gets a fixed
+                height or a wrapped list stretches them.
             -->
             <TabsList class="h-auto max-w-full flex-wrap justify-start">
-                <TabsTrigger value="all" class="h-8 flex-none">
-                    All
-                </TabsTrigger>
-                <TabsTrigger value="rush" class="h-8 flex-none">
-                    Rush
-                </TabsTrigger>
                 <TabsTrigger
-                    v-for="stage in stages"
-                    :key="stage.value"
-                    :value="stage.value"
+                    v-for="tab in tabs"
+                    :key="tab.value"
+                    :value="tab.value"
                     class="h-8 flex-none"
+                    :data-test="`production-tab-${tab.value}`"
                 >
-                    {{ stage.label }}
+                    {{ tab.label }}
+                    <span class="tabular-nums"
+                        >({{ tabCounts[tab.value] }})</span
+                    >
                 </TabsTrigger>
             </TabsList>
         </Tabs>
 
         <TableFilterBar
-            v-if="jobOrders.length > 0"
+            v-if="tabJobOrders.length > 0"
             v-model:search="searchTerm"
             search-label="Search job orders"
             search-placeholder="Job order, customer or description"
             :shown="visibleJobOrders.length"
-            :total="filteredJobOrders.length"
+            :total="tabJobOrders.length"
             :active="filtersActive"
             @clear="clearFilters"
-        >
-            <div class="flex items-center gap-2 sm:h-9">
-                <Switch
-                    id="production-rush-only-filter"
-                    v-model="rushOnly"
-                    data-test="production-rush-only-toggle"
-                />
-                <Label for="production-rush-only-filter">Rush only</Label>
-            </div>
-        </TableFilterBar>
+        />
 
         <DataTableCard>
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Urgency</TableHead>
                         <TableHead>Job Order</TableHead>
                         <TableHead>Customer</TableHead>
                         <TableHead>Description</TableHead>
+                        <TableHead>Payment</TableHead>
                         <TableHead>Stage</TableHead>
                         <TableHead>Due</TableHead>
                         <TableHead class="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <TableEmpty
-                        v-if="filteredJobOrders.length === 0"
-                        :colspan="7"
-                    >
-                        <div
-                            v-if="jobOrders.length === 0"
-                            class="flex flex-col items-center gap-1 text-center"
-                        >
-                            <p class="font-semibold">Nothing in production</p>
-                            <p class="text-muted-foreground">
-                                Job orders appear here automatically once a file
-                                is validated or a design is approved.
-                            </p>
-                        </div>
-                        <p v-else-if="activeFilter === 'rush'">
-                            No rush orders right now.
-                        </p>
-                        <p v-else>No job orders in {{ activeFilterLabel }}.</p>
+                    <TableEmpty v-if="tabJobOrders.length === 0" :colspan="7">
+                        <EmptyState
+                            :title="activeTabConfig.emptyTitle"
+                            :description="activeTabConfig.emptyDescription"
+                        />
                     </TableEmpty>
                     <TableEmpty
                         v-else-if="visibleJobOrders.length === 0"
@@ -428,7 +354,7 @@ onUnmounted(() => {
                     >
                         <EmptyState
                             title="No matches"
-                            description="No job orders in this view match that search or the Rush only filter."
+                            description="No job orders in this tab match that search."
                         >
                             <template #actions>
                                 <Button
@@ -437,7 +363,7 @@ onUnmounted(() => {
                                     data-test="clear-production-filters-button"
                                     @click="clearFilters"
                                 >
-                                    Clear filters
+                                    Clear search
                                 </Button>
                             </template>
                         </EmptyState>
@@ -452,26 +378,19 @@ onUnmounted(() => {
                         }"
                     >
                         <TableCell>
-                            <Badge
-                                v-if="jobOrder.is_rush"
-                                variant="outline"
-                                class="border-brand/40 text-brand"
-                            >
-                                <Zap class="size-3" />
-                                Rush
-                            </Badge>
-                            <Badge
-                                v-else
-                                variant="outline"
-                                class="border-green-600/40 text-green-600 dark:text-green-400"
-                            >
-                                Normal
-                            </Badge>
-                        </TableCell>
-                        <TableCell>
-                            <span class="tabular-nums">
-                                {{ jobOrder.number ?? '—' }}
-                            </span>
+                            <div class="flex items-center gap-2">
+                                <span class="tabular-nums">
+                                    {{ jobOrder.number ?? '—' }}
+                                </span>
+                                <Badge
+                                    v-if="jobOrder.is_rush"
+                                    variant="outline"
+                                    class="border-brand/40 text-brand"
+                                >
+                                    <Zap class="size-3" />
+                                    Rush
+                                </Badge>
+                            </div>
                         </TableCell>
                         <TableCell>
                             {{ jobOrder.queue_entry?.customer?.name }}
@@ -479,35 +398,41 @@ onUnmounted(() => {
                         <TableCell>{{ jobOrder.description }}</TableCell>
                         <TableCell>
                             <Badge
-                                v-if="jobOrder.status === 'for_production'"
-                                variant="outline"
-                            >
-                                For Production
-                            </Badge>
-                            <Badge
-                                v-else-if="jobOrder.status === 'printing'"
-                                variant="secondary"
-                            >
-                                Printing
-                            </Badge>
-                            <Badge
-                                v-else-if="jobOrder.status === 'quality_check'"
-                                variant="secondary"
-                            >
-                                Quality Check
-                            </Badge>
-                            <Badge
-                                v-else-if="
-                                    jobOrder.status === 'ready_for_pickup'
+                                :variant="
+                                    jobOrder.cleared_for_production
+                                        ? 'secondary'
+                                        : 'outline'
                                 "
-                                class="text-green-600 dark:text-green-400"
+                                :data-test="`payment-badge-${jobOrder.id}`"
                             >
-                                Ready for Pickup
+                                {{
+                                    paymentStatusLabel(jobOrder.payment_status)
+                                }}
+                            </Badge>
+                        </TableCell>
+                        <TableCell>
+                            <Badge
+                                :variant="
+                                    jobOrder.status === 'for_production'
+                                        ? 'outline'
+                                        : 'secondary'
+                                "
+                                :class="{
+                                    'text-green-600 dark:text-green-400':
+                                        jobOrder.status === 'ready_for_pickup',
+                                }"
+                            >
+                                {{
+                                    STAGE_LABELS[jobOrder.status] ??
+                                    jobOrder.status
+                                }}
                             </Badge>
                         </TableCell>
                         <TableCell>
                             <div class="flex flex-col">
-                                <span>{{ dueLabel(jobOrder.due_at) }}</span>
+                                <span class="tabular-nums">
+                                    {{ dueLabel(jobOrder.due_at) }}
+                                </span>
                                 <span
                                     v-if="isOverdue(jobOrder.due_at)"
                                     class="text-sm text-amber-600 dark:text-amber-400"
@@ -517,13 +442,54 @@ onUnmounted(() => {
                             </div>
                         </TableCell>
                         <TableCell class="text-right">
-                            <div class="flex items-center justify-end gap-2">
+                            <p
+                                v-if="!jobOrder.cleared_for_production"
+                                class="text-muted-foreground text-sm"
+                                :data-test="`awaiting-payment-${jobOrder.id}`"
+                            >
+                                Awaiting payment
+                            </p>
+                            <div
+                                v-else
+                                class="flex items-center justify-end gap-2"
+                            >
+                                <p
+                                    v-if="
+                                        jobOrder.status === 'ready_for_pickup'
+                                    "
+                                    class="text-muted-foreground text-sm"
+                                >
+                                    Awaiting release
+                                </p>
+
+                                <Form
+                                    v-if="jobOrder.status === 'for_production'"
+                                    v-bind="
+                                        ProductionStageController.start.form(
+                                            jobOrder.id,
+                                        )
+                                    "
+                                    :options="{ preserveScroll: true }"
+                                    v-slot="{ processing }"
+                                >
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        variant="outline"
+                                        :disabled="processing"
+                                        :data-test="`start-job-order-${jobOrder.id}-button`"
+                                    >
+                                        <Spinner v-if="processing" />
+                                        Start
+                                    </Button>
+                                </Form>
+
                                 <Form
                                     v-if="
                                         jobOrder.status !== 'ready_for_pickup'
                                     "
                                     v-bind="
-                                        ProductionStageController.advance.form(
+                                        ProductionStageController.done.form(
                                             jobOrder.id,
                                         )
                                     "
@@ -534,103 +500,33 @@ onUnmounted(() => {
                                         type="submit"
                                         size="sm"
                                         :disabled="processing"
-                                        :data-test="`advance-job-order-${jobOrder.id}-button`"
+                                        :data-test="`done-job-order-${jobOrder.id}-button`"
                                     >
-                                        Advance to
-                                        {{ nextStageLabel(jobOrder.status) }}
+                                        <Spinner v-if="processing" />
+                                        Done
                                     </Button>
                                 </Form>
-                                <p v-else class="text-muted-foreground text-sm">
-                                    Awaiting release
-                                </p>
 
-                                <Dialog
+                                <Form
                                     v-if="jobOrder.status !== 'for_production'"
+                                    v-bind="
+                                        ProductionStageController.undo.form(
+                                            jobOrder.id,
+                                        )
+                                    "
+                                    :options="{ preserveScroll: true }"
+                                    v-slot="{ processing }"
                                 >
-                                    <DialogTrigger as-child>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            :data-test="`send-back-job-order-${jobOrder.id}-button`"
-                                        >
-                                            Send Back to
-                                            {{
-                                                previousStageLabel(
-                                                    jobOrder.status,
-                                                )
-                                            }}
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <Form
-                                            v-bind="
-                                                ProductionStageController.sendBack.form(
-                                                    jobOrder.id,
-                                                )
-                                            "
-                                            :options="{ preserveScroll: true }"
-                                            class="space-y-4"
-                                            v-slot="{ errors, processing }"
-                                        >
-                                            <DialogHeader>
-                                                <DialogTitle>
-                                                    Send back to
-                                                    {{
-                                                        previousStageLabel(
-                                                            jobOrder.status,
-                                                        )
-                                                    }}?
-                                                </DialogTitle>
-                                            </DialogHeader>
-
-                                            <p
-                                                class="text-muted-foreground text-sm"
-                                            >
-                                                This is recorded on the
-                                                production log with your name
-                                                and the reason below.
-                                            </p>
-
-                                            <div class="grid gap-2">
-                                                <Label
-                                                    :for="`send-back-reason-${jobOrder.id}`"
-                                                >
-                                                    Reason
-                                                </Label>
-                                                <Textarea
-                                                    :id="`send-back-reason-${jobOrder.id}`"
-                                                    name="reason"
-                                                    placeholder="e.g. Colour banding on the second pass — needs a reprint"
-                                                />
-                                                <InputError
-                                                    :message="errors.reason"
-                                                />
-                                            </div>
-
-                                            <DialogFooter class="gap-2">
-                                                <DialogClose as-child>
-                                                    <Button
-                                                        type="button"
-                                                        variant="secondary"
-                                                    >
-                                                        Cancel
-                                                    </Button>
-                                                </DialogClose>
-                                                <Button
-                                                    type="submit"
-                                                    :disabled="processing"
-                                                    :data-test="`confirm-send-back-${jobOrder.id}-button`"
-                                                >
-                                                    <Spinner
-                                                        v-if="processing"
-                                                    />
-                                                    Send Back
-                                                </Button>
-                                            </DialogFooter>
-                                        </Form>
-                                    </DialogContent>
-                                </Dialog>
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        variant="ghost"
+                                        :disabled="processing"
+                                        :data-test="`undo-job-order-${jobOrder.id}-button`"
+                                    >
+                                        Undo
+                                    </Button>
+                                </Form>
                             </div>
                         </TableCell>
                     </TableRow>
