@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 Phase: 08
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-10-01 - Completed quick task 261001-npv: Production Docker stack deployed behind a Cloudflare tunnel
+Last activity: 2026-10-03 - Completed quick task 261003-1cb: Artist design upload, payment-gated production, simpler production board
 
 Progress: [██████████] 100%
 
@@ -171,6 +171,7 @@ None yet.
 | 261001-i4q | Search and filters on Accounts Receivable, the Cashier dashboard, the Production board and the Expenses ledger, composed with the existing tile filters | 2026-10-01 | bb66b63 | [261001-i4q-search-and-filters-on-the-other-portal-l](./quick/261001-i4q-search-and-filters-on-the-other-portal-l/) |
 | 261001-m2e | Responsive layout: portal grids sized by their container (not the viewport), wrapping tab lists and pagination, on-screen empty states, user table fits at 1280px | 2026-10-01 | f0a0926 | [261001-m2e-responsive-layout-size-portal-grids-by-c](./quick/261001-m2e-responsive-layout-size-portal-grids-by-c/) |
 | 261001-npv | Production Docker stack (app, scheduler, MySQL, cloudflared) deployed to the shop server behind a Cloudflare tunnel, with a one-command redeploy | 2026-10-01 | 0036767 | [261001-npv-dockerize-inkspire-for-production-and-de](./quick/261001-npv-dockerize-inkspire-for-production-and-de/) |
+| 261003-1cb | Artist PNG/JPG design upload; production locked until a down payment, full payment or approved credit; production board rebuilt around Start, Done and Undo | 2026-10-03 | a7e1d8e | [261003-1cb-artist-design-upload-payment-gated-produ](./quick/261003-1cb-artist-design-upload-payment-gated-produ/) |
 
 ## Deferred Items
 
