@@ -95,12 +95,14 @@ function submit(): void {
     })).post(OnlineOrderController.store().url, {
         forceFormData: true,
         preserveScroll: true,
+        // The summary is at the top and the button at the bottom, so take the
+        // visitor (and their screen reader) to it.
         onError: () =>
-            void nextTick(() =>
-                document
-                    .getElementById('order-error-summary')
-                    ?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
-            ),
+            void nextTick(() => {
+                const summary = document.getElementById('order-error-summary');
+                summary?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                summary?.focus({ preventScroll: true });
+            }),
     });
 }
 </script>
@@ -132,7 +134,7 @@ function submit(): void {
         </header>
 
         <main
-            class="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 pb-10 sm:px-6"
+            class="@container mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 pb-10 sm:px-6"
         >
             <div class="grid gap-1">
                 <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">
@@ -164,6 +166,28 @@ function submit(): void {
             </Card>
 
             <template v-else>
+                <!--
+                    Above the form, not in the sticky footer: a list of six
+                    problems down there covers most of a phone screen.
+                -->
+                <div
+                    v-if="errorSummary.length > 0"
+                    id="order-error-summary"
+                    role="alert"
+                    tabindex="-1"
+                    class="border-destructive/40 bg-destructive/10 text-destructive scroll-mt-4 rounded-lg border px-4 py-3 text-sm"
+                    data-test="order-error-summary"
+                >
+                    <p class="font-semibold">
+                        Your order was not sent. Please fix these:
+                    </p>
+                    <ul class="mt-1 list-disc pl-5">
+                        <li v-for="message in errorSummary" :key="message">
+                            {{ message }}
+                        </li>
+                    </ul>
+                </div>
+
                 <Card>
                     <CardHeader>
                         <CardTitle>Your details</CardTitle>
@@ -173,7 +197,7 @@ function submit(): void {
                         </CardDescription>
                     </CardHeader>
                     <CardContent class="grid gap-4 @2xl:grid-cols-2">
-                        <div class="grid gap-2">
+                        <div class="grid content-start gap-2">
                             <Label for="order-name">Name</Label>
                             <Input
                                 id="order-name"
@@ -182,7 +206,7 @@ function submit(): void {
                             />
                             <InputError :message="form.errors.name" />
                         </div>
-                        <div class="grid gap-2">
+                        <div class="grid content-start gap-2">
                             <Label for="order-organization">
                                 Organization (optional)
                             </Label>
@@ -193,7 +217,7 @@ function submit(): void {
                             />
                             <InputError :message="form.errors.organization" />
                         </div>
-                        <div class="grid gap-2">
+                        <div class="grid content-start gap-2">
                             <Label for="order-contact-number">
                                 Mobile number
                             </Label>
@@ -206,7 +230,7 @@ function submit(): void {
                             />
                             <InputError :message="form.errors.contact_number" />
                         </div>
-                        <div class="grid gap-2">
+                        <div class="grid content-start gap-2">
                             <Label for="order-email">Email</Label>
                             <Input
                                 id="order-email"
@@ -217,7 +241,7 @@ function submit(): void {
                             />
                             <InputError :message="form.errors.email" />
                         </div>
-                        <div class="grid gap-2 @2xl:col-span-2">
+                        <div class="grid content-start gap-2 @2xl:col-span-2">
                             <Label for="order-address">Address</Label>
                             <Textarea
                                 id="order-address"
@@ -245,7 +269,7 @@ function submit(): void {
                     </CardContent>
                 </Card>
 
-                <div class="@container flex flex-col gap-6">
+                <div class="flex flex-col gap-6">
                     <JobOrderRowFields
                         v-for="(row, index) in form.job_orders"
                         :key="row._key"
@@ -266,22 +290,6 @@ function submit(): void {
                 <div
                     class="bg-background/95 border-border sticky bottom-0 -mx-4 flex flex-col gap-3 border-t px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6"
                 >
-                    <div
-                        v-if="errorSummary.length > 0"
-                        id="order-error-summary"
-                        role="alert"
-                        class="border-destructive/40 bg-destructive/10 text-destructive rounded-lg border px-4 py-3 text-sm"
-                        data-test="order-error-summary"
-                    >
-                        <p class="font-semibold">
-                            Your order was not sent. Please fix these:
-                        </p>
-                        <ul class="mt-1 list-disc pl-5">
-                            <li v-for="message in errorSummary" :key="message">
-                                {{ message }}
-                            </li>
-                        </ul>
-                    </div>
                     <div
                         class="flex flex-wrap items-center justify-between gap-3"
                     >

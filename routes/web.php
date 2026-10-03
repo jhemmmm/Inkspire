@@ -13,12 +13,14 @@ Route::inertia('/', 'Welcome')->name('home');
 // Public, unauthenticated — a customer places an order from the website. It
 // is only parked until they open the emailed signed link, so nothing is
 // written to the shop's workflow by an anonymous visitor alone. Deliberately
-// outside every auth/role:* group; the strict POST throttle limits mail abuse.
+// outside every auth/role:* group. The POST throttle here only stops
+// hammering; the limit on mail sent is counted in OnlineOrderController::store(),
+// where a failed validation does not use it up.
 Route::get('order', [OnlineOrderController::class, 'create'])
     ->middleware('throttle:60,1')
     ->name('public.orders.create');
 Route::post('order', [OnlineOrderController::class, 'store'])
-    ->middleware('throttle:5,10')
+    ->middleware('throttle:30,1')
     ->name('public.orders.store');
 Route::middleware(['signed', 'throttle:60,1'])->prefix('order/confirm')->group(function () {
     Route::get('{onlineOrder}', [OnlineOrderController::class, 'show'])->whereNumber('onlineOrder')->name('public.orders.confirm.show');

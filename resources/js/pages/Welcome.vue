@@ -282,7 +282,7 @@ const panelShadowClass =
                     data-test="welcome-order-link"
                     :class="[
                         linkFocusClass,
-                        'text-muted-foreground hover:text-foreground px-3 py-2',
+                        'text-muted-foreground hover:text-foreground max-sm:bg-card max-sm:text-primary max-sm:border-border px-3 py-2 whitespace-nowrap max-sm:rounded-full max-sm:border max-sm:px-3.5 max-sm:py-1.5 max-sm:shadow-xs',
                     ]"
                 >
                     Order online
@@ -292,7 +292,7 @@ const panelShadowClass =
                     data-test="welcome-track-link"
                     :class="[
                         linkFocusClass,
-                        'bg-card text-primary border-border hover:border-primary/40 ml-1 inline-flex items-center rounded-full border px-3.5 py-1.5 shadow-xs',
+                        'bg-card text-primary border-border hover:border-primary/40 ml-1 hidden items-center rounded-full border px-3.5 py-1.5 whitespace-nowrap shadow-xs sm:inline-flex',
                     ]"
                 >
                     Track an order

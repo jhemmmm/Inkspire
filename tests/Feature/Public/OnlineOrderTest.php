@@ -26,9 +26,14 @@ function onlineOrderTestPayload(array $overrides = []): array
         'contact_number' => '09171234567',
         'email' => 'maria@example.test',
         'address' => '12 Rizal St, Cebu City',
-        'job_orders' => [['description' => 'Poster, A2', 'type' => 'type_b']],
+        'job_orders' => [['pricing_entry_id' => onlineOrderTestProduct()->id, 'type' => 'type_b']],
         ...$overrides,
     ];
+}
+
+function onlineOrderTestProduct(string $name = 'Poster, A2'): PricingEntry
+{
+    return PricingEntry::factory()->create(['name' => $name, 'base_price' => 200, 'unit' => null]);
 }
 
 function onlineOrderTestConfirmUrl(OnlineOrder $order): string
@@ -130,7 +135,7 @@ test('an unusable print file is rejected with a customer-facing reason', functio
 
     $response = $this->post(route('public.orders.store'), onlineOrderTestPayload([
         'job_orders' => [[
-            'description' => 'Banner',
+            'pricing_entry_id' => onlineOrderTestProduct('Banner')->id,
             'type' => 'type_a',
             'file' => UploadedFile::fake()->create('design.xyz', 10),
         ]],
@@ -202,10 +207,72 @@ test('pruning removes stale unconfirmed orders with their files and keeps confir
 test('more than five items are rejected', function () {
     Mail::fake();
 
-    $rows = array_fill(0, 6, ['description' => 'Poster', 'type' => 'type_b']);
+    $rows = array_fill(0, 6, ['pricing_entry_id' => onlineOrderTestProduct()->id, 'type' => 'type_b']);
 
     $this->post(route('public.orders.store'), onlineOrderTestPayload(['job_orders' => $rows]))
         ->assertSessionHasErrors(['job_orders' => 'You can order up to 5 items at a time.']);
 
     expect(OnlineOrder::count())->toBe(0);
+});
+
+test('the product names an item, never the visitor\'s own text', function () {
+    Mail::fake();
+    $product = onlineOrderTestProduct('Tarpaulin');
+
+    $this->post(route('public.orders.store'), onlineOrderTestPayload([
+        'job_orders' => [[
+            'pricing_entry_id' => $product->id,
+            'description' => 'Free prize [click here](http://evil.test)',
+            'type' => 'type_b',
+        ]],
+    ]))->assertRedirect();
+
+    expect(OnlineOrder::firstOrFail()->payload['job_orders'][0]['description'])->toBe('Tarpaulin');
+});
+
+test('a product is required and must be one the shop still offers', function () {
+    Mail::fake();
+    $retired = PricingEntry::factory()->create(['is_active' => false]);
+
+    $this->post(route('public.orders.store'), onlineOrderTestPayload(['job_orders' => [['type' => 'type_b']]]))
+        ->assertSessionHasErrors(['job_orders.0.pricing_entry_id' => 'Pick a product or service.']);
+
+    $this->post(route('public.orders.store'), onlineOrderTestPayload(['job_orders' => [['pricing_entry_id' => $retired->id, 'type' => 'type_b']]]))
+        ->assertSessionHasErrors(['job_orders.0.pricing_entry_id' => 'Pick a product or service from the list.']);
+
+    expect(OnlineOrder::count())->toBe(0);
+});
+
+test('a file attached to a design request is not kept', function () {
+    Mail::fake();
+    Storage::fake('local');
+
+    $this->post(route('public.orders.store'), onlineOrderTestPayload([
+        'job_orders' => [[
+            'pricing_entry_id' => onlineOrderTestProduct()->id,
+            'type' => 'type_b',
+            'file' => UploadedFile::fake()->create('anything.exe', 10),
+        ]],
+    ]))->assertRedirect();
+
+    expect(OnlineOrder::firstOrFail()->payload['job_orders'][0])->not->toHaveKey('file_path')
+        ->and(Storage::disk('local')->allFiles())->toBe([]);
+});
+
+test('only orders that send mail count toward the limit, and the sixth is refused', function () {
+    Mail::fake();
+    $payload = onlineOrderTestPayload();
+
+    foreach (range(1, 8) as $attempt) {
+        $this->post(route('public.orders.store'), [...$payload, 'email' => 'not-an-email'])->assertSessionHasErrors('email');
+    }
+
+    foreach (range(1, 5) as $attempt) {
+        $this->post(route('public.orders.store'), $payload)->assertSessionHasNoErrors();
+    }
+
+    $this->post(route('public.orders.store'), $payload)->assertSessionHasErrors('email');
+
+    expect(OnlineOrder::count())->toBe(5);
+    Mail::assertSent(ConfirmOnlineOrder::class, 5);
 });

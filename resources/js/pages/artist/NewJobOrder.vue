@@ -201,7 +201,7 @@ function submit(): void {
                 </div>
 
                 <div v-else class="grid gap-4 @2xl:grid-cols-2">
-                    <div class="grid gap-2">
+                    <div class="grid content-start gap-2">
                         <Label for="customer-name">Name</Label>
                         <Input
                             id="customer-name"
@@ -210,7 +210,7 @@ function submit(): void {
                         />
                         <InputError :message="form.errors['customer.name']" />
                     </div>
-                    <div class="grid gap-2">
+                    <div class="grid content-start gap-2">
                         <Label for="customer-organization">
                             Organization (optional)
                         </Label>
@@ -223,7 +223,7 @@ function submit(): void {
                             :message="form.errors['customer.organization']"
                         />
                     </div>
-                    <div class="grid gap-2">
+                    <div class="grid content-start gap-2">
                         <Label for="customer-contact-number">
                             Contact number
                         </Label>
@@ -236,7 +236,7 @@ function submit(): void {
                             :message="form.errors['customer.contact_number']"
                         />
                     </div>
-                    <div class="grid gap-2">
+                    <div class="grid content-start gap-2">
                         <Label for="customer-email">Email</Label>
                         <Input
                             id="customer-email"
@@ -246,7 +246,7 @@ function submit(): void {
                         />
                         <InputError :message="form.errors['customer.email']" />
                     </div>
-                    <div class="grid gap-2 @2xl:col-span-2">
+                    <div class="grid content-start gap-2 @2xl:col-span-2">
                         <Label for="customer-address">Address</Label>
                         <Textarea
                             id="customer-address"
