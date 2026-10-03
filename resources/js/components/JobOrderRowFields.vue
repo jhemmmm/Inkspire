@@ -99,6 +99,10 @@ const emit = defineEmits<{
 
 const isCustomer = computed(() => props.audience === 'customer');
 
+const typeLabel = computed(() =>
+    isCustomer.value ? 'What do you need?' : 'Job Order Type',
+);
+
 // The radio group's name. `useId()` rather than the row's random `_key`: a
 // page that renders a row on first load is server-rendered, and a uuid made
 // on the server never matches the one made in the browser.
@@ -236,7 +240,9 @@ function selectJobOrderType(value: unknown): void {
     <Card>
         <CardHeader :icon="FileText">
             <div class="flex items-center justify-between gap-2">
-                <CardTitle>Job Order {{ index + 1 }}</CardTitle>
+                <CardTitle>
+                    {{ isCustomer ? 'Item' : 'Job Order' }} {{ index + 1 }}
+                </CardTitle>
                 <Button
                     v-if="removable"
                     type="button"
@@ -246,14 +252,16 @@ function selectJobOrderType(value: unknown): void {
                     @click="emit('remove')"
                 >
                     <X class="size-4" />
-                    <span class="sr-only">Remove job order</span>
+                    <span class="sr-only">
+                        {{ isCustomer ? 'Remove item' : 'Remove job order' }}
+                    </span>
                 </Button>
             </div>
         </CardHeader>
         <CardContent class="grid gap-6">
             <fieldset class="grid gap-2">
-                <legend class="sr-only">Job Order Type</legend>
-                <p class="text-sm font-medium">Job Order Type</p>
+                <legend class="sr-only">{{ typeLabel }}</legend>
+                <p class="text-sm font-medium">{{ typeLabel }}</p>
                 <div class="grid gap-4 @2xl:grid-cols-2">
                     <label
                         v-for="option in jobOrderTypeOptions"
@@ -307,7 +315,13 @@ function selectJobOrderType(value: unknown): void {
                     >
                         <Settings class="size-[18px]" />
                     </span>
-                    <h3 class="font-semibold">Print Specifications</h3>
+                    <h3 class="font-semibold">
+                        {{
+                            isCustomer
+                                ? 'Print details'
+                                : 'Print Specifications'
+                        }}
+                    </h3>
                 </div>
 
                 <div class="grid gap-6 p-6 @2xl:grid-cols-2">

@@ -196,7 +196,9 @@ function useComputed(): void {
                 :id="`${idPrefix}-service`"
                 :model-value="row.pricing_entry_id"
                 :options="serviceOptions"
-                placeholder="Search the price list…"
+                :placeholder="
+                    showPrices ? 'Search the price list…' : 'Search products…'
+                "
                 empty-text="No service matches that search."
                 @update:model-value="selectService"
             />
