@@ -53,7 +53,10 @@ class OnlineOrderController extends Controller
         $validated = $request->validated();
         $storedPaths = [];
 
-        $rows = collect($validated['job_orders'])->map(function (array $row) use ($validateFile, &$storedPaths): array {
+        /** @var array<int, array<string, mixed>> $submittedRows */
+        $submittedRows = $validated['job_orders'];
+
+        $rows = array_map(function (array $row) use ($validateFile, &$storedPaths): array {
             $file = $row['file'] ?? null;
             unset($row['file']);
 
@@ -75,7 +78,7 @@ class OnlineOrderController extends Controller
             }
 
             return $row;
-        })->all();
+        }, $submittedRows);
 
         $order = OnlineOrder::create([
             'email' => $validated['email'],

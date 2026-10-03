@@ -56,7 +56,7 @@ class OnlineOrder extends Model
     /**
      * Orders left sitting for three days, confirmed or not.
      *
-     * @return Builder<static>
+     * @return Builder<OnlineOrder>
      */
     public function prunable(): Builder
     {
