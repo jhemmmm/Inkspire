@@ -1,3 +1,5 @@
+import type { StatusTone } from '@/components/StatusBadge.vue';
+
 /**
  * Shared job order presentation, so a label is changed in one place rather
  * than in every page that renders it.
@@ -27,12 +29,80 @@ const JOB_ORDER_STATUS_LABELS: Record<string, string> = {
     design_approved: 'Design Approved',
     for_production: 'For Production',
     printing: 'Printing',
-    quality_check: 'Quality Check',
     ready_for_pickup: 'Ready for Pickup',
+    released: 'Released',
+    cancelled: 'Cancelled',
 };
 
 export function jobOrderStatusLabel(status: string): string {
     return JOB_ORDER_STATUS_LABELS[status] ?? status.replaceAll('_', ' ');
+}
+
+const JOB_ORDER_STATUS_BADGES: Record<string, StatusTone> = {
+    intake: 'warning',
+    validation_failed: 'danger',
+    ready_for_production: 'success',
+    assigned: 'info',
+    in_consultation: 'info',
+    in_design: 'info',
+    pending_review: 'warning',
+    design_approved: 'info',
+    for_production: 'warning',
+    printing: 'info',
+    ready_for_pickup: 'success',
+    released: 'success',
+    cancelled: 'danger',
+};
+
+/** Badge tone for any job order status, including `released`/`cancelled`. */
+export function jobOrderStatusBadge(status: string): StatusTone {
+    return JOB_ORDER_STATUS_BADGES[status] ?? 'neutral';
+}
+
+/** Front-of-shop stages the counter names outright; the rest are grouped. */
+const COUNTER_STATUSES = [
+    'intake',
+    'ready_for_production',
+    'assigned',
+    'validation_failed',
+];
+
+/**
+ * The three stages that actually mean "on the press". Enumerated rather than
+ * left as the catch-all, which once labelled a design still in consultation
+ * "In Production".
+ */
+const PRODUCTION_STATUSES = ['for_production', 'printing', 'ready_for_pickup'];
+
+/**
+ * The badge the counter shows for a job order. Front-of-shop stages are
+ * named in the shared wording; everything behind the counter is grouped into
+ * "In Design" or "In Production", since the counter only needs to know which
+ * room the order is in.
+ */
+export function counterStatusBadge(jobOrder: {
+    status: string;
+    released_at?: string | null;
+}): { tone: StatusTone; label: string } {
+    const named = jobOrder.released_at
+        ? 'released'
+        : COUNTER_STATUSES.includes(jobOrder.status)
+          ? jobOrder.status
+          : null;
+
+    if (named !== null) {
+        return {
+            tone: jobOrderStatusBadge(named),
+            label: jobOrderStatusLabel(named),
+        };
+    }
+
+    return {
+        tone: 'info',
+        label: PRODUCTION_STATUSES.includes(jobOrder.status)
+            ? 'In Production'
+            : 'In Design',
+    };
 }
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -48,6 +118,21 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
 
 export function paymentStatusLabel(status: string): string {
     return PAYMENT_STATUS_LABELS[status] ?? status.replaceAll('_', ' ');
+}
+
+const PAYMENT_STATUS_BADGES: Record<string, StatusTone> = {
+    unpaid: 'neutral',
+    partially_paid: 'warning',
+    pending_confirmation: 'warning',
+    paid: 'success',
+    credit_pending_approval: 'warning',
+    on_credit: 'info',
+    credit_rejected: 'danger',
+    written_off: 'neutral',
+};
+
+export function paymentStatusBadge(status: string): StatusTone {
+    return PAYMENT_STATUS_BADGES[status] ?? 'neutral';
 }
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {

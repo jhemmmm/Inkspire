@@ -241,8 +241,8 @@ class DemoDataSeeder extends Seeder
             ['status' => JobOrderStatus::ForProduction, 'dueOffset' => -1, 'day' => 8],
             ['status' => JobOrderStatus::Printing, 'dueOffset' => 0, 'day' => 7],
             ['status' => JobOrderStatus::Printing, 'dueOffset' => 5, 'day' => 6],
-            ['status' => JobOrderStatus::QualityCheck, 'dueOffset' => -3, 'day' => 5],
-            ['status' => JobOrderStatus::QualityCheck, 'dueOffset' => 3, 'day' => 4],
+            ['status' => JobOrderStatus::Printing, 'dueOffset' => -3, 'day' => 5],
+            ['status' => JobOrderStatus::Printing, 'dueOffset' => 3, 'day' => 4],
             ['status' => JobOrderStatus::ReadyForPickup, 'dueOffset' => -5, 'day' => 3],
             ['status' => JobOrderStatus::ReadyForPickup, 'dueOffset' => 7, 'day' => 2],
         ];

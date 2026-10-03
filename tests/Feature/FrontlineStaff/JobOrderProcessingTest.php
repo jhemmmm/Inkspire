@@ -138,7 +138,6 @@ test('replace-file on a job order that already entered production is rejected an
 })->with([
     JobOrderStatus::ForProduction,
     JobOrderStatus::Printing,
-    JobOrderStatus::QualityCheck,
     JobOrderStatus::ReadyForPickup,
 ]);
 

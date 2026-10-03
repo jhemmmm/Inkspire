@@ -115,5 +115,27 @@ test('a fully paid job order that production has not finished cannot be released
     JobOrderStatus::ReadyForProduction,
     JobOrderStatus::ForProduction,
     JobOrderStatus::Printing,
-    JobOrderStatus::QualityCheck,
 ]);
+
+test('a job order cancelled after the release request was bound is still refused', function () {
+    $frontlineStaff = User::factory()->frontlineStaff()->create();
+    $jobOrder = JobOrder::factory()->create([
+        'status' => JobOrderStatus::ReadyForPickup->value,
+        'total_amount' => 1000,
+        'payment_status' => PaymentStatus::OnCredit->value,
+    ]);
+    // The cancel lands between route binding and the controller: the bound
+    // model still says "not cancelled" while the row no longer does.
+    $cancelled = false;
+    JobOrder::retrieved(function (JobOrder $bound) use (&$cancelled): void {
+        if (! $cancelled) {
+            $cancelled = true;
+            JobOrder::query()->whereKey($bound->id)->update(['cancelled_at' => '2026-10-03 02:00:00']);
+        }
+    });
+
+    $response = $this->actingAs($frontlineStaff)->post(route('frontline-staff.job-orders.release', $jobOrder));
+
+    $response->assertStatus(422);
+    expect($jobOrder->fresh()->released_at)->toBeNull();
+});

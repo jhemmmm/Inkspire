@@ -135,3 +135,15 @@ test('the confirmation block carries a tracking token per job order and an absol
 
     expect($response->viewData('page')['props']['trackingBaseUrl'])->toEndWith('/track');
 });
+
+test('a released job order in the history reports released, not the stage it was last at', function () {
+    $staff = User::factory()->frontlineStaff()->create();
+    $customer = Customer::factory()->create();
+    JobOrder::factory()
+        ->for(QueueEntry::factory()->for($customer))
+        ->create(['status' => 'ready_for_pickup', 'released_at' => now()]);
+
+    $response = $this->actingAs($staff)->get(route('frontline-staff.new-visit', ['customer' => $customer->id]));
+
+    $response->assertInertia(fn (Assert $page) => $page->where('customerJobOrders.0.display_status', 'released'));
+});

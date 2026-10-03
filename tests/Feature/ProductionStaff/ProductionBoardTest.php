@@ -47,7 +47,7 @@ test('a job order due today or earlier is flagged rush', function (Closure $dueA
 
 test('a job order due strictly after today is not flagged rush', function () {
     $staff = User::factory()->productionStaff()->create();
-    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::QualityCheck->value]);
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value]);
     $jobOrder->forceFill(['due_at' => now()->addDay()])->save();
 
     $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));

@@ -110,7 +110,7 @@ test('a print size with no recorded dimensions skips the resolution check', func
     ]);
 
     // Refusing a paying customer over a size nobody has measured would be
-    // worse than letting quality check catch it downstream.
+    // worse than letting the press catch it downstream.
     $result = (new ValidateJobOrderFile)(
         UploadedFile::fake()->image('design.jpg', 200, 200),
         'Custom Size',

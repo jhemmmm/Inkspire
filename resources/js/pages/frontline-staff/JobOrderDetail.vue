@@ -17,6 +17,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,10 +32,12 @@ import {
 } from '@/components/ui/table';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import {
+    jobOrderStatusBadge,
     jobOrderStatusLabel,
     jobOrderTypeLabel,
     money,
     paymentMethodLabel,
+    paymentStatusBadge,
     paymentStatusLabel,
 } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/frontline-staff';
@@ -45,6 +48,7 @@ interface JobOrderDetail {
     description: string;
     type: string;
     status: string;
+    display_status: string;
     is_rush: boolean;
     print_size: string | null;
     width_ft: string | null;
@@ -138,21 +142,15 @@ function date(value: string | null): string {
 }
 
 /**
- * The one line that answers "so what do I tell the customer?". Terminal
- * states win over the stage, because a released or cancelled job order's
- * last production status is no longer the useful answer.
+ * The one line that answers "so what do I tell the customer?". Uses
+ * `display_status`, where released and cancelled win over the last
+ * production stage the status column still holds.
  */
-const headline = computed((): string => {
-    if (props.jobOrder.cancelled_at !== null) {
-        return 'Cancelled';
-    }
-
-    if (props.jobOrder.released_at !== null) {
-        return 'Released to the customer';
-    }
-
-    return jobOrderStatusLabel(props.jobOrder.status);
-});
+const headline = computed((): string =>
+    props.jobOrder.display_status === 'released'
+        ? 'Released to the customer'
+        : jobOrderStatusLabel(props.jobOrder.display_status),
+);
 
 const customer = computed(() => props.jobOrder.queue_entry?.customer ?? null);
 
@@ -169,7 +167,7 @@ const completedPaid = computed((): number =>
     <PageContainer>
         <Button
             as-child
-            variant="ghost"
+            variant="outline"
             size="sm"
             class="w-fit"
             data-test="back-to-dashboard-link"
@@ -197,9 +195,12 @@ const completedPaid = computed((): number =>
                 <Badge variant="outline">
                     {{ jobOrderTypeLabel(jobOrder.type) }}
                 </Badge>
-                <Badge variant="secondary" data-test="detail-stage-badge">
+                <StatusBadge
+                    :tone="jobOrderStatusBadge(jobOrder.display_status)"
+                    data-test="detail-stage-badge"
+                >
                     {{ headline }}
-                </Badge>
+                </StatusBadge>
             </template>
         </PageHeader>
 
@@ -398,9 +399,11 @@ const completedPaid = computed((): number =>
                 <CardContent class="grid gap-3 text-sm">
                     <div class="flex justify-between gap-4">
                         <span class="text-muted-foreground">Status</span>
-                        <Badge variant="outline">
+                        <StatusBadge
+                            :tone="paymentStatusBadge(jobOrder.payment_status)"
+                        >
                             {{ paymentStatusLabel(jobOrder.payment_status) }}
-                        </Badge>
+                        </StatusBadge>
                     </div>
                     <div class="flex justify-between gap-4">
                         <span class="text-muted-foreground">Base price</span>

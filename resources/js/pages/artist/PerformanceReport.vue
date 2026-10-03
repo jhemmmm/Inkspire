@@ -8,7 +8,7 @@ import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
 import StatCard from '@/components/StatCard.vue';
-import { Badge } from '@/components/ui/badge';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -237,16 +237,15 @@ function clearFilters(): void {
                                 {{ daysLabel(jobOrder.days_taken) }}
                             </TableCell>
                             <TableCell>
-                                <Badge
+                                <StatusBadge
                                     v-if="jobOrder.within_sla"
-                                    variant="outline"
-                                    class="border-green-600/40 text-green-600 dark:text-green-400"
+                                    tone="success"
                                 >
                                     On time
-                                </Badge>
-                                <Badge v-else variant="outline">
+                                </StatusBadge>
+                                <StatusBadge v-else tone="warning">
                                     Over {{ daysLabel(stats.slaDays) }}
-                                </Badge>
+                                </StatusBadge>
                             </TableCell>
                         </TableRow>
                     </TableBody>

@@ -42,7 +42,7 @@ class ReconciliationController extends Controller
                 ])
                 ->orderBy('created_at')
                 ->get(['id', 'description', 'payment_status', 'total_amount', 'queue_entry_id', 'created_at']),
-            'cashFlow' => $reportBuilder->chart('financial-summary', collect(), now()->subDays(13)->startOfDay(), now()),
+            'cashFlow' => $reportBuilder->cashFlow(),
         ]);
     }
 

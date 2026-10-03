@@ -9,6 +9,7 @@ use App\Models\SystemConfiguration;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\QueryException;
+use Inertia\Testing\AssertableInertia;
 
 test('a staff role can neither view nor act on the OnCredit requests queue', function () {
     $cashier = User::factory()->cashier()->create();
@@ -272,8 +273,20 @@ test('the queue ships the customer name the page renders', function () {
     $this->actingAs($admin)
         ->get(route('admin.credit-requests.index'))
         ->assertOk()
-        ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+        ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('creditRequests', 1)
             ->whereNot('creditRequests.0.job_order.queue_entry', null)
             ->has('creditRequests.0.job_order.queue_entry.customer.name'));
+});
+
+test('approving a credit request for a cancelled job order is refused', function () {
+    $admin = User::factory()->admin()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::CreditPendingApproval->value, 'cancelled_at' => now()]);
+    $accountsReceivable = AccountsReceivable::factory()->for($jobOrder)->create(['balance' => 1000]);
+
+    $response = $this->actingAs($admin)->patch(route('admin.credit-requests.approve', $accountsReceivable));
+
+    $response->assertStatus(422);
+    expect($accountsReceivable->fresh()->status)->toBe(AccountsReceivableStatus::PendingApproval);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::CreditPendingApproval);
 });

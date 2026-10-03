@@ -53,19 +53,24 @@ const selected = computed(() =>
  * finds the banner priced at that.
  */
 /**
- * Clear the search term whenever the menu opens.
+ * Take the selected label out of the search term whenever the menu opens.
  *
  * `displayValue` writes the selected label into the input, and the input *is*
  * the search term — so reopening a field that already had a value filtered the
  * list down to that one item, and typing appended to it ("Mug Printbacklit"),
  * leaving no way to change a selection without manually clearing the field.
  *
- * While the menu is open the input is empty and the current selection shows as
- * the placeholder; closing restores the label via `resetSearchTermOnBlur`.
+ * Only the label goes, not the whole term: typing into the closed field is
+ * itself what opens the menu, and by the time this runs the keystroke is
+ * already in the input beside the label. Clearing everything ate the first
+ * letter of every search started from the keyboard.
+ *
+ * While the menu is open the current selection shows as the placeholder;
+ * closing restores the label via `resetSearchTermOnBlur`.
  */
 function onOpenChange(open: boolean): void {
     if (open) {
-        search.value = '';
+        search.value = search.value.replace(selected.value?.label ?? '', '');
     }
 }
 
@@ -84,15 +89,16 @@ const matches = computed(() => {
 
 <template>
     <!--
-        `openOnClick` and `openOnFocus` both default to FALSE in reka-ui, so
-        without them the menu only opens via the chevron or the keyboard —
-        clicking the field appeared to do nothing.
+        `openOnClick` defaults to FALSE in reka-ui, so without it the menu
+        only opens via the chevron or the keyboard — clicking the field
+        appeared to do nothing. Not `openOnFocus`: a dialog that focused this
+        field on open popped the list over the form before anyone touched it.
+        Typing or ArrowDown still opens it from the keyboard.
     -->
     <ComboboxRoot
         v-model="model"
         :ignore-filter="true"
         :open-on-click="true"
-        :open-on-focus="true"
         class="relative"
         @update:open="onOpenChange"
     >

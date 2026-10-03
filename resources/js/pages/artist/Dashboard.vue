@@ -19,7 +19,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from '@/components/alert-dialog';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,6 +34,8 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { artistNavItems } from '@/config/nav/artist';
+import { artistStatusBadge, artistStatusLabel } from '@/lib/roles';
+import { jobOrderStatusBadge } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/artist';
 import { show } from '@/routes/artist/job-orders';
 
@@ -194,36 +197,13 @@ defineOptions({
 // already been approved and has left (or is leaving) the Artist's hands —
 // 06-04's automatic EnterProduction wiring means design_approved itself is
 // now transient on the real approve() path, immediately followed by one of
-// the four production statuses in the same transaction.
+// the three production statuses in the same transaction.
 const POST_APPROVAL_STATUSES = [
     'design_approved',
     'for_production',
     'printing',
-    'quality_check',
     'ready_for_pickup',
 ];
-
-function statusBadgeVariant(
-    status: string,
-): 'default' | 'secondary' | undefined {
-    if (status === 'in_consultation' || status === 'in_design') {
-        return 'secondary';
-    }
-
-    if (POST_APPROVAL_STATUSES.includes(status)) {
-        return undefined;
-    }
-
-    return 'default';
-}
-
-function statusBadgeClass(status: string): string {
-    if (POST_APPROVAL_STATUSES.includes(status)) {
-        return 'text-green-600 dark:text-green-400';
-    }
-
-    return '';
-}
 
 function statusLabel(status: string): string {
     if (status === 'in_consultation') {
@@ -250,10 +230,6 @@ function statusLabel(status: string): string {
         return 'Printing';
     }
 
-    if (status === 'quality_check') {
-        return 'Quality Check';
-    }
-
     if (status === 'ready_for_pickup') {
         return 'Ready for Pickup';
     }
@@ -276,40 +252,6 @@ function waitingSince(createdAt: string): string {
     }
 
     return `${Math.floor(minutes / 60)}h ${minutes % 60}m waiting`;
-}
-
-function artistStatusBadgeVariant(
-    artistStatus: string,
-): 'secondary' | 'outline' | undefined {
-    if (artistStatus === 'on_break') {
-        return 'secondary';
-    }
-
-    if (artistStatus === 'off_shift') {
-        return 'outline';
-    }
-
-    return undefined;
-}
-
-function artistStatusBadgeClass(artistStatus: string): string {
-    if (artistStatus === 'available') {
-        return 'text-green-600 dark:text-green-400';
-    }
-
-    return '';
-}
-
-function artistStatusLabel(artistStatus: string): string {
-    if (artistStatus === 'available') {
-        return 'Available';
-    }
-
-    if (artistStatus === 'on_break') {
-        return 'On Break';
-    }
-
-    return 'Off Shift';
 }
 </script>
 
@@ -334,12 +276,9 @@ function artistStatusLabel(artistStatus: string): string {
                     >
                         {{ artistLabel }}
                     </Badge>
-                    <Badge
-                        :variant="artistStatusBadgeVariant(artistStatus)"
-                        :class="artistStatusBadgeClass(artistStatus)"
-                    >
+                    <StatusBadge :tone="artistStatusBadge(artistStatus)">
                         {{ artistStatusLabel(artistStatus) }}
-                    </Badge>
+                    </StatusBadge>
                 </div>
                 <div class="flex items-center gap-2">
                     <Form
@@ -488,7 +427,7 @@ function artistStatusLabel(artistStatus: string): string {
                             </TableCell>
                             <TableCell>
                                 <Badge
-                                    variant="secondary"
+                                    variant="outline"
                                     :data-test="`pool-type-${jobOrder.id}-badge`"
                                 >
                                     {{ typeLabel(jobOrder.type) }}
@@ -642,7 +581,7 @@ function artistStatusLabel(artistStatus: string): string {
                             </TableCell>
                             <TableCell>
                                 <Badge
-                                    variant="secondary"
+                                    variant="outline"
                                     :data-test="`queue-type-${jobOrder.id}-badge`"
                                 >
                                     {{ typeLabel(jobOrder.type) }}
@@ -650,16 +589,13 @@ function artistStatusLabel(artistStatus: string): string {
                             </TableCell>
                             <TableCell>
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <Badge
-                                        :variant="
-                                            statusBadgeVariant(jobOrder.status)
-                                        "
-                                        :class="
-                                            statusBadgeClass(jobOrder.status)
+                                    <StatusBadge
+                                        :tone="
+                                            jobOrderStatusBadge(jobOrder.status)
                                         "
                                     >
                                         {{ statusLabel(jobOrder.status) }}
-                                    </Badge>
+                                    </StatusBadge>
                                 </div>
                             </TableCell>
                             <TableCell class="text-muted-foreground">

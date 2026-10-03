@@ -15,7 +15,7 @@ import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -27,10 +27,17 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/components/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
+import {
+    agingBadge,
+    BRACKET_LABELS,
+    COLLECTION_STATUS_LABELS,
+    collectionStatusBadge,
+} from '@/lib/accountsReceivable';
+import { money } from '@/lib/jobOrders';
 import {
     index as accountsReceivableIndex,
     show,
@@ -80,83 +87,6 @@ setLayoutProps({
         },
     ],
 });
-
-const BRACKET_LABELS: Record<string, string> = {
-    current: 'Current',
-    one_to_fifteen: '1–15 Days',
-    sixteen_to_thirty: '16–30 Days',
-    thirty_one_to_sixty: '31–60 Days',
-    sixty_one_to_ninety: '61–90 Days',
-    ninety_plus: '90+ Days',
-};
-
-const COLLECTION_STATUS_LABELS: Record<string, string> = {
-    pending: 'Pending',
-    follow_up: 'Follow-up',
-    warning_sent: 'Warning Sent',
-    collections: 'Collections',
-    paid: 'Paid',
-    written_off: 'Written Off',
-    cancelled: 'Cancelled',
-};
-
-function agingBadgeProps(bracket: string): {
-    variant: 'default' | 'secondary' | 'outline' | 'destructive' | undefined;
-    class: string;
-} {
-    switch (bracket) {
-        case 'current':
-            return {
-                variant: undefined,
-                class: 'text-green-600 dark:text-green-400',
-            };
-        case 'one_to_fifteen':
-        case 'sixteen_to_thirty':
-            return { variant: 'secondary', class: '' };
-        case 'thirty_one_to_sixty':
-        case 'sixty_one_to_ninety':
-            return {
-                variant: 'outline',
-                class: 'text-amber-600 dark:text-amber-400 border-amber-600/40',
-            };
-        case 'ninety_plus':
-            return { variant: 'destructive', class: '' };
-        default:
-            return { variant: undefined, class: '' };
-    }
-}
-
-function collectionStatusBadgeProps(status: string): {
-    variant: 'default' | 'secondary' | 'outline' | 'destructive' | undefined;
-    class: string;
-} {
-    switch (status) {
-        case 'pending':
-            return { variant: 'outline', class: '' };
-        case 'follow_up':
-        case 'warning_sent':
-            return { variant: 'secondary', class: '' };
-        case 'collections':
-            return { variant: 'default', class: '' };
-        case 'paid':
-            return {
-                variant: undefined,
-                class: 'text-green-600 dark:text-green-400',
-            };
-        case 'written_off':
-        case 'cancelled':
-            return { variant: 'outline', class: 'text-muted-foreground' };
-        default:
-            return { variant: undefined, class: '' };
-    }
-}
-
-function money(value: number): string {
-    return `₱${Number(value).toLocaleString('en-PH', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    })}`;
-}
 
 function dateLabel(value: string | null): string {
     if (!value) {
@@ -214,30 +144,19 @@ const hasPendingWriteOff = computed(
             :description="`${accountsReceivable.job_order.queue_entry.customer?.name ?? '—'} · ${accountsReceivable.job_order.description}`"
         >
             <template #actions>
-                <Badge
-                    :variant="
-                        agingBadgeProps(accountsReceivable.aging_bracket)
-                            .variant
-                    "
-                    :class="
-                        agingBadgeProps(accountsReceivable.aging_bracket).class
-                    "
+                <StatusBadge
+                    :tone="agingBadge(accountsReceivable.aging_bracket)"
                 >
                     {{
                         BRACKET_LABELS[accountsReceivable.aging_bracket] ??
                         accountsReceivable.aging_bracket
                     }}
-                </Badge>
-                <Badge
-                    :variant="
-                        collectionStatusBadgeProps(
+                </StatusBadge>
+                <StatusBadge
+                    :tone="
+                        collectionStatusBadge(
                             accountsReceivable.collection_status,
-                        ).variant
-                    "
-                    :class="
-                        collectionStatusBadgeProps(
-                            accountsReceivable.collection_status,
-                        ).class
+                        )
                     "
                 >
                     {{
@@ -245,7 +164,7 @@ const hasPendingWriteOff = computed(
                             accountsReceivable.collection_status
                         ] ?? accountsReceivable.collection_status
                     }}
-                </Badge>
+                </StatusBadge>
             </template>
         </PageHeader>
 
@@ -356,16 +275,11 @@ const hasPendingWriteOff = computed(
             </CardHeader>
             <CardContent class="flex flex-col gap-4">
                 <div class="flex flex-wrap items-center gap-2">
-                    <Badge
-                        :variant="
-                            collectionStatusBadgeProps(
+                    <StatusBadge
+                        :tone="
+                            collectionStatusBadge(
                                 accountsReceivable.collection_status,
-                            ).variant
-                        "
-                        :class="
-                            collectionStatusBadgeProps(
-                                accountsReceivable.collection_status,
-                            ).class
+                            )
                         "
                     >
                         {{
@@ -373,7 +287,7 @@ const hasPendingWriteOff = computed(
                                 accountsReceivable.collection_status
                             ] ?? accountsReceivable.collection_status
                         }}
-                    </Badge>
+                    </StatusBadge>
                     <span class="text-muted-foreground text-sm">{{
                         collectionStatusReason
                     }}</span>

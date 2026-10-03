@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\FilterAuditTrailRequest;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\BusinessTime;
 use App\Support\TableExport;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -58,7 +59,7 @@ class AuditTrailController extends Controller
         $matched = $query->count();
         $entries = $query->limit(self::PDF_ROW_CAP)->get();
 
-        $meta = ['generatedAt' => now()->timezone('Asia/Manila'), 'generatedBy' => $user->name];
+        $meta = ['generatedAt' => BusinessTime::now(), 'generatedBy' => $user->name];
 
         // ponytail: a 1,000-row PDF cap keeps dompdf's render time bounded.
         // If the shop ever needs the full list in PDF past this ceiling,
@@ -67,7 +68,7 @@ class AuditTrailController extends Controller
             $meta['note'] = 'Showing '.number_format(self::PDF_ROW_CAP).' of '.number_format($matched).' — narrow the filters or use Excel.';
         }
 
-        return TableExport::pdf('Audit Trail', $this->exportColumns(), $this->exportRows($entries), [], $meta, null, 'audit-trail_'.now()->timezone('Asia/Manila')->toDateString(), landscape: true);
+        return TableExport::pdf('Audit Trail', $this->exportColumns(), $this->exportRows($entries), [], $meta, null, 'audit-trail_'.BusinessTime::now()->toDateString(), landscape: true);
     }
 
     /**
@@ -84,25 +85,28 @@ class AuditTrailController extends Controller
 
         $entries = $this->filteredQuery($request)->latest('created_at')->get();
 
-        return TableExport::xlsx('Audit Trail', $this->exportColumns(), $this->exportRows($entries), [], null, null, 'audit-trail_'.now()->timezone('Asia/Manila')->toDateString());
+        return TableExport::xlsx('Audit Trail', $this->exportColumns(), $this->exportRows($entries), [], null, null, 'audit-trail_'.BusinessTime::now()->toDateString());
     }
 
     /**
      * The filtered base query both index() and the two export methods
-     * build on. `from`/`to` keep their existing whereDate() semantics --
-     * an already-shipped filter, unrelated to Job Orders' new full-timestamp
-     * bound requirement.
+     * build on. `from`/`to` are shop days, the same days the exported
+     * "When" column prints: an entry written at 1 AM on the 3rd belongs to
+     * the 3rd, though it is stored as 5 PM UTC on the 2nd.
      *
      * @return Builder<AuditLog>
      */
     private function filteredQuery(FilterAuditTrailRequest $request): Builder
     {
+        $from = BusinessTime::utcStartOfDay($request->date('from', null, BusinessTime::zone()));
+        $to = BusinessTime::utcEndOfDay($request->date('to', null, BusinessTime::zone()));
+
         return AuditLog::query()
             ->with('user:id,name,email,role')
             ->when($request->filled('user'), fn (Builder $query) => $query->where('user_id', $request->integer('user')))
             ->when($request->filled('action'), fn (Builder $query) => $query->where('action', $request->string('action')))
-            ->when($request->filled('from'), fn (Builder $query) => $query->whereDate('created_at', '>=', $request->date('from')))
-            ->when($request->filled('to'), fn (Builder $query) => $query->whereDate('created_at', '<=', $request->date('to')));
+            ->when($from, fn (Builder $query) => $query->where('created_at', '>=', $from))
+            ->when($to, fn (Builder $query) => $query->where('created_at', '<=', $to));
     }
 
     /** @return list<string> */
@@ -123,7 +127,7 @@ class AuditTrailController extends Controller
             $rows[] = [
                 // A string, not Carbon -- TableExport would strip the time. Shop
                 // time, not UTC, so it matches what the page shows.
-                $entry->created_at?->timezone('Asia/Manila')->format('M j, Y g:i A') ?? '—',
+                $entry->created_at === null ? '—' : BusinessTime::local($entry->created_at)->format('M j, Y g:i A'),
                 $entry->user === null ? '—' : $entry->user->name,
                 $entry->user !== null ? Str::headline($entry->user->role->value) : '—',
                 Str::headline($entry->action),

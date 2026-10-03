@@ -2,6 +2,7 @@
 
 use App\Enums\JobOrderStatus;
 use App\Models\Customer;
+use App\Models\DesignFile;
 use App\Models\JobOrder;
 use App\Models\QueueEntry;
 use App\Models\User;
@@ -91,4 +92,34 @@ test('a job order with no supplied file reports no customer file rather than a b
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->where('design.customerFileUrl', null));
+});
+
+test('the full-size design link sends the assigned artist to a signed URL for the stored file', function () {
+    Storage::fake('local');
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => JobOrderStatus::PendingReview]);
+    DesignFile::factory()->for($jobOrder)->create(['file_path' => 'design-files/poster.png']);
+
+    $response = $this->actingAs($artist)->get(route('artist.job-orders.design.show', $jobOrder));
+
+    $response->assertRedirectContains('design-files/poster.png');
+});
+
+test('the full-size design link is forbidden to an artist the job order is not assigned to', function () {
+    Storage::fake('local');
+    $jobOrder = JobOrder::factory()->assignedTo(User::factory()->artist()->create())->create(['status' => JobOrderStatus::PendingReview]);
+    DesignFile::factory()->for($jobOrder)->create();
+
+    $response = $this->actingAs(User::factory()->artist()->create())->get(route('artist.job-orders.design.show', $jobOrder));
+
+    $response->assertForbidden();
+});
+
+test('the full-size design link returns 404 before any design has been saved', function () {
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => JobOrderStatus::InDesign]);
+
+    $response = $this->actingAs($artist)->get(route('artist.job-orders.design.show', $jobOrder));
+
+    $response->assertNotFound();
 });

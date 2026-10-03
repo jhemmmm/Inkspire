@@ -40,7 +40,6 @@ test('a rush fee is applied to a job order that was already priced but never pai
         'rush_fee_applied' => true,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 1100,
     ])->assertSessionHasNoErrors();
 
     $jobOrder->refresh();
@@ -62,7 +61,6 @@ test('the receipt prints the rush fee that was charged', function () {
         'rush_fee_applied' => true,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 1100,
     ])->assertSessionHasNoErrors();
 
     $response = $this->actingAs($cashier)->get(route('cashier.job-orders.receipt.show', $jobOrder));
@@ -89,7 +87,6 @@ test('pricing can no longer be changed once a transaction exists', function () {
         'rush_fee_applied' => true,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 700,
     ])->assertSessionHasNoErrors();
 
     // The customer already paid against the original total; repricing now
@@ -110,7 +107,6 @@ test('a down payment lands on the receipt so the customer gets proof of what the
         'payment_method' => 'cash',
         'payment_type' => 'down',
         'down_payment_amount' => 300,
-        'amount_tendered' => 300,
     ]);
 
     $response->assertRedirect(route('cashier.job-orders.receipt.show', $jobOrder));

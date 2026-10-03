@@ -113,7 +113,7 @@ test('the surviving rows serialise as a json array, not a keyed object', functio
 
 test('a peso-exact payment is not left on the list by decimal rounding dust', function () {
     $cashier = User::factory()->cashier()->create();
-    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::QualityCheck->value]);
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value]);
     $jobOrder->forceFill(['total_amount' => 1234.56])->save();
     Transaction::factory()->for($jobOrder)->create(['amount' => 1234.56]);
 
@@ -149,4 +149,21 @@ test('the dashboard carries the rush flag for each listed job order', function (
         ->where('jobOrders.0.is_rush', true)
         ->where('jobOrders.1.id', $notRush->id)
         ->where('jobOrders.1.is_rush', false));
+});
+
+test('a released on-credit job order stays on the dashboard, shown as released', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    $jobOrder->forceFill([
+        'total_amount' => 1000,
+        'payment_status' => PaymentStatus::OnCredit->value,
+        'released_at' => now(),
+    ])->save();
+
+    $response = $this->actingAs($cashier)->get(route('cashier.dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->has('jobOrders', 1)
+        ->where('jobOrders.0.display_status', 'released')
+        ->where('jobOrders.0.can_cancel', false));
 });

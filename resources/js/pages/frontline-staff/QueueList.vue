@@ -24,6 +24,7 @@ import PageHeader from '@/components/PageHeader.vue';
 import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
 import { type SearchableOption } from '@/components/SearchableSelect.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
+import StatusBadge, { type StatusTone } from '@/components/StatusBadge.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -35,7 +36,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/components/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -53,7 +54,7 @@ import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { dashboard, newVisit } from '@/routes/frontline-staff';
 import { index as queueEntriesIndex } from '@/routes/frontline-staff/queue-entries';
 import { queueNumberLabel } from '@/lib/utils';
-import { jobOrderTypeLabel, money } from '@/lib/jobOrders';
+import { counterStatusBadge, jobOrderTypeLabel, money } from '@/lib/jobOrders';
 import { show as jobOrderShow } from '@/routes/frontline-staff/job-orders';
 
 interface QueueEntryCustomer {
@@ -141,27 +142,49 @@ defineOptions({
  * than re-deriving it from the job orders hanging off the entry. A visit
  * containing any rush job order was given an R number at intake, and that
  * number is what the customer is holding.
+ *
+ * A Done visit has nothing left for the counter or an artist, so it leaves
+ * the lanes for a Done Today list below them, shown only once it has rows.
+ * It stays on the page because a returning customer may add a job order.
  */
-const queueGroups = computed(() => [
-    {
-        key: 'rush',
-        title: 'Rush Lane',
-        description: 'R numbers. Called before the regular lane.',
-        rows: props.queueEntries.filter((entry) => entry.queue_prefix === 'R'),
-        emptyTitle: 'No rush visits today',
-        emptyDescription:
-            'A visit gets an R number when any of its job orders is marked Rush Print.',
-    },
-    {
-        key: 'regular',
-        title: 'Regular Lane',
-        description: 'A numbers, in the order they arrived.',
-        rows: props.queueEntries.filter((entry) => entry.queue_prefix !== 'R'),
-        emptyTitle: 'No queue entries yet today',
-        emptyDescription:
-            'Queue numbers reset each business day. Start a visit to create the first one.',
-    },
-]);
+const queueGroups = computed(() => {
+    const open = props.queueEntries.filter((entry) => entry.status !== 'done');
+    const done = props.queueEntries.filter((entry) => entry.status === 'done');
+
+    return [
+        {
+            key: 'rush',
+            title: 'Rush Lane',
+            description: 'R numbers. Called before the regular lane.',
+            rows: open.filter((entry) => entry.queue_prefix === 'R'),
+            emptyTitle: 'No rush visits waiting',
+            emptyDescription:
+                'A visit gets an R number when any of its job orders is marked Rush Print.',
+        },
+        {
+            key: 'regular',
+            title: 'Regular Lane',
+            description: 'A numbers, in the order they arrived.',
+            rows: open.filter((entry) => entry.queue_prefix !== 'R'),
+            emptyTitle: 'Nobody waiting',
+            emptyDescription:
+                'Queue numbers reset each business day. Start a visit to create the next one.',
+        },
+        ...(done.length > 0
+            ? [
+                  {
+                      key: 'done',
+                      title: 'Done Today',
+                      description:
+                          'Visits with nothing left for the counter or an artist. Their job orders carry on in production.',
+                      rows: done,
+                      emptyTitle: '',
+                      emptyDescription: '',
+                  },
+              ]
+            : []),
+    ];
+});
 
 // D-13/D-14: the same derived, self-correcting ready-for-pickup alert as the
 // Frontline Dashboard, surfaced here so staff already on this page see it
@@ -269,21 +292,14 @@ function handleJobOrderAdded(entryId: number): void {
     delete jobOrderPriceState[entryId];
 }
 
-// The four stages that actually mean "on the press". Enumerated rather
-// than left as a catch-all v-else: everything else falling through would
-// label in_consultation / in_design / pending_review / design_approved
-// job orders "In Production", telling Frontline Staff a design still being
-// consulted with the customer is already printing.
-const PRODUCTION_STATUSES = [
-    'for_production',
-    'printing',
-    'quality_check',
-    'ready_for_pickup',
-];
-
-function isInProduction(status: string): boolean {
-    return PRODUCTION_STATUSES.includes(status);
-}
+const VISIT_STATUS_BADGES: Record<
+    QueueEntryRecord['status'],
+    { tone: StatusTone; label: string }
+> = {
+    waiting: { tone: 'warning', label: 'Waiting' },
+    serving: { tone: 'info', label: 'Serving' },
+    done: { tone: 'success', label: 'Done' },
+};
 
 // Mirrors JobOrderReleaseController::store's own server-side gate (POS-09) —
 // this only decides whether to render the button; the controller re-checks
@@ -315,7 +331,7 @@ function visitTotal(entry: QueueEntryRecord): number {
     <PageContainer>
         <PageHeader
             title="Queue"
-            description="Today's visits in the order they arrived. Call the next customer, then mark them done."
+            description="Today's visits in the order they arrived. Send each customer where their badge says; a visit moves to Done Today once nothing is left for the counter or an artist."
         />
 
         <Alert v-if="readyForPickup.count > 0">
@@ -374,7 +390,7 @@ function visitTotal(entry: QueueEntryRecord): number {
                         >
                             <TableCell>
                                 <span
-                                    class="bg-secondary text-secondary-foreground inline-flex size-9 items-center justify-center rounded-lg text-base font-bold tabular-nums"
+                                    class="bg-secondary text-secondary-foreground inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2.5 text-base font-bold whitespace-nowrap tabular-nums"
                                 >
                                     {{
                                         queueNumberLabel(
@@ -409,62 +425,31 @@ function visitTotal(entry: QueueEntryRecord): number {
                                                 jobOrderTypeLabel(jobOrder.type)
                                             }}
                                         </Badge>
-                                        <Badge
-                                            v-if="jobOrder.status === 'intake'"
-                                            variant="outline"
-                                        >
-                                            Waiting for an Artist
-                                        </Badge>
-                                        <Badge
-                                            v-else-if="
-                                                jobOrder.status ===
-                                                'ready_for_production'
-                                            "
-                                            class="text-green-600 dark:text-green-400"
-                                        >
-                                            Ready for Production
-                                        </Badge>
-                                        <Badge
-                                            v-else-if="
+                                        <StatusBadge
+                                            v-if="
                                                 jobOrder.status ===
                                                     'assigned' ||
                                                 jobOrder.status ===
                                                     'in_consultation'
                                             "
-                                            variant="default"
+                                            tone="info"
                                             :data-test="`job-order-${jobOrder.id}-artist-badge`"
                                         >
                                             <UserRound class="size-3" />
                                             {{ artistDestination(jobOrder) }}
-                                        </Badge>
-                                        <Badge
-                                            v-else-if="
-                                                jobOrder.status ===
-                                                'validation_failed'
+                                        </StatusBadge>
+                                        <StatusBadge
+                                            v-else
+                                            :tone="
+                                                counterStatusBadge(jobOrder)
+                                                    .tone
                                             "
-                                            variant="destructive"
                                         >
-                                            Validation Failed
-                                        </Badge>
-                                        <Badge
-                                            v-else-if="
-                                                jobOrder.released_at !== null
-                                            "
-                                            class="text-green-600 dark:text-green-400"
-                                        >
-                                            Released
-                                        </Badge>
-                                        <Badge
-                                            v-else-if="
-                                                isInProduction(jobOrder.status)
-                                            "
-                                            variant="secondary"
-                                        >
-                                            In Production
-                                        </Badge>
-                                        <Badge v-else variant="secondary">
-                                            In Design
-                                        </Badge>
+                                            {{
+                                                counterStatusBadge(jobOrder)
+                                                    .label
+                                            }}
+                                        </StatusBadge>
                                         <ReplaceJobOrderFileDialog
                                             v-if="
                                                 jobOrder.status ===
@@ -495,7 +480,6 @@ function visitTotal(entry: QueueEntryRecord): number {
                                         >
                                             <Button
                                                 type="submit"
-                                                variant="outline"
                                                 :disabled="processing"
                                                 :data-test="`release-job-order-${jobOrder.id}-button`"
                                             >
@@ -506,24 +490,15 @@ function visitTotal(entry: QueueEntryRecord): number {
                                 </div>
                             </TableCell>
                             <TableCell>
-                                <Badge
-                                    v-if="entry.status === 'waiting'"
-                                    variant="outline"
+                                <StatusBadge
+                                    :tone="
+                                        VISIT_STATUS_BADGES[entry.status].tone
+                                    "
                                 >
-                                    Waiting
-                                </Badge>
-                                <Badge
-                                    v-else-if="entry.status === 'serving'"
-                                    variant="default"
-                                >
-                                    Serving
-                                </Badge>
-                                <Badge
-                                    v-else-if="entry.status === 'done'"
-                                    class="text-green-600 dark:text-green-400"
-                                >
-                                    Done
-                                </Badge>
+                                    {{
+                                        VISIT_STATUS_BADGES[entry.status].label
+                                    }}
+                                </StatusBadge>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 {{ money(visitTotal(entry)) }}
@@ -544,7 +519,6 @@ function visitTotal(entry: QueueEntryRecord): number {
                                     >
                                         <DialogTrigger as-child>
                                             <Button
-                                                variant="outline"
                                                 :data-test="`add-job-order-${entry.id}-button`"
                                             >
                                                 <Plus class="size-4" />

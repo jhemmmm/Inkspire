@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
                 <Button
                     v-if="previewUrl"
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     :data-test="`${id}-undo`"
                     @click="discardChosenFile"
@@ -136,7 +136,7 @@ onBeforeUnmount(() => {
                 <Button
                     v-else-if="avatarUrl && !pendingRemoval"
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     class="text-destructive hover:text-destructive"
                     :data-test="`${id}-remove`"
@@ -147,7 +147,7 @@ onBeforeUnmount(() => {
                 <Button
                     v-else-if="pendingRemoval"
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     :data-test="`${id}-keep`"
                     @click="keepPicture"

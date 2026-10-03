@@ -10,8 +10,11 @@ use App\Models\Expense;
 use App\Models\JobOrder;
 use App\Models\ProductionLog;
 use App\Models\Transaction;
+use App\Support\BusinessTime;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 
 /**
@@ -20,6 +23,11 @@ use Illuminate\Support\Collection;
  * filter compares full timestamp bounds (`>= $from`, `<= $to`), never a
  * bare equality, to avoid the project's documented SQLite `whereDate()`
  * trap (Pitfall 6).
+ *
+ * Each public method first turns its range into window(): the shop days it
+ * covers, once as `$utc` instants and once as `$days` on the shop's clock.
+ * `$utc` compares directly against the UTC timestamps the database stores;
+ * `$days` is for the date-only `expense_date` column and the chart's labels.
  */
 final class ReportBuilder
 {
@@ -31,13 +39,13 @@ final class ReportBuilder
      */
     public function rows(string $key, CarbonInterface $from, CarbonInterface $to): Collection
     {
-        $to = $to->copy()->endOfDay();
+        ['utc' => $utc, 'days' => $days] = $this->window($from, $to);
 
         return match ($key) {
-            'sales' => $this->salesRows($from, $to),
-            'cancellations' => $this->cancellationsRows($from, $to),
-            'production-status' => $this->productionStatusRows($from, $to),
-            'expenses' => $this->expensesRows($from, $to),
+            'sales' => $this->salesRows($utc),
+            'cancellations' => $this->cancellationsRows($utc),
+            'production-status' => $this->productionStatusRows($utc),
+            'expenses' => $this->expensesRows($days),
             default => collect(),
         };
     }
@@ -51,7 +59,7 @@ final class ReportBuilder
      */
     public function summary(CarbonInterface $from, CarbonInterface $to): array
     {
-        $to = $to->copy()->endOfDay();
+        ['utc' => $utc, 'days' => $days] = $this->window($from, $to);
 
         $jobSales = (float) Transaction::query()
             ->where('status', TransactionStatus::Completed->value)
@@ -60,22 +68,22 @@ final class ReportBuilder
                 TransactionType::BalancePayment->value,
                 TransactionType::FullPayment->value,
             ])
-            ->whereBetween('confirmed_at', [$from, $to])
+            ->whereBetween('confirmed_at', $utc)
             ->sum('amount');
 
         $cancellationFees = (float) Transaction::query()
             ->where('status', TransactionStatus::Completed->value)
             ->where('type', TransactionType::CancellationFee->value)
-            ->whereBetween('confirmed_at', [$from, $to])
+            ->whereBetween('confirmed_at', $utc)
             ->sum('amount');
 
         $revenueTotal = round($jobSales + $cancellationFees, 2);
-        $expensesTotal = round((float) Expense::query()->active()->whereBetween('expense_date', [$from, $to])->sum('amount'), 2);
+        $expensesTotal = round((float) Expense::query()->active()->whereBetween('expense_date', $days)->sum('amount'), 2);
 
         // Reuses JobOrder::outstandingBalance() -- never re-derive balance
         // math inline (RESEARCH.md's explicit anti-pattern warning).
         $writeOffTotal = AccountsReceivable::query()
-            ->whereBetween('written_off_at', [$from, $to])
+            ->whereBetween('written_off_at', $utc)
             ->with('jobOrder')
             ->get()
             ->sum(fn (AccountsReceivable $accountsReceivable): float => $accountsReceivable->jobOrder->outstandingBalance());
@@ -105,20 +113,22 @@ final class ReportBuilder
      */
     public function chart(string $key, Collection $rows, CarbonInterface $from, CarbonInterface $to): array
     {
-        $to = $to->copy()->endOfDay();
+        ['utc' => $utc, 'days' => $days] = $this->window($from, $to);
 
         return match ($key) {
-            'sales' => $this->trend('Sales', 'money', $from, $to, [
+            'sales' => $this->trend('Sales', 'money', $days, [
                 'Sales' => $rows->groupBy('date')->map(fn (Collection $day): float => (float) $day->sum('amount'))->all(),
             ]),
-            'cancellations' => $this->trend('Cancellations', 'count', $from, $to, [
+            'cancellations' => $this->trend('Cancellations', 'count', $days, [
                 'Cancellations' => $rows->countBy('date')->all(),
             ]),
+            // The board's Start / Done steps, then how an order left.
             'production-status' => $this->breakdown('Jobs by stage', 'count', [
                 'For Production' => $rows->where('stage', JobOrderStatus::ForProduction->value)->count(),
                 'Printing' => $rows->where('stage', JobOrderStatus::Printing->value)->count(),
-                'Quality Check' => $rows->where('stage', JobOrderStatus::QualityCheck->value)->count(),
                 'Ready for Pickup' => $rows->where('stage', JobOrderStatus::ReadyForPickup->value)->count(),
+                'Released' => $rows->where('stage', JobOrder::DISPLAY_RELEASED)->count(),
+                'Cancelled' => $rows->where('stage', JobOrder::DISPLAY_CANCELLED)->count(),
             ]),
             'expenses' => $this->breakdown('Expenses by category', 'money', $rows
                 ->whereNull('status')
@@ -126,11 +136,11 @@ final class ReportBuilder
                 ->map(fn (Collection $category): float => (float) $category->sum('amount'))
                 ->sortDesc()
                 ->all()),
-            'financial-summary' => $this->trend('Revenue and expenses', 'money', $from, $to, [
-                'Revenue' => $this->dailyRevenue($from, $to),
+            'financial-summary' => $this->trend('Revenue and expenses', 'money', $days, [
+                'Revenue' => $this->dailyRevenue($utc),
                 'Expenses' => Expense::query()
                     ->active()
-                    ->whereBetween('expense_date', [$from, $to])
+                    ->whereBetween('expense_date', $days)
                     ->get(['expense_date', 'amount'])
                     ->groupBy(fn (Expense $expense): string => $expense->expense_date->toDateString())
                     ->map(fn (Collection $day): float => (float) $day->sum('amount'))
@@ -141,12 +151,26 @@ final class ReportBuilder
     }
 
     /**
+     * The dashboards' cash-flow chart: the Financial Summary's revenue and
+     * expenses over the last 14 shop days, today included.
+     *
+     * @return array<string, mixed>
+     */
+    public function cashFlow(): array
+    {
+        $today = BusinessTime::now();
+
+        return $this->chart('financial-summary', collect(), $today->subDays(13), $today);
+    }
+
+    /**
      * Every completed payment and cancellation fee confirmed in the range,
      * totalled per day -- the same money summary() counts as revenue.
      *
+     * @param  array{CarbonImmutable, CarbonImmutable}  $utc
      * @return array<array-key, float>
      */
-    private function dailyRevenue(CarbonInterface $from, CarbonInterface $to): array
+    private function dailyRevenue(array $utc): array
     {
         return Transaction::query()
             ->where('status', TransactionStatus::Completed->value)
@@ -156,11 +180,30 @@ final class ReportBuilder
                 TransactionType::FullPayment->value,
                 TransactionType::CancellationFee->value,
             ])
-            ->whereBetween('confirmed_at', [$from, $to])
+            ->whereBetween('confirmed_at', $utc)
             ->get(['confirmed_at', 'amount'])
-            ->groupBy(fn (Transaction $transaction): string => $transaction->confirmed_at->toDateString())
+            ->groupBy(fn (Transaction $transaction): string => BusinessTime::local($transaction->confirmed_at)->toDateString())
             ->map(fn (Collection $day): float => (float) $day->sum('amount'))
             ->all();
+    }
+
+    /**
+     * The shop days [$from, $to] falls on, in the two forms the queries
+     * below need: `utc` instants for stored timestamps, and `days` on the
+     * shop's own clock for the date-only `expense_date` column (which holds
+     * the shop's date with no timezone) and for the chart's day labels.
+     *
+     * Both are built here, once, so nothing below converts between zones
+     * and no query has to remember which one its column wants.
+     *
+     * @return array{utc: array{CarbonImmutable, CarbonImmutable}, days: array{CarbonImmutable, CarbonImmutable}}
+     */
+    private function window(CarbonInterface $from, CarbonInterface $to): array
+    {
+        return [
+            'utc' => [BusinessTime::utcStartOfDay($from), BusinessTime::utcEndOfDay($to)],
+            'days' => [BusinessTime::local($from)->startOfDay(), BusinessTime::local($to)->endOfDay()],
+        ];
     }
 
     /**
@@ -171,11 +214,13 @@ final class ReportBuilder
      * too thin to read, so it switches to months. Add weekly buckets if a
      * 3-to-12-month range ever needs finer grain.
      *
+     * @param  array{CarbonImmutable, CarbonImmutable}  $days
      * @param  array<string, array<array-key, float|int>>  $series  series name => [Y-m-d => total]
      * @return array{type: string, title: string, format: string, labels: list<string>, series: list<array{name: string, values: list<float>}>}
      */
-    private function trend(string $subject, string $format, CarbonInterface $from, CarbonInterface $to, array $series): array
+    private function trend(string $subject, string $format, array $days, array $series): array
     {
+        [$from, $to] = $days;
         $monthly = $from->diffInDays($to) > 93;
         $bucketFormat = $monthly ? 'Y-m' : 'Y-m-d';
 
@@ -231,9 +276,10 @@ final class ReportBuilder
     }
 
     /**
+     * @param  array{CarbonImmutable, CarbonImmutable}  $utc
      * @return Collection<int, array<string, mixed>>
      */
-    private function salesRows(CarbonInterface $from, CarbonInterface $to): Collection
+    private function salesRows(array $utc): Collection
     {
         return Transaction::query()
             ->where('status', TransactionStatus::Completed->value)
@@ -242,12 +288,12 @@ final class ReportBuilder
                 TransactionType::BalancePayment->value,
                 TransactionType::FullPayment->value,
             ])
-            ->whereBetween('confirmed_at', [$from, $to])
+            ->whereBetween('confirmed_at', $utc)
             ->with(['jobOrder:id,number,queue_entry_id', 'jobOrder.queueEntry.customer:id,name'])
             ->orderByDesc('confirmed_at')
             ->get(['id', 'job_order_id', 'type', 'payment_method', 'amount', 'confirmed_at'])
             ->map(fn (Transaction $transaction): array => [
-                'date' => $transaction->confirmed_at->toDateString(),
+                'date' => BusinessTime::local($transaction->confirmed_at)->toDateString(),
                 'job_order' => $transaction->jobOrder->number,
                 'customer' => $transaction->jobOrder->queueEntry?->customer?->name,
                 'type' => $transaction->type->value,
@@ -258,13 +304,14 @@ final class ReportBuilder
     }
 
     /**
+     * @param  array{CarbonImmutable, CarbonImmutable}  $utc
      * @return Collection<int, array<string, mixed>>
      */
-    private function cancellationsRows(CarbonInterface $from, CarbonInterface $to): Collection
+    private function cancellationsRows(array $utc): Collection
     {
         return JobOrder::query()
             ->whereNotNull('cancelled_at')
-            ->whereBetween('cancelled_at', [$from, $to])
+            ->whereBetween('cancelled_at', $utc)
             ->with([
                 'queueEntry.customer:id,name',
                 'transactions' => fn ($query) => $query
@@ -274,7 +321,7 @@ final class ReportBuilder
             ->orderByDesc('cancelled_at')
             ->get(['id', 'number', 'queue_entry_id', 'total_amount', 'payment_status', 'cancelled_at'])
             ->map(fn (JobOrder $jobOrder): array => [
-                'date' => $jobOrder->cancelled_at->toDateString(),
+                'date' => BusinessTime::local($jobOrder->cancelled_at)->toDateString(),
                 'job_order' => $jobOrder->number,
                 'customer' => $jobOrder->queueEntry?->customer?->name,
                 'job_order_total' => (float) $jobOrder->total_amount,
@@ -288,19 +335,30 @@ final class ReportBuilder
     }
 
     /**
+     * @param  array{CarbonImmutable, CarbonImmutable}  $utc
      * @return Collection<int, array<string, mixed>>
      */
-    private function productionStatusRows(CarbonInterface $from, CarbonInterface $to): Collection
+    private function productionStatusRows(array $utc): Collection
     {
-        // "Due today" is an Asia/Manila business day -- mirrors
-        // ProductionBoardController's identical urgency computation.
-        $endOfBusinessDay = now()->timezone('Asia/Manila')->endOfDay();
+        // "Due today" is a business day -- mirrors ProductionBoardController's
+        // identical urgency computation.
+        $endOfBusinessDay = BusinessTime::now()->endOfDay();
 
+        // One row per job order: its first for_production log. An Undo back
+        // to For Production writes another one, which must not list the
+        // order twice. "First" is checked per row in range (no earlier
+        // for_production log for the same order), so the cost follows the
+        // range rather than the whole production history.
         return ProductionLog::query()
             ->where('to_status', JobOrderStatus::ForProduction->value)
-            ->whereBetween('created_at', [$from, $to])
+            ->whereBetween('created_at', $utc)
+            ->whereNotExists(fn (QueryBuilder $earlier) => $earlier
+                ->from('production_logs as earlier')
+                ->whereColumn('earlier.job_order_id', 'production_logs.job_order_id')
+                ->whereColumn('earlier.id', '<', 'production_logs.id')
+                ->where('earlier.to_status', JobOrderStatus::ForProduction->value))
             ->with([
-                'jobOrder:id,number,description,status,due_at,queue_entry_id',
+                'jobOrder:id,number,description,status,due_at,queue_entry_id,released_at,cancelled_at',
                 'jobOrder.queueEntry.customer:id,name',
             ])
             ->orderByDesc('created_at')
@@ -312,22 +370,27 @@ final class ReportBuilder
                     'job_order' => $jobOrder->number,
                     'customer' => $jobOrder->queueEntry?->customer?->name,
                     'product' => $jobOrder->description,
-                    'stage' => $jobOrder->status->value,
-                    'urgency' => $jobOrder->due_at !== null && $jobOrder->due_at->lessThanOrEqualTo($endOfBusinessDay),
-                    'entered_production' => $productionLog->created_at,
-                    'due' => $jobOrder->due_at,
+                    'stage' => $jobOrder->display_status,
+                    // An order that has left the shop is never a rush.
+                    'urgency' => $jobOrder->released_at === null
+                        && $jobOrder->cancelled_at === null
+                        && $jobOrder->due_at !== null
+                        && $jobOrder->due_at->lessThanOrEqualTo($endOfBusinessDay),
+                    'entered_production' => BusinessTime::local($productionLog->created_at),
+                    'due' => $jobOrder->due_at === null ? null : BusinessTime::local($jobOrder->due_at),
                 ];
             })
             ->values();
     }
 
     /**
+     * @param  array{CarbonImmutable, CarbonImmutable}  $days
      * @return Collection<int, array<string, mixed>>
      */
-    private function expensesRows(CarbonInterface $from, CarbonInterface $to): Collection
+    private function expensesRows(array $days): Collection
     {
         return Expense::query()
-            ->whereBetween('expense_date', [$from, $to])
+            ->whereBetween('expense_date', $days)
             ->with('recordedBy:id,name')
             ->orderByDesc('expense_date')
             ->get(['id', 'expense_date', 'category', 'description', 'amount', 'recorded_by', 'voided_at'])

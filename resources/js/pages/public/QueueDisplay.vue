@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, usePoll } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { queueNumberLabel } from '@/lib/utils';
@@ -163,11 +164,12 @@ const done = computed(() =>
                                         )
                                     }}
                                 </p>
-                                <Badge
-                                    class="text-base font-semibold text-green-600 dark:text-green-400"
+                                <StatusBadge
+                                    tone="success"
+                                    class="text-base font-semibold"
                                 >
                                     Done
-                                </Badge>
+                                </StatusBadge>
                             </CardContent>
                         </Card>
                     </div>

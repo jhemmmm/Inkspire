@@ -118,3 +118,26 @@ test('revenue is computed from confirmed_at, not created_at -- a transaction con
     expect($rows)->toHaveCount(1);
     expect((float) $rows[0]['amount'])->toBe(300.0);
 });
+
+test('the financial summary counts a payment taken before 8 AM Manila time under that Manila day', function (string $day, float $expectedRevenue) {
+    // 1 AM on October 3 in Manila, still October 2 in UTC.
+    $this->travelTo('2026-10-02 17:00:00');
+
+    $admin = User::factory()->admin()->create();
+    Transaction::factory()->create([
+        'type' => TransactionType::FullPayment->value,
+        'amount' => 500,
+        'confirmed_at' => now(),
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->withHeaders(financialReportHeaders())
+        ->get(route('admin.reports.index', ['report' => 'financial-summary', 'from' => $day, 'to' => $day]));
+
+    expect((float) $response->json('props.summary.job_sales'))->toBe($expectedRevenue)
+        ->and($response->json('props.chart.labels'))->toHaveCount(1)
+        ->and((float) $response->json('props.chart.series.0.values.0'))->toBe($expectedRevenue);
+})->with([
+    'today in Manila' => ['2026-10-03', 500.0],
+    'yesterday in Manila' => ['2026-10-02', 0.0],
+]);

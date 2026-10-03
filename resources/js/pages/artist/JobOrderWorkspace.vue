@@ -14,6 +14,7 @@ import { toast } from 'vue-sonner';
 import DesignEditorController from '@/actions/App/Http/Controllers/Artist/DesignEditorController';
 import JobOrderWorkspaceController from '@/actions/App/Http/Controllers/Artist/JobOrderWorkspaceController';
 import AlertError from '@/components/AlertError.vue';
+import DesignPreview from '@/components/DesignPreview.vue';
 import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
@@ -27,12 +28,14 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from '@/components/alert-dialog';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { artistNavItems } from '@/config/nav/artist';
+import { jobOrderStatusBadge } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/artist';
 import { show } from '@/routes/artist/job-orders';
 import {
@@ -269,9 +272,9 @@ function outcomeLabel(outcome: string | null): string {
                     <Zap class="size-3" />
                     Rush
                 </Badge>
-                <Badge variant="secondary">
+                <StatusBadge :tone="jobOrderStatusBadge(jobOrder.status)">
                     {{ jobOrderStatusLabel(jobOrder.status) }}
-                </Badge>
+                </StatusBadge>
             </template>
         </PageHeader>
 
@@ -412,11 +415,13 @@ function outcomeLabel(outcome: string | null): string {
             </CardHeader>
             <CardContent class="space-y-4">
                 <div v-if="isPendingReview" class="space-y-2">
-                    <img
+                    <DesignPreview
                         v-if="design.initialImageUrl"
                         :src="design.initialImageUrl"
+                        :href="
+                            JobOrderWorkspaceController.design.url(jobOrder.id)
+                        "
                         alt="Submitted design"
-                        class="w-full rounded-lg border"
                         data-test="design-pending-review-image"
                     />
                     <p
@@ -427,11 +432,13 @@ function outcomeLabel(outcome: string | null): string {
                     </p>
                 </div>
                 <div v-else-if="!design.canEdit" class="space-y-2">
-                    <img
+                    <DesignPreview
                         v-if="design.initialImageUrl"
                         :src="design.initialImageUrl"
+                        :href="
+                            JobOrderWorkspaceController.design.url(jobOrder.id)
+                        "
                         alt="Approved design"
-                        class="w-full rounded-lg border"
                     />
                     <p class="text-muted-foreground text-sm">
                         This design is locked.
@@ -449,11 +456,10 @@ function outcomeLabel(outcome: string | null): string {
                     />
 
                     <div v-if="chosenFile" class="space-y-3">
-                        <img
+                        <DesignPreview
                             v-if="chosenFilePreviewUrl"
                             :src="chosenFilePreviewUrl"
                             alt="Preview of the chosen design"
-                            class="bg-muted max-h-[60vh] w-full rounded-lg border object-contain"
                             data-test="chosen-file-preview"
                         />
                         <p class="text-muted-foreground text-sm break-all">
@@ -479,7 +485,7 @@ function outcomeLabel(outcome: string | null): string {
                             </Button>
                             <Button
                                 type="button"
-                                variant="ghost"
+                                variant="outline"
                                 data-test="use-editor-instead-button"
                                 @click="clearChosenFile"
                             >

@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Reports;
 
 use App\Models\QueueEntry;
+use App\Support\BusinessTime;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -42,6 +44,26 @@ class FilterReportRequest extends FormRequest
             'from' => ['nullable', 'date', "before_or_equal:{$today}", 'required_with:to'],
             'to' => ['nullable', 'date', "before_or_equal:{$today}", 'after_or_equal:from', 'required_with:from'],
         ];
+    }
+
+    /**
+     * The requested range as day bounds in the shop's business timezone (so a
+     * 7 AM sale is "Today"), defaulting to the month to date.
+     *
+     * @return array{CarbonInterface, CarbonInterface}
+     */
+    public function range(): array
+    {
+        if ($this->filled('from') && $this->filled('to')) {
+            return [
+                $this->date('from', null, BusinessTime::zone())->startOfDay(),
+                $this->date('to', null, BusinessTime::zone())->endOfDay(),
+            ];
+        }
+
+        $today = BusinessTime::now();
+
+        return [$today->startOfMonth(), $today->endOfDay()];
     }
 
     /**

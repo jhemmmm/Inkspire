@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ProductionStaff;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
 use App\Models\JobOrder;
+use App\Support\BusinessTime;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -21,7 +22,7 @@ use Inertia\Response;
 class ProductionBoardController extends Controller
 {
     /**
-     * Show every job order on the four production stages, excluding
+     * Show every job order on the three production stages, excluding
      * released and cancelled job orders (D-12), each carrying a
      * server-computed `is_rush` boolean (D-05, D-07).
      *
@@ -42,14 +43,13 @@ class ProductionBoardController extends Controller
      */
     public function index(Request $request): Response
     {
-        $endOfBusinessDay = now()->timezone('Asia/Manila')->endOfDay();
+        $endOfBusinessDay = BusinessTime::now()->endOfDay();
 
         return Inertia::render('production-staff/Dashboard', [
             'jobOrders' => JobOrder::query()
                 ->whereIn('status', [
                     JobOrderStatus::ForProduction->value,
                     JobOrderStatus::Printing->value,
-                    JobOrderStatus::QualityCheck->value,
                     JobOrderStatus::ReadyForPickup->value,
                 ])
                 ->whereNull('released_at')

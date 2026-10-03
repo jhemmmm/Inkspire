@@ -14,6 +14,5 @@ enum JobOrderStatus: string
     case DesignApproved = 'design_approved';
     case ForProduction = 'for_production';
     case Printing = 'printing';
-    case QualityCheck = 'quality_check';
     case ReadyForPickup = 'ready_for_pickup';
 }

@@ -43,29 +43,28 @@ class DashboardController extends Controller
                     JobOrderStatus::DesignApproved->value,
                     JobOrderStatus::ForProduction->value,
                     JobOrderStatus::Printing->value,
-                    JobOrderStatus::QualityCheck->value,
                     JobOrderStatus::ReadyForPickup->value,
                 ])
                 ->whereNull('cancelled_at')
                 ->withAmountPaid()
                 ->with([
                     'queueEntry.customer:id,name',
-                    // Surfaced so the cancellation dialog can warn the
-                    // Cashier when an On-Credit balance still exists
-                    // (WR-05) — cancelling never writes it off, since the
-                    // fee-netting logic only ever looks at completed
-                    // Transactions.
+                    // Surfaced so the cancellation dialog can tell the
+                    // Cashier what happens to an outstanding On-Credit
+                    // balance (WR-05): CancellationController closes the
+                    // receivable, so the customer no longer owes it.
                     'accountsReceivable' => fn ($query) => $query
                         ->where('status', AccountsReceivableStatus::Active->value)
                         ->select(['id', 'job_order_id', 'balance', 'status']),
                 ])
                 ->orderBy('created_at')
-                ->get(['id', 'number', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount', 'quoted_amount', 'is_rush'])
+                ->get(['id', 'number', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount', 'quoted_amount', 'is_rush', 'released_at', 'cancelled_at'])
                 ->reject(fn (JobOrder $jobOrder) => $jobOrder->total_amount !== null
                     && $jobOrder->amount_paid !== null
                     && (float) $jobOrder->amount_paid >= (float) $jobOrder->total_amount - 0.005)
                 ->values()
-                ->append('display_total'),
+                ->append(['display_total', 'display_status'])
+                ->each(fn (JobOrder $jobOrder) => $jobOrder->setAttribute('can_cancel', $jobOrder->cancellationBlocker() === null)),
             // Mirrors the exact server-authoritative value CancellationController
             // reads, so the pre-confirmation dialog body (D-04/D-05) matches
             // what actually gets charged (informational display only).

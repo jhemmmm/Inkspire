@@ -28,7 +28,6 @@ class ProductionStageController extends Controller
         return match ($status) {
             JobOrderStatus::ForProduction => 'For Production',
             JobOrderStatus::Printing => 'Printing',
-            JobOrderStatus::QualityCheck => 'Quality Check',
             JobOrderStatus::ReadyForPickup => 'Ready for Pickup',
             default => $status->value,
         };
@@ -45,21 +44,19 @@ class ProductionStageController extends Controller
     }
 
     /**
-     * Finish: For Production, Printing or Quality Check to Ready for Pickup.
-     * Payment-gated.
+     * Finish: Printing to Ready for Pickup. Payment-gated.
+     * An order still at For Production must be started first, so it can't
+     * skip straight from the queue to the pickup counter.
      */
     public function done(Request $request, JobOrder $jobOrder): RedirectResponse
     {
         return $this->transition($request, $jobOrder, [
-            JobOrderStatus::ForProduction->value => JobOrderStatus::ReadyForPickup,
             JobOrderStatus::Printing->value => JobOrderStatus::ReadyForPickup,
-            JobOrderStatus::QualityCheck->value => JobOrderStatus::ReadyForPickup,
         ], true, false);
     }
 
     /**
-     * Undo: Ready for Pickup to Printing, Printing or Quality Check to For
-     * Production. Not payment-gated and needs no typed reason; the log still
+     * Undo: Ready for Pickup to Printing, Printing to For Production. Not payment-gated and needs no typed reason; the log still
      * records who and when.
      */
     public function undo(Request $request, JobOrder $jobOrder): RedirectResponse
@@ -67,7 +64,6 @@ class ProductionStageController extends Controller
         return $this->transition($request, $jobOrder, [
             JobOrderStatus::ReadyForPickup->value => JobOrderStatus::Printing,
             JobOrderStatus::Printing->value => JobOrderStatus::ForProduction,
-            JobOrderStatus::QualityCheck->value => JobOrderStatus::ForProduction,
         ], false, true);
     }
 
@@ -94,7 +90,6 @@ class ProductionStageController extends Controller
             abort_if(! in_array($jobOrder->status, [
                 JobOrderStatus::ForProduction,
                 JobOrderStatus::Printing,
-                JobOrderStatus::QualityCheck,
                 JobOrderStatus::ReadyForPickup,
             ], true), 422, __('This job order is not on the board'));
 

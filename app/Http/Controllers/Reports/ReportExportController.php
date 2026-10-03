@@ -7,6 +7,7 @@ use App\Http\Requests\Reports\FilterReportRequest;
 use App\Services\Reports\ReportBuilder;
 use App\Services\Reports\ReportRegistry;
 use App\Support\AuditLogger;
+use App\Support\BusinessTime;
 use App\Support\TableExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
@@ -30,13 +31,7 @@ class ReportExportController extends Controller
 
         abort_unless(ReportRegistry::isEntitled($user, $reportKey), 403);
 
-        if ($request->filled('from') && $request->filled('to')) {
-            $from = $request->date('from')->startOfDay();
-            $to = $request->date('to')->endOfDay();
-        } else {
-            $from = now()->startOfMonth()->startOfDay();
-            $to = now()->endOfDay();
-        }
+        [$from, $to] = $request->range();
 
         AuditLogger::recordReportExport($user, $reportKey, 'pdf', $from, $to);
 
@@ -48,7 +43,7 @@ class ReportExportController extends Controller
                 'title' => $title,
                 'from' => $from,
                 'to' => $to,
-                'generatedAt' => now()->timezone('Asia/Manila'),
+                'generatedAt' => BusinessTime::now(),
                 'generatedBy' => $user->name,
                 'summary' => $reportBuilder->summary($from, $to),
             ])
@@ -62,7 +57,7 @@ class ReportExportController extends Controller
         return TableExport::pdf($title, $columns, $built['rows'], $this->moneyColumnIndexes($reportKey), [
             'from' => $from,
             'to' => $to,
-            'generatedAt' => now()->timezone('Asia/Manila'),
+            'generatedAt' => BusinessTime::now(),
             'generatedBy' => $user->name,
         ], $built['totalRow'], $filename);
     }
@@ -79,13 +74,7 @@ class ReportExportController extends Controller
 
         abort_unless(ReportRegistry::isEntitled($user, $reportKey), 403);
 
-        if ($request->filled('from') && $request->filled('to')) {
-            $from = $request->date('from')->startOfDay();
-            $to = $request->date('to')->endOfDay();
-        } else {
-            $from = now()->startOfMonth()->startOfDay();
-            $to = now()->endOfDay();
-        }
+        [$from, $to] = $request->range();
 
         AuditLogger::recordReportExport($user, $reportKey, 'xlsx', $from, $to);
 

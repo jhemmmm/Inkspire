@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Reports;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Reports\FilterReportRequest;
-use App\Models\QueueEntry;
 use App\Services\Reports\ReportBuilder;
 use App\Services\Reports\ReportRegistry;
-use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,14 +25,7 @@ class ReportController extends Controller
     {
         $user = $request->user();
 
-        if ($request->filled('from') && $request->filled('to')) {
-            $from = $request->date('from')->startOfDay();
-            $to = $request->date('to')->endOfDay();
-        } else {
-            $today = CarbonImmutable::parse(QueueEntry::currentBusinessDate());
-            $from = $today->startOfMonth();
-            $to = $today->endOfDay();
-        }
+        [$from, $to] = $request->range();
 
         $key = (string) ($request->query('report') ?? array_key_first(ReportRegistry::entitledFor($user)));
 

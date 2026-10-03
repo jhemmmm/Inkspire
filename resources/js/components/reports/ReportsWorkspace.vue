@@ -13,6 +13,7 @@ import BarChart from '@/components/BarChart.vue';
 import BreakdownChart from '@/components/BreakdownChart.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import SectionHeading from '@/components/SectionHeading.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +37,14 @@ import {
 } from '@/components/ui/table';
 import DateRangeControl from '@/components/reports/DateRangeControl.vue';
 import type { ReportChart } from '@/lib/charts';
+import {
+    jobOrderStatusBadge,
+    jobOrderStatusLabel,
+    money,
+    paymentMethodLabel,
+    paymentStatusBadge,
+    paymentStatusLabel,
+} from '@/lib/jobOrders';
 
 interface ReportDefinition {
     title: string;
@@ -138,21 +147,6 @@ function dateField(value: unknown): string {
     return value ? formatDateOnly(String(value)) : '—';
 }
 
-function paymentMethodLabel(method: unknown): string {
-    switch (method) {
-        case 'cash':
-            return 'Cash';
-        case 'bank_transfer':
-            return 'Bank Transfer';
-        case 'gcash':
-            return 'GCash';
-        case 'maya':
-            return 'Maya';
-        default:
-            return displayValue(method);
-    }
-}
-
 function transactionTypeLabel(type: unknown): string {
     switch (type) {
         case 'down_payment':
@@ -166,111 +160,6 @@ function transactionTypeLabel(type: unknown): string {
         default:
             return displayValue(type);
     }
-}
-
-type BadgeVariant =
-    | 'default'
-    | 'secondary'
-    | 'outline'
-    | 'destructive'
-    | undefined;
-
-function paymentStatusLabel(status: unknown): string {
-    switch (status) {
-        case 'unpaid':
-            return 'Unpaid';
-        case 'partially_paid':
-            return 'Partially Paid';
-        case 'pending_confirmation':
-            return 'Pending Confirmation';
-        case 'paid':
-            return 'Paid';
-        case 'credit_pending_approval':
-            return 'Credit Pending Approval';
-        case 'on_credit':
-            return 'On Credit';
-        case 'credit_rejected':
-            return 'Credit Rejected';
-        case 'written_off':
-            return 'Written Off';
-        default:
-            return displayValue(status);
-    }
-}
-
-function paymentStatusBadgeProps(status: unknown): {
-    variant: BadgeVariant;
-    class: string;
-} {
-    switch (status) {
-        case 'unpaid':
-            return { variant: 'outline', class: '' };
-        case 'partially_paid':
-            return { variant: 'default', class: '' };
-        case 'pending_confirmation':
-            return { variant: 'secondary', class: '' };
-        case 'paid':
-            return {
-                variant: undefined,
-                class: 'text-green-600 dark:text-green-400',
-            };
-        case 'credit_pending_approval':
-            return { variant: 'default', class: '' };
-        case 'on_credit':
-            return {
-                variant: undefined,
-                class: 'text-green-600 dark:text-green-400',
-            };
-        case 'credit_rejected':
-            return { variant: 'destructive', class: '' };
-        case 'written_off':
-            return { variant: 'outline', class: 'text-muted-foreground' };
-        default:
-            return { variant: undefined, class: '' };
-    }
-}
-
-function jobOrderStageLabel(status: unknown): string {
-    switch (status) {
-        case 'for_production':
-            return 'For Production';
-        case 'printing':
-            return 'Printing';
-        case 'quality_check':
-            return 'Quality Check';
-        case 'ready_for_pickup':
-            return 'Ready for Pickup';
-        default:
-            return displayValue(status);
-    }
-}
-
-function jobOrderStageBadgeProps(status: unknown): {
-    variant: BadgeVariant;
-    class: string;
-} {
-    switch (status) {
-        case 'for_production':
-            return { variant: 'outline', class: '' };
-        case 'printing':
-            return { variant: 'secondary', class: '' };
-        case 'quality_check':
-            return { variant: 'secondary', class: '' };
-        case 'ready_for_pickup':
-            return {
-                variant: undefined,
-                class: 'text-green-600 dark:text-green-400',
-            };
-        default:
-            return { variant: 'secondary', class: '' };
-    }
-}
-
-function money(value: number): string {
-    return `₱${Number(value).toLocaleString('en-PH', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    })}`;
 }
 
 function formatDateOnly(iso: string): string {
@@ -649,7 +538,7 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                             <template v-if="field === 'method'">
                                                 {{
                                                     paymentMethodLabel(
-                                                        row[field],
+                                                        String(row[field]),
                                                     )
                                                 }}
                                             </template>
@@ -667,46 +556,36 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                                     field === 'payment_status'
                                                 "
                                             >
-                                                <Badge
-                                                    :variant="
-                                                        paymentStatusBadgeProps(
-                                                            row[field],
-                                                        ).variant
-                                                    "
-                                                    :class="
-                                                        paymentStatusBadgeProps(
-                                                            row[field],
-                                                        ).class
+                                                <StatusBadge
+                                                    :tone="
+                                                        paymentStatusBadge(
+                                                            String(row[field]),
+                                                        )
                                                     "
                                                 >
                                                     {{
                                                         paymentStatusLabel(
-                                                            row[field],
+                                                            String(row[field]),
                                                         )
                                                     }}
-                                                </Badge>
+                                                </StatusBadge>
                                             </template>
                                             <template
                                                 v-else-if="field === 'stage'"
                                             >
-                                                <Badge
-                                                    :variant="
-                                                        jobOrderStageBadgeProps(
-                                                            row[field],
-                                                        ).variant
-                                                    "
-                                                    :class="
-                                                        jobOrderStageBadgeProps(
-                                                            row[field],
-                                                        ).class
+                                                <StatusBadge
+                                                    :tone="
+                                                        jobOrderStatusBadge(
+                                                            String(row[field]),
+                                                        )
                                                     "
                                                 >
                                                     {{
-                                                        jobOrderStageLabel(
-                                                            row[field],
+                                                        jobOrderStatusLabel(
+                                                            String(row[field]),
                                                         )
                                                     }}
-                                                </Badge>
+                                                </StatusBadge>
                                             </template>
                                             <template
                                                 v-else-if="field === 'status'"
@@ -730,13 +609,12 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                                     <Zap class="size-3" />
                                                     Rush
                                                 </Badge>
-                                                <Badge
+                                                <StatusBadge
                                                     v-else
-                                                    variant="outline"
-                                                    class="border-green-600/40 text-green-600 dark:text-green-400"
+                                                    tone="neutral"
                                                 >
                                                     Normal
-                                                </Badge>
+                                                </StatusBadge>
                                             </template>
                                             <template
                                                 v-else-if="

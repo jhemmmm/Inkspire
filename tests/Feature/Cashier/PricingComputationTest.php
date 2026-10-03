@@ -25,7 +25,6 @@ test('a cashier prices and records a full cash payment, computing the total serv
         'rush_fee_applied' => true,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 1100,
     ]);
 
     $response->assertRedirect();
@@ -70,7 +69,6 @@ test('a design approved job order can also be priced and paid', function () {
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 250,
     ]);
 
     $response->assertRedirect();
@@ -88,7 +86,6 @@ test('a job order not yet ready for production or design approved cannot be pric
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 100,
     ]);
 
     $response->assertStatus(422);
@@ -105,7 +102,6 @@ test('a non cashier role is blocked from recording a payment', function () {
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 100,
     ]);
 
     $response->assertForbidden();

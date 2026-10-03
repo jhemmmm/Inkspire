@@ -11,7 +11,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from '@/components/alert-dialog';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';

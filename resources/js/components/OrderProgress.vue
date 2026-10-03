@@ -35,10 +35,6 @@ const STEPS = [
         blurb: 'Your order is being printed right now.',
     },
     {
-        title: 'Quality check',
-        blurb: 'We are checking the finished print before it goes out.',
-    },
-    {
         title: 'Ready for pickup',
         blurb: 'Come and collect it at the shop — bring this slip with you.',
     },

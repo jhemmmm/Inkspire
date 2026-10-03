@@ -28,7 +28,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['job_order_id', 'type', 'payment_method', 'amount', 'status', 'reference_number', 'paymongo_payment_intent_id', 'recorded_by'])]
+#[Fillable(['job_order_id', 'type', 'payment_method', 'amount', 'status', 'reference_number', 'paymongo_payment_intent_id', 'recorded_by', 'confirmed_at'])]
 #[ObservedBy(AuditObserver::class)]
 class Transaction extends Model
 {

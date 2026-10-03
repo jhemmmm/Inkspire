@@ -55,7 +55,6 @@ class JobOrderQueueController extends Controller
                     JobOrderStatus::ReadyForProduction->value,
                     JobOrderStatus::ForProduction->value,
                     JobOrderStatus::Printing->value,
-                    JobOrderStatus::QualityCheck->value,
                     JobOrderStatus::ReadyForPickup->value,
                 ])
                 ->orderByRaw(self::QUEUE_ORDER)

@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\JobOrderStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\FilterJobOrdersRequest;
 use App\Models\JobOrder;
 use App\Support\AuditLogger;
+use App\Support\BusinessTime;
 use App\Support\TableExport;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,7 +33,7 @@ class JobOrderController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        $jobOrders->getCollection()->each(fn (JobOrder $jobOrder) => $jobOrder->append('display_total'));
+        $jobOrders->getCollection()->each(fn (JobOrder $jobOrder) => $jobOrder->append(['display_total', 'display_status']));
 
         return Inertia::render('admin/JobOrders', [
             'jobOrders' => $jobOrders,
@@ -42,7 +42,7 @@ class JobOrderController extends Controller
             // jobOrderStatusLabel() helper (lib/jobOrders.ts) that every
             // other portal's job order table uses, so labels live there
             // rather than being duplicated on this controller too.
-            'statuses' => collect(JobOrderStatus::cases())->map(fn (JobOrderStatus $status): string => $status->value)->all(),
+            'statuses' => FilterJobOrdersRequest::statuses(),
             'paymentStatuses' => collect(PaymentStatus::cases())->map(fn (PaymentStatus $status): string => $status->value)->all(),
         ]);
     }
@@ -64,7 +64,7 @@ class JobOrderController extends Controller
         $matched = $query->count();
         $jobOrders = $query->limit(self::PDF_ROW_CAP)->get();
 
-        $meta = ['generatedAt' => now()->timezone('Asia/Manila'), 'generatedBy' => $user->name];
+        $meta = ['generatedAt' => BusinessTime::now(), 'generatedBy' => $user->name];
 
         if ($from !== null && $to !== null) {
             $meta['from'] = $from;
@@ -80,7 +80,7 @@ class JobOrderController extends Controller
 
         $built = $this->buildTableRows($jobOrders);
 
-        return TableExport::pdf('Job Orders', $this->exportColumns(), $built['rows'], $this->moneyColumnIndexes(), $meta, $built['totalRow'], 'job-orders_'.now()->timezone('Asia/Manila')->toDateString(), landscape: true);
+        return TableExport::pdf('Job Orders', $this->exportColumns(), $built['rows'], $this->moneyColumnIndexes(), $meta, $built['totalRow'], 'job-orders_'.BusinessTime::now()->toDateString(), landscape: true);
     }
 
     /**
@@ -99,7 +99,7 @@ class JobOrderController extends Controller
         $jobOrders = $this->filteredQuery($request)->latest('id')->get();
         $built = $this->buildTableRows($jobOrders);
 
-        return TableExport::xlsx('Job Orders', $this->exportColumns(), $built['rows'], $this->moneyColumnIndexes(), null, $built['totalRow'], 'job-orders_'.now()->timezone('Asia/Manila')->toDateString());
+        return TableExport::xlsx('Job Orders', $this->exportColumns(), $built['rows'], $this->moneyColumnIndexes(), null, $built['totalRow'], 'job-orders_'.BusinessTime::now()->toDateString());
     }
 
     /**
@@ -114,16 +114,16 @@ class JobOrderController extends Controller
         return JobOrder::query()
             ->whereNull('cancelled_at')
             ->when($request->filled('q'), fn (Builder $query) => $query->search((string) $request->string('q')))
-            ->when($request->filled('status'), fn (Builder $query) => $query->where('status', $request->string('status')))
+            ->when($request->filled('status'), fn (Builder $query) => $query->whereDisplayStatus((string) $request->string('status')))
             ->when($request->filled('payment_status'), fn (Builder $query) => $query->where('payment_status', $request->string('payment_status')))
-            ->when($this->resolveFrom($request), fn (Builder $query, CarbonInterface $from) => $query->where('created_at', '>=', $from->copy()->utc()))
-            ->when($this->resolveTo($request), fn (Builder $query, CarbonInterface $to) => $query->where('created_at', '<=', $to->copy()->utc()))
+            ->when($this->resolveFrom($request), fn (Builder $query, CarbonInterface $from) => $query->where('created_at', '>=', BusinessTime::utcStartOfDay($from)))
+            ->when($this->resolveTo($request), fn (Builder $query, CarbonInterface $to) => $query->where('created_at', '<=', BusinessTime::utcEndOfDay($to)))
             ->with([
                 'queueEntry:id,customer_id',
                 'queueEntry.customer:id,name',
                 'pricingEntry:id,name',
             ])
-            ->select(['id', 'number', 'description', 'width_ft', 'height_ft', 'quantity', 'pricing_entry_id', 'queue_entry_id', 'status', 'payment_status', 'total_amount', 'quoted_amount', 'is_rush', 'created_at'])
+            ->select(['id', 'number', 'description', 'width_ft', 'height_ft', 'quantity', 'pricing_entry_id', 'queue_entry_id', 'status', 'payment_status', 'total_amount', 'quoted_amount', 'is_rush', 'released_at', 'cancelled_at', 'created_at'])
             ->withAmountPaid();
     }
 
@@ -139,7 +139,7 @@ class JobOrderController extends Controller
      */
     private function resolveFrom(FilterJobOrdersRequest $request): ?CarbonInterface
     {
-        return $request->filled('from') ? $request->date('from', null, 'Asia/Manila')->startOfDay() : null;
+        return $request->filled('from') ? $request->date('from', null, BusinessTime::zone())->startOfDay() : null;
     }
 
     /**
@@ -147,7 +147,7 @@ class JobOrderController extends Controller
      */
     private function resolveTo(FilterJobOrdersRequest $request): ?CarbonInterface
     {
-        return $request->filled('to') ? $request->date('to', null, 'Asia/Manila')->endOfDay() : null;
+        return $request->filled('to') ? $request->date('to', null, BusinessTime::zone())->endOfDay() : null;
     }
 
     /** @return list<string> */
@@ -205,13 +205,13 @@ class JobOrderController extends Controller
             $this->customerName($jobOrder),
             $jobOrder->pricingEntry === null ? $jobOrder->description : $jobOrder->pricingEntry->name,
             $this->sizeLabel($jobOrder),
-            Str::headline($jobOrder->status->value),
+            Str::headline($jobOrder->display_status),
             Str::headline($jobOrder->payment_status->value),
             $jobOrder->is_rush ? 'Rush' : 'Normal',
             $total,
             $paid,
             $total === null ? null : max(0.0, $total - $paid),
-            $jobOrder->created_at?->timezone('Asia/Manila'),
+            $jobOrder->created_at === null ? null : BusinessTime::local($jobOrder->created_at),
         ];
     }
 

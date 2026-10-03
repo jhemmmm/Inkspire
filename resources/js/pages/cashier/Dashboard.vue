@@ -14,7 +14,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from '@/components/alert-dialog';
 import JobOrderTotal from '@/components/JobOrderTotal.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -22,6 +22,7 @@ import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
 import TableFilterBar from '@/components/TableFilterBar.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,7 +50,14 @@ import {
 } from '@/components/ui/table';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { cashierNavItems } from '@/config/nav/cashier';
-import { balanceLabel, money } from '@/lib/jobOrders';
+import {
+    balanceLabel,
+    jobOrderStatusBadge,
+    jobOrderStatusLabel,
+    money,
+    paymentStatusBadge,
+    paymentStatusLabel,
+} from '@/lib/jobOrders';
 import { dashboard } from '@/routes/cashier';
 import { reconcile } from '@/routes/cashier/job-orders';
 
@@ -58,6 +66,10 @@ interface CashierJobOrder {
     number: string | null;
     description: string;
     status: string;
+    // The status to show: 'released' once the customer has the order.
+    display_status: string;
+    // Server-decided, from JobOrder::cancellationBlocker().
+    can_cancel: boolean;
     payment_status: string;
     total_amount: number | null;
     display_total: number | null;
@@ -167,7 +179,6 @@ const DESIGN_STARTED_STATUSES = [
     'design_approved',
     'for_production',
     'printing',
-    'quality_check',
     'ready_for_pickup',
 ];
 
@@ -192,51 +203,27 @@ function cancellationDialogBody(jobOrder: CashierJobOrder): string {
         // Coerced defensively (CR-04) — a decimal-cast/raw-SQL-aggregate
         // money value from the backend can arrive as a numeric string
         // depending on the DB driver (confirmed for MySQL's SUM() in
-        // production), and String.prototype has no .toFixed(), matching
-        // every other money value in this phase's Vue code (Receipt.vue's
-        // money(), etc.).
+        // production), and the subtractions below need a number.
         const downPayment = Number(jobOrder.amount_paid ?? 0);
 
         if (downPayment <= 0) {
-            body = `A cancellation fee of ₱${fee.toFixed(2)} applies since design work has started. Collect this amount from the customer.`;
+            body = `A cancellation fee of ${money(fee)} applies since design work has started. Collect this amount from the customer.`;
         } else if (downPayment >= fee) {
-            const excess = (downPayment - fee).toFixed(2);
-
-            body = `A cancellation fee of ₱${fee.toFixed(2)} applies. The existing down payment of ₱${downPayment.toFixed(2)} covers it — ₱${excess} is refundable to the customer.`;
+            body = `A cancellation fee of ${money(fee)} applies. The existing down payment of ${money(downPayment)} covers it — ${money(downPayment - fee)} is refundable to the customer.`;
         } else {
-            const shortfall = (fee - downPayment).toFixed(2);
-
-            body = `A cancellation fee of ₱${fee.toFixed(2)} applies. The existing down payment of ₱${downPayment.toFixed(2)} covers part of it — collect the remaining ₱${shortfall} from the customer.`;
+            body = `A cancellation fee of ${money(fee)} applies. The existing down payment of ${money(downPayment)} covers part of it — collect the remaining ${money(fee - downPayment)} from the customer.`;
         }
     }
 
-    // WR-05: cancelling never writes off an existing On-Credit balance —
-    // the fee-netting logic above only ever looks at completed
-    // Transactions, so an Active AccountsReceivable is untouched by this
-    // action. Surface it explicitly rather than leaving the customer's
-    // outstanding balance as a silent byproduct.
+    // WR-05: cancelling voids the print-job debt. CancellationController
+    // closes the Active receivable so it stops ageing and stops generating
+    // reminders; only the cancellation fee above stands. Say so, so the
+    // Cashier doesn't chase a balance the system has already closed.
     if (jobOrder.accounts_receivable) {
-        const outstanding = Number(
-            jobOrder.accounts_receivable.balance,
-        ).toFixed(2);
-
-        body += ` This job order also has an outstanding On-Credit balance of ₱${outstanding} that will NOT be written off by cancelling — follow up on collection separately.`;
+        body += ` Its On-Credit balance of ${money(Number(jobOrder.accounts_receivable.balance))} is closed by cancelling — the customer no longer owes it.`;
     }
 
     return body;
-}
-
-/**
- * Mirrors CancellationController@store's terminal-state guard: a job order
- * that is already fully paid or written off can never be cancelled from
- * here, so the Cancel Job Order action must never be offered for either
- * state (CR-03).
- */
-function canCancelJobOrder(jobOrder: CashierJobOrder): boolean {
-    return (
-        jobOrder.payment_status !== 'paid' &&
-        jobOrder.payment_status !== 'written_off'
-    );
 }
 
 defineOptions({
@@ -250,25 +237,6 @@ defineOptions({
         ],
     },
 });
-
-function jobOrderStatusLabel(status: string): string {
-    switch (status) {
-        case 'ready_for_production':
-            return 'Ready for Production';
-        case 'design_approved':
-            return 'Design Approved';
-        case 'for_production':
-            return 'For Production';
-        case 'printing':
-            return 'Printing';
-        case 'quality_check':
-            return 'Quality Check';
-        case 'ready_for_pickup':
-            return 'Ready for Pickup';
-        default:
-            return status;
-    }
-}
 
 const reconcilingId = ref<number | null>(null);
 
@@ -289,29 +257,6 @@ function checkPaymentStatus(jobOrderId: number): void {
             },
         },
     );
-}
-
-function paymentStatusLabel(status: string): string {
-    switch (status) {
-        case 'unpaid':
-            return 'Unpaid';
-        case 'partially_paid':
-            return 'Partially Paid';
-        case 'pending_confirmation':
-            return 'Pending Confirmation';
-        case 'paid':
-            return 'Paid';
-        case 'credit_pending_approval':
-            return 'Credit Pending Approval';
-        case 'on_credit':
-            return 'On Credit';
-        case 'credit_rejected':
-            return 'Credit Rejected';
-        case 'written_off':
-            return 'Written Off';
-        default:
-            return status;
-    }
 }
 </script>
 
@@ -431,128 +376,34 @@ function paymentStatusLabel(status: string): string {
                                 {{ jobOrder.queue_entry.customer.name }}
                             </TableCell>
                             <TableCell>
-                                <Badge
-                                    v-if="
-                                        jobOrder.status ===
-                                        'ready_for_production'
+                                <StatusBadge
+                                    :tone="
+                                        jobOrderStatusBadge(
+                                            jobOrder.display_status,
+                                        )
                                     "
-                                    class="text-green-600 dark:text-green-400"
                                 >
-                                    {{ jobOrderStatusLabel(jobOrder.status) }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.status === 'design_approved'
-                                    "
-                                    variant="default"
-                                >
-                                    {{ jobOrderStatusLabel(jobOrder.status) }}
-                                </Badge>
-                                <Badge v-else variant="secondary">
-                                    {{ jobOrderStatusLabel(jobOrder.status) }}
-                                </Badge>
+                                    {{
+                                        jobOrderStatusLabel(
+                                            jobOrder.display_status,
+                                        )
+                                    }}
+                                </StatusBadge>
                             </TableCell>
                             <TableCell>
-                                <Badge
-                                    v-if="jobOrder.payment_status === 'unpaid'"
-                                    variant="outline"
-                                >
-                                    {{
-                                        paymentStatusLabel(
+                                <StatusBadge
+                                    :tone="
+                                        paymentStatusBadge(
                                             jobOrder.payment_status,
                                         )
-                                    }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.payment_status ===
-                                        'partially_paid'
                                     "
-                                    variant="default"
                                 >
                                     {{
                                         paymentStatusLabel(
                                             jobOrder.payment_status,
                                         )
                                     }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.payment_status ===
-                                        'pending_confirmation'
-                                    "
-                                    variant="secondary"
-                                >
-                                    {{
-                                        paymentStatusLabel(
-                                            jobOrder.payment_status,
-                                        )
-                                    }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.payment_status === 'paid'
-                                    "
-                                    class="text-green-600 dark:text-green-400"
-                                >
-                                    {{
-                                        paymentStatusLabel(
-                                            jobOrder.payment_status,
-                                        )
-                                    }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.payment_status ===
-                                        'credit_pending_approval'
-                                    "
-                                    variant="default"
-                                >
-                                    {{
-                                        paymentStatusLabel(
-                                            jobOrder.payment_status,
-                                        )
-                                    }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.payment_status === 'on_credit'
-                                    "
-                                    class="text-green-600 dark:text-green-400"
-                                >
-                                    {{
-                                        paymentStatusLabel(
-                                            jobOrder.payment_status,
-                                        )
-                                    }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.payment_status ===
-                                        'credit_rejected'
-                                    "
-                                    variant="destructive"
-                                >
-                                    {{
-                                        paymentStatusLabel(
-                                            jobOrder.payment_status,
-                                        )
-                                    }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.payment_status ===
-                                        'written_off'
-                                    "
-                                    variant="outline"
-                                    class="text-muted-foreground"
-                                >
-                                    {{
-                                        paymentStatusLabel(
-                                            jobOrder.payment_status,
-                                        )
-                                    }}
-                                </Badge>
+                                </StatusBadge>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <JobOrderTotal :job-order="jobOrder" />
@@ -564,7 +415,7 @@ function paymentStatusLabel(status: string): string {
                                 <DropdownMenu>
                                     <DropdownMenuTrigger as-child>
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             size="icon"
                                             :data-test="`job-order-actions-${jobOrder.id}-trigger`"
                                         >
@@ -658,9 +509,7 @@ function paymentStatusLabel(status: string): string {
                                                 View Receipt
                                             </Link>
                                         </DropdownMenuItem>
-                                        <AlertDialog
-                                            v-if="canCancelJobOrder(jobOrder)"
-                                        >
+                                        <AlertDialog v-if="jobOrder.can_cancel">
                                             <AlertDialogTrigger as-child>
                                                 <DropdownMenuItem
                                                     variant="destructive"

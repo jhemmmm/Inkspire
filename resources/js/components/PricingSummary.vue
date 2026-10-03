@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { money } from '@/lib/jobOrders';
+
 /**
  * The Pricing card's figure block on the cashier's Job Order Payment page.
  *
@@ -17,13 +19,6 @@ defineProps<{
         remaining: number;
     };
 }>();
-
-function peso(value: number): string {
-    return `₱${Number(value).toLocaleString('en-PH', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    })}`;
-}
 </script>
 
 <template>
@@ -33,39 +28,29 @@ function peso(value: number): string {
         <div class="flex flex-col gap-2">
             <div class="flex items-center justify-between">
                 <span class="text-muted-foreground">Base Price</span>
-                <span>{{ peso(summary.base) }}</span>
+                <span>{{ money(summary.base) }}</span>
             </div>
             <div class="flex items-center justify-between">
                 <span class="text-muted-foreground">Rush Fee</span>
-                <span>{{ peso(summary.rushFeeAmount) }}</span>
+                <span>{{ money(summary.rushFeeAmount) }}</span>
             </div>
             <div class="flex items-center justify-between">
                 <span class="text-muted-foreground">Discount</span>
-                <span
-                    :class="
-                        summary.discountAmount > 0
-                            ? 'text-green-600 dark:text-green-400'
-                            : ''
-                    "
-                >
+                <span :class="summary.discountAmount > 0 ? 'text-success' : ''">
                     {{ summary.discountAmount > 0 ? '−' : ''
-                    }}{{ peso(summary.discountAmount) }}
+                    }}{{ money(summary.discountAmount) }}
                 </span>
             </div>
             <div class="flex items-center justify-between font-medium">
                 <span>Total</span>
-                <span>{{ peso(summary.total) }}</span>
+                <span>{{ money(summary.total) }}</span>
             </div>
         </div>
 
         <div class="flex items-center justify-between">
             <span class="text-muted-foreground">Partial Payment</span>
-            <span
-                :class="
-                    summary.paid > 0 ? 'text-green-600 dark:text-green-400' : ''
-                "
-            >
-                {{ summary.paid > 0 ? '−' : '' }}{{ peso(summary.paid) }}
+            <span :class="summary.paid > 0 ? 'text-success' : ''">
+                {{ summary.paid > 0 ? '−' : '' }}{{ money(summary.paid) }}
             </span>
         </div>
 
@@ -73,7 +58,7 @@ function peso(value: number): string {
             class="border-border flex items-center justify-between border-t pt-3 text-2xl leading-tight font-bold"
         >
             <span>Remaining Balance</span>
-            <span>{{ peso(summary.remaining) }}</span>
+            <span>{{ money(summary.remaining) }}</span>
         </div>
 
         <p v-if="summary.remaining === 0" class="text-muted-foreground text-sm">

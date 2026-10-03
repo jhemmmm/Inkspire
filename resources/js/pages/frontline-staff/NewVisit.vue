@@ -31,6 +31,7 @@ import PageHeader from '@/components/PageHeader.vue';
 import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
 import { type SearchableOption } from '@/components/SearchableSelect.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import TrackingQrCode from '@/components/TrackingQrCode.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -52,7 +53,13 @@ import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { newVisit } from '@/routes/frontline-staff';
 import { queueNumberLabel } from '@/lib/utils';
 import { uuid } from '@/lib/uuid';
-import { jobOrderTypeLabel, money, rowLineAmount } from '@/lib/jobOrders';
+import {
+    counterStatusBadge,
+    jobOrderStatusLabel,
+    jobOrderTypeLabel,
+    money,
+    rowLineAmount,
+} from '@/lib/jobOrders';
 import { show as jobOrderShow } from '@/routes/frontline-staff/job-orders';
 
 interface CustomerRecord {
@@ -105,6 +112,8 @@ interface CustomerJobOrder {
     description: string;
     type: string;
     status: string;
+    /** `status`, unless the order was released or cancelled since. */
+    display_status: string;
     is_rush: boolean;
     created_at: string;
 }
@@ -489,33 +498,6 @@ function formatSlipDate(value: string): string {
         day: '2-digit',
     });
 }
-
-// The four stages that actually mean "on the press". Enumerated rather
-// than left as a catch-all v-else, which labelled in_consultation /
-// in_design / pending_review / design_approved job orders "In Production".
-const PRODUCTION_STATUSES = [
-    'for_production',
-    'printing',
-    'quality_check',
-    'ready_for_pickup',
-];
-
-function isInProduction(status: string): boolean {
-    return PRODUCTION_STATUSES.includes(status);
-}
-
-function jobOrderStatusLabel(status: string): string {
-    switch (status) {
-        case 'ready_for_production':
-            return 'Ready for Production';
-        case 'assigned':
-            return 'Assigned';
-        case 'validation_failed':
-            return 'Validation Failed';
-        default:
-            return 'Waiting for an Artist';
-    }
-}
 </script>
 
 <template>
@@ -761,7 +743,7 @@ function jobOrderStatusLabel(status: string): string {
                             <Button
                                 v-if="registerRequested"
                                 type="button"
-                                variant="ghost"
+                                variant="outline"
                                 data-test="cancel-register-customer-button"
                                 @click="closeRegisterForm"
                             >
@@ -859,44 +841,11 @@ function jobOrderStatusLabel(status: string): string {
                                 <Badge variant="outline">
                                     {{ jobOrderTypeLabel(jobOrder.type) }}
                                 </Badge>
-                                <Badge
-                                    v-if="jobOrder.status === 'intake'"
-                                    variant="outline"
+                                <StatusBadge
+                                    :tone="counterStatusBadge(jobOrder).tone"
                                 >
-                                    {{ jobOrderStatusLabel(jobOrder.status) }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.status ===
-                                        'ready_for_production'
-                                    "
-                                    class="text-green-600 dark:text-green-400"
-                                >
-                                    {{ jobOrderStatusLabel(jobOrder.status) }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="jobOrder.status === 'assigned'"
-                                    variant="default"
-                                >
-                                    {{ jobOrderStatusLabel(jobOrder.status) }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="
-                                        jobOrder.status === 'validation_failed'
-                                    "
-                                    variant="destructive"
-                                >
-                                    {{ jobOrderStatusLabel(jobOrder.status) }}
-                                </Badge>
-                                <Badge
-                                    v-else-if="isInProduction(jobOrder.status)"
-                                    variant="secondary"
-                                >
-                                    In Production
-                                </Badge>
-                                <Badge v-else variant="secondary">
-                                    In Design
-                                </Badge>
+                                    {{ counterStatusBadge(jobOrder).label }}
+                                </StatusBadge>
                             </div>
                         </li>
                         <p
@@ -1086,7 +1035,11 @@ function jobOrderStatusLabel(status: string): string {
                                     </Badge>
                                 </TableCell>
                                 <TableCell class="text-muted-foreground">
-                                    {{ jobOrderStatusLabel(jobOrder.status) }}
+                                    {{
+                                        jobOrderStatusLabel(
+                                            jobOrder.display_status,
+                                        )
+                                    }}
                                 </TableCell>
                                 <TableCell
                                     class="text-muted-foreground tabular-nums"
@@ -1108,7 +1061,7 @@ function jobOrderStatusLabel(status: string): string {
                         <Button
                             v-if="intakeForm.job_orders.length > 1"
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="icon"
                             :data-test="`remove-job-order-${index}-button`"
                             @click="removeRow(index)"

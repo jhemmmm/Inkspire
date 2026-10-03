@@ -8,12 +8,14 @@ use App\Enums\JobOrderType;
 use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Observers\AuditObserver;
+use App\Support\BusinessTime;
 use Database\Factories\JobOrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\MissingAttributeException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -67,6 +69,7 @@ use Illuminate\Support\Str;
  *                                 eager-loaded via withMax() over productionLogs (PROD-03, D-13);
  *                                 the moment this job order last reached ready_for_pickup.
  * @property float|null $display_total Not a persisted column — see displayTotal().
+ * @property string $display_status Not a persisted column — see displayStatus().
  */
 #[Fillable(['number', 'queue_entry_id', 'description', 'print_size', 'quantity', 'width_ft', 'height_ft', 'deadline', 'is_rush', 'client_notes', 'pricing_entry_id', 'quoted_amount', 'type', 'status', 'file_path', 'consultation_notes'])]
 #[ObservedBy(AuditObserver::class)]
@@ -74,6 +77,16 @@ class JobOrder extends Model
 {
     /** @use HasFactory<JobOrderFactory> */
     use HasFactory;
+
+    /**
+     * The two display statuses with no JobOrderStatus case behind them:
+     * releasing and cancelling stamp a timestamp and leave `status` at the
+     * stage the order last reached. See displayStatus() and
+     * scopeWhereDisplayStatus(), the only two places that rule lives.
+     */
+    public const DISPLAY_RELEASED = 'released';
+
+    public const DISPLAY_CANCELLED = 'cancelled';
 
     /**
      * Assign the public tracking token every job order needs (QR-01).
@@ -335,6 +348,75 @@ class JobOrder extends Model
     }
 
     /**
+     * The status to show staff. Releasing and cancelling leave `status` at
+     * the stage the order last reached, so on its own it keeps saying
+     * "Ready for Pickup" about an order the customer already took home.
+     *
+     * Not appended by default. A query that selects columns must include
+     * `status`, `released_at` and `cancelled_at`, and one that forgets throws
+     * rather than quietly showing the old stage again. (The app-wide
+     * Model::preventAccessingMissingAttributes() would do the same, but
+     * too much existing code reads unselected columns to switch it on.)
+     *
+     * @return Attribute<string, never>
+     */
+    protected function displayStatus(): Attribute
+    {
+        return Attribute::make(
+            get: function (): string {
+                foreach (['status', 'released_at', 'cancelled_at'] as $column) {
+                    if ($this->exists && ! $this->wasRecentlyCreated && ! array_key_exists($column, $this->attributes)) {
+                        throw new MissingAttributeException($this, $column);
+                    }
+                }
+
+                return match (true) {
+                    $this->cancelled_at !== null => self::DISPLAY_CANCELLED,
+                    $this->released_at !== null => self::DISPLAY_RELEASED,
+                    default => $this->status->value,
+                };
+            },
+        );
+    }
+
+    /**
+     * Filter by display status: the query-side twin of displayStatus(), so a
+     * list's Status filter and its Status column can't disagree. A released
+     * order keeps its last stage as `status`, so a stage only matches orders
+     * still in the shop.
+     *
+     * @param  Builder<JobOrder>  $query
+     */
+    public function scopeWhereDisplayStatus(Builder $query, string $displayStatus): void
+    {
+        match ($displayStatus) {
+            self::DISPLAY_CANCELLED => $query->whereNotNull('cancelled_at'),
+            self::DISPLAY_RELEASED => $query->whereNull('cancelled_at')->whereNotNull('released_at'),
+            default => $query->whereNull('cancelled_at')->whereNull('released_at')->where('status', $displayStatus),
+        };
+    }
+
+    /**
+     * Why the Cashier can't cancel this job order, or null when they can.
+     * Returned untranslated; the controller passes it through __().
+     * CancellationController refuses with this message, and the cashier
+     * dashboard hides Cancel Job Order whenever it is set, so the two can
+     * never disagree.
+     */
+    public function cancellationBlocker(): ?string
+    {
+        return match (true) {
+            $this->cancelled_at !== null => 'This job order is already cancelled.',
+            $this->released_at !== null => 'This job order was already released to the customer and cannot be cancelled.',
+            $this->payment_status === PaymentStatus::Paid => 'This job order is already fully paid and cannot be cancelled from here.',
+            $this->payment_status === PaymentStatus::PendingConfirmation => 'This job order has a payment awaiting confirmation. Resolve it before cancelling.',
+            $this->payment_status === PaymentStatus::CreditPendingApproval => 'This job order has an On-Credit request awaiting Admin approval. Resolve it before cancelling.',
+            $this->payment_status === PaymentStatus::WrittenOff => 'This job order has been written off and cannot be cancelled.',
+            default => null,
+        };
+    }
+
+    /**
      * This job order's On-Credit request, if any (D-08 — at most one
      * open credit request/receivable per job order).
      *
@@ -362,7 +444,7 @@ class JobOrder extends Model
      */
     public static function currentNumberingYear(): int
     {
-        return (int) now()->timezone('Asia/Manila')->format('Y');
+        return (int) BusinessTime::now()->format('Y');
     }
 
     /**

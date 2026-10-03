@@ -48,7 +48,7 @@ class DashboardController extends Controller
                 'lockedAccounts' => $this->lockedOutAccounts(),
             ],
             'shop' => $this->shopHealth(),
-            'cashFlow' => $reportBuilder->chart('financial-summary', collect(), now()->subDays(13)->startOfDay(), now()),
+            'cashFlow' => $reportBuilder->cashFlow(),
             'pipeline' => $this->pipeline(),
             'recentActivity' => $this->recentActivity(),
         ]);
@@ -130,7 +130,6 @@ class DashboardController extends Controller
                 ->whereIn('status', [
                     JobOrderStatus::ForProduction->value,
                     JobOrderStatus::Printing->value,
-                    JobOrderStatus::QualityCheck->value,
                 ])
                 ->whereNull('cancelled_at')
                 ->count(),

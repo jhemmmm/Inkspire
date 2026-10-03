@@ -228,7 +228,7 @@ function actionLabel(action: string): string {
             <StatCard
                 label="In Production"
                 :value="shop.inProduction"
-                hint="On the press or in quality check."
+                hint="Waiting for the press or printing."
                 :icon="Factory"
             />
             <StatCard

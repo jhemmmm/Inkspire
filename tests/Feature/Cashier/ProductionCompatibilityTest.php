@@ -20,7 +20,6 @@ test('the cashier dashboard lists a job order that has already advanced into pro
 })->with([
     JobOrderStatus::ForProduction,
     JobOrderStatus::Printing,
-    JobOrderStatus::QualityCheck,
     JobOrderStatus::ReadyForPickup,
 ]);
 
@@ -35,7 +34,6 @@ test('the job order payment page is reachable for a job order that has already a
 })->with([
     JobOrderStatus::ForProduction,
     JobOrderStatus::Printing,
-    JobOrderStatus::QualityCheck,
     JobOrderStatus::ReadyForPickup,
 ]);
 
@@ -50,7 +48,6 @@ test('a cash payment can still be recorded for a job order that has already adva
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 1000,
     ]);
 
     $response->assertRedirect();
@@ -58,7 +55,6 @@ test('a cash payment can still be recorded for a job order that has already adva
 })->with([
     JobOrderStatus::ForProduction,
     JobOrderStatus::Printing,
-    JobOrderStatus::QualityCheck,
     JobOrderStatus::ReadyForPickup,
 ]);
 
@@ -82,6 +78,5 @@ test('an OnCredit request can still be made for a job order that has already adv
 })->with([
     JobOrderStatus::ForProduction,
     JobOrderStatus::Printing,
-    JobOrderStatus::QualityCheck,
     JobOrderStatus::ReadyForPickup,
 ]);

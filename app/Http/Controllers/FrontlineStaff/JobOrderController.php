@@ -54,6 +54,7 @@ class JobOrderController extends Controller
                 'description' => $jobOrder->description,
                 'type' => $jobOrder->type->value,
                 'status' => $jobOrder->status->value,
+                'display_status' => $jobOrder->display_status,
                 'is_rush' => $jobOrder->is_rush,
                 'print_size' => $jobOrder->print_size,
                 'width_ft' => $jobOrder->width_ft,

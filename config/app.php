@@ -69,6 +69,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Business Timezone
+    |--------------------------------------------------------------------------
+    |
+    | The shop's own clock. Timestamps stay stored in UTC (above); "today",
+    | report days, due-today urgency and printed times all use this one.
+    |
+    */
+
+    'business_timezone' => 'Asia/Manila',
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

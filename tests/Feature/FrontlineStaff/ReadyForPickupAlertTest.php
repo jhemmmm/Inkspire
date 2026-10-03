@@ -39,14 +39,14 @@ test('ready since and the dashboard ordering come from the logged ready_for_pick
 
     $waitingLongest = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
     ProductionLog::factory()->for($waitingLongest)->create([
-        'from_status' => JobOrderStatus::QualityCheck->value,
+        'from_status' => JobOrderStatus::Printing->value,
         'to_status' => JobOrderStatus::ReadyForPickup->value,
         'created_at' => now()->subHours(2),
     ]);
 
     $waitingBriefly = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
     ProductionLog::factory()->for($waitingBriefly)->create([
-        'from_status' => JobOrderStatus::QualityCheck->value,
+        'from_status' => JobOrderStatus::Printing->value,
         'to_status' => JobOrderStatus::ReadyForPickup->value,
         'created_at' => now()->subMinutes(10),
     ]);
@@ -144,7 +144,7 @@ test('a job order sent back a stage from ready for pickup disappears from the da
     $jobOrder = JobOrder::factory()->create([
         'status' => JobOrderStatus::ReadyForPickup->value,
     ]);
-    $jobOrder->forceFill(['status' => JobOrderStatus::QualityCheck->value])->save();
+    $jobOrder->forceFill(['status' => JobOrderStatus::Printing->value])->save();
 
     $response = $this->actingAs($staff)->get(route('frontline-staff.dashboard'));
 
@@ -223,7 +223,7 @@ test('a job order sent back a stage from ready for pickup disappears from the qu
     $jobOrder = JobOrder::factory()->create([
         'status' => JobOrderStatus::ReadyForPickup->value,
     ]);
-    $jobOrder->forceFill(['status' => JobOrderStatus::QualityCheck->value])->save();
+    $jobOrder->forceFill(['status' => JobOrderStatus::Printing->value])->save();
 
     $response = $this->actingAs($staff)->get(route('frontline-staff.queue-entries.index'));
 

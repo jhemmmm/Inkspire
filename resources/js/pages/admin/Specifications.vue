@@ -19,7 +19,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from '@/components/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -366,7 +366,7 @@ function deleteOption(option: SpecificationOption): void {
                                     />
                                     <Button
                                         size="icon"
-                                        variant="ghost"
+                                        variant="outline"
                                         :data-test="`save-specification-${option.id}-button`"
                                         @click="saveLabel(option)"
                                     >
@@ -375,7 +375,7 @@ function deleteOption(option: SpecificationOption): void {
                                     </Button>
                                     <Button
                                         size="icon"
-                                        variant="ghost"
+                                        variant="outline"
                                         @click="cancelEditing"
                                     >
                                         <X class="size-4" />
@@ -421,7 +421,7 @@ function deleteOption(option: SpecificationOption): void {
                                     <Button
                                         v-if="editingId !== option.id"
                                         size="icon"
-                                        variant="ghost"
+                                        variant="outline"
                                         :data-test="`edit-specification-${option.id}-button`"
                                         @click="startEditing(option)"
                                     >
@@ -434,7 +434,7 @@ function deleteOption(option: SpecificationOption): void {
                                         <AlertDialogTrigger as-child>
                                             <Button
                                                 size="icon"
-                                                variant="ghost"
+                                                variant="outline"
                                                 :data-test="`delete-specification-${option.id}-button`"
                                             >
                                                 <Trash2

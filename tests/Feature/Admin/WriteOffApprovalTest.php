@@ -167,7 +167,6 @@ test('approving a write-off fails when a real payment settled the job order whil
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 1000,
     ])->assertSessionHasNoErrors();
 
     $response = $this->actingAs($admin)->patch(route('admin.write-off-requests.approve', $accountsReceivable));

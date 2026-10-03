@@ -35,7 +35,7 @@ test('counts a design_approved job order with an approved revision log as comple
 
 test('excludes a cancelled job order from jobsCompleted', function (JobOrderStatus $status) {
     // CancellationController leaves `status` untouched and permits
-    // cancelling from all four production statuses, so a cancelled job
+    // cancelling from all three production statuses, so a cancelled job
     // would otherwise still count towards jobsCompleted and slaAdherence.
     $artist = User::factory()->artist()->create();
     $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => $status->value]);
@@ -136,4 +136,30 @@ test("an artist's performance report never counts another artist's completed job
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('stats.jobsCompleted', 0));
+});
+
+test('a design approved before 8 AM Manila time counts under that Manila day', function (string $day, int $expectedJobs) {
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'design_approved']);
+    RevisionLog::factory()->for($jobOrder)->approved()->create();
+    // 1 AM on October 3 in Manila, still October 2 in UTC.
+    RevisionLog::where('job_order_id', $jobOrder->id)->update(['reviewed_at' => '2026-10-02 17:00:00']);
+
+    $response = $this->actingAs($artist)->get(route('artist.performance-report.index', ['from' => $day, 'to' => $day]));
+
+    $response->assertInertia(fn (Assert $page) => $page->where('stats.jobsCompleted', $expectedJobs));
+})->with([
+    'the shop day it was approved on' => ['2026-10-03', 1],
+    'the UTC day it is stored under' => ['2026-10-02', 0],
+]);
+
+test('the completed list dates an approval by the shop day', function () {
+    $artist = User::factory()->artist()->create();
+    $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'design_approved']);
+    RevisionLog::factory()->for($jobOrder)->approved()->create();
+    RevisionLog::where('job_order_id', $jobOrder->id)->update(['reviewed_at' => '2026-10-02 17:00:00']);
+
+    $response = $this->actingAs($artist)->get(route('artist.performance-report.index'));
+
+    $response->assertInertia(fn (Assert $page) => $page->where('completedJobOrders.0.approved_at', '2026-10-03'));
 });

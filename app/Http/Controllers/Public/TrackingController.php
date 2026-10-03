@@ -34,7 +34,7 @@ class TrackingController extends Controller
      * progress ladder renders -- see publicStageStep().
      *
      * Deliberately a list of LABELS, not of status keys. A key like
-     * `quality_check` would be the internal enum value verbatim, and this
+     * `ready_for_pickup` would be the internal enum value verbatim, and this
      * controller's whole contract is that the raw status never reaches the
      * client; a test asserts the response body contains no enum value, and
      * it should keep passing.
@@ -48,7 +48,6 @@ class TrackingController extends Controller
         'In Progress',
         'For Production',
         'Printing',
-        'Quality Check',
         'Ready for Pickup',
         'Completed',
     ];
@@ -171,7 +170,7 @@ class TrackingController extends Controller
      * cancelled_at is consulted first and outranks everything else:
      * CancellationController::store() deliberately leaves `status`
      * untouched (cancelled_at is the authoritative "no longer actionable"
-     * signal) and permits cancelling from all four production statuses, so
+     * signal) and permits cancelling from all three production statuses, so
      * a cancelled order would otherwise keep telling the customer it is
      * "Printing" while the page polls that answer forever.
      */
@@ -188,7 +187,6 @@ class TrackingController extends Controller
         return match ($jobOrder->status) {
             JobOrderStatus::ForProduction => 'For Production',
             JobOrderStatus::Printing => 'Printing',
-            JobOrderStatus::QualityCheck => 'Quality Check',
             JobOrderStatus::ReadyForPickup => 'Ready for Pickup',
             default => 'In Progress',
         };

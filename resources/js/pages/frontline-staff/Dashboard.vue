@@ -9,6 +9,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,13 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
-import { balanceLabel, money } from '@/lib/jobOrders';
+import {
+    balanceLabel,
+    jobOrderStatusBadge,
+    money,
+    paymentStatusBadge,
+    paymentStatusLabel,
+} from '@/lib/jobOrders';
 import { dashboard } from '@/routes/frontline-staff';
 import { show as jobOrderShow } from '@/routes/frontline-staff/job-orders';
 
@@ -51,10 +58,9 @@ interface JobOrderSearchResult {
     number: string | null;
     description: string;
     status: string;
+    display_status: string;
     payment_status: string;
     is_rush: boolean;
-    released_at: string | null;
-    cancelled_at: string | null;
     created_at: string;
     queue_entry: { customer: { name: string } | null } | null;
     assigned_artist: { name: string; artist_label: string | null } | null;
@@ -125,32 +131,27 @@ const JOB_ORDER_STAGE_LABELS: Record<string, string> = {
     ready_for_production: 'Ready for Production',
     for_production: 'For Production',
     printing: 'Printing',
-    quality_check: 'Quality Check',
     ready_for_pickup: 'Ready for Pickup',
+    released: 'Released',
+    cancelled: 'Cancelled',
 };
 
 function stageLabel(result: JobOrderSearchResult): string {
-    if (result.cancelled_at) {
-        return 'Cancelled';
-    }
-
-    if (result.released_at) {
-        return 'Released';
-    }
-
-    return JOB_ORDER_STAGE_LABELS[result.status] ?? result.status;
+    return (
+        JOB_ORDER_STAGE_LABELS[result.display_status] ?? result.display_status
+    );
 }
 
 function whereToSend(result: JobOrderSearchResult): string {
-    if (result.cancelled_at) {
+    if (result.display_status === 'cancelled') {
         return 'This order was cancelled.';
     }
 
-    if (result.released_at) {
+    if (result.display_status === 'released') {
         return 'Already collected by the customer.';
     }
 
-    if (result.status === 'ready_for_pickup') {
+    if (result.display_status === 'ready_for_pickup') {
         return 'On the shelf — ready to hand over.';
     }
 
@@ -182,29 +183,6 @@ function isReleaseEligible(jobOrder: ReadyForPickupJobOrder): boolean {
  */
 function openJobOrder(id: number): void {
     router.visit(jobOrderShow.url(id));
-}
-
-function paymentStatusLabel(status: string): string {
-    switch (status) {
-        case 'unpaid':
-            return 'Unpaid';
-        case 'partially_paid':
-            return 'Partially Paid';
-        case 'pending_confirmation':
-            return 'Pending Confirmation';
-        case 'paid':
-            return 'Paid';
-        case 'credit_pending_approval':
-            return 'Credit Pending Approval';
-        case 'on_credit':
-            return 'On Credit';
-        case 'credit_rejected':
-            return 'Credit Rejected';
-        case 'written_off':
-            return 'Written Off';
-        default:
-            return status;
-    }
 }
 
 /**
@@ -365,18 +343,30 @@ function timeAgo(isoString: string): string {
                             </TableCell>
                             <TableCell>{{ result.description }}</TableCell>
                             <TableCell>
-                                <Badge variant="secondary">
+                                <StatusBadge
+                                    :tone="
+                                        jobOrderStatusBadge(
+                                            result.display_status,
+                                        )
+                                    "
+                                >
                                     {{ stageLabel(result) }}
-                                </Badge>
+                                </StatusBadge>
                             </TableCell>
                             <TableCell>
-                                <Badge variant="outline">
+                                <StatusBadge
+                                    :tone="
+                                        paymentStatusBadge(
+                                            result.payment_status,
+                                        )
+                                    "
+                                >
                                     {{
                                         paymentStatusLabel(
                                             result.payment_status,
                                         )
                                     }}
-                                </Badge>
+                                </StatusBadge>
                             </TableCell>
                             <TableCell class="text-right tabular-nums">
                                 <JobOrderTotal :job-order="result" />
@@ -446,86 +436,15 @@ function timeAgo(isoString: string): string {
                             }}
                         </TableCell>
                         <TableCell>
-                            <Badge
-                                v-if="jobOrder.payment_status === 'unpaid'"
-                                variant="outline"
-                            >
-                                {{
-                                    paymentStatusLabel(jobOrder.payment_status)
-                                }}
-                            </Badge>
-                            <Badge
-                                v-else-if="
-                                    jobOrder.payment_status === 'partially_paid'
+                            <StatusBadge
+                                :tone="
+                                    paymentStatusBadge(jobOrder.payment_status)
                                 "
-                                variant="default"
                             >
                                 {{
                                     paymentStatusLabel(jobOrder.payment_status)
                                 }}
-                            </Badge>
-                            <Badge
-                                v-else-if="
-                                    jobOrder.payment_status ===
-                                    'pending_confirmation'
-                                "
-                                variant="secondary"
-                            >
-                                {{
-                                    paymentStatusLabel(jobOrder.payment_status)
-                                }}
-                            </Badge>
-                            <Badge
-                                v-else-if="jobOrder.payment_status === 'paid'"
-                                class="text-green-600 dark:text-green-400"
-                            >
-                                {{
-                                    paymentStatusLabel(jobOrder.payment_status)
-                                }}
-                            </Badge>
-                            <Badge
-                                v-else-if="
-                                    jobOrder.payment_status ===
-                                    'credit_pending_approval'
-                                "
-                                variant="default"
-                            >
-                                {{
-                                    paymentStatusLabel(jobOrder.payment_status)
-                                }}
-                            </Badge>
-                            <Badge
-                                v-else-if="
-                                    jobOrder.payment_status === 'on_credit'
-                                "
-                                class="text-green-600 dark:text-green-400"
-                            >
-                                {{
-                                    paymentStatusLabel(jobOrder.payment_status)
-                                }}
-                            </Badge>
-                            <Badge
-                                v-else-if="
-                                    jobOrder.payment_status ===
-                                    'credit_rejected'
-                                "
-                                variant="destructive"
-                            >
-                                {{
-                                    paymentStatusLabel(jobOrder.payment_status)
-                                }}
-                            </Badge>
-                            <Badge
-                                v-else-if="
-                                    jobOrder.payment_status === 'written_off'
-                                "
-                                variant="outline"
-                                class="text-muted-foreground"
-                            >
-                                {{
-                                    paymentStatusLabel(jobOrder.payment_status)
-                                }}
-                            </Badge>
+                            </StatusBadge>
                         </TableCell>
                         <TableCell class="text-right tabular-nums">
                             <JobOrderTotal :job-order="jobOrder" />
@@ -546,7 +465,6 @@ function timeAgo(isoString: string): string {
                             >
                                 <Button
                                     type="submit"
-                                    variant="outline"
                                     :disabled="processing"
                                     :data-test="`release-job-order-${jobOrder.id}-button`"
                                 >

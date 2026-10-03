@@ -99,7 +99,7 @@ class ValidateJobOrderFile
      * Anything that cannot be measured passes rather than blocking the
      * counter: an unreadable image header, or a print size the Admin has not
      * recorded dimensions for. A false rejection sends a paying customer away;
-     * a false pass is caught downstream at quality check.
+     * a false pass is caught downstream at the press.
      *
      * @return array{outcome: FileValidationOutcome, reason: ?string}
      */

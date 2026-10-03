@@ -248,3 +248,26 @@ test('exported label cells are display-ready -- headlined role and action, not r
     expect($rows[1][2])->toBe('Admin');
     expect($rows[1][3])->toBe('Failed Login');
 });
+
+test('audit trail date filters name shop days, not UTC days', function (string $day, int $expectedEntries) {
+    // Creating the admin is audited too; keep that row out of both days.
+    $this->travelTo('2026-10-10 12:00:00');
+    $admin = User::factory()->admin()->create();
+
+    // 1 AM on October 3 in Manila, still October 2 in UTC.
+    DB::table('audit_trail')->insert([
+        'user_id' => $admin->id,
+        'action' => 'login',
+        'auditable_type' => User::class,
+        'auditable_id' => $admin->id,
+        'ip_address' => '127.0.0.1',
+        'created_at' => '2026-10-02 17:00:00',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.index', ['from' => $day, 'to' => $day]));
+
+    $response->assertInertia(fn (Assert $page) => $page->has('entries.data', $expectedEntries));
+})->with([
+    'the shop day it happened on' => ['2026-10-03', 1],
+    'the UTC day it is stored under' => ['2026-10-02', 0],
+]);

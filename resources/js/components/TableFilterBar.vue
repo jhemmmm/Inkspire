@@ -13,6 +13,13 @@ withDefaults(
         shown: number;
         total: number;
         active: boolean;
+        /**
+         * No card of its own and a tighter layout, for a search that sits
+         * beside another control (the production board's tabs) rather than
+         * above a table. The count keeps its own line in both modes, so
+         * Clear appearing never changes the bar's height.
+         */
+        inline?: boolean;
     }>(),
     {
         searchPlaceholder: 'Search…',
@@ -27,13 +34,24 @@ const searchInputId = useId();
 </script>
 
 <template>
-    <Card>
-        <CardContent class="flex flex-col gap-4">
+    <component :is="inline ? 'div' : Card">
+        <component
+            :is="inline ? 'div' : CardContent"
+            :class="['flex flex-col', inline ? 'gap-2' : 'gap-4']"
+        >
             <div
-                class="flex flex-col gap-3 @lg:flex-row @lg:flex-wrap @lg:items-end"
+                :class="
+                    inline
+                        ? 'flex items-center gap-3'
+                        : 'flex flex-col gap-3 @lg:flex-row @lg:flex-wrap @lg:items-end'
+                "
             >
                 <div
-                    class="flex w-full min-w-0 flex-col gap-2 @lg:max-w-sm @lg:flex-1"
+                    :class="
+                        inline
+                            ? 'min-w-0 flex-1'
+                            : 'flex w-full min-w-0 flex-col gap-2 @lg:max-w-sm @lg:flex-1'
+                    "
                 >
                     <Label :for="searchInputId" class="sr-only">
                         {{ searchLabel }}
@@ -49,6 +67,7 @@ const searchInputId = useId();
                             class="pl-9"
                             :placeholder="searchPlaceholder"
                             autocomplete="off"
+                            data-test="table-filter-search-input"
                         />
                     </div>
                 </div>
@@ -59,7 +78,7 @@ const searchInputId = useId();
                     v-if="active"
                     type="button"
                     variant="secondary"
-                    class="@lg:ml-auto"
+                    :class="inline ? undefined : '@lg:ml-auto'"
                     data-test="table-filter-clear-button"
                     @click="emit('clear')"
                 >
@@ -73,6 +92,6 @@ const searchInputId = useId();
             >
                 Showing {{ shown }} of {{ total }}
             </p>
-        </CardContent>
-    </Card>
+        </component>
+    </component>
 </template>

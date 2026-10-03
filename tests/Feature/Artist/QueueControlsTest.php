@@ -147,7 +147,6 @@ test('the artist dashboard queue never lists a job order that has already advanc
 })->with([
     JobOrderStatus::ForProduction,
     JobOrderStatus::Printing,
-    JobOrderStatus::QualityCheck,
     JobOrderStatus::ReadyForPickup,
 ]);
 

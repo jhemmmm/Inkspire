@@ -61,17 +61,18 @@ test('exporting expenses to PDF for an entitled accounting staff returns a real 
 test('exporting sales to xlsx for an entitled cashier returns a real xlsx and audits exactly one row (D-02)', function () {
     $this->skipUnlessZipAvailable();
 
+    // 1 AM on October 1 in Manila, still September 30 in UTC: the default
+    // month-to-date range is the shop's month, not the server's.
+    $this->travelTo('2026-09-30 17:00:00');
+
     $cashier = User::factory()->cashier()->create();
     Transaction::factory()->for(JobOrder::factory()->create(['total_amount' => 1000]))->create();
-
-    $from = now()->startOfMonth()->toDateString();
-    $to = now()->endOfDay()->toDateString();
 
     $response = $this->actingAs($cashier)->get(route('cashier.reports.export.xlsx', 'sales'));
 
     $response->assertOk();
     $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    $response->assertHeader('Content-Disposition', "attachment; filename=sales_{$from}_{$to}.xlsx");
+    $response->assertHeader('Content-Disposition', 'attachment; filename=sales_2026-10-01_2026-10-01.xlsx');
 
     $audit = AuditLog::where('action', 'report_exported')->sole();
     expect($audit->new_values['report'])->toBe('sales');
@@ -276,4 +277,21 @@ test('exporting production-status to PDF renders through the generic table view 
 
     $response->assertOk();
     $response->assertHeader('Content-Type', 'application/pdf');
+});
+
+test('the production-status export dates entry into production on the shop\'s clock, not UTC', function () {
+    $this->skipUnlessZipAvailable();
+    // 1 AM on October 3 in Manila, still October 2 in UTC.
+    $this->travelTo('2026-10-02 17:00:00');
+
+    $productionStaff = User::factory()->productionStaff()->create();
+    ProductionLog::factory()->for(JobOrder::factory()->create())->create(['created_at' => now()]);
+
+    $response = $this->actingAs($productionStaff)->get(route('production-staff.reports.export.xlsx', [
+        'reportKey' => 'production-status',
+        'from' => '2026-10-03',
+        'to' => '2026-10-03',
+    ]));
+
+    expect(readXlsxRows($response->streamedContent())[1][5])->toBe('2026-10-03');
 });

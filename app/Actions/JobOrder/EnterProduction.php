@@ -20,7 +20,6 @@ class EnterProduction
     private const ALREADY_IN_PRODUCTION = [
         JobOrderStatus::ForProduction,
         JobOrderStatus::Printing,
-        JobOrderStatus::QualityCheck,
         JobOrderStatus::ReadyForPickup,
     ];
 

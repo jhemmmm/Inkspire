@@ -37,12 +37,9 @@ test('start, done and undo move a paid job order along the allowed transitions a
     expect($log->reason)->toBeNull();
 })->with([
     'start: ForProduction to Printing' => ['start', JobOrderStatus::ForProduction, JobOrderStatus::Printing],
-    'done: ForProduction to ReadyForPickup' => ['done', JobOrderStatus::ForProduction, JobOrderStatus::ReadyForPickup],
     'done: Printing to ReadyForPickup' => ['done', JobOrderStatus::Printing, JobOrderStatus::ReadyForPickup],
-    'done: QualityCheck to ReadyForPickup' => ['done', JobOrderStatus::QualityCheck, JobOrderStatus::ReadyForPickup],
     'undo: ReadyForPickup to Printing' => ['undo', JobOrderStatus::ReadyForPickup, JobOrderStatus::Printing],
     'undo: Printing to ForProduction' => ['undo', JobOrderStatus::Printing, JobOrderStatus::ForProduction],
-    'undo: QualityCheck to ForProduction' => ['undo', JobOrderStatus::QualityCheck, JobOrderStatus::ForProduction],
 ]);
 
 test('a transition from the wrong stage is rejected and creates no log row', function (string $action, JobOrderStatus $from) {
@@ -64,13 +61,15 @@ test('a transition from the wrong stage is rejected and creates no log row', fun
 })->with([
     'start from Printing' => ['start', JobOrderStatus::Printing],
     'start from ReadyForPickup' => ['start', JobOrderStatus::ReadyForPickup],
+    'done from ForProduction, before it was started' => ['done', JobOrderStatus::ForProduction],
     'done from ReadyForPickup' => ['done', JobOrderStatus::ReadyForPickup],
     'undo from ForProduction' => ['undo', JobOrderStatus::ForProduction],
 ]);
 
 test('start and done reject an order that is not cleared for production', function (string $action, PaymentStatus $payment) {
     $staff = User::factory()->productionStaff()->create();
-    $jobOrder = productionOrder(JobOrderStatus::ForProduction, $payment);
+    $from = $action === 'start' ? JobOrderStatus::ForProduction : JobOrderStatus::Printing;
+    $jobOrder = productionOrder($from, $payment);
 
     $response = $this->actingAs($staff)
         ->withHeaders(['X-Inertia' => 'true'])
@@ -82,7 +81,7 @@ test('start and done reject an order that is not cleared for production', functi
         fn (array $flash) => $flash['toast']['type'] === 'error'
             && $flash['toast']['message'] === 'Awaiting payment — send the customer to the Cashier.',
     );
-    expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::ForProduction);
+    expect($jobOrder->fresh()->status)->toBe($from);
     expect(ProductionLog::query()->where('job_order_id', $jobOrder->id)->count())->toBe(0);
 })->with([
     'start, unpaid' => ['start', PaymentStatus::Unpaid],
@@ -94,13 +93,14 @@ test('start and done reject an order that is not cleared for production', functi
 
 test('start and done accept a down-paid, paid or on-credit order', function (string $action, PaymentStatus $payment) {
     $staff = User::factory()->productionStaff()->create();
-    $jobOrder = productionOrder(JobOrderStatus::ForProduction, $payment);
+    $from = $action === 'start' ? JobOrderStatus::ForProduction : JobOrderStatus::Printing;
+    $jobOrder = productionOrder($from, $payment);
 
     $this->actingAs($staff)
         ->patch(route("production-staff.job-orders.{$action}", $jobOrder))
         ->assertRedirect();
 
-    expect($jobOrder->fresh()->status)->not->toBe(JobOrderStatus::ForProduction);
+    expect($jobOrder->fresh()->status)->not->toBe($from);
     expect(ProductionLog::query()->where('job_order_id', $jobOrder->id)->count())->toBe(1);
 })->with([
     'start, partially paid' => ['start', PaymentStatus::PartiallyPaid],

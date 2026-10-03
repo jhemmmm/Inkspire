@@ -80,6 +80,6 @@ class DashboardController extends Controller
             ->latest('id')
             ->take(25)
             ->get(['id', 'number', 'description', 'status', 'payment_status', 'is_rush', 'queue_entry_id', 'assigned_artist_id', 'released_at', 'cancelled_at', 'created_at', 'total_amount', 'quoted_amount'])
-            ->append('display_total');
+            ->append(['display_total', 'display_status']);
     }
 }

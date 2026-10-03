@@ -9,6 +9,7 @@ use App\Http\Requests\FrontlineStaff\ReleaseJobOrderRequest;
 use App\Models\JobOrder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class JobOrderReleaseController extends Controller
@@ -25,28 +26,36 @@ class JobOrderReleaseController extends Controller
      * stamped released_at, which drops it off the Production Board
      * (whereNull('released_at')) and makes /track report "Completed" for
      * an order that was never printed.
+     *
+     * The job order is re-read under a row lock first, the same way
+     * CancellationController does, so a cancel and a release racing each
+     * other can never both go through.
      */
     public function store(ReleaseJobOrderRequest $request, JobOrder $jobOrder): RedirectResponse
     {
-        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
-        abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
+        DB::transaction(function () use ($jobOrder): void {
+            $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
 
-        abort_unless(
-            $jobOrder->status === JobOrderStatus::ReadyForPickup,
-            422,
-            __("This job order isn't ready for pickup yet. Production hasn't marked it complete."),
-        );
+            abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
+            abort_if($jobOrder->released_at !== null, 422, __('This job order has already been released.'));
 
-        abort_unless(
-            in_array($jobOrder->payment_status, [PaymentStatus::Paid, PaymentStatus::OnCredit], true),
-            422,
-            match ($jobOrder->payment_status) {
-                PaymentStatus::CreditPendingApproval => __("This job order's On-Credit request is still pending Admin approval. Send the customer to Cashier."),
-                default => __("This job order isn't fully paid yet. Send the customer to Cashier before releasing it."),
-            },
-        );
+            abort_unless(
+                $jobOrder->status === JobOrderStatus::ReadyForPickup,
+                422,
+                __("This job order isn't ready for pickup yet. Production hasn't marked it complete."),
+            );
 
-        $jobOrder->forceFill(['released_at' => Carbon::now()])->save();
+            abort_unless(
+                in_array($jobOrder->payment_status, [PaymentStatus::Paid, PaymentStatus::OnCredit], true),
+                422,
+                match ($jobOrder->payment_status) {
+                    PaymentStatus::CreditPendingApproval => __("This job order's On-Credit request is still pending Admin approval. Send the customer to Cashier."),
+                    default => __("This job order isn't fully paid yet. Send the customer to Cashier before releasing it."),
+                },
+            );
+
+            $jobOrder->forceFill(['released_at' => Carbon::now()])->save();
+        });
 
         Inertia::flash('toast', [
             'type' => 'success',

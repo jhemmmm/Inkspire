@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Artist\PerformanceReportFilterRequest;
 use App\Models\JobOrder;
 use App\Models\SystemConfiguration;
+use App\Support\BusinessTime;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,14 +19,16 @@ class PerformanceReportController extends Controller
      * range, scoped to this artist's own design_approved job orders (D-16).
      *
      * Cancelled job orders are excluded: CancellationController leaves
-     * `status` untouched and permits cancelling from all four production
+     * `status` untouched and permits cancelling from all three production
      * statuses, so without this a cancelled job would keep inflating both
      * jobsCompleted and slaAdherence.
      */
     public function index(PerformanceReportFilterRequest $request): Response
     {
-        $from = $request->date('from');
-        $to = $request->date('to');
+        // Shop days, not UTC ones: a design approved at 1 AM on the 3rd is
+        // stored as 5 PM UTC on the 2nd.
+        $from = BusinessTime::utcStartOfDay($request->date('from', null, BusinessTime::zone()));
+        $to = BusinessTime::utcEndOfDay($request->date('to', null, BusinessTime::zone()));
 
         $completed = JobOrder::query()
             ->where('assigned_artist_id', $request->user()->id)
@@ -34,7 +37,6 @@ class PerformanceReportController extends Controller
                 JobOrderStatus::DesignApproved->value,
                 JobOrderStatus::ForProduction->value,
                 JobOrderStatus::Printing->value,
-                JobOrderStatus::QualityCheck->value,
                 JobOrderStatus::ReadyForPickup->value,
             ])
             ->withCount('revisionLogs')
@@ -51,7 +53,7 @@ class PerformanceReportController extends Controller
                     return false;
                 }
 
-                if ($to !== null && $approvedAt->gt($to->copy()->endOfDay())) {
+                if ($to !== null && $approvedAt->gt($to)) {
                     return false;
                 }
 
@@ -81,7 +83,7 @@ class PerformanceReportController extends Controller
                         'id' => $jobOrder->id,
                         'number' => $jobOrder->number,
                         'description' => $jobOrder->description,
-                        'approved_at' => $approvedAt->toDateString(),
+                        'approved_at' => BusinessTime::local($approvedAt)->toDateString(),
                         'revisions' => $jobOrder->revision_logs_count,
                         'days_taken' => (int) $jobOrder->created_at->diffInDays($approvedAt),
                         'within_sla' => $jobOrder->created_at->diffInDays($approvedAt) <= $slaDays,

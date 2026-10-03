@@ -19,8 +19,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from '@/components/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,7 +33,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/components/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -54,7 +55,7 @@ import {
 import { useInitials } from '@/composables/useInitials';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
-import { roleLabel } from '@/lib/roles';
+import { artistStatusBadge, artistStatusLabel, roleLabel } from '@/lib/roles';
 import { index as usersIndex } from '@/routes/admin/users';
 
 interface ManagedUser {
@@ -71,40 +72,6 @@ interface ManagedUser {
 }
 
 const { getInitials } = useInitials();
-
-function artistStatusBadgeVariant(
-    artistStatus: string,
-): 'secondary' | 'outline' | undefined {
-    if (artistStatus === 'on_break') {
-        return 'secondary';
-    }
-
-    if (artistStatus === 'off_shift') {
-        return 'outline';
-    }
-
-    return undefined;
-}
-
-function artistStatusBadgeClass(artistStatus: string): string {
-    if (artistStatus === 'available') {
-        return 'text-green-600 dark:text-green-400';
-    }
-
-    return '';
-}
-
-function artistStatusLabel(artistStatus: string): string {
-    if (artistStatus === 'available') {
-        return 'Available';
-    }
-
-    if (artistStatus === 'on_break') {
-        return 'On Break';
-    }
-
-    return 'Off Shift';
-}
 
 /**
  * Every role an Admin may create — mirrors UserPolicy::create(), which now
@@ -526,36 +493,30 @@ defineOptions({
                         </TableCell>
                         <TableCell>
                             <div class="flex flex-wrap items-center gap-2">
-                                <Badge
+                                <StatusBadge
                                     v-if="!user.is_active"
-                                    variant="destructive"
-                                    >Deactivated</Badge
+                                    tone="danger"
+                                    >Deactivated</StatusBadge
                                 >
-                                <Badge v-else variant="secondary">Active</Badge>
-                                <Badge
+                                <StatusBadge v-else tone="success"
+                                    >Active</StatusBadge
+                                >
+                                <StatusBadge
                                     v-if="user.is_locked_out"
-                                    variant="outline"
-                                    class="border-destructive/40 text-destructive"
+                                    tone="danger"
                                     :data-test="`user-${user.id}-locked-badge`"
                                 >
                                     <Lock class="size-3" />
                                     Locked Out
-                                </Badge>
-                                <Badge
+                                </StatusBadge>
+                                <StatusBadge
                                     v-if="user.artist_status"
-                                    :variant="
-                                        artistStatusBadgeVariant(
-                                            user.artist_status,
-                                        )
-                                    "
-                                    :class="
-                                        artistStatusBadgeClass(
-                                            user.artist_status,
-                                        )
+                                    :tone="
+                                        artistStatusBadge(user.artist_status)
                                     "
                                 >
                                     {{ artistStatusLabel(user.artist_status) }}
-                                </Badge>
+                                </StatusBadge>
                                 <Badge
                                     v-if="user.exceeded_break_time"
                                     variant="outline"

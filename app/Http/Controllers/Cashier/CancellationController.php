@@ -7,7 +7,6 @@ use App\Enums\AccountsReceivableCollectionStatus;
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\PaymentMethod;
-use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use App\Http\Controllers\Controller;
@@ -30,29 +29,31 @@ class CancellationController extends Controller
      * The fee amount is always read from `system_configurations`
      * server-side — the confirm-only dialog never submits an amount
      * (T-05-13).
+     *
+     * The route-bound job order is re-read under a row lock before anything
+     * is checked: a release, or a second Cancel, landing after the binding
+     * would otherwise slip past guards that only saw the earlier state.
      */
     public function store(CancelJobOrderRequest $request, JobOrder $jobOrder): RedirectResponse
     {
-        abort_if($jobOrder->cancelled_at !== null, 422, 'This job order is already cancelled.');
-        abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid and cannot be cancelled from here.');
-        abort_if(
-            $jobOrder->payment_status === PaymentStatus::PendingConfirmation,
-            422,
-            __('This job order has a payment awaiting confirmation. Resolve it before cancelling.'),
-        );
-        abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot be cancelled.'));
+        DB::transaction(function () use ($jobOrder, $request): void {
+            $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
 
-        $designStarted = in_array($jobOrder->status, [
-            JobOrderStatus::InDesign,
-            JobOrderStatus::PendingReview,
-            JobOrderStatus::DesignApproved,
-            JobOrderStatus::ForProduction,
-            JobOrderStatus::Printing,
-            JobOrderStatus::QualityCheck,
-            JobOrderStatus::ReadyForPickup,
-        ], true);
+            $blocker = $jobOrder->cancellationBlocker();
 
-        DB::transaction(function () use ($jobOrder, $request, $designStarted): void {
+            if ($blocker !== null) {
+                abort(422, __($blocker));
+            }
+
+            $designStarted = in_array($jobOrder->status, [
+                JobOrderStatus::InDesign,
+                JobOrderStatus::PendingReview,
+                JobOrderStatus::DesignApproved,
+                JobOrderStatus::ForProduction,
+                JobOrderStatus::Printing,
+                JobOrderStatus::ReadyForPickup,
+            ], true);
+
             if ($designStarted) {
                 $fee = SystemConfiguration::getFloat('cancellation_fee_amount', 500.0);
                 $existingDownPayment = (float) $jobOrder->transactions()

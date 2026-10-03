@@ -72,6 +72,7 @@ class CreditApprovalController extends Controller
 
             $jobOrder = JobOrder::query()->whereKey($accountsReceivable->job_order_id)->lockForUpdate()->firstOrFail();
 
+            abort_if($jobOrder->cancelled_at !== null, 422, __('This job order was cancelled, so its credit request can no longer be approved.'));
             abort_if($jobOrder->outstandingBalance() <= 0.0, 422, __('This job order was settled before the credit request could be approved.'));
 
             $accountsReceivable->forceFill([

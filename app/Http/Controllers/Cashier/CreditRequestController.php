@@ -32,7 +32,6 @@ class CreditRequestController extends Controller
                 JobOrderStatus::DesignApproved,
                 JobOrderStatus::ForProduction,
                 JobOrderStatus::Printing,
-                JobOrderStatus::QualityCheck,
                 JobOrderStatus::ReadyForPickup,
             ], true),
             422,

@@ -184,3 +184,16 @@ test('the accounting dashboard carries the last 14 days of revenue and expenses'
             ->where('cashFlow.series.0.values.13', 500)
             ->where('cashFlow.series.1.name', 'Expenses'));
 });
+
+test('the accounting dashboard files a payment taken before 8 AM Manila time under that Manila day', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    // 1 AM on September 28 in Manila, still September 27 in UTC.
+    $this->travelTo('2026-09-27 17:00:00');
+    Transaction::factory()->create(['amount' => 500, 'confirmed_at' => now()]);
+
+    $this->actingAs($accountingStaff)
+        ->get(route('accounting-staff.dashboard'))
+        ->assertInertia(fn ($page) => $page
+            ->where('cashFlow.labels.13', 'Sep 28')
+            ->where('cashFlow.series.0.values.13', 500));
+});

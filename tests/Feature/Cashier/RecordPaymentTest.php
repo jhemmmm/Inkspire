@@ -23,7 +23,6 @@ test('a down payment leaves the job order partially paid and tracks the remainin
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'down',
-        'amount_tendered' => 400,
         'down_payment_amount' => 400,
     ]);
 
@@ -48,7 +47,6 @@ test('a second submission against an already-priced job order ignores resubmitte
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'down',
-        'amount_tendered' => 400,
         'down_payment_amount' => 400,
     ]);
 
@@ -61,7 +59,6 @@ test('a second submission against an already-priced job order ignores resubmitte
         'line_amount' => 5000,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 600,
     ]);
 
     $response->assertRedirect();
@@ -84,14 +81,12 @@ test('a down payment cannot exceed the remaining balance', function () {
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'down',
-        'amount_tendered' => 400,
         'down_payment_amount' => 400,
     ]);
 
     $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
         'payment_method' => 'cash',
         'payment_type' => 'down',
-        'amount_tendered' => 900,
         'down_payment_amount' => 900,
     ]);
 
@@ -109,7 +104,6 @@ test('a down payment cannot exceed the computed total on the very first pricing/
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'down',
-        'amount_tendered' => 5000,
         'down_payment_amount' => 5000,
     ]);
 
@@ -149,13 +143,11 @@ test('an already fully paid job order cannot be paid again', function () {
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 300,
     ]);
 
     $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 300,
     ]);
 
     $response->assertStatus(422);
@@ -235,7 +227,6 @@ test('a cancelled job order cannot be paid (CR-03)', function () {
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 500,
     ]);
 
     $storeResponse->assertStatus(422);
@@ -253,7 +244,6 @@ test('a written-off job order cannot be paid', function () {
     $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 1000,
     ], ['Accept' => 'application/json']);
 
     $response->assertStatus(422);
@@ -272,7 +262,6 @@ test('a job order with a pending credit request cannot be paid directly (CR-01)'
     $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 1000,
     ], ['Accept' => 'application/json']);
 
     $response->assertStatus(422);
@@ -322,7 +311,6 @@ test('the rush fee toggle submits as the string 0 or 1, matching the payment for
         'rush_fee_applied' => $submitted,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 2000,
     ]);
 
     $response->assertSessionHasNoErrors();
@@ -409,7 +397,6 @@ test('a cash payment against an on-credit order leaves its approved total untouc
         'rush_fee_applied' => true,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 1000,
     ]);
 
     $response->assertRedirect();
@@ -429,7 +416,6 @@ test('omitting rush_fee_applied entirely is still rejected, so a broken form fai
         'line_amount' => 1000,
         'payment_method' => 'cash',
         'payment_type' => 'full',
-        'amount_tendered' => 2000,
     ]);
 
     $response->assertSessionHasErrors('rush_fee_applied');

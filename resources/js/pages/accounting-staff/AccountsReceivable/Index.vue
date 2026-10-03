@@ -8,6 +8,7 @@ import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import StatCard from '@/components/StatCard.vue';
 import TableFilterBar from '@/components/TableFilterBar.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,6 +32,13 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
+import {
+    agingBadge,
+    BRACKET_LABELS,
+    COLLECTION_STATUS_LABELS,
+    collectionStatusBadge,
+} from '@/lib/accountsReceivable';
+import { money } from '@/lib/jobOrders';
 import {
     index as accountsReceivableIndex,
     show,
@@ -86,25 +94,6 @@ const BRACKETS = [
     'sixty_one_to_ninety',
     'ninety_plus',
 ] as const;
-
-const BRACKET_LABELS: Record<string, string> = {
-    current: 'Current',
-    one_to_fifteen: '1–15 Days',
-    sixteen_to_thirty: '16–30 Days',
-    thirty_one_to_sixty: '31–60 Days',
-    sixty_one_to_ninety: '61–90 Days',
-    ninety_plus: '90+ Days',
-};
-
-const COLLECTION_STATUS_LABELS: Record<string, string> = {
-    pending: 'Pending',
-    follow_up: 'Follow-up',
-    warning_sent: 'Warning Sent',
-    collections: 'Collections',
-    paid: 'Paid',
-    written_off: 'Written Off',
-    cancelled: 'Cancelled',
-};
 
 type FilterValue = 'all' | 'closed' | (typeof BRACKETS)[number];
 
@@ -208,64 +197,6 @@ function clearFilters(): void {
     searchTerm.value = '';
     collectionStatusFilter.value = ALL;
     activeFilter.value = 'all';
-}
-
-function money(value: number): string {
-    return `₱${Number(value).toLocaleString('en-PH', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    })}`;
-}
-
-function agingBadgeProps(bracket: string): {
-    variant: 'default' | 'secondary' | 'outline' | 'destructive' | undefined;
-    class: string;
-} {
-    switch (bracket) {
-        case 'current':
-            return {
-                variant: undefined,
-                class: 'text-green-600 dark:text-green-400',
-            };
-        case 'one_to_fifteen':
-        case 'sixteen_to_thirty':
-            return { variant: 'secondary', class: '' };
-        case 'thirty_one_to_sixty':
-        case 'sixty_one_to_ninety':
-            return {
-                variant: 'outline',
-                class: 'text-amber-600 dark:text-amber-400 border-amber-600/40',
-            };
-        case 'ninety_plus':
-            return { variant: 'destructive', class: '' };
-        default:
-            return { variant: undefined, class: '' };
-    }
-}
-
-function collectionStatusBadgeProps(status: string): {
-    variant: 'default' | 'secondary' | 'outline' | 'destructive' | undefined;
-    class: string;
-} {
-    switch (status) {
-        case 'pending':
-            return { variant: 'outline', class: '' };
-        case 'follow_up':
-        case 'warning_sent':
-            return { variant: 'secondary', class: '' };
-        case 'collections':
-            return { variant: 'default', class: '' };
-        case 'paid':
-            return {
-                variant: undefined,
-                class: 'text-green-600 dark:text-green-400',
-            };
-        case 'written_off':
-        case 'cancelled':
-            return { variant: 'outline', class: 'text-muted-foreground' };
-        default:
-            return { variant: undefined, class: '' };
-    }
 }
 
 function dueDateLabel(dueAt: string | null): string {
@@ -475,10 +406,7 @@ function dueSubLine(row: AccountsReceivableRow): string {
                             }}
                         </TableCell>
                         <TableCell class="text-right tabular-nums">
-                            <span
-                                v-if="row.balance <= 0"
-                                class="text-green-600 dark:text-green-400"
-                            >
+                            <span v-if="row.balance <= 0" class="text-success">
                                 Settled
                             </span>
                             <span v-else>{{ money(row.balance) }}</span>
@@ -495,32 +423,20 @@ function dueSubLine(row: AccountsReceivableRow): string {
                             </div>
                         </TableCell>
                         <TableCell>
-                            <Badge
-                                :variant="
-                                    agingBadgeProps(row.aging_bracket).variant
-                                "
-                                :class="
-                                    agingBadgeProps(row.aging_bracket).class
-                                "
-                            >
+                            <StatusBadge :tone="agingBadge(row.aging_bracket)">
                                 {{
                                     BRACKET_LABELS[row.aging_bracket] ??
                                     row.aging_bracket
                                 }}
-                            </Badge>
+                            </StatusBadge>
                         </TableCell>
                         <TableCell>
                             <div class="flex flex-col items-start gap-1">
-                                <Badge
-                                    :variant="
-                                        collectionStatusBadgeProps(
+                                <StatusBadge
+                                    :tone="
+                                        collectionStatusBadge(
                                             row.collection_status,
-                                        ).variant
-                                    "
-                                    :class="
-                                        collectionStatusBadgeProps(
-                                            row.collection_status,
-                                        ).class
+                                        )
                                     "
                                 >
                                     {{
@@ -528,7 +444,7 @@ function dueSubLine(row: AccountsReceivableRow): string {
                                             row.collection_status
                                         ] ?? row.collection_status
                                     }}
-                                </Badge>
+                                </StatusBadge>
                                 <Badge
                                     v-if="row.write_off_requested_at"
                                     variant="secondary"

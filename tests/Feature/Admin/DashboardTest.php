@@ -121,7 +121,7 @@ test('outstanding money excludes written-off job orders (bug 5)', function () {
 test('in-production counts only job orders actually on the press', function () {
     $admin = User::factory()->admin()->create();
     JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value]);
-    JobOrder::factory()->create(['status' => JobOrderStatus::QualityCheck->value]);
+    JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
     JobOrder::factory()->create(['status' => JobOrderStatus::InDesign->value]);
     JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value, 'cancelled_at' => now()]);
 
@@ -163,4 +163,17 @@ test('the pipeline counts open job orders per status, leaving out released and c
         ->assertInertia(fn (Assert $page) => $page
             ->where('pipeline.printing', 2)
             ->where('pipeline.ready_for_pickup', 0));
+});
+
+test('the revenue chart files a payment taken before 8 AM Manila time under that Manila day', function () {
+    $admin = User::factory()->admin()->create();
+    // 1 AM on September 28 in Manila, still September 27 in UTC.
+    $this->travelTo('2026-09-27 17:00:00');
+    Transaction::factory()->create(['amount' => 500, 'confirmed_at' => now()]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('cashFlow.labels.13', 'Sep 28')
+            ->where('cashFlow.series.0.values.13', 500));
 });

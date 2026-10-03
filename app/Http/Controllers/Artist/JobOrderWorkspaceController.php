@@ -15,6 +15,19 @@ use Inertia\Response;
 class JobOrderWorkspaceController extends Controller
 {
     /**
+     * Open the stored design at full size. Signs a fresh URL on every click,
+     * so the link still works on a workspace left open longer than the
+     * 10 minutes the inline preview's own URL lasts.
+     */
+    public function design(Request $request, JobOrder $jobOrder): RedirectResponse
+    {
+        abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
+        abort_if($jobOrder->designFile?->file_path === null, 404);
+
+        return redirect()->away(Storage::disk('local')->temporaryUrl($jobOrder->designFile->file_path, now()->addMinutes(10)));
+    }
+
+    /**
      * Render the Job Order Workspace page for a single job order assigned
      * to the acting artist.
      */

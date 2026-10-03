@@ -23,8 +23,7 @@ test('each public stage reports its position on the customer journey', function 
     'pending review collapses to the first step' => [JobOrderStatus::PendingReview, 0, 'In Progress'],
     'for production' => [JobOrderStatus::ForProduction, 1, 'For Production'],
     'printing' => [JobOrderStatus::Printing, 2, 'Printing'],
-    'quality check' => [JobOrderStatus::QualityCheck, 3, 'Quality Check'],
-    'ready for pickup' => [JobOrderStatus::ReadyForPickup, 4, 'Ready for Pickup'],
+    'ready for pickup' => [JobOrderStatus::ReadyForPickup, 3, 'Ready for Pickup'],
 ]);
 
 test('a released job order sits on the last step', function () {
@@ -35,7 +34,7 @@ test('a released job order sits on the last step', function () {
 
     $this->get(route('public.tracking.show', ['number' => $jobOrder->number]))
         ->assertInertia(fn ($page) => $page
-            ->where('result.stageStep', 5)
+            ->where('result.stageStep', 4)
             ->where('result.stage', 'Completed'));
 });
 

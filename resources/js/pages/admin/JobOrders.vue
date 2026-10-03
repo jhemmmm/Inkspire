@@ -10,6 +10,7 @@ import PageHeader from '@/components/PageHeader.vue';
 import SearchableSelect, {
     type SearchableOption,
 } from '@/components/SearchableSelect.vue';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,8 +38,10 @@ import {
 import { adminNavItems } from '@/config/nav/admin';
 import {
     balanceLabel,
+    jobOrderStatusBadge,
     jobOrderStatusLabel,
     money,
+    paymentStatusBadge,
     paymentStatusLabel,
 } from '@/lib/jobOrders';
 import { index as jobOrdersIndex } from '@/routes/admin/job-orders';
@@ -54,7 +57,7 @@ interface AdminJobOrder {
     width_ft: string | null;
     height_ft: string | null;
     quantity: number | null;
-    status: string;
+    display_status: string;
     payment_status: string;
     total_amount: number | null;
     display_total: number | null;
@@ -383,18 +386,34 @@ function sizeLabel(jobOrder: AdminJobOrder): string {
                                 {{ balanceLabel(jobOrder) }}
                             </TableCell>
                             <TableCell>
-                                <Badge variant="secondary">
-                                    {{ jobOrderStatusLabel(jobOrder.status) }}
-                                </Badge>
+                                <StatusBadge
+                                    :tone="
+                                        jobOrderStatusBadge(
+                                            jobOrder.display_status,
+                                        )
+                                    "
+                                >
+                                    {{
+                                        jobOrderStatusLabel(
+                                            jobOrder.display_status,
+                                        )
+                                    }}
+                                </StatusBadge>
                             </TableCell>
                             <TableCell>
-                                <Badge variant="outline">
+                                <StatusBadge
+                                    :tone="
+                                        paymentStatusBadge(
+                                            jobOrder.payment_status,
+                                        )
+                                    "
+                                >
                                     {{
                                         paymentStatusLabel(
                                             jobOrder.payment_status,
                                         )
                                     }}
-                                </Badge>
+                                </StatusBadge>
                             </TableCell>
                         </TableRow>
                     </TableBody>

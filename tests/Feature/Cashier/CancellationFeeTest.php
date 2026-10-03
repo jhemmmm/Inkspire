@@ -157,6 +157,30 @@ test('a written-off job order cannot be cancelled', function () {
     expect($jobOrder->fresh()->cancelled_at)->toBeNull();
 });
 
+test('a job order with an On-Credit request awaiting approval cannot be cancelled', function () {
+    seedCancellationFee(500.0);
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => 'design_approved', 'payment_status' => 'credit_pending_approval', 'total_amount' => 1000]);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.cancel', $jobOrder));
+
+    $response->assertStatus(422);
+    expect(Transaction::count())->toBe(0);
+    expect($jobOrder->fresh()->cancelled_at)->toBeNull();
+});
+
+test('a job order already released to the customer cannot be cancelled', function () {
+    seedCancellationFee(500.0);
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => 'ready_for_pickup', 'payment_status' => 'on_credit', 'total_amount' => 1000, 'released_at' => now()]);
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.cancel', $jobOrder));
+
+    $response->assertStatus(422);
+    expect(Transaction::count())->toBe(0);
+    expect($jobOrder->fresh()->cancelled_at)->toBeNull();
+});
+
 test('the cashier dashboard casts amount_paid to a float, not a numeric string (CR-04)', function () {
     $cashier = User::factory()->cashier()->create();
     $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000]);
@@ -299,4 +323,25 @@ test('a cancelled receivable is excluded from the aging list open brackets', fun
         ->has('receivables', 0)
         ->has('closedReceivables', 1)
     );
+});
+
+test('a job order released after the cancel request was bound is still refused', function () {
+    seedCancellationFee(500.0);
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => 'ready_for_pickup', 'payment_status' => 'on_credit', 'total_amount' => 1000]);
+    // The release lands between route binding and the controller: the bound
+    // model still says "not released" while the row no longer does.
+    $released = false;
+    JobOrder::retrieved(function (JobOrder $bound) use (&$released): void {
+        if (! $released) {
+            $released = true;
+            JobOrder::query()->whereKey($bound->id)->update(['released_at' => '2026-10-03 02:00:00']);
+        }
+    });
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.cancel', $jobOrder));
+
+    $response->assertStatus(422);
+    expect(Transaction::count())->toBe(0);
+    expect($jobOrder->fresh()->cancelled_at)->toBeNull();
 });

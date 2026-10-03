@@ -10,6 +10,7 @@ import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import TableFilterBar from '@/components/TableFilterBar.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import StatusBadge from '@/components/StatusBadge.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -25,7 +26,12 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { productionStaffNavItems } from '@/config/nav/production-staff';
-import { paymentStatusLabel } from '@/lib/jobOrders';
+import {
+    jobOrderStatusBadge,
+    jobOrderStatusLabel,
+    paymentStatusBadge,
+    paymentStatusLabel,
+} from '@/lib/jobOrders';
 import { dashboard } from '@/routes/production-staff';
 
 interface ProductionJobOrder {
@@ -110,13 +116,30 @@ const tabs: {
 
 const activeTab = ref<TabValue>('to_print');
 
+/**
+ * Search covers the whole board, not just the open tab, and the tab counts
+ * follow it — so a search shows which tab holds the order. The board is a
+ * handful of rows, so filtering is always client-side.
+ */
+const { searchTerm, filtered: searchedJobOrders } = useTableFilter(
+    () => props.jobOrders,
+    (jobOrder) => [
+        jobOrder.number,
+        jobOrder.queue_entry?.customer?.name,
+        jobOrder.description,
+    ],
+);
+
+const filtersActive = computed(() => searchTerm.value.trim() !== '');
+
 const tabCounts = computed(
     () =>
         Object.fromEntries(
             tabs.map((tab) => [
                 tab.value,
-                props.jobOrders.filter((jobOrder) => tab.matches(jobOrder))
-                    .length,
+                searchedJobOrders.value.filter((jobOrder) =>
+                    tab.matches(jobOrder),
+                ).length,
             ]),
         ) as Record<TabValue, number>,
 );
@@ -125,8 +148,8 @@ const activeTabConfig = computed(
     () => tabs.find((tab) => tab.value === activeTab.value) ?? tabs[0],
 );
 
-const tabJobOrders = computed(() =>
-    props.jobOrders.filter((jobOrder) =>
+const visibleJobOrders = computed(() =>
+    searchedJobOrders.value.filter((jobOrder) =>
         activeTabConfig.value.matches(jobOrder),
     ),
 );
@@ -139,31 +162,9 @@ const rushJobOrders = computed(() =>
     props.jobOrders.filter((jobOrder) => jobOrder.is_rush),
 );
 
-/**
- * Search applies on top of the tab filter — the whole board is a handful of
- * rows, so filtering is always client-side.
- */
-const { searchTerm, filtered: visibleJobOrders } = useTableFilter(
-    () => tabJobOrders.value,
-    (jobOrder) => [
-        jobOrder.number,
-        jobOrder.queue_entry?.customer?.name,
-        jobOrder.description,
-    ],
-);
-
-const filtersActive = computed(() => searchTerm.value.trim() !== '');
-
 function clearFilters(): void {
     searchTerm.value = '';
 }
-
-const STAGE_LABELS: Record<string, string> = {
-    for_production: 'For Production',
-    printing: 'Printing',
-    quality_check: 'Quality Check',
-    ready_for_pickup: 'Ready for Pickup',
-};
 
 function dueTimeOnly(dueAt: string | null): string {
     if (!dueAt) {
@@ -279,8 +280,8 @@ onUnmounted(() => {
         />
 
         <Alert v-if="rushJobOrders.length > 0" variant="default">
-            <Zap class="size-4 text-amber-600 dark:text-amber-400" />
-            <AlertTitle class="text-amber-600 dark:text-amber-400">
+            <Zap class="text-warning size-4" />
+            <AlertTitle class="text-warning">
                 {{ rushBannerTitle() }}
             </AlertTitle>
             <AlertDescription>
@@ -294,38 +295,54 @@ onUnmounted(() => {
             :errors="[failedMoveMessage]"
         />
 
-        <Tabs :model-value="activeTab" @update:model-value="onTabChange">
-            <!--
+        <!--
+            Search sits beside the tabs, not in a card of its own (the shared
+            filter bar's `inline` mode): it covers the whole board and the
+            tab counts follow it, so the two read as one control. The tabs
+            keep their natural width; when both don't fit, the search wraps
+            to its own line instead of squeezing them. Top-aligned, so the
+            tabs line up with the search box and not with the count under it.
+        -->
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <Tabs
+                class="max-w-full shrink-0"
+                :model-value="activeTab"
+                @update:model-value="onTabChange"
+            >
+                <!--
                 Wraps rather than running off the edge on a phone. A trigger's
                 default height is 100% of the list, so each gets a fixed
                 height or a wrapped list stretches them.
             -->
-            <TabsList class="h-auto max-w-full flex-wrap justify-start">
-                <TabsTrigger
-                    v-for="tab in tabs"
-                    :key="tab.value"
-                    :value="tab.value"
-                    class="h-8 flex-none"
-                    :data-test="`production-tab-${tab.value}`"
-                >
-                    {{ tab.label }}
-                    <span class="tabular-nums"
-                        >({{ tabCounts[tab.value] }})</span
+                <TabsList class="h-auto max-w-full flex-wrap justify-start">
+                    <TabsTrigger
+                        v-for="tab in tabs"
+                        :key="tab.value"
+                        :value="tab.value"
+                        class="h-8 flex-none"
+                        :data-test="`production-tab-${tab.value}`"
                     >
-                </TabsTrigger>
-            </TabsList>
-        </Tabs>
+                        {{ tab.label }}
+                        <span class="tabular-nums"
+                            >({{ tabCounts[tab.value] }})</span
+                        >
+                    </TabsTrigger>
+                </TabsList>
+            </Tabs>
 
-        <TableFilterBar
-            v-if="tabJobOrders.length > 0"
-            v-model:search="searchTerm"
-            search-label="Search job orders"
-            search-placeholder="Job order, customer or description"
-            :shown="visibleJobOrders.length"
-            :total="tabJobOrders.length"
-            :active="filtersActive"
-            @clear="clearFilters"
-        />
+            <TableFilterBar
+                v-if="jobOrders.length > 0"
+                v-model:search="searchTerm"
+                inline
+                class="min-w-60 flex-1 @lg:max-w-lg"
+                search-label="Search job orders"
+                search-placeholder="Job order, customer or description"
+                :shown="visibleJobOrders.length"
+                :total="jobOrders.length"
+                :active="filtersActive"
+                @clear="clearFilters"
+            />
+        </div>
 
         <DataTableCard>
             <Table>
@@ -339,19 +356,21 @@ onUnmounted(() => {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    <TableEmpty v-if="tabJobOrders.length === 0" :colspan="5">
-                        <EmptyState
-                            :title="activeTabConfig.emptyTitle"
-                            :description="activeTabConfig.emptyDescription"
-                        />
-                    </TableEmpty>
                     <TableEmpty
-                        v-else-if="visibleJobOrders.length === 0"
+                        v-if="visibleJobOrders.length === 0 && filtersActive"
                         :colspan="5"
                     >
                         <EmptyState
-                            title="No matches"
-                            description="No job orders in this tab match that search."
+                            :title="
+                                searchedJobOrders.length > 0
+                                    ? 'No matches in this tab'
+                                    : 'No matches'
+                            "
+                            :description="
+                                searchedJobOrders.length > 0
+                                    ? 'Your search found job orders on another tab. The counts on the tabs above show which one.'
+                                    : 'No job orders on the board match that search.'
+                            "
                         >
                             <template #actions>
                                 <Button
@@ -365,13 +384,21 @@ onUnmounted(() => {
                             </template>
                         </EmptyState>
                     </TableEmpty>
+                    <TableEmpty
+                        v-else-if="visibleJobOrders.length === 0"
+                        :colspan="5"
+                    >
+                        <EmptyState
+                            :title="activeTabConfig.emptyTitle"
+                            :description="activeTabConfig.emptyDescription"
+                        />
+                    </TableEmpty>
                     <TableRow
                         v-for="jobOrder in visibleJobOrders"
                         v-else
                         :key="jobOrder.id"
                         :class="{
-                            'bg-amber-50 dark:bg-amber-950/20':
-                                jobOrder.is_rush,
+                            'bg-warning/10': jobOrder.is_rush,
                         }"
                     >
                         <!--
@@ -407,28 +434,16 @@ onUnmounted(() => {
                         </TableCell>
                         <TableCell>
                             <div class="flex flex-col items-start gap-1">
-                                <Badge
-                                    :variant="
-                                        jobOrder.status === 'for_production'
-                                            ? 'outline'
-                                            : 'secondary'
-                                    "
-                                    :class="{
-                                        'text-green-600 dark:text-green-400':
-                                            jobOrder.status ===
-                                            'ready_for_pickup',
-                                    }"
+                                <StatusBadge
+                                    :tone="jobOrderStatusBadge(jobOrder.status)"
                                 >
-                                    {{
-                                        STAGE_LABELS[jobOrder.status] ??
-                                        jobOrder.status
-                                    }}
-                                </Badge>
-                                <Badge
-                                    :variant="
-                                        jobOrder.cleared_for_production
-                                            ? 'secondary'
-                                            : 'outline'
+                                    {{ jobOrderStatusLabel(jobOrder.status) }}
+                                </StatusBadge>
+                                <StatusBadge
+                                    :tone="
+                                        paymentStatusBadge(
+                                            jobOrder.payment_status,
+                                        )
                                     "
                                     :data-test="`payment-badge-${jobOrder.id}`"
                                 >
@@ -437,7 +452,7 @@ onUnmounted(() => {
                                             jobOrder.payment_status,
                                         )
                                     }}
-                                </Badge>
+                                </StatusBadge>
                             </div>
                         </TableCell>
                         <TableCell>
@@ -451,7 +466,7 @@ onUnmounted(() => {
                                 </span>
                                 <span
                                     v-if="isOverdue(jobOrder.due_at)"
-                                    class="text-sm text-amber-600 dark:text-amber-400"
+                                    class="text-warning text-sm"
                                 >
                                     Overdue
                                 </span>
@@ -490,7 +505,6 @@ onUnmounted(() => {
                                     <Button
                                         type="submit"
                                         size="sm"
-                                        variant="outline"
                                         :disabled="processing"
                                         :data-test="`start-job-order-${jobOrder.id}-button`"
                                     >
@@ -499,10 +513,13 @@ onUnmounted(() => {
                                     </Button>
                                 </Form>
 
+                                <!--
+                                    One step at a time: Done only once the
+                                    order has been started, never straight
+                                    from For Production.
+                                -->
                                 <Form
-                                    v-if="
-                                        jobOrder.status !== 'ready_for_pickup'
-                                    "
+                                    v-if="jobOrder.status === 'printing'"
                                     v-bind="
                                         ProductionStageController.done.form(
                                             jobOrder.id,
@@ -535,7 +552,7 @@ onUnmounted(() => {
                                     <Button
                                         type="submit"
                                         size="sm"
-                                        variant="ghost"
+                                        variant="outline"
                                         :disabled="processing"
                                         :data-test="`undo-job-order-${jobOrder.id}-button`"
                                     >

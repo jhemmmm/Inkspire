@@ -102,7 +102,8 @@ class CustomerController extends Controller
             ->whereRelation('queueEntry', 'customer_id', $customer->id)
             ->where('created_at', '>=', now()->subWeek())
             ->latest('id')
-            ->get(['id', 'number', 'description', 'type', 'status', 'is_rush', 'created_at']);
+            ->get(['id', 'number', 'description', 'type', 'status', 'released_at', 'cancelled_at', 'is_rush', 'created_at'])
+            ->append('display_status');
     }
 
     /**

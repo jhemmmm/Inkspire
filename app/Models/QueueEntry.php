@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\QueueStatus;
 use App\Observers\AuditObserver;
+use App\Support\BusinessTime;
 use Database\Factories\QueueEntryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -93,7 +94,7 @@ class QueueEntry extends Model
 
     public static function currentBusinessDate(): string
     {
-        return now()->timezone('Asia/Manila')->toDateString();
+        return BusinessTime::now()->toDateString();
     }
 
     /**

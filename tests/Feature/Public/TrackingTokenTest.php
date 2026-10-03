@@ -74,7 +74,7 @@ test('an unknown token renders a readable not-found state rather than an error p
 });
 
 test('the response leaks no customer pii, pricing, payment or raw status value', function () {
-    $jobOrder = trackedJobOrder(['status' => JobOrderStatus::QualityCheck->value]);
+    $jobOrder = trackedJobOrder(['status' => JobOrderStatus::ReadyForPickup->value]);
 
     $response = $this->get(route('public.tracking.token', ['token' => $jobOrder->tracking_token]));
 
@@ -88,7 +88,7 @@ test('the response leaks no customer pii, pricing, payment or raw status value',
     $response->assertDontSee('zenaida.villanueva@example.test', false);
     $response->assertDontSee('Mabini', false);
     $response->assertDontSee('8642', false);
-    $response->assertDontSee('quality_check', false);
+    $response->assertDontSee('ready_for_pickup', false);
     $response->assertDontSee('payment_status', false);
     $response->assertDontSee('total_amount', false);
     // The token is a bearer credential printed on a paper slip, so it must

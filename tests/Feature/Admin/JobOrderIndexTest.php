@@ -252,3 +252,28 @@ test('exported label cells are display-ready, not raw enum values or booleans', 
     expect($rows[1][4])->toBe('For Production');
     expect($rows[1][6])->toBe('Rush');
 });
+
+test('a released job order is listed as released, not at the stage it last reached', function () {
+    $admin = User::factory()->admin()->create();
+    JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value, 'released_at' => now()]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.job-orders.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('jobOrders.data.0.display_status', 'released'));
+});
+
+test('the status filter tells released orders apart from ones still waiting for pickup', function (string $status, string $expectedNumber) {
+    $admin = User::factory()->admin()->create();
+    JobOrder::factory()->create(['number' => 'JO-2026-0001', 'status' => JobOrderStatus::ReadyForPickup->value]);
+    JobOrder::factory()->create(['number' => 'JO-2026-0002', 'status' => JobOrderStatus::ReadyForPickup->value, 'released_at' => now()]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.job-orders.index', ['status' => $status]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('jobOrders.data', 1)
+            ->where('jobOrders.data.0.number', $expectedNumber)
+        );
+})->with([
+    'ready for pickup' => ['ready_for_pickup', 'JO-2026-0001'],
+    'released' => ['released', 'JO-2026-0002'],
+]);

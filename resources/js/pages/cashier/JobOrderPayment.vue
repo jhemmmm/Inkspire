@@ -8,7 +8,7 @@ import {
     Smartphone,
     Wallet,
 } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import CreditRequestController from '@/actions/App/Http/Controllers/Cashier/CreditRequestController';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
 import InputError from '@/components/InputError.vue';
@@ -28,7 +28,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
     AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from '@/components/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -44,6 +44,7 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { cashierNavItems } from '@/config/nav/cashier';
+import { money, round2 } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/cashier';
 import { reconcile } from '@/routes/cashier/job-orders';
 
@@ -115,7 +116,8 @@ const paymentMethod = ref<
     'cash' | 'bank_transfer' | 'gcash' | 'maya' | 'on_credit'
 >('cash');
 const paymentType = ref<'full' | 'down'>('full');
-const amountTendered = ref<number | undefined>(undefined);
+/** Only for working out change; never submitted or stored. */
+const cashReceived = ref<number | undefined>(undefined);
 const referenceNumber = ref('');
 const downPaymentAmount = ref<number | undefined>(undefined);
 
@@ -172,10 +174,6 @@ function checkPaymentStatus(): void {
             },
         },
     );
-}
-
-function round2(value: number): number {
-    return Math.round(value * 100) / 100;
 }
 
 const pricingOptions = computed<SearchableOption[]>(() =>
@@ -269,12 +267,62 @@ const targetAmount = computed<number>(() =>
     props.pricingLocked ? (props.remainingBalance ?? 0) : breakdown.value.total,
 );
 
-const change = computed<number | null>(() => {
-    const tendered = Number(amountTendered.value) || 0;
+/**
+ * A cash down payment shows the change calculator only on request, so the
+ * usual case (customer hands over the exact down payment) stays one field.
+ */
+const showDownPaymentChange = ref(false);
 
-    return tendered > targetAmount.value
-        ? round2(tendered - targetAmount.value)
-        : null;
+/** What the cash is paying for: the whole amount due, or the down payment. */
+const cashPaysFor = computed<number>(() =>
+    paymentType.value === 'down'
+        ? Number(downPaymentAmount.value) || 0
+        : targetAmount.value,
+);
+
+/** The cash typed in, as a number; blank reads as nothing handed over. */
+const cashReceivedAmount = computed<number>(
+    () => Number(cashReceived.value) || 0,
+);
+
+const cashHint = computed<string>(() => {
+    const received = cashReceivedAmount.value;
+
+    if (cashPaysFor.value <= 0) {
+        return paymentType.value === 'down'
+            ? 'Type the down payment amount first.'
+            : 'Choose the product first, so there is an amount due.';
+    }
+
+    if (received <= 0) {
+        return 'Type the cash the customer handed you to see their change.';
+    }
+
+    if (received < cashPaysFor.value) {
+        const short = money(round2(cashPaysFor.value - received));
+
+        return paymentType.value === 'down'
+            ? `${short} short of the down payment.`
+            : `${short} short. Paying only part now? Choose Down Payment.`;
+    }
+
+    return `Change: ${money(round2(received - cashPaysFor.value))}`;
+});
+
+// Following "Paying only part now? Choose Down Payment" carries the cash
+// already typed across as the down payment, rather than hiding it and making
+// the Cashier type it again.
+watch(paymentType, (type) => {
+    const received = cashReceivedAmount.value;
+
+    if (
+        type === 'down' &&
+        !Number(downPaymentAmount.value) &&
+        received > 0 &&
+        received < targetAmount.value
+    ) {
+        downPaymentAmount.value = received;
+    }
 });
 
 const downPaymentRemainingBalance = computed<number>(() =>
@@ -499,9 +547,8 @@ const discountCapHelper = computed(() =>
 
                     <p class="text-muted-foreground text-sm">
                         Ask the customer to scan this code with their
-                        {{ paymongoMethodLabel }} app to complete the ₱{{
-                            (pendingPaymongoAmount ?? 0).toFixed(2)
-                        }}
+                        {{ paymongoMethodLabel }} app to complete the
+                        {{ money(pendingPaymongoAmount) }}
                         payment.
                     </p>
 
@@ -526,14 +573,19 @@ const discountCapHelper = computed(() =>
                 </CardContent>
 
                 <CardContent v-else class="grid gap-4">
-                    <p
-                        v-if="pricingLocked"
-                        class="text-muted-foreground text-sm"
+                    <div
+                        class="bg-muted flex items-baseline justify-between gap-4 rounded-lg px-4 py-3"
                     >
-                        Remaining Balance: ₱{{
-                            (remainingBalance ?? 0).toFixed(2)
-                        }}
-                    </p>
+                        <span class="text-muted-foreground text-sm">
+                            Amount due
+                        </span>
+                        <span
+                            class="text-2xl font-semibold tabular-nums"
+                            data-test="amount-due"
+                        >
+                            {{ money(targetAmount) }}
+                        </span>
+                    </div>
 
                     <div class="grid gap-2">
                         <Label>Payment Method</Label>
@@ -628,45 +680,10 @@ const discountCapHelper = computed(() =>
                         <InputError :message="errors.payment_type" />
                     </div>
 
-                    <template v-if="paymentMethod === 'cash'">
-                        <div class="grid gap-2">
-                            <Label for="amount-tendered-input">
-                                Amount Tendered
-                            </Label>
-                            <Input
-                                id="amount-tendered-input"
-                                v-model="amountTendered"
-                                name="amount_tendered"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                            />
-                            <p
-                                v-if="change !== null"
-                                class="text-muted-foreground text-sm"
-                            >
-                                Change: ₱{{ change.toFixed(2) }}
-                            </p>
-                            <InputError :message="errors.amount_tendered" />
-                        </div>
-                    </template>
-
-                    <template v-else-if="paymentMethod === 'bank_transfer'">
-                        <div class="grid gap-2">
-                            <Label for="reference-number-input">
-                                Bank Reference Number
-                            </Label>
-                            <Input
-                                id="reference-number-input"
-                                v-model="referenceNumber"
-                                name="reference_number"
-                                type="text"
-                            />
-                            <InputError :message="errors.reference_number" />
-                        </div>
-                    </template>
-
-                    <div v-if="paymentType === 'down'" class="grid gap-2">
+                    <div
+                        v-if="!isOnCredit && paymentType === 'down'"
+                        class="grid gap-2"
+                    >
                         <Label for="down-payment-amount-input">
                             Down Payment Amount
                         </Label>
@@ -678,7 +695,68 @@ const discountCapHelper = computed(() =>
                             step="0.01"
                             min="0.01"
                         />
+                        <p class="text-muted-foreground text-sm tabular-nums">
+                            Balance left after this:
+                            {{ money(downPaymentRemainingBalance) }}
+                        </p>
                         <InputError :message="errors.down_payment_amount" />
+                        <Button
+                            v-if="
+                                paymentMethod === 'cash' &&
+                                !showDownPaymentChange
+                            "
+                            type="button"
+                            variant="link"
+                            class="h-auto w-fit p-0"
+                            data-test="show-down-payment-change"
+                            @click="showDownPaymentChange = true"
+                        >
+                            Customer handing over more? Work out the change
+                        </Button>
+                    </div>
+
+                    <div
+                        v-if="
+                            paymentMethod === 'cash' &&
+                            (paymentType === 'full' || showDownPaymentChange)
+                        "
+                        class="grid gap-2"
+                    >
+                        <Label for="cash-received-input">
+                            Cash Received
+                            <span class="text-muted-foreground font-normal">
+                                (optional)
+                            </span>
+                        </Label>
+                        <Input
+                            id="cash-received-input"
+                            v-model="cashReceived"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                        />
+                        <p
+                            class="text-muted-foreground text-sm tabular-nums"
+                            data-test="cash-change"
+                        >
+                            {{ cashHint }}
+                        </p>
+                    </div>
+
+                    <div
+                        v-if="paymentMethod === 'bank_transfer'"
+                        class="grid gap-2"
+                    >
+                        <Label for="reference-number-input">
+                            Bank Reference Number
+                        </Label>
+                        <Input
+                            id="reference-number-input"
+                            v-model="referenceNumber"
+                            name="reference_number"
+                            type="text"
+                        />
+                        <InputError :message="errors.reference_number" />
                     </div>
 
                     <AlertDialog v-if="isOnCredit">
@@ -693,9 +771,8 @@ const discountCapHelper = computed(() =>
                         <AlertDialogContent>
                             <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                    Request On-Credit approval for ₱{{
-                                        targetAmount.toFixed(2)
-                                    }}?
+                                    Request On-Credit approval for
+                                    {{ money(targetAmount) }}?
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
                                     This job order will be flagged "Credit
@@ -729,15 +806,6 @@ const discountCapHelper = computed(() =>
                     >
                         {{ submitLabel }}
                     </Button>
-
-                    <p
-                        v-if="paymentType === 'down'"
-                        class="text-muted-foreground text-sm"
-                    >
-                        Remaining Balance: ₱{{
-                            downPaymentRemainingBalance.toFixed(2)
-                        }}
-                    </p>
                 </CardContent>
             </Card>
         </Form>
