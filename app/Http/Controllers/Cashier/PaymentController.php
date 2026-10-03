@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class PaymentController extends Controller
@@ -256,6 +257,11 @@ class PaymentController extends Controller
                 $request->user()->id,
                 $pricing,
             );
+        } catch (HttpExceptionInterface $e) {
+            // The locked re-check inside StartPaymongoPayment refused (paid,
+            // cancelled, written off, credit pending). That is not a PayMongo
+            // failure, and its own message is what the Cashier needs to see.
+            throw $e;
         } catch (Throwable $e) {
             Inertia::flash('toast', [
                 'type' => 'error',

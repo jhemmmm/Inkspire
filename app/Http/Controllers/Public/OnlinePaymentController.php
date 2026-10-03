@@ -12,11 +12,13 @@ use App\Http\Requests\Public\PayOnlineRequest;
 use App\Models\JobOrder;
 use App\Models\Transaction;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Luigel\Paymongo\Facades\Paymongo;
 use Luigel\Paymongo\Models\PaymentIntent;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class OnlinePaymentController extends Controller
@@ -46,18 +48,34 @@ class OnlinePaymentController extends Controller
         $paymentMethod = PaymentMethod::from($request->validated('payment_method'));
         $trackingUrl = route('public.tracking.token', ['token' => $token]);
 
+        // One checkout at a time per job order. PayMongo is called before the
+        // pending transaction is written, so two submits arriving together
+        // would otherwise each open an intent.
+        $lock = Cache::lock('online-payment:'.$jobOrder->id, 30);
+
+        if (! $lock->get()) {
+            return redirect($trackingUrl);
+        }
+
         try {
             $destination = match ($jobOrder->onlinePaymentState()) {
                 'due' => $this->startCheckout($jobOrder, $paymentMethod, $trackingUrl),
-                'pending' => $this->continueCheckout($jobOrder, $paymentMethod, $trackingUrl),
+                'pending' => $this->continueCheckout($jobOrder, $trackingUrl),
                 default => null,
             };
+        } catch (HttpExceptionInterface) {
+            // StartPaymongoPayment's locked re-check refused: the order was
+            // paid, cancelled or put on credit while PayMongo was being
+            // called. Nothing was written, and the tracking page shows which.
+            return redirect($trackingUrl);
         } catch (Throwable $e) {
             report($e);
 
             return redirect($trackingUrl)->withErrors([
                 'payment' => __("We couldn't start the payment. Please try again, or pay at the shop."),
             ]);
+        } finally {
+            $lock->release();
         }
 
         // Null means there is nothing to send the customer to PayMongo for;
@@ -85,12 +103,16 @@ class OnlinePaymentController extends Controller
      * creates a second intent for a pending transaction: that would charge
      * the customer twice.
      *
+     * The wallet is the one the customer chose when they opened the
+     * checkout, read from the transaction. The pending page has a single
+     * button and no wallet picker, so the posted method is not used here.
+     *
      * PayMongo's status vocabulary is unverified against the sandbox, as
-     * ReconciliationController already notes: `succeeded` and
-     * `awaiting_next_action` are treated as known, anything else as an
-     * intent that needs a fresh payment method attached.
+     * ReconciliationController already notes. Each status handled below is
+     * named; anything else (`processing` above all, a payment in flight) is
+     * left exactly as it is.
      */
-    private function continueCheckout(JobOrder $jobOrder, PaymentMethod $paymentMethod, string $trackingUrl): ?string
+    private function continueCheckout(JobOrder $jobOrder, string $trackingUrl): ?string
     {
         $transaction = $jobOrder->transactions()
             ->where('status', TransactionStatus::PendingConfirmation)
@@ -115,25 +137,32 @@ class OnlinePaymentController extends Controller
             return null;
         }
 
+        // Closed at PayMongo and can no longer be paid. Failing it puts the
+        // order back to "due", where the customer picks a wallet again.
+        if ($status === 'cancelled') {
+            ($this->confirmPaymentIntent)($transaction, false);
+
+            return null;
+        }
+
         if ($status === 'awaiting_next_action') {
             $existingUrl = $intent->getData()['next_action']['redirect']['url'] ?? null;
 
-            if (is_string($existingUrl)) {
-                return $existingUrl;
-            }
+            return is_string($existingUrl) ? $existingUrl : null;
         }
 
-        $paymongoPaymentMethod = Paymongo::paymentMethod()->create([
-            'type' => $paymentMethod === PaymentMethod::Gcash ? 'gcash' : 'paymaya',
-        ]);
-        $attached = Paymongo::paymentIntent()->attach($intent, (string) $paymongoPaymentMethod->getData()['id'], $trackingUrl);
+        // The earlier attempt never got as far as the wallet. Same intent,
+        // fresh payment method.
+        if ($status === 'awaiting_payment_method') {
+            $paymongoPaymentMethod = Paymongo::paymentMethod()->create([
+                'type' => $transaction->payment_method === PaymentMethod::Gcash ? 'gcash' : 'paymaya',
+            ]);
+            $attached = Paymongo::paymentIntent()->attach($intent, (string) $paymongoPaymentMethod->getData()['id'], $trackingUrl);
+            $newUrl = $attached->getData()['next_action']['redirect']['url'] ?? null;
 
-        if ($transaction->payment_method !== $paymentMethod) {
-            $transaction->forceFill(['payment_method' => $paymentMethod])->save();
+            return is_string($newUrl) ? $newUrl : null;
         }
 
-        $newUrl = $attached->getData()['next_action']['redirect']['url'] ?? null;
-
-        return is_string($newUrl) ? $newUrl : null;
+        return null;
     }
 }

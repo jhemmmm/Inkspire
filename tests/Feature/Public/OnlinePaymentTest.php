@@ -6,6 +6,7 @@ use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
 use App\Models\JobOrder;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia as Assert;
 use Luigel\Paymongo\Facades\Paymongo;
@@ -125,20 +126,81 @@ test('retrying a pending checkout reuses the existing intent and creates no seco
     expect(Transaction::count())->toBe(1);
 });
 
-test('an intent that has not been given a method yet is re-attached to the same intent', function () {
+test('an intent that has not been given a method yet is re-attached with the wallet first chosen', function () {
     $jobOrder = onlinePayJobOrder();
     $transaction = onlinePayPending($jobOrder);
 
     Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
     Paymongo::shouldReceive('find')->once()->andReturn(onlinePayIntent('awaiting_payment_method'));
     Paymongo::shouldReceive('paymentMethod')->once()->andReturnSelf();
-    Paymongo::shouldReceive('create')->once()->andReturn(onlinePayPaymentMethod());
+    Paymongo::shouldReceive('create')->once()->with(['type' => 'gcash'])->andReturn(onlinePayPaymentMethod());
     Paymongo::shouldReceive('attach')->once()->andReturn(onlinePayIntent('awaiting_next_action', 'https://paymongo.test/fresh'));
 
+    // The pending page has one button; whatever wallet it posts is not used.
     onlinePayPost($jobOrder, 'maya')->assertHeader('X-Inertia-Location', 'https://paymongo.test/fresh');
 
     expect(Transaction::count())->toBe(1);
-    expect($transaction->fresh()->payment_method)->toBe(PaymentMethod::Maya);
+    expect($transaction->fresh()->payment_method)->toBe(PaymentMethod::Gcash);
+});
+
+test('a payment PayMongo is still processing is left alone', function () {
+    $jobOrder = onlinePayJobOrder();
+    $transaction = onlinePayPending($jobOrder);
+
+    Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->andReturn(onlinePayIntent('processing'));
+    Paymongo::shouldReceive('create')->never();
+    Paymongo::shouldReceive('attach')->never();
+
+    onlinePayPost($jobOrder)->assertRedirect(route('public.tracking.token', ['token' => $jobOrder->tracking_token]));
+
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::PendingConfirmation);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PendingConfirmation);
+});
+
+test('a checkout PayMongo cancelled is closed so the customer can choose a wallet again', function () {
+    $jobOrder = onlinePayJobOrder();
+    $transaction = onlinePayPending($jobOrder);
+
+    Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->andReturn(onlinePayIntent('cancelled'));
+    Paymongo::shouldReceive('create')->never();
+
+    onlinePayPost($jobOrder)->assertRedirect(route('public.tracking.token', ['token' => $jobOrder->tracking_token]));
+
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::Failed);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Unpaid);
+    expect($jobOrder->fresh()->onlinePaymentState())->toBe('due');
+});
+
+test('a second submit while a checkout is being opened does nothing', function () {
+    $jobOrder = onlinePayJobOrder();
+    Cache::lock('online-payment:'.$jobOrder->id, 30)->get();
+    Paymongo::shouldReceive('paymentIntent')->never();
+
+    onlinePayPost($jobOrder)->assertRedirect(route('public.tracking.token', ['token' => $jobOrder->tracking_token]));
+
+    expect(Transaction::count())->toBe(0);
+});
+
+test('an order paid at the counter while PayMongo was being called gets no pending transaction and no error', function () {
+    $jobOrder = onlinePayJobOrder();
+
+    Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
+    Paymongo::shouldReceive('paymentMethod')->once()->andReturnSelf();
+    Paymongo::shouldReceive('create')->twice()->andReturn(onlinePayIntent('awaiting_payment_method'), onlinePayPaymentMethod());
+    Paymongo::shouldReceive('attach')->once()->andReturnUsing(function () use ($jobOrder): PaymentIntent {
+        $jobOrder->forceFill(['payment_status' => PaymentStatus::Paid])->save();
+
+        return onlinePayIntent('awaiting_next_action', 'https://paymongo.test/too-late');
+    });
+
+    onlinePayPost($jobOrder)
+        ->assertRedirect(route('public.tracking.token', ['token' => $jobOrder->tracking_token]))
+        ->assertSessionHasNoErrors();
+
+    expect(Transaction::count())->toBe(0);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Paid);
 });
 
 test('a pending checkout that PayMongo reports as succeeded is confirmed and the order becomes paid', function () {

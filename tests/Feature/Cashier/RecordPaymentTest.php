@@ -420,3 +420,42 @@ test('omitting rush_fee_applied entirely is still rejected, so a broken form fai
 
     $response->assertSessionHasErrors('rush_fee_applied');
 });
+
+test('a refusal found after the paymongo calls keeps its own answer instead of the generic paymongo error', function () {
+    $fakeIntent = (new PaymentIntent)->setData([
+        'id' => 'pi_late_refusal',
+        'type' => 'payment_intent',
+        'attributes' => ['amount' => 100000, 'status' => 'awaiting_payment_method'],
+    ]);
+    $fakePaymentMethod = (new PaymongoPaymentMethod)->setData([
+        'id' => 'pm_late_refusal',
+        'type' => 'payment_method',
+        'attributes' => ['type' => 'gcash'],
+    ]);
+
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+
+    Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
+    Paymongo::shouldReceive('paymentMethod')->once()->andReturnSelf();
+    Paymongo::shouldReceive('create')->twice()->andReturn($fakeIntent, $fakePaymentMethod);
+    // The order is cancelled by someone else while PayMongo is being called.
+    Paymongo::shouldReceive('attach')->once()->andReturnUsing(function () use ($jobOrder, $fakeIntent): PaymentIntent {
+        $jobOrder->forceFill(['cancelled_at' => now()])->save();
+
+        return $fakeIntent;
+    });
+
+    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 1000,
+        'rush_fee_applied' => false,
+        'payment_method' => 'gcash',
+        'payment_type' => 'full',
+    ]);
+
+    $response->assertStatus(422);
+    expect(Transaction::count())->toBe(0)
+        ->and($jobOrder->fresh()->total_amount)->toBeNull();
+});

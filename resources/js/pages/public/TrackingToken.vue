@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { AlertCircle, PencilRuler } from '@lucide/vue';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import OrderProgress from '@/components/OrderProgress.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +63,19 @@ function pay(method: 'gcash' | 'maya'): void {
             onFinish: () => {
                 paying.value = false;
             },
+            // The alert renders under the buttons, which on a short screen is
+            // below the fold.
+            onError: () =>
+                void nextTick(() =>
+                    document
+                        .querySelector(
+                            '[data-test="tracking-token-payment-error"]',
+                        )
+                        ?.scrollIntoView({
+                            block: 'center',
+                            behavior: 'smooth',
+                        }),
+                ),
         },
     );
 }
