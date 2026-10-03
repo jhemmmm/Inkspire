@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Public\DesignReviewController;
+use App\Http\Controllers\Public\OnlineOrderController;
 use App\Http\Controllers\Public\QueueDisplayController;
 use App\Http\Controllers\Public\TrackingController;
 use App\Http\Controllers\Webhooks\PaymongoWebhookController;
@@ -8,6 +9,21 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'Welcome')->name('home');
+
+// Public, unauthenticated — a customer places an order from the website. It
+// is only parked until they open the emailed signed link, so nothing is
+// written to the shop's workflow by an anonymous visitor alone. Deliberately
+// outside every auth/role:* group; the strict POST throttle limits mail abuse.
+Route::get('order', [OnlineOrderController::class, 'create'])
+    ->middleware('throttle:60,1')
+    ->name('public.orders.create');
+Route::post('order', [OnlineOrderController::class, 'store'])
+    ->middleware('throttle:5,10')
+    ->name('public.orders.store');
+Route::middleware(['signed', 'throttle:60,1'])->prefix('order/confirm')->group(function () {
+    Route::get('{onlineOrder}', [OnlineOrderController::class, 'show'])->whereNumber('onlineOrder')->name('public.orders.confirm.show');
+    Route::post('{onlineOrder}', [OnlineOrderController::class, 'confirm'])->whereNumber('onlineOrder')->name('public.orders.confirm');
+});
 
 // Public, unauthenticated (D-09/D-10, QUEUE-06) — intentionally outside every
 // auth/role middleware group; see QueueDisplayController for the PII boundary.

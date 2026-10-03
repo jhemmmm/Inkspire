@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\SendAccountsReceivableReminders;
+use App\Models\OnlineOrder;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -10,3 +11,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command(SendAccountsReceivableReminders::class)->daily()->withoutOverlapping()->onOneServer();
+Schedule::command('model:prune', ['--model' => [OnlineOrder::class]])->daily();

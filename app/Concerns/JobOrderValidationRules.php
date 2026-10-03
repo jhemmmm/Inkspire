@@ -7,6 +7,7 @@ use App\Enums\FileValidationOutcome;
 use App\Enums\JobOrderType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -145,8 +146,9 @@ trait JobOrderValidationRules
      * normal, then routed to the artist pool.
      *
      * @param  list<string>  $prefixes  One key prefix per job order row, e.g. `job_orders.0.` or `` for a single row.
+     * @param  bool  $customerFacing  Drop the staff-directed "Ask the customer ..." sentence, for a form the customer fills in themselves.
      */
-    protected function rejectUnusableTypeAFiles(Validator $validator, array $prefixes): void
+    protected function rejectUnusableTypeAFiles(Validator $validator, array $prefixes, bool $customerFacing = false): void
     {
         foreach ($prefixes as $prefix) {
             $fileKey = $prefix.'file';
@@ -173,7 +175,14 @@ trait JobOrderValidationRules
             );
 
             if ($result['outcome'] === FileValidationOutcome::Rejected) {
-                $validator->errors()->add($fileKey, $result['reason'] ?? __('This file cannot be used for printing.'));
+                $reason = $result['reason'] ?? __('This file cannot be used for printing.');
+
+                if ($customerFacing) {
+                    // ponytail: coupled to the wording of ValidateJobOrderFile's rejection reasons, which end in an "Ask the customer ..." sentence.
+                    $reason = Str::before($reason, ' Ask the customer');
+                }
+
+                $validator->errors()->add($fileKey, $reason);
             }
         }
     }

@@ -51,6 +51,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
             if ($e instanceof InvalidSignatureException) {
+                if ($request->routeIs('public.orders.*')) {
+                    return Inertia::render('public/OrderConfirm', ['state' => 'expired'])->toResponse($request)->setStatusCode(403);
+                }
+
                 return Inertia::render('public/DesignReview', ['state' => 'expired'])->toResponse($request)->setStatusCode(403);
             }
 
