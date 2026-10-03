@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-31)
 Phase: 08
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-10-03 - Completed quick task 261003-vxm: Website order form with email confirmation
+Last activity: 2026-10-03 - Completed quick task 261003-w8o: Online GCash/Maya payment from the tracking page, Cashier payment link
 
 Progress: [██████████] 100%
 
@@ -175,6 +175,7 @@ None yet.
 | 261003-vg0 | Shared intake actions (CreateJobOrder, OpenVisit), online queue lane hidden from both queue listings, JobOrderRowFields extracted from New Visit (part 1 of 4: artist-created and online orders) | 2026-10-03 | c653fde | [261003-vg0-shared-intake-actions-extract-createjobo](./quick/261003-vg0-shared-intake-actions-extract-createjobo/) |
 | 261003-voe | Artist New Job Order page for emailed requests: goes to the creating artist's queue, customer emailed tracking links, plain-language intake errors (part 2 of 4: artist-created and online orders) | 2026-10-03 | 4244b2e | [261003-voe-artist-creates-a-job-order-new-job-order](./quick/261003-voe-artist-creates-a-job-order-new-job-order/) |
 | 261003-vxm | Website order form: order parked until the client confirms by emailed signed link, then customer, online-lane visit and job orders are created and tracking links emailed; Order online on the home page (part 3 of 4: artist-created and online orders) | 2026-10-03 | c30cb4f | [261003-vxm-website-order-form-with-email-confirmati](./quick/261003-vxm-website-order-form-with-email-confirmati/) |
+| 261003-w8o | Online GCash/Maya payment: Cashier saves a price and emails a payment link; the customer pays the full balance from their tracking page; shared PriceJobOrder and StartPaymongoPayment actions (part 4 of 4: artist-created and online orders) | 2026-10-03 | 6f5a4ab | [261003-w8o-online-gcash-and-maya-payment-cashier-se](./quick/261003-w8o-online-gcash-and-maya-payment-cashier-se/) |
 
 ## Deferred Items
 
