@@ -1,20 +1,14 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, useForm } from '@inertiajs/vue3';
 import {
-    CalendarDays,
     Check,
     CircleAlert,
-    CloudUpload,
-    FileText,
-    PencilRuler,
     Plus,
     Printer,
     Search,
-    Settings,
     Ticket,
     User,
     UserPlus,
-    X,
     Zap,
 } from '@lucide/vue';
 import { computed, nextTick, ref, watch } from 'vue';
@@ -25,11 +19,13 @@ import AlertError from '@/components/AlertError.vue';
 import InputError from '@/components/InputError.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import JobOrderPriceFields from '@/components/JobOrderPriceFields.vue';
+import JobOrderRowFields, {
+    emptyJobOrderRow,
+    type JobOrderRow,
+} from '@/components/JobOrderRowFields.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import ReplaceJobOrderFileDialog from '@/components/ReplaceJobOrderFileDialog.vue';
-import { type SearchableOption } from '@/components/SearchableSelect.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import TrackingQrCode from '@/components/TrackingQrCode.vue';
@@ -38,7 +34,6 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import {
     Table,
     TableBody,
@@ -52,7 +47,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { newVisit } from '@/routes/frontline-staff';
 import { queueNumberLabel } from '@/lib/utils';
-import { uuid } from '@/lib/uuid';
 import {
     counterStatusBadge,
     jobOrderStatusLabel,
@@ -76,23 +70,6 @@ interface PricingEntry {
     name: string;
     base_price: string;
     unit: string | null;
-}
-
-interface JobOrderRow {
-    description: string;
-    pricing_entry_id: string;
-    client_notes: string;
-    type: 'type_a' | 'type_b';
-    print_size: string;
-    width_ft: string;
-    height_ft: string;
-    quantity: string;
-    quoted_amount: string;
-    quoted_amount_overridden: boolean;
-    deadline: string;
-    is_rush: boolean;
-    file: File | null;
-    _key: string;
 }
 
 interface ConfirmedJobOrder {
@@ -289,73 +266,6 @@ const currentStep = computed(() => {
     return props.confirmedQueueEntry ? 3 : 2;
 });
 
-function emptyJobOrderRow(): JobOrderRow {
-    return {
-        description: '',
-        pricing_entry_id: '',
-        client_notes: '',
-        type: 'type_a',
-        print_size: '',
-        width_ft: '',
-        height_ft: '',
-        quantity: '',
-        quoted_amount: '',
-        quoted_amount_overridden: false,
-        deadline: '',
-        is_rush: false,
-        file: null,
-        _key: uuid(),
-    };
-}
-
-const printSizes = computed(() => props.specificationOptions.print_size ?? []);
-
-// Today, in the browser's own timezone -- `toISOString()` would render the
-// UTC date and let a Manila-evening walk-in pick "today" only to have the
-// server's `after_or_equal:today` reject it.
-const earliestDeadline = computed(() => {
-    const now = new Date();
-
-    return [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, '0'),
-        String(now.getDate()).padStart(2, '0'),
-    ].join('-');
-});
-
-/**
- * Built from the same `accepted_file_formats` setting the server's Type A file
- * check reads, so the picker never offers a format that will be rejected.
- */
-const acceptedFileTypes = computed(() =>
-    props.acceptedFileFormats.map((format) => `.${format}`).join(','),
-);
-const acceptedFileHint = computed(
-    () =>
-        `Accepted: ${props.acceptedFileFormats.map((format) => format.toUpperCase()).join(', ')}`,
-);
-
-const printSizeOptions = computed<SearchableOption[]>(() =>
-    printSizes.value.map((size) => ({ value: size, label: size })),
-);
-
-const jobOrderTypeOptions = [
-    {
-        value: 'type_a' as const,
-        icon: Printer,
-        title: 'Type A — Print Only',
-        badge: 'READY-MADE',
-        blurb: 'Has own design file. For printing only — no artist needed.',
-    },
-    {
-        value: 'type_b' as const,
-        icon: PencilRuler,
-        title: 'Type B — Consultation',
-        badge: 'NO LAYOUT',
-        blurb: 'No design yet. Needs artist consultation and layout creation.',
-    },
-];
-
 const intakeForm = useForm({
     customer_id: 0,
     job_orders: [emptyJobOrderRow()] as JobOrderRow[],
@@ -381,32 +291,9 @@ function removeRow(index: number): void {
     intakeForm.job_orders.splice(index, 1);
 }
 
-function onFileChange(row: JobOrderRow, event: Event): void {
-    row.file = (event.target as HTMLInputElement).files?.[0] ?? null;
-}
-
-function onFileDrop(row: JobOrderRow, event: DragEvent): void {
-    row.file = event.dataTransfer?.files?.[0] ?? null;
-}
-
-function formatFileSize(bytes: number): string {
-    const megabytes = bytes / 1024 / 1024;
-
-    return megabytes < 1
-        ? `${Math.max(1, Math.round(bytes / 1024))} KB`
-        : `${megabytes.toFixed(1)} MB`;
-}
-
-function selectJobOrderType(row: JobOrderRow, value: unknown): void {
-    row.type = value === 'type_b' ? 'type_b' : 'type_a';
-    if (row.type !== 'type_a') {
-        row.file = null;
-    }
-}
-
 /**
  * Slice this row's prefixed validation errors into the bare field-name keys
- * `JobOrderPriceFields` reads — the component has no prefix knowledge of
+ * `JobOrderRowFields` reads — the component has no prefix knowledge of
  * its own.
  */
 function jobOrderRowErrors(index: number): Record<string, string | undefined> {
@@ -1054,260 +941,20 @@ function formatSlipDate(value: string): string {
         </template>
 
         <template v-if="selected && !confirmedQueueEntry && showJobOrderForm">
-            <Card v-for="(row, index) in intakeForm.job_orders" :key="row._key">
-                <CardHeader :icon="FileText">
-                    <div class="flex items-center justify-between gap-2">
-                        <CardTitle>Job Order {{ index + 1 }}</CardTitle>
-                        <Button
-                            v-if="intakeForm.job_orders.length > 1"
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            :data-test="`remove-job-order-${index}-button`"
-                            @click="removeRow(index)"
-                        >
-                            <X class="size-4" />
-                            <span class="sr-only">Remove job order</span>
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent class="grid gap-6">
-                    <fieldset class="grid gap-2">
-                        <legend class="sr-only">Job Order Type</legend>
-                        <p class="text-sm font-medium">Job Order Type</p>
-                        <div class="grid gap-4 @2xl:grid-cols-2">
-                            <label
-                                v-for="option in jobOrderTypeOptions"
-                                :key="option.value"
-                                class="border-border bg-card has-[:checked]:border-primary has-[:checked]:bg-accent/40 has-[:focus-visible]:ring-ring/50 relative flex cursor-pointer gap-3 rounded-xl border-2 p-4 transition-colors has-[:focus-visible]:ring-[3px]"
-                                :data-test="`job-order-${index}-${option.value}-card`"
-                            >
-                                <input
-                                    type="radio"
-                                    class="peer sr-only"
-                                    :name="`job-order-type-${row._key}`"
-                                    :value="option.value"
-                                    :checked="row.type === option.value"
-                                    @change="
-                                        selectJobOrderType(row, option.value)
-                                    "
-                                />
-                                <span
-                                    class="bg-muted text-muted-foreground peer-checked:bg-primary peer-checked:text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors"
-                                >
-                                    <component
-                                        :is="option.icon"
-                                        class="size-[18px]"
-                                    />
-                                </span>
-                                <span
-                                    class="flex min-w-0 flex-1 flex-col gap-1"
-                                >
-                                    <span
-                                        class="flex items-start justify-between gap-2"
-                                    >
-                                        <span class="font-semibold">
-                                            {{ option.title }}
-                                        </span>
-                                        <Badge
-                                            variant="secondary"
-                                            class="shrink-0"
-                                        >
-                                            {{ option.badge }}
-                                        </Badge>
-                                    </span>
-                                    <span class="text-muted-foreground text-sm">
-                                        {{ option.blurb }}
-                                    </span>
-                                </span>
-                            </label>
-                        </div>
-                        <InputError
-                            :message="
-                                intakeForm.errors[`job_orders.${index}.type`]
-                            "
-                        />
-                    </fieldset>
-
-                    <section
-                        class="border-border overflow-hidden rounded-xl border"
-                    >
-                        <div
-                            class="bg-muted/40 border-border flex items-center gap-3 border-b px-6 py-4"
-                        >
-                            <span
-                                class="bg-accent text-accent-foreground flex size-9 shrink-0 items-center justify-center rounded-lg"
-                            >
-                                <Settings class="size-[18px]" />
-                            </span>
-                            <h3 class="font-semibold">Print Specifications</h3>
-                        </div>
-
-                        <div class="grid gap-6 p-6 @2xl:grid-cols-2">
-                            <div class="@2xl:col-span-2">
-                                <JobOrderPriceFields
-                                    :row="row"
-                                    :pricing-entries="pricingEntries"
-                                    :print-size-options="printSizeOptions"
-                                    :print-size-dimensions="printSizeDimensions"
-                                    :rush-fee-percentage="rushFeePercentage"
-                                    :id-prefix="`job-order-${index}`"
-                                    :errors="jobOrderRowErrors(index)"
-                                />
-                            </div>
-
-                            <div class="grid gap-2">
-                                <Label :for="`job-order-deadline-${index}`">
-                                    Deadline
-                                </Label>
-                                <div class="relative">
-                                    <CalendarDays
-                                        class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-                                    />
-                                    <Input
-                                        :id="`job-order-deadline-${index}`"
-                                        v-model="row.deadline"
-                                        type="date"
-                                        :min="earliestDeadline"
-                                        class="pl-9"
-                                    />
-                                </div>
-                                <InputError
-                                    :message="
-                                        intakeForm.errors[
-                                            `job_orders.${index}.deadline`
-                                        ]
-                                    "
-                                />
-                            </div>
-
-                            <div class="grid gap-2 @2xl:col-span-2">
-                                <div class="flex items-center gap-3">
-                                    <Switch
-                                        :id="`job-order-rush-${index}`"
-                                        v-model="row.is_rush"
-                                        :data-test="`job-order-${index}-rush-switch`"
-                                    />
-                                    <Label
-                                        :for="`job-order-rush-${index}`"
-                                        class="flex items-center gap-2"
-                                    >
-                                        <Zap class="size-4" />
-                                        Rush Print
-                                    </Label>
-                                </div>
-                                <p class="text-muted-foreground text-sm">
-                                    Prioritised in production. The Cashier
-                                    decides whether the rush fee is charged.
-                                </p>
-                                <InputError
-                                    :message="
-                                        intakeForm.errors[
-                                            `job_orders.${index}.is_rush`
-                                        ]
-                                    "
-                                />
-                            </div>
-
-                            <div class="grid gap-2 @2xl:col-span-2">
-                                <Label :for="`job-order-notes-${index}`">
-                                    {{
-                                        row.type === 'type_b'
-                                            ? 'Client Instructions'
-                                            : 'Notes'
-                                    }}
-                                    <span
-                                        class="text-muted-foreground font-normal"
-                                    >
-                                        (optional)
-                                    </span>
-                                </Label>
-                                <Textarea
-                                    :id="`job-order-notes-${index}`"
-                                    v-model="row.client_notes"
-                                    rows="4"
-                                    :placeholder="
-                                        row.type === 'type_b'
-                                            ? 'What the customer wants: colours, wording, references, questions they asked…'
-                                            : 'Anything the customer mentioned about this print.'
-                                    "
-                                />
-                                <p class="text-muted-foreground text-sm">
-                                    {{
-                                        row.type === 'type_b'
-                                            ? 'The artist sees this as their brief before the consultation.'
-                                            : 'Passed along with the job order.'
-                                    }}
-                                </p>
-                                <InputError
-                                    :message="
-                                        intakeForm.errors[
-                                            `job_orders.${index}.client_notes`
-                                        ]
-                                    "
-                                />
-                            </div>
-
-                            <div
-                                v-if="row.type === 'type_a'"
-                                class="grid gap-2 @2xl:col-span-2"
-                            >
-                                <Label :for="`job-order-file-${index}`">
-                                    Source File
-                                </Label>
-                                <label
-                                    :class="[
-                                        'border-border bg-muted/30 hover:border-primary hover:bg-accent/40 has-[:focus-visible]:border-ring has-[:focus-visible]:ring-ring/50 flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors has-[:focus-visible]:ring-[3px]',
-                                    ]"
-                                    :data-test="`job-order-${index}-dropzone`"
-                                    @dragover.prevent
-                                    @drop.prevent="onFileDrop(row, $event)"
-                                >
-                                    <input
-                                        :id="`job-order-file-${index}`"
-                                        type="file"
-                                        class="sr-only"
-                                        :accept="acceptedFileTypes"
-                                        @change="onFileChange(row, $event)"
-                                    />
-                                    <CloudUpload
-                                        class="text-muted-foreground size-7"
-                                    />
-                                    <span class="font-semibold">
-                                        {{
-                                            row.file
-                                                ? row.file.name
-                                                : 'Drop a file here or click to browse'
-                                        }}
-                                    </span>
-                                    <span class="text-muted-foreground text-sm">
-                                        {{
-                                            row.file
-                                                ? formatFileSize(row.file.size)
-                                                : acceptedFileHint
-                                        }}
-                                    </span>
-                                    <span
-                                        class="text-muted-foreground max-w-prose text-xs"
-                                    >
-                                        Checked against the print size above. If
-                                        it is too low-resolution to print
-                                        sharply at that size, an artist picks it
-                                        up to improve it first.
-                                    </span>
-                                </label>
-                                <InputError
-                                    :message="
-                                        intakeForm.errors[
-                                            `job_orders.${index}.file`
-                                        ]
-                                    "
-                                />
-                            </div>
-                        </div>
-                    </section>
-                </CardContent>
-            </Card>
+            <JobOrderRowFields
+                v-for="(row, index) in intakeForm.job_orders"
+                :key="row._key"
+                :row="row"
+                :index="index"
+                :errors="jobOrderRowErrors(index)"
+                :pricing-entries="pricingEntries"
+                :specification-options="specificationOptions"
+                :print-size-dimensions="printSizeDimensions"
+                :rush-fee-percentage="rushFeePercentage"
+                :accepted-file-formats="acceptedFileFormats"
+                :removable="intakeForm.job_orders.length > 1"
+                @remove="removeRow(index)"
+            />
 
             <!--
                 Sticky, because a visit with three job orders pushes these

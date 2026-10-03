@@ -31,7 +31,8 @@ export interface JobOrderPriceRow {
 interface PricingEntryOption {
     id: number;
     name: string;
-    base_price: string;
+    /** Absent when the audience must not see prices. */
+    base_price?: string;
     unit: string | null;
 }
 
@@ -48,11 +49,14 @@ const props = withDefaults(
         idPrefix: string;
         /** Render hidden inputs so SearchableSelect values submit in an uncontrolled `<Form>`. */
         nativeNames?: boolean;
+        /** False hides every price, formula and the Adjust control. */
+        showPrices?: boolean;
         /** Bare field-name keyed — the caller slices/prefixes it already. */
         errors?: Record<string, string | undefined>;
     }>(),
     {
         nativeNames: false,
+        showPrices: true,
         errors: () => ({}),
     },
 );
@@ -61,11 +65,15 @@ const serviceOptions = computed<SearchableOption[]>(() =>
     props.pricingEntries.map((entry) => ({
         value: String(entry.id),
         label: entry.name,
-        hint: servicePriceLabel(entry),
+        hint: props.showPrices ? servicePriceLabel(entry) : undefined,
     })),
 );
 
 function servicePriceLabel(entry: PricingEntryOption): string {
+    if (entry.base_price === undefined) {
+        return '';
+    }
+
     const price = money(Number(entry.base_price));
 
     return entry.unit ? `${price} / ${entry.unit}` : price;
@@ -76,6 +84,16 @@ const selectedEntry = computed(() =>
         (entry) => String(entry.id) === props.row.pricing_entry_id,
     ),
 );
+
+const pricedEntry = computed(() => {
+    const entry = selectedEntry.value;
+
+    if (!props.showPrices || !entry || entry.base_price === undefined) {
+        return undefined;
+    }
+
+    return { base_price: entry.base_price, unit: entry.unit };
+});
 
 const isSqFt = computed(() => isSqFtUnit(selectedEntry.value?.unit));
 
@@ -126,7 +144,7 @@ const quantity = computed(() => parseQuantity(props.row.quantity));
 
 const computedAmount = computed(() =>
     quoteLineAmount(
-        selectedEntry.value,
+        pricedEntry.value,
         widthFt.value,
         heightFt.value,
         quantity.value,
@@ -142,11 +160,11 @@ const rushHint = computed(() => {
 });
 
 const priceFormula = computed(() => {
-    if (!selectedEntry.value) {
+    if (!pricedEntry.value) {
         return null;
     }
 
-    const base = money(Number(selectedEntry.value.base_price));
+    const base = money(Number(pricedEntry.value.base_price));
 
     if (isSqFt.value) {
         if (widthFt.value === null || heightFt.value === null) {
@@ -260,7 +278,10 @@ function useComputed(): void {
             <InputError :message="errors.quantity" />
         </div>
 
-        <div class="border-border bg-muted/30 rounded-xl border p-4">
+        <div
+            v-if="showPrices"
+            class="border-border bg-muted/30 rounded-xl border p-4"
+        >
             <p
                 v-if="!selectedEntry"
                 class="text-muted-foreground text-sm"
