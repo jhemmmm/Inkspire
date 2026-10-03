@@ -5,6 +5,7 @@ use App\Http\Controllers\AccountingStaff\CollectionLetterController;
 use App\Http\Controllers\AccountingStaff\ExpenseController;
 use App\Http\Controllers\AccountingStaff\WriteOffRequestController;
 use App\Http\Controllers\Artist\DesignEditorController;
+use App\Http\Controllers\Artist\JobOrderIntakeController;
 use App\Http\Controllers\Artist\JobOrderQueueController;
 use App\Http\Controllers\Artist\JobOrderWorkspaceController;
 use App\Http\Controllers\Artist\PerformanceReportController;
@@ -40,6 +41,8 @@ Route::middleware(['auth', 'role:frontline_staff'])->prefix('frontline-staff')->
 
 Route::middleware(['auth', 'role:artist'])->prefix('artist')->name('artist.')->group(function () {
     Route::get('dashboard', [JobOrderQueueController::class, 'index'])->name('dashboard');
+    Route::get('job-orders/create', [JobOrderIntakeController::class, 'create'])->name('job-orders.create');
+    Route::post('job-orders', [JobOrderIntakeController::class, 'store'])->name('job-orders.store');
     Route::get('job-orders/{jobOrder}', [JobOrderWorkspaceController::class, 'show'])->name('job-orders.show');
     Route::patch('job-orders/{jobOrder}/consultation', [JobOrderWorkspaceController::class, 'updateConsultation'])->name('job-orders.consultation.update');
     Route::patch('job-orders/{jobOrder}/accept', [JobOrderQueueController::class, 'accept'])->name('job-orders.accept');
