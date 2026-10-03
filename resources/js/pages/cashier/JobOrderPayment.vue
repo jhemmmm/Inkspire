@@ -11,6 +11,7 @@ import {
 import { computed, ref, watch } from 'vue';
 import CreditRequestController from '@/actions/App/Http/Controllers/Cashier/CreditRequestController';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
+import PaymentLinkController from '@/actions/App/Http/Controllers/Cashier/PaymentLinkController';
 import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import SearchableSelect, {
@@ -366,6 +367,34 @@ function submitCreditRequest(): void {
             preserveScroll: true,
             onFinish: () => {
                 creditRequestingProcessing.value = false;
+            },
+        },
+    );
+}
+
+const paymentLinkProcessing = ref(false);
+
+/**
+ * Save the price (first visit only) and email the customer a link to pay
+ * online. Pricing fields are always included; PaymentLinkController only
+ * reads them while the job order is still unpriced.
+ */
+function sendPaymentLink(): void {
+    paymentLinkProcessing.value = true;
+
+    router.post(
+        PaymentLinkController.store.url(props.jobOrder.id),
+        {
+            pricing_entry_id: pricingEntryId.value,
+            line_amount: lineAmount.value,
+            rush_fee_applied: rushFeeApplied.value,
+            discount_type: discountType.value || null,
+            discount_value: discountValue.value ?? null,
+        },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                paymentLinkProcessing.value = false;
             },
         },
     );
@@ -806,6 +835,30 @@ const discountCapHelper = computed(() =>
                     >
                         {{ submitLabel }}
                     </Button>
+
+                    <div
+                        v-if="!isOnCredit"
+                        class="border-border grid gap-2 border-t pt-4"
+                    >
+                        <Button
+                            type="button"
+                            variant="outline"
+                            :disabled="processing || paymentLinkProcessing"
+                            data-test="send-payment-link-button"
+                            @click="sendPaymentLink"
+                        >
+                            <Spinner v-if="paymentLinkProcessing" />
+                            {{
+                                pricingLocked
+                                    ? 'Email payment link'
+                                    : 'Save price & email payment link'
+                            }}
+                        </Button>
+                        <p class="text-muted-foreground text-sm">
+                            For a customer who is not at the counter. They pay
+                            by GCash or Maya from their tracking link.
+                        </p>
+                    </div>
                 </CardContent>
             </Card>
         </Form>

@@ -75,7 +75,7 @@ interface CashierJobOrder {
     display_total: number | null;
     amount_paid: number | null;
     is_rush: boolean;
-    queue_entry: { customer: { name: string } };
+    queue_entry: { queue_prefix: string; customer: { name: string } };
     // Present only when an Active On-Credit receivable exists for this job
     // order (WR-05) — cancelling never writes this balance off, so the
     // dialog surfaces it explicitly rather than leaving it as a silent
@@ -373,7 +373,19 @@ function checkPaymentStatus(jobOrderId: number): void {
                                 </div>
                             </TableCell>
                             <TableCell>
-                                {{ jobOrder.queue_entry.customer.name }}
+                                <div class="flex flex-wrap items-center gap-2">
+                                    {{ jobOrder.queue_entry.customer.name }}
+                                    <Badge
+                                        v-if="
+                                            jobOrder.queue_entry
+                                                .queue_prefix === 'O'
+                                        "
+                                        variant="outline"
+                                        :data-test="`online-badge-${jobOrder.id}`"
+                                    >
+                                        Online
+                                    </Badge>
+                                </div>
                             </TableCell>
                             <TableCell>
                                 <StatusBadge

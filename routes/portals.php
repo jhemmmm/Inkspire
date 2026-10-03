@@ -14,6 +14,7 @@ use App\Http\Controllers\Cashier\CancellationController;
 use App\Http\Controllers\Cashier\CreditRequestController;
 use App\Http\Controllers\Cashier\DashboardController as CashierDashboardController;
 use App\Http\Controllers\Cashier\PaymentController;
+use App\Http\Controllers\Cashier\PaymentLinkController;
 use App\Http\Controllers\Cashier\ReceiptController;
 use App\Http\Controllers\Cashier\ReconciliationController;
 use App\Http\Controllers\FrontlineStaff\CustomerController;
@@ -68,6 +69,7 @@ Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')
     Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
     Route::post('job-orders/{jobOrder}/cancel', [CancellationController::class, 'store'])->name('job-orders.cancel');
     Route::post('job-orders/{jobOrder}/credit-request', [CreditRequestController::class, 'store'])->name('job-orders.credit-request.store');
+    Route::post('job-orders/{jobOrder}/payment-link', [PaymentLinkController::class, 'store'])->name('job-orders.payment-link.store');
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('reports/{reportKey}/export/pdf', [ReportExportController::class, 'exportPdf'])->name('reports.export.pdf');
     Route::get('reports/{reportKey}/export/xlsx', [ReportExportController::class, 'exportXlsx'])->name('reports.export.xlsx');
