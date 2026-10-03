@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Cashier;
 
-use App\Actions\POS\ComputeJobOrderPrice;
+use App\Actions\POS\PriceJobOrder;
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\PaymentStatus;
@@ -16,7 +16,7 @@ use Inertia\Inertia;
 
 class CreditRequestController extends Controller
 {
-    public function __construct(public ComputeJobOrderPrice $computeJobOrderPrice) {}
+    public function __construct(public PriceJobOrder $priceJobOrder) {}
 
     /**
      * Request On-Credit approval for a job order's full outstanding
@@ -68,23 +68,7 @@ class CreditRequestController extends Controller
                 // Pricing card is still shown/submitted alongside per
                 // UI-SPEC §2's single combined page — snapshot pricing the
                 // same way PaymentController::store() does.
-                $computed = ($this->computeJobOrderPrice)(
-                    (float) $request->validated('line_amount'),
-                    (bool) $request->validated('rush_fee_applied'),
-                    $request->validated('discount_type'),
-                    $request->validated('discount_value') !== null ? (float) $request->validated('discount_value') : null,
-                );
-
-                $jobOrder->forceFill([
-                    'pricing_entry_id' => $request->validated('pricing_entry_id'),
-                    'base_price_snapshot' => $computed['base_price_snapshot'],
-                    'rush_fee_applied' => $request->validated('rush_fee_applied'),
-                    'rush_fee_amount' => $computed['rush_fee_amount'],
-                    'discount_type' => $request->validated('discount_type'),
-                    'discount_value' => $request->validated('discount_value'),
-                    'discount_amount' => $computed['discount_amount'],
-                    'total_amount' => $computed['total_amount'],
-                ]);
+                ($this->priceJobOrder)($jobOrder, $request->validated());
             }
 
             // The full REMAINING outstanding amount, not the original total

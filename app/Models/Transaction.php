@@ -23,7 +23,7 @@ use Illuminate\Support\Carbon;
  * @property TransactionStatus $status
  * @property string|null $reference_number
  * @property string|null $paymongo_payment_intent_id
- * @property int $recorded_by
+ * @property int|null $recorded_by
  * @property Carbon|null $confirmed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
