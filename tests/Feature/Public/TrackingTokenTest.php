@@ -52,15 +52,16 @@ test('a valid token renders the tracking page with the number and its public sta
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->component('public/TrackingToken')
-        // Exactly five keys. Any future widening of this payload fails here,
-        // loudly, which is the point. `stageKey` is the machine form of
-        // `stage` and carries nothing `stage` does not.
-        ->has('result', 5)
+        // Exactly six keys. Any future widening of this payload fails here,
+        // loudly, which is the point. `payment` is the amount due and a
+        // three-value state, shown to the token's bearer only.
+        ->has('result', 6)
         ->where('result.found', true)
         ->where('result.number', 'JO-2026-0777')
         ->where('result.stage', 'Printing')
         ->where('result.stageStep', 2)
-        ->where('result.reviewUrl', null));
+        ->where('result.reviewUrl', null)
+        ->where('result.payment', ['amountDue' => 8642.75, 'state' => 'due']));
 });
 
 test('an unknown token renders a readable not-found state rather than an error page', function () {
@@ -87,7 +88,10 @@ test('the response leaks no customer pii, pricing, payment or raw status value',
     $response->assertDontSee('09171234567', false);
     $response->assertDontSee('zenaida.villanueva@example.test', false);
     $response->assertDontSee('Mabini', false);
-    $response->assertDontSee('8642', false);
+    // The amount due is the one money figure the token page shows its
+    // bearer, and only inside `result.payment`; no other pricing or payment
+    // column reaches the page.
+    expect(json_encode($response->viewData('page')['props']['result']))->toContain('8642.75');
     $response->assertDontSee('ready_for_pickup', false);
     $response->assertDontSee('payment_status', false);
     $response->assertDontSee('total_amount', false);

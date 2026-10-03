@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Public\DesignReviewController;
 use App\Http\Controllers\Public\OnlineOrderController;
+use App\Http\Controllers\Public\OnlinePaymentController;
 use App\Http\Controllers\Public\QueueDisplayController;
 use App\Http\Controllers\Public\TrackingController;
 use App\Http\Controllers\Webhooks\PaymongoWebhookController;
@@ -55,6 +56,14 @@ Route::get('track', [TrackingController::class, 'show'])
 Route::get('track/{token}', [TrackingController::class, 'showByToken'])
     ->middleware('throttle:120,1')
     ->name('public.tracking.token');
+
+// A customer paying their full balance by GCash or Maya from that tracking
+// page (ONLINE-PAY-04). The token is the credential, the amount is always the
+// server's own outstanding balance, and only the wallet is taken from the
+// request. Throttled tightly because each call can reach out to PayMongo.
+Route::post('track/{token}/pay', [OnlinePaymentController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('public.tracking.pay');
 
 // Public, unauthenticated, signed-URL-protected (D-17 through D-21) — the
 // client's remote design-review path, reached only via an emailed

@@ -16,15 +16,23 @@ use Inertia\Response;
  * job order number (TRACK-01) and lookup by the QR slip's tracking token
  * (QR-01).
  *
- * Security boundary (D-02, T-06-03-01, T-mbb-01/02) — this statement covers
- * BOTH actions. The narrow column list on each query and the narrow response
- * array are the only things standing between these routes and a
- * PII/pricing/payment leak. Never widen either query to a full model, never
- * eager-load a relation, and never select `tracking_token` back out: it is a
- * bearer credential printed on the customer's slip, so echoing it onto a
- * public surface would hand it to anyone who can see the page. One level
- * stricter than QueueDisplayController: the status-to-label mapping in
- * publicStage() must also never leak the raw enum value to the client.
+ * Security boundary (D-02, T-06-03-01, T-mbb-01/02) — the narrow column list
+ * on each query and the narrow response array are the only things standing
+ * between these routes and a PII/pricing/payment leak. Never widen either
+ * query to a full model, never eager-load a relation, and never select
+ * `tracking_token` back out: it is a bearer credential printed on the
+ * customer's slip, so echoing it onto a public surface would hand it to
+ * anyone who can see the page. One level stricter than
+ * QueueDisplayController: the status-to-label mapping in publicStage() must
+ * also never leak the raw enum value to the client.
+ *
+ * The two actions differ on purpose. show() looks an order up by its number,
+ * which is guessable, so it exposes the stage and nothing about money.
+ * showByToken() is reached with the customer's own credential, so it also
+ * shows its bearer the amount due and a three-value payment state (see
+ * paymentSummary()) -- the customer can pay from here. It still never
+ * returns customer PII, the raw status value, the token, or the pricing and
+ * payment column names.
  */
 class TrackingController extends Controller
 {
@@ -88,20 +96,22 @@ class TrackingController extends Controller
      * (QR-01), plus a freshly signed way into the already-existing
      * design-review flow when a verdict is pending.
      *
-     * `id` is selected solely so the revision log can be looked up, and is
-     * deliberately absent from the response. The four-key result array
-     * (`found`, `number`, `stage`, `reviewUrl`) is the whole shape.
+     * `id` is selected solely so the revision log and the amount due can be
+     * looked up, and is deliberately absent from the response. The result is
+     * `found`, `number`, `stage`, `stageStep`, `reviewUrl` and `payment`.
      * `description` and `print_size` are excluded on purpose even though a
      * customer arguably owns both: a description is free text a staff member
      * may have typed a customer's name into, so the narrower shape is the
      * defensible one. `stageStep` is an integer position, not a status --
-     * see PUBLIC_STAGE_ORDER.
+     * see PUBLIC_STAGE_ORDER. `payment` is deliberately shown to the token's
+     * bearer, because the token is the customer's own credential; it is null
+     * whenever there is nothing to pay online.
      */
     public function showByToken(string $token): Response
     {
         $jobOrder = JobOrder::query()
             ->where('tracking_token', $token)
-            ->first(['id', 'number', 'status', 'released_at', 'cancelled_at']);
+            ->first(['id', 'number', 'status', 'released_at', 'cancelled_at', 'total_amount', 'payment_status']);
 
         // Chosen over abort(404) so a smudged or partially scanned slip gets
         // a readable customer-facing message instead of a raw error page.
@@ -118,8 +128,28 @@ class TrackingController extends Controller
                 'stage' => $this->publicStage($jobOrder),
                 'stageStep' => $this->publicStageStep($jobOrder),
                 'reviewUrl' => $this->designReviewUrl($jobOrder),
+                'payment' => $this->paymentSummary($jobOrder),
             ],
         ]);
+    }
+
+    /**
+     * What the token page shows about paying: the outstanding amount and a
+     * three-value state, or null when there is nothing to pay online. The
+     * state rules live in JobOrder::onlinePaymentState(), shared with
+     * OnlinePaymentController so what is offered and what is accepted match.
+     *
+     * @return array{amountDue: float, state: 'due'|'pending'|'paid'}|null
+     */
+    private function paymentSummary(JobOrder $jobOrder): ?array
+    {
+        $state = $jobOrder->onlinePaymentState();
+
+        if ($state === null) {
+            return null;
+        }
+
+        return ['amountDue' => $jobOrder->outstandingBalance(), 'state' => $state];
     }
 
     /**

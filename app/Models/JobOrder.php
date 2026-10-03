@@ -271,6 +271,33 @@ class JobOrder extends Model
     }
 
     /**
+     * Where this job order stands for a customer paying online, shared by the
+     * public tracking page (what to show) and the pay endpoint (what to do)
+     * so the two can never disagree.
+     *
+     * Null means "no online payment to offer": cancelled, not yet priced, on
+     * credit or heading there, written off, or nothing left to pay. `due`
+     * (Unpaid, PartiallyPaid, CreditRejected with a balance) is the only state
+     * that starts a new PayMongo checkout; `pending` has a checkout already
+     * open; `paid` is settled.
+     *
+     * @return 'due'|'pending'|'paid'|null
+     */
+    public function onlinePaymentState(): ?string
+    {
+        if ($this->cancelled_at !== null || $this->total_amount === null) {
+            return null;
+        }
+
+        return match ($this->payment_status) {
+            PaymentStatus::Paid => 'paid',
+            PaymentStatus::PendingConfirmation => 'pending',
+            PaymentStatus::Unpaid, PaymentStatus::PartiallyPaid, PaymentStatus::CreditRejected => $this->outstandingBalance() > 0 ? 'due' : null,
+            default => null,
+        };
+    }
+
+    /**
      * Payment statuses that unlock an order for printing: the single source
      * of truth for the production gate.
      *

@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { Head, usePoll } from '@inertiajs/vue3';
+import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { AlertCircle, PencilRuler } from '@lucide/vue';
-import { watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import OrderProgress from '@/components/OrderProgress.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
+import { money } from '@/lib/jobOrders';
 
 interface TrackingTokenResult {
     found: boolean;
@@ -14,6 +16,10 @@ interface TrackingTokenResult {
     stage?: string;
     stageStep?: number | null;
     reviewUrl?: string | null;
+    payment?: {
+        amountDue: number;
+        state: 'due' | 'pending' | 'paid';
+    } | null;
 }
 
 const props = defineProps<{
@@ -27,6 +33,39 @@ const { start, stop } = usePoll(
     { only: ['result'] },
     { autoStart: false },
 );
+
+const page = usePage();
+
+const paying = ref(false);
+
+const paymentError = computed(
+    () => (page.props.errors as Record<string, string> | undefined)?.payment,
+);
+
+/**
+ * Start (or carry on with) a GCash or Maya checkout for the full balance.
+ *
+ * The pay URL is built from the address this page was opened at, so the
+ * tracking token is never put in a prop. The server replies with a redirect
+ * to PayMongo's own page, which Inertia follows as a full-page visit.
+ */
+function pay(method: 'gcash' | 'maya'): void {
+    const path = page.url.split('?')[0];
+
+    router.post(
+        `${path}/pay`,
+        { payment_method: method },
+        {
+            only: ['result', 'errors'],
+            onStart: () => {
+                paying.value = true;
+            },
+            onFinish: () => {
+                paying.value = false;
+            },
+        },
+    );
+}
 
 // Stages a job order can never leave. Polling past one of them burns the
 // per-IP rate-limit bucket forever on every device that ever scanned the
@@ -89,6 +128,94 @@ watch(
                         This page updates on its own — leave it open and it will
                         keep up.
                     </p>
+
+                    <div
+                        v-if="result.payment"
+                        class="border-border flex flex-col gap-3 border-t pt-6"
+                        data-test="tracking-token-payment"
+                    >
+                        <template v-if="result.payment.state === 'due'">
+                            <div class="flex flex-col gap-1 text-center">
+                                <p class="text-muted-foreground text-sm">
+                                    Amount due
+                                </p>
+                                <p
+                                    class="text-2xl font-extrabold tabular-nums"
+                                    data-test="tracking-token-amount-due"
+                                >
+                                    {{ money(result.payment.amountDue) }}
+                                </p>
+                                <p class="text-muted-foreground text-sm">
+                                    Pay the full amount now, or pay at the shop.
+                                </p>
+                            </div>
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                <Button
+                                    type="button"
+                                    :disabled="paying"
+                                    data-test="pay-gcash-button"
+                                    @click="pay('gcash')"
+                                >
+                                    <Spinner v-if="paying" />
+                                    Pay with GCash
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    :disabled="paying"
+                                    data-test="pay-maya-button"
+                                    @click="pay('maya')"
+                                >
+                                    <Spinner v-if="paying" />
+                                    Pay with Maya
+                                </Button>
+                            </div>
+                        </template>
+
+                        <template
+                            v-else-if="result.payment.state === 'pending'"
+                        >
+                            <p class="text-center font-semibold">
+                                We are waiting for your payment to be confirmed
+                            </p>
+                            <p
+                                class="text-muted-foreground text-center text-sm"
+                            >
+                                If you have not finished paying, you can pick up
+                                where you left off.
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                :disabled="paying"
+                                data-test="pay-continue-button"
+                                @click="pay('gcash')"
+                            >
+                                <Spinner v-if="paying" />
+                                Check or continue payment
+                            </Button>
+                        </template>
+
+                        <p
+                            v-else
+                            class="text-center font-semibold"
+                            data-test="tracking-token-paid"
+                        >
+                            Paid. Thank you.
+                        </p>
+
+                        <Alert
+                            v-if="paymentError"
+                            variant="destructive"
+                            role="alert"
+                            data-test="tracking-token-payment-error"
+                        >
+                            <AlertCircle class="size-4" />
+                            <AlertDescription>
+                                {{ paymentError }}
+                            </AlertDescription>
+                        </Alert>
+                    </div>
 
                     <div
                         v-if="result.reviewUrl"
