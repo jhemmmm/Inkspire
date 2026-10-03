@@ -41,6 +41,36 @@ class StoreJobOrderRequest extends FormRequest
     }
 
     /**
+     * Get the error messages for the defined validation rules.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'customer_id.required_without' => __('Pick a customer, or register a new one.'),
+            ...$this->jobOrderMessages('job_orders.*.'),
+        ];
+    }
+
+    /**
+     * Get custom attributes for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'customer.name' => __('name'),
+            'customer.organization' => __('organization'),
+            'customer.contact_number' => __('contact number'),
+            'customer.email' => __('email'),
+            'customer.address' => __('address'),
+            ...$this->jobOrderAttributes('job_orders.*.'),
+        ];
+    }
+
+    /**
      * Get the "after" validation callables for the request.
      *
      * @return array<int, callable>

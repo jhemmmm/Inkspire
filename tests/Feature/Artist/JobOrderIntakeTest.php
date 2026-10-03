@@ -193,6 +193,19 @@ test('a customer is required and nothing is created without one', function () {
     expect(QueueEntry::count())->toBe(0)->and(JobOrder::count())->toBe(0);
 });
 
+test('an incomplete form is explained in plain words, not raw field keys', function () {
+    $artist = intakeTestArtist();
+
+    $this->actingAs($artist)
+        ->post(route('artist.job-orders.store'), ['job_orders' => [['type' => 'type_a', 'quantity' => 0]]])
+        ->assertSessionHasErrors([
+            'customer_id' => 'Pick a customer, or register a new one.',
+            'job_orders.0.description' => 'Pick a product or service.',
+            'job_orders.0.file' => 'Attach the print-ready file.',
+            'job_orders.0.quantity' => 'The quantity field must be at least 1.',
+        ]);
+});
+
 test('a duplicate contact number for a new customer is rejected without creating anything', function () {
     $artist = intakeTestArtist();
     $existing = Customer::factory()->create();

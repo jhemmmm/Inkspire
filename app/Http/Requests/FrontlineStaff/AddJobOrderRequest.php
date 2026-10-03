@@ -22,6 +22,26 @@ class AddJobOrderRequest extends FormRequest
     }
 
     /**
+     * Get the error messages for the defined validation rules.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->jobOrderMessages();
+    }
+
+    /**
+     * Get custom attributes for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return $this->jobOrderAttributes();
+    }
+
+    /**
      * Get the "after" validation callables for the request.
      *
      * @return array<int, callable>

@@ -49,7 +49,7 @@ import {
     X,
     Zap,
 } from '@lucide/vue';
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import InputError from '@/components/InputError.vue';
 import JobOrderPriceFields from '@/components/JobOrderPriceFields.vue';
 import { type SearchableOption } from '@/components/SearchableSelect.vue';
@@ -98,6 +98,11 @@ const emit = defineEmits<{
 }>();
 
 const isCustomer = computed(() => props.audience === 'customer');
+
+// The radio group's name. `useId()` rather than the row's random `_key`: a
+// page that renders a row on first load is server-rendered, and a uuid made
+// on the server never matches the one made in the browser.
+const typeGroupName = useId();
 
 const printSizeOptions = computed<SearchableOption[]>(() =>
     (props.specificationOptions.print_size ?? []).map((size) => ({
@@ -259,7 +264,7 @@ function selectJobOrderType(value: unknown): void {
                         <input
                             type="radio"
                             class="peer sr-only"
-                            :name="`job-order-type-${row._key}`"
+                            :name="typeGroupName"
                             :value="option.value"
                             :checked="row.type === option.value"
                             @change="selectJobOrderType(option.value)"

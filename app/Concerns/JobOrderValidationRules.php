@@ -95,6 +95,45 @@ trait JobOrderValidationRules
     }
 
     /**
+     * Plain-language messages for the two rules whose default wording names
+     * the raw key ("The job_orders.0.description field is required."), which
+     * means nothing to the person filling in the form.
+     *
+     * @return array<string, string>
+     */
+    protected function jobOrderMessages(string $prefix = ''): array
+    {
+        return [
+            $prefix.'description.required' => __('Pick a product or service.'),
+            $prefix.'file.required_if' => __('Attach the print-ready file.'),
+        ];
+    }
+
+    /**
+     * Readable names for the job order fields, so every other rule's default
+     * message says "quantity" rather than "job_orders.0.quantity".
+     *
+     * @return array<string, string>
+     */
+    protected function jobOrderAttributes(string $prefix = ''): array
+    {
+        return [
+            $prefix.'description' => __('product or service'),
+            $prefix.'pricing_entry_id' => __('product or service'),
+            $prefix.'type' => __('job order type'),
+            $prefix.'file' => __('file'),
+            $prefix.'print_size' => __('print size'),
+            $prefix.'quantity' => __('quantity'),
+            $prefix.'width_ft' => __('width'),
+            $prefix.'height_ft' => __('height'),
+            $prefix.'deadline' => __('deadline'),
+            $prefix.'is_rush' => __('rush print'),
+            $prefix.'quoted_amount' => __('price'),
+            $prefix.'client_notes' => __('notes'),
+        ];
+    }
+
+    /**
      * Reject a Type A file the shop cannot print before any job order is
      * created for it.
      *

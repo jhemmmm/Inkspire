@@ -198,7 +198,6 @@ function submit(): void {
                         empty-text="No customer matches that. Use New customer to register them."
                     />
                     <InputError :message="form.errors.customer_id" />
-                    <InputError :message="form.errors.customer" />
                 </div>
 
                 <div v-else class="grid gap-4 @2xl:grid-cols-2">
