@@ -27,3 +27,17 @@ test('a non frontline staff role cannot read the queue list', function () {
         ->get(route('frontline-staff.queue-entries.index'))
         ->assertForbidden();
 });
+
+test('an online lane entry is excluded from the staff queue list', function () {
+    $staff = User::factory()->frontlineStaff()->create();
+    $regular = QueueEntry::factory()->create(['queue_number' => 1]);
+    QueueEntry::factory()->create([
+        'queue_prefix' => QueueEntry::ONLINE_PREFIX,
+        'queue_number' => 1,
+    ]);
+
+    $this->actingAs($staff)->get(route('frontline-staff.queue-entries.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('queueEntries', 1)
+            ->where('queueEntries.0.id', $regular->id));
+});

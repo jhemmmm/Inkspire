@@ -76,3 +76,15 @@ test('entries appear with their correct serving or done status', function () {
         ->where('queueEntries.1.status', 'done')
         ->where('queueEntries.1.id', $done->id));
 });
+
+test('an online lane entry never appears on the public queue display', function () {
+    QueueEntry::factory()->create(['queue_number' => 1]);
+    QueueEntry::factory()->create([
+        'queue_prefix' => QueueEntry::ONLINE_PREFIX,
+        'queue_number' => 1,
+    ]);
+
+    $this->get(route('queue-display'))->assertInertia(fn (Assert $page) => $page
+        ->has('queueEntries', 1)
+        ->where('queueEntries.0.queue_prefix', QueueEntry::REGULAR_PREFIX));
+});

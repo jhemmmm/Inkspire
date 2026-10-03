@@ -39,6 +39,13 @@ class QueueEntry extends Model
     public const string REGULAR_PREFIX = 'A';
 
     /**
+     * The online lane's ticket prefix: O-001, O-002, ... Remote orders,
+     * emailed to an artist or placed on the website, where nobody is
+     * standing in the shop. Never shown on the queue displays.
+     */
+    public const string ONLINE_PREFIX = 'O';
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

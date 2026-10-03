@@ -2,14 +2,10 @@
 
 namespace App\Http\Controllers\FrontlineStaff;
 
-use App\Actions\JobOrder\EnterProduction;
+use App\Actions\JobOrder\CreateJobOrder;
+use App\Actions\JobOrder\OpenVisit;
 use App\Actions\JobOrder\SyncQueueEntryStatus;
-use App\Actions\JobOrder\ValidateJobOrderFile;
-use App\Actions\POS\QuoteJobOrderLineAmount;
-use App\Enums\FileValidationOutcome;
 use App\Enums\JobOrderStatus;
-use App\Enums\JobOrderType;
-use App\Enums\QueueStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FrontlineStaff\AddJobOrderRequest;
 use App\Http\Requests\FrontlineStaff\StoreQueueEntryRequest;
@@ -21,7 +17,6 @@ use App\Models\SystemConfiguration;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -29,42 +24,10 @@ use Inertia\Response;
 class QueueEntryController extends Controller
 {
     public function __construct(
-        public ValidateJobOrderFile $validateJobOrderFile,
-        public EnterProduction $enterProduction,
         public SyncQueueEntryStatus $syncQueueEntryStatus,
-        public QuoteJobOrderLineAmount $quoteJobOrderLineAmount,
+        public CreateJobOrder $createJobOrder,
+        public OpenVisit $openVisit,
     ) {}
-
-    /**
-     * The `quoted_amount` to store for a validated job order row: null with
-     * no service picked, the staff override when one was sent, otherwise the
-     * catalog quote (D-01). Quantity defaults to 1 for pricing only.
-     *
-     * @param  array<string, mixed>  $row
-     */
-    private function quoteAmountForRow(array $row): ?float
-    {
-        if (($row['pricing_entry_id'] ?? null) === null) {
-            return null;
-        }
-
-        if (($row['quoted_amount'] ?? '') !== '') {
-            return (float) $row['quoted_amount'];
-        }
-
-        $pricingEntry = PricingEntry::find((int) $row['pricing_entry_id'], ['id', 'base_price', 'unit']);
-
-        if ($pricingEntry === null) {
-            return null;
-        }
-
-        return ($this->quoteJobOrderLineAmount)(
-            $pricingEntry,
-            isset($row['width_ft']) ? (float) $row['width_ft'] : null,
-            isset($row['height_ft']) ? (float) $row['height_ft'] : null,
-            (int) ($row['quantity'] ?? 1),
-        );
-    }
 
     /**
      * Show today's queue with each entry's number, customer, and status
@@ -111,6 +74,7 @@ class QueueEntryController extends Controller
                         ->with('assignedArtist:id,name,artist_label'),
                 ])
                 ->whereDate('queue_date', QueueEntry::currentBusinessDate())
+                ->where('queue_prefix', '!=', QueueEntry::ONLINE_PREFIX)
                 ->orderByRaw("CASE queue_prefix WHEN 'R' THEN 0 ELSE 1 END")
                 ->orderBy('queue_number')
                 ->get(['id', 'customer_id', 'queue_prefix', 'queue_number', 'status'])
@@ -147,24 +111,7 @@ class QueueEntryController extends Controller
     public function addJobOrder(AddJobOrderRequest $request, QueueEntry $queueEntry): RedirectResponse
     {
         $jobOrder = DB::transaction(function () use ($request, $queueEntry): JobOrder {
-            $jobOrder = $queueEntry->jobOrders()->create([
-                'number' => JobOrder::nextNumberForYear(JobOrder::currentNumberingYear()),
-                'description' => $request->validated('description'),
-                'print_size' => $request->validated('print_size'),
-                'quantity' => $request->validated('quantity'),
-                'width_ft' => $request->validated('width_ft'),
-                'height_ft' => $request->validated('height_ft'),
-                'quoted_amount' => $this->quoteAmountForRow($request->validated()),
-                'deadline' => $request->validated('deadline'),
-                'is_rush' => $request->boolean('is_rush'),
-                'client_notes' => $request->validated('client_notes'),
-                'pricing_entry_id' => $request->validated('pricing_entry_id'),
-                'type' => $request->validated('type'),
-                'status' => JobOrderStatus::Intake,
-                'file_path' => $request->file('file')?->store('job-orders', 'local'),
-            ]);
-
-            $this->applyIntakeOutcome($jobOrder, $request->file('file'));
+            $jobOrder = ($this->createJobOrder)($queueEntry, [...$request->validated(), 'file' => $request->file('file')]);
 
             ($this->syncQueueEntryStatus)($queueEntry);
 
@@ -185,56 +132,11 @@ class QueueEntryController extends Controller
      */
     public function store(StoreQueueEntryRequest $request): RedirectResponse
     {
-        $queueEntry = DB::transaction(function () use ($request): QueueEntry {
-            $businessDate = QueueEntry::currentBusinessDate();
+        $rows = collect($request->validated('job_orders'))
+            ->map(fn (array $row, int $index): array => [...$row, 'file' => $request->file("job_orders.{$index}.file")])
+            ->all();
 
-            // The lane is decided from the job orders being booked, before
-            // any of them exist -- the ticket is printed and handed over as
-            // the visit starts, so it cannot wait for the rows.
-            $isRushVisit = collect($request->validated('job_orders'))
-                ->contains(fn (array $row): bool => filter_var($row['is_rush'] ?? false, FILTER_VALIDATE_BOOLEAN));
-
-            $prefix = $isRushVisit ? QueueEntry::RUSH_PREFIX : QueueEntry::REGULAR_PREFIX;
-            $number = QueueEntry::nextForBusinessDay($businessDate, $prefix);
-
-            $entry = QueueEntry::create([
-                'customer_id' => $request->validated('customer_id'),
-                'queue_date' => $businessDate,
-                'queue_prefix' => $prefix,
-                'queue_number' => $number,
-                'status' => QueueStatus::Waiting,
-            ]);
-
-            foreach ($request->validated('job_orders') as $index => $row) {
-                $jobOrder = $entry->jobOrders()->create([
-                    'number' => JobOrder::nextNumberForYear(JobOrder::currentNumberingYear()),
-                    'description' => $row['description'],
-                    'print_size' => $row['print_size'] ?? null,
-                    'quantity' => $row['quantity'] ?? null,
-                    'width_ft' => $row['width_ft'] ?? null,
-                    'height_ft' => $row['height_ft'] ?? null,
-                    'quoted_amount' => $this->quoteAmountForRow($row),
-                    'deadline' => $row['deadline'] ?? null,
-                    // filter_var, not a bare cast: the FormData path delivers
-                    // the string "1"/"0" while a JSON payload delivers a real
-                    // boolean, and both must land as the same column value.
-                    'is_rush' => filter_var($row['is_rush'] ?? false, FILTER_VALIDATE_BOOLEAN),
-                    'client_notes' => $row['client_notes'] ?? null,
-                    'pricing_entry_id' => $row['pricing_entry_id'] ?? null,
-                    'type' => $row['type'],
-                    'status' => JobOrderStatus::Intake,
-                    'file_path' => $request->file("job_orders.{$index}.file")?->store('job-orders', 'local'),
-                ]);
-
-                $this->applyIntakeOutcome($jobOrder, $request->file("job_orders.{$index}.file"));
-            }
-
-            // A visit made entirely of print-ready Type A job orders never
-            // reaches an artist, so nothing downstream would ever close it.
-            ($this->syncQueueEntryStatus)($entry);
-
-            return $entry;
-        });
+        $queueEntry = ($this->openVisit)((int) $request->validated('customer_id'), $rows);
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -251,48 +153,11 @@ class QueueEntryController extends Controller
     }
 
     /**
-     * Apply the correct auto-outcome for a freshly created job order
-     * (JOB-01/JOB-02) — Type A gets its file validated. Type B is
-     * deliberately left at Intake with no artist: job orders are pulled
-     * from a shared pool by whichever available Artist accepts them, not
-     * pushed onto one at intake.
-     */
-    private function applyIntakeOutcome(JobOrder $jobOrder, ?UploadedFile $file): void
-    {
-        if ($jobOrder->type !== JobOrderType::TypeA) {
-            return;
-        }
-
-        $result = ($this->validateJobOrderFile)(
-            $file,
-            $jobOrder->print_size,
-            $jobOrder->width_ft !== null ? (float) $jobOrder->width_ft : null,
-            $jobOrder->height_ft !== null ? (float) $jobOrder->height_ft : null,
-        );
-
-        // NeedsArtist lands on Intake — the same shared pool a Type B waits
-        // in — so any available Artist can pull it. The failure reason rides
-        // along as the brief: it says exactly what is wrong with the file.
-        $jobOrder->forceFill([
-            'status' => match ($result['outcome']) {
-                FileValidationOutcome::Passed => JobOrderStatus::ReadyForProduction,
-                FileValidationOutcome::NeedsArtist => JobOrderStatus::Intake,
-                FileValidationOutcome::Rejected => JobOrderStatus::ValidationFailed,
-            },
-            'validation_failure_reason' => $result['reason'],
-        ])->save();
-
-        if ($result['outcome'] === FileValidationOutcome::Passed) {
-            ($this->enterProduction)($jobOrder);
-        }
-    }
-
-    /**
      * Build the outcome-specific toast message for a job order, per the
      * 03-UI-SPEC.md Copywriting Contract.
      *
      * A freshly created job order's status here can only ever be one of
-     * the five named arms below — applyIntakeOutcome() only ever writes
+     * the five named arms below — CreateJobOrder only ever writes
      * ReadyForProduction/ForProduction/ValidationFailed (Type A) or
      * Assigned/Intake (Type B). The `default` arm exists solely to satisfy
      * Larastan's match-exhaustiveness check against JobOrderStatus's
