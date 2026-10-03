@@ -175,7 +175,9 @@ const rushHelper = computed(() =>
 
 const notesPlaceholder = computed(() => {
     if (props.row.type === 'type_b') {
-        return 'What the customer wants: colours, wording, references, questions they asked…';
+        return isCustomer.value
+            ? 'What you have in mind: colours, wording, references, anything you want to ask…'
+            : 'What the customer wants: colours, wording, references, questions they asked…';
     }
 
     return isCustomer.value

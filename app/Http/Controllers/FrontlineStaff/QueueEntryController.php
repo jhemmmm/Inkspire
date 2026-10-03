@@ -132,11 +132,7 @@ class QueueEntryController extends Controller
      */
     public function store(StoreQueueEntryRequest $request): RedirectResponse
     {
-        $rows = collect($request->validated('job_orders'))
-            ->map(fn (array $row, int $index): array => [...$row, 'file' => $request->file("job_orders.{$index}.file")])
-            ->all();
-
-        $queueEntry = ($this->openVisit)((int) $request->validated('customer_id'), $rows);
+        $queueEntry = ($this->openVisit)((int) $request->validated('customer_id'), $request->validated('job_orders'));
 
         Inertia::flash('toast', [
             'type' => 'success',
