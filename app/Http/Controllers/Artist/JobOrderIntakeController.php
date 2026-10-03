@@ -52,7 +52,7 @@ class JobOrderIntakeController extends Controller
 
         [$customer, $entry, $claimed, $pooled] = DB::transaction(function () use ($request, $openVisit, $claim, $artist): array {
             $customer = $request->filled('customer_id')
-                ? Customer::findOrFail($request->validated('customer_id'))
+                ? Customer::query()->findOrFail($request->integer('customer_id'))
                 : Customer::create($request->validated('customer'));
 
             $entry = $openVisit($customer->id, $request->validated('job_orders'), QueueEntry::ONLINE_PREFIX);
