@@ -36,3 +36,9 @@ test('the landing page points customers at nothing staff-only', function () {
         ->and($html)->not->toContain('/queue')
         ->and($html)->not->toContain('/login');
 });
+
+test('the landing page links to the online order page', function () {
+    $html = $this->get('/')->getContent();
+
+    expect($html)->toContain(route('public.orders.create', absolute: false));
+});

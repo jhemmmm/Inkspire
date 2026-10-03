@@ -12,6 +12,7 @@ import {
     authInputClass,
     authSubmitClass,
 } from '@/layouts/auth/fields';
+import { create as orderCreate } from '@/routes/public/orders';
 import { show as trackingShow } from '@/routes/public/tracking';
 
 /**
@@ -190,8 +191,12 @@ const PRICE_BOARD: readonly PriceBoardGroup[] = [
 
 const ORDER_RULES: readonly OrderRule[] = [
     {
-        label: 'Queue',
-        body: 'Get a queue number at the counter. Rush jobs get an R number and are called first.',
+        label: 'Order online',
+        body: 'Send your order from this site. We email you a link to confirm it, and your order goes straight to the shop.',
+    },
+    {
+        label: 'Walk in',
+        body: 'Or get a queue number at the counter. Rush jobs get an R number and are called first.',
     },
     {
         label: 'Your file',
@@ -273,6 +278,16 @@ const panelShadowClass =
                     How to order
                 </a>
                 <a
+                    :href="orderCreate.url()"
+                    data-test="welcome-order-link"
+                    :class="[
+                        linkFocusClass,
+                        'text-muted-foreground hover:text-foreground px-3 py-2',
+                    ]"
+                >
+                    Order online
+                </a>
+                <a
                     href="#track"
                     data-test="welcome-track-link"
                     :class="[
@@ -322,6 +337,17 @@ const panelShadowClass =
                             job order number, so you can check on it here any
                             time instead of calling the shop.
                         </p>
+                        <div class="mt-6">
+                            <Button as-child size="lg">
+                                <a
+                                    :href="orderCreate.url()"
+                                    data-test="welcome-order-button"
+                                >
+                                    Order online
+                                    <ArrowRight class="size-4" />
+                                </a>
+                            </Button>
+                        </div>
 
                         <!--
                             The tracking page's own card (Tracking.vue's header
@@ -674,6 +700,12 @@ const panelShadowClass =
                     aria-label="Footer"
                     class="text-muted-foreground flex flex-wrap gap-x-6 gap-y-2 font-semibold"
                 >
+                    <a
+                        :href="orderCreate.url()"
+                        :class="[linkFocusClass, 'hover:text-foreground']"
+                    >
+                        Order online
+                    </a>
                     <a
                         href="#track"
                         :class="[linkFocusClass, 'hover:text-foreground']"
