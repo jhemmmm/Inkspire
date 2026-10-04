@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('status')->default('completed');
             $table->string('reference_number')->nullable();
             $table->string('paymongo_payment_intent_id')->nullable()->unique();
-            $table->foreignId('recorded_by')->constrained('users');
+            $table->foreignId('recorded_by')->nullable()->constrained('users');
             $table->timestamp('confirmed_at')->nullable();
             $table->timestamps();
         });
