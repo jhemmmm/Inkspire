@@ -36,7 +36,7 @@ const props = defineProps<{
     rowsAmountTotal: number | null;
     summary: FinancialSummary | null;
     chart: ReportChart;
-    filters: { from: string; to: string };
+    filters: { from: string; to: string; q: string };
 }>();
 
 defineOptions({
@@ -48,13 +48,21 @@ defineOptions({
 
 function exportPdfUrl(key: string): string {
     return reportsExportPdf.url(key, {
-        query: { from: props.filters.from, to: props.filters.to },
+        query: {
+            from: props.filters.from,
+            to: props.filters.to,
+            q: props.filters.q || undefined,
+        },
     });
 }
 
 function exportXlsxUrl(key: string): string {
     return reportsExportXlsx.url(key, {
-        query: { from: props.filters.from, to: props.filters.to },
+        query: {
+            from: props.filters.from,
+            to: props.filters.to,
+            q: props.filters.q || undefined,
+        },
     });
 }
 </script>

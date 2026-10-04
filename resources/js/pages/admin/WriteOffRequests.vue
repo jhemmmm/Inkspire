@@ -34,6 +34,7 @@ import {
 import { useLivePoll } from '@/composables/useLivePoll';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { index as writeOffRequestsIndex } from '@/routes/admin/write-off-requests';
 
 interface WriteOffRequest {
@@ -122,6 +123,7 @@ function clearFilters(): void {
     searchTerm.value = '';
     requesterFilter.value = ALL;
 }
+const { formatTimestamp } = useBusinessTime();
 </script>
 
 <template>
@@ -241,9 +243,9 @@ function clearFilters(): void {
                         </TableCell>
                         <TableCell>
                             {{
-                                new Date(
+                                formatTimestamp(
                                     writeOffRequest.write_off_requested_at,
-                                ).toLocaleString()
+                                )
                             }}
                         </TableCell>
                         <TableCell class="text-right">

@@ -9,9 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      *
-     * No backfill -- no prior `written_off` row has a reliable "when" to
-     * backfill from (RESEARCH.md's Open Question 1: no such timestamp
-     * exists anywhere upstream of this migration).
+     * Record when a write-off is approved.
      */
     public function up(): void
     {

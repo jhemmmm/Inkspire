@@ -34,6 +34,7 @@ import {
 import { useLivePoll } from '@/composables/useLivePoll';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { index as creditRequestsIndex } from '@/routes/admin/credit-requests';
 
 interface CreditRequest {
@@ -110,6 +111,7 @@ function clearFilters(): void {
     searchTerm.value = '';
     requesterFilter.value = ALL;
 }
+const { formatTimestamp } = useBusinessTime();
 </script>
 
 <template>
@@ -214,11 +216,7 @@ function clearFilters(): void {
                             {{ creditRequest.requested_by.name }}
                         </TableCell>
                         <TableCell>
-                            {{
-                                new Date(
-                                    creditRequest.created_at,
-                                ).toLocaleString()
-                            }}
+                            {{ formatTimestamp(creditRequest.created_at) }}
                         </TableCell>
                         <TableCell class="text-right">
                             <div class="flex justify-end gap-2">

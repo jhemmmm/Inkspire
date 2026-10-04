@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Public;
 
-use App\Actions\JobOrder\EnterProduction;
-use App\Actions\JobOrder\SyncQueueEntryStatus;
+use App\Actions\JobOrder\RecordDesignVerdict;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\RequestDesignChangesRequest;
 use App\Models\JobOrder;
 use App\Models\RevisionLog;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
@@ -17,8 +16,7 @@ use Inertia\Response;
 class DesignReviewController extends Controller
 {
     public function __construct(
-        public EnterProduction $enterProduction,
-        public SyncQueueEntryStatus $syncQueueEntryStatus,
+        public RecordDesignVerdict $recordDesignVerdict,
     ) {}
 
     /**
@@ -35,31 +33,14 @@ class DesignReviewController extends Controller
     /**
      * Record the client's remote "Client Approved" verdict, reaching the
      * exact same outcome DesignEditorController::approve() already produces
-     * (D-17), through entirely independent code.
+     * (D-17), using the shared locked verdict action.
      */
     public function approve(RevisionLog $revisionLog): Response
     {
         $revisionLog->loadMissing('jobOrder.designFile');
         $jobOrder = $revisionLog->jobOrder;
 
-        if ($this->isActionable($revisionLog, $jobOrder)) {
-            DB::transaction(function () use ($revisionLog, $jobOrder): void {
-                $revisionLog->forceFill([
-                    'outcome' => 'approved',
-                    'reviewed_at' => now(),
-                ])->save();
-
-                $jobOrder->designFile->forceFill(['locked_at' => now()])->save();
-
-                $jobOrder->forceFill(['status' => JobOrderStatus::DesignApproved])->save();
-
-                ($this->enterProduction)($jobOrder);
-
-                // Mirrors DesignEditorController::approve() -- the remote
-                // verdict closes the visit exactly as the in-person one does.
-                ($this->syncQueueEntryStatus)($jobOrder->queueEntry);
-            });
-        }
+        ($this->recordDesignVerdict)($jobOrder, 'approved', revisionId: $revisionLog->id);
 
         return $this->render($revisionLog->fresh(['jobOrder.designFile']));
     }
@@ -67,24 +48,15 @@ class DesignReviewController extends Controller
     /**
      * Record the client's remote "Client Requested Changes" verdict,
      * reaching the exact same outcome DesignEditorController::requestChanges()
-     * already produces (D-17), through entirely independent code. Deliberately
+     * already produces (D-17), using the shared locked action. Deliberately
      * never touches designFile.locked_at, mirroring the in-person path.
      */
-    public function requestChanges(RevisionLog $revisionLog): Response
+    public function requestChanges(RequestDesignChangesRequest $request, RevisionLog $revisionLog): Response
     {
         $revisionLog->loadMissing('jobOrder.designFile');
         $jobOrder = $revisionLog->jobOrder;
 
-        if ($this->isActionable($revisionLog, $jobOrder)) {
-            DB::transaction(function () use ($revisionLog, $jobOrder): void {
-                $revisionLog->forceFill([
-                    'outcome' => 'changes_requested',
-                    'reviewed_at' => now(),
-                ])->save();
-
-                $jobOrder->forceFill(['status' => JobOrderStatus::InDesign])->save();
-            });
-        }
+        ($this->recordDesignVerdict)($jobOrder, 'changes_requested', $request->validated('message'), $revisionLog->id);
 
         return $this->render($revisionLog->fresh(['jobOrder.designFile']));
     }
@@ -102,7 +74,7 @@ class DesignReviewController extends Controller
     private function render(RevisionLog $revisionLog): Response
     {
         $jobOrder = $revisionLog->jobOrder;
-        $expiresAt = $revisionLog->submitted_at->addDays(7);
+        $expiresAt = $revisionLog->submitted_at->copy()->addDays(7);
 
         $order = [
             'jobOrderDescription' => $jobOrder->description,
@@ -138,7 +110,7 @@ class DesignReviewController extends Controller
      */
     private function isCurrentRevision(RevisionLog $revisionLog, JobOrder $jobOrder): bool
     {
-        return $revisionLog->id === $jobOrder->revisionLogs()->latest('submitted_at')->value('id');
+        return $revisionLog->id === $jobOrder->revisionLogs()->latest('submitted_at')->latest('id')->value('id');
     }
 
     /**

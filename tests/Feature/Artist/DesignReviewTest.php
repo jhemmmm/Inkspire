@@ -29,7 +29,7 @@ test('requesting changes bounces status to in_design, marks the revision changes
     DesignFile::factory()->for($jobOrder)->create();
     $revisionLog = RevisionLog::factory()->for($jobOrder)->create();
 
-    $response = $this->actingAs($artist)->patch(route('artist.job-orders.design.request-changes', $jobOrder));
+    $response = $this->actingAs($artist)->patch(route('artist.job-orders.design.request-changes', $jobOrder), ['message' => 'Please enlarge the heading.']);
 
     $response->assertRedirect();
     expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::InDesign);
@@ -57,5 +57,5 @@ test('a non-owning artist is forbidden from approve and request-changes', functi
     RevisionLog::factory()->for($jobOrder)->create();
 
     $this->actingAs($artist)->patch(route('artist.job-orders.design.approve', $jobOrder))->assertForbidden();
-    $this->actingAs($artist)->patch(route('artist.job-orders.design.request-changes', $jobOrder))->assertForbidden();
+    $this->actingAs($artist)->patch(route('artist.job-orders.design.request-changes', $jobOrder), ['message' => 'Please enlarge the heading.'])->assertForbidden();
 });

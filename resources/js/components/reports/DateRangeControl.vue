@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 
 const props = defineProps<{
     from: string;
@@ -23,16 +24,10 @@ interface Preset {
     compute: () => { from: string; to: string };
 }
 
-function pad(value: number): string {
-    return String(value).padStart(2, '0');
-}
-
-function toIsoDate(date: Date): string {
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
+const { calendarDay, shiftDay, formatDay } = useBusinessTime();
 
 function todayRange(): { from: string; to: string } {
-    const today = toIsoDate(new Date());
+    const today = calendarDay();
     return { from: today, to: today };
 }
 
@@ -42,23 +37,23 @@ function todayRange(): { from: string; to: string } {
  * each week.
  */
 function lastSevenDaysRange(): { from: string; to: string } {
-    const now = new Date();
-    const weekAgo = new Date(now);
-    weekAgo.setDate(now.getDate() - 6);
-    return { from: toIsoDate(weekAgo), to: toIsoDate(now) };
+    const today = calendarDay();
+    return { from: shiftDay(today, -6), to: today };
 }
 
 function thisMonthRange(): { from: string; to: string } {
-    const now = new Date();
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { from: toIsoDate(firstOfMonth), to: toIsoDate(now) };
+    const today = calendarDay();
+    return { from: `${today.slice(0, 7)}-01`, to: today };
 }
 
 function thisQuarterRange(): { from: string; to: string } {
-    const now = new Date();
-    const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
-    const firstOfQuarter = new Date(now.getFullYear(), quarterStartMonth, 1);
-    return { from: toIsoDate(firstOfQuarter), to: toIsoDate(now) };
+    const today = calendarDay();
+    const month = Number(today.slice(5, 7));
+    const quarterStartMonth = Math.floor((month - 1) / 3) * 3 + 1;
+    return {
+        from: `${today.slice(0, 4)}-${String(quarterStartMonth).padStart(2, '0')}-01`,
+        to: today,
+    };
 }
 
 const presets: Preset[] = [
@@ -156,7 +151,11 @@ function isValidIsoDate(value: string): boolean {
         return false;
     }
 
-    return !Number.isNaN(new Date(value).getTime());
+    const date = new Date(`${value}T00:00:00Z`);
+    return (
+        !Number.isNaN(date.getTime()) &&
+        date.toISOString().slice(0, 10) === value
+    );
 }
 
 function applyCustomRange(): void {
@@ -165,7 +164,7 @@ function applyCustomRange(): void {
         return;
     }
 
-    const today = toIsoDate(new Date());
+    const today = calendarDay();
 
     if (customFrom.value > today || customTo.value > today) {
         errorMessage.value = 'Pick a date on or before today.';
@@ -184,8 +183,7 @@ function applyCustomRange(): void {
 }
 
 function formatDate(iso: string): string {
-    const [year, month, day] = iso.split('-').map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString('en-PH', {
+    return formatDay(iso, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',

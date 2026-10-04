@@ -38,7 +38,7 @@ class ReportController extends Controller
             $rowsTotal = 0;
             $rowsAmountTotal = null;
         } else {
-            $all = $reportBuilder->rows($key, $from, $to);
+            $all = $reportBuilder->rows($key, $from, $to, (string) $request->validated('q', ''));
             $rows = $all->take(100)->values();
             $rowsTotal = $all->count();
             $summary = null;
@@ -63,6 +63,7 @@ class ReportController extends Controller
             'summary' => $summary,
             'chart' => $reportBuilder->chart($key, $all, $from, $to),
             'filters' => [
+                'q' => $key === 'financial-summary' ? '' : (string) $request->validated('q', ''),
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
             ],

@@ -32,7 +32,7 @@ const page = usePage();
 const numberInput = ref('');
 
 /** Follows JobOrder's JO-{year}-{0000} format, so the example never looks stale. */
-const placeholderNumber = `JO-${new Date().getFullYear()}-0001`;
+const placeholderNumber = `JO-${page.props.businessDate.slice(0, 4)}-0001`;
 const processing = ref(false);
 
 // D-14: polls only while a found result is on screen — the bare lookup form

@@ -42,6 +42,7 @@ import {
 } from '@/components/ui/table';
 import { useLivePoll } from '@/composables/useLivePoll';
 import { adminNavItems } from '@/config/nav/admin';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import type { ChartSeries } from '@/lib/charts';
 import { jobOrderStatusLabel, money } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/admin';
@@ -149,12 +150,14 @@ const nothingWaiting = computed(() =>
     attentionTiles.value.every((tile) => tile.value === 0),
 );
 
+const { formatInstant } = useBusinessTime();
+
 function dateTime(iso: string | null): string {
     if (iso === null) {
         return '—';
     }
 
-    return new Date(iso).toLocaleString('en-PH', {
+    return formatInstant(iso, {
         month: 'short',
         day: '2-digit',
         hour: 'numeric',

@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { newVisit } from '@/routes/frontline-staff';
 import { queueNumberLabel } from '@/lib/utils';
 import {
@@ -361,8 +362,10 @@ async function printSlip(jobOrderId: number): Promise<void> {
     window.print();
 }
 
+const { formatInstant } = useBusinessTime();
+
 function formatSlipDate(value: string): string {
-    return new Date(value).toLocaleDateString('en-PH', {
+    return formatInstant(value, {
         year: 'numeric',
         month: 'short',
         day: '2-digit',

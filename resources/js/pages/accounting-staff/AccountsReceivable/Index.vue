@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLivePoll } from '@/composables/useLivePoll';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
 import {
@@ -204,12 +205,14 @@ function clearFilters(): void {
     activeFilter.value = 'all';
 }
 
+const { formatInstant } = useBusinessTime();
+
 function dueDateLabel(dueAt: string | null): string {
     if (!dueAt) {
         return '—';
     }
 
-    return new Date(dueAt).toLocaleDateString('en-PH', {
+    return formatInstant(dueAt, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',

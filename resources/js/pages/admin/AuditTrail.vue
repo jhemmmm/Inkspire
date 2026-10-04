@@ -13,6 +13,7 @@ import SearchableSelect, {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { adminNavItems } from '@/config/nav/admin';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -132,8 +133,10 @@ function target(entry: AuditEntry): string {
         : className;
 }
 
+const { formatTimestamp } = useBusinessTime();
+
 function formattedTimestamp(entry: AuditEntry): string {
-    return entry.created_at ? new Date(entry.created_at).toLocaleString() : '—';
+    return entry.created_at ? formatTimestamp(entry.created_at) : '—';
 }
 
 function visit(page?: number): void {

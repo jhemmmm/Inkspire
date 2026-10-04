@@ -2,38 +2,24 @@
 
 namespace App\Http\Controllers\Artist;
 
-use App\Actions\JobOrder\EnterProduction;
 use App\Actions\JobOrder\RecordDesignRevision;
-use App\Actions\JobOrder\SyncQueueEntryStatus;
+use App\Actions\JobOrder\RecordDesignVerdict;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Artist\RecordDesignVerdictRequest;
 use App\Http\Requests\Artist\SendForReviewRequest;
 use App\Http\Requests\Artist\StartDesignRequest;
+use App\Http\Requests\RequestDesignChangesRequest;
 use App\Models\JobOrder;
-use App\Models\RevisionLog;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DesignEditorController extends Controller
 {
     public function __construct(
         public RecordDesignRevision $recordDesignRevision,
-        public EnterProduction $enterProduction,
-        public SyncQueueEntryStatus $syncQueueEntryStatus,
+        public RecordDesignVerdict $recordDesignVerdict,
     ) {}
-
-    /**
-     * The latest unreviewed revision_logs row for this job order. There is
-     * always exactly one per pending_review job order, since every prior
-     * submission was already resolved by the time a new one was created
-     * (D-07/D-08).
-     */
-    private function latestUnreviewedRevisionLog(JobOrder $jobOrder): RevisionLog
-    {
-        return $jobOrder->revisionLogs()->whereNull('outcome')->latest('submitted_at')->firstOrFail();
-    }
 
     /**
      * D-06's first-pass entry point into in_design, called once by the
@@ -79,25 +65,7 @@ class DesignEditorController extends Controller
     public function approve(RecordDesignVerdictRequest $request, JobOrder $jobOrder): RedirectResponse
     {
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
-        abort_unless($jobOrder->status === JobOrderStatus::PendingReview, 422, 'This job order is not pending review.');
-
-        DB::transaction(function () use ($jobOrder) {
-            $this->latestUnreviewedRevisionLog($jobOrder)->forceFill([
-                'outcome' => 'approved',
-                'reviewed_at' => now(),
-            ])->save();
-
-            $jobOrder->designFile->forceFill(['locked_at' => now()])->save();
-
-            $jobOrder->forceFill(['status' => JobOrderStatus::DesignApproved])->save();
-
-            ($this->enterProduction)($jobOrder);
-
-            // Approval is the end of the customer's visit, so the queue
-            // entry closes with it rather than waiting on a staff member to
-            // remember to press Mark Done.
-            ($this->syncQueueEntryStatus)($jobOrder->queueEntry);
-        });
+        abort_unless(($this->recordDesignVerdict)($jobOrder, 'approved'), 422, 'This job order is not pending review.');
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Design approved. This job order is ready for pricing at the Cashier.')]);
 
@@ -112,21 +80,12 @@ class DesignEditorController extends Controller
      * reachable on every design pass. Deliberately does not touch the
      * design file's lock state (it was never set at this point in the cycle).
      */
-    public function requestChanges(RecordDesignVerdictRequest $request, JobOrder $jobOrder): RedirectResponse
+    public function requestChanges(RequestDesignChangesRequest $request, JobOrder $jobOrder): RedirectResponse
     {
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
-        abort_unless($jobOrder->status === JobOrderStatus::PendingReview, 422, 'This job order is not pending review.');
+        abort_unless(($this->recordDesignVerdict)($jobOrder, 'changes_requested', $request->validated('message')), 422, 'This job order is not pending review.');
 
-        DB::transaction(function () use ($jobOrder) {
-            $this->latestUnreviewedRevisionLog($jobOrder)->forceFill([
-                'outcome' => 'changes_requested',
-                'reviewed_at' => now(),
-            ])->save();
-
-            $jobOrder->forceFill(['status' => JobOrderStatus::InDesign])->save();
-        });
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Noted. Back to editing.')]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Client feedback recorded. Back to editing.')]);
 
         return back();
     }

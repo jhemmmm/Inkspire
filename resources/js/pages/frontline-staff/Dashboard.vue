@@ -24,6 +24,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLivePoll } from '@/composables/useLivePoll';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import {
     balanceLabel,
@@ -193,6 +194,8 @@ function openJobOrder(id: number): void {
  * logged ready_for_pickup transition), never from updated_at, which any
  * unrelated write to the job order resets.
  */
+const { calendarDay, shiftDay, formatInstant } = useBusinessTime();
+
 function timeAgo(isoString: string): string {
     const then = new Date(isoString);
     const now = new Date();
@@ -209,25 +212,22 @@ function timeAgo(isoString: string): string {
         return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
     }
 
-    if (then.toDateString() === now.toDateString()) {
+    if (calendarDay(then) === calendarDay(now)) {
         const diffHours = Math.floor(diffMinutes / 60);
 
         return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
     }
 
-    const time = then.toLocaleTimeString('en-PH', {
+    const time = formatInstant(then, {
         hour: 'numeric',
         minute: '2-digit',
     });
 
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (then.toDateString() === yesterday.toDateString()) {
+    if (calendarDay(then) === shiftDay(calendarDay(now), -1)) {
         return `Yesterday, ${time}`;
     }
 
-    const date = then.toLocaleDateString('en-PH', {
+    const date = formatInstant(then, {
         month: 'short',
         day: 'numeric',
     });

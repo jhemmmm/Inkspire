@@ -6,6 +6,7 @@ import TrackingQrCode from '@/components/TrackingQrCode.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cashierNavItems } from '@/config/nav/cashier';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { dashboard } from '@/routes/cashier';
 
 interface ReceiptPricingEntry {
@@ -94,6 +95,7 @@ function money(value: number | null): string {
 function printReceipt(): void {
     window.print();
 }
+const { formatInstant } = useBusinessTime();
 </script>
 
 <template>
@@ -127,7 +129,11 @@ function printReceipt(): void {
                 <div class="flex items-center justify-between">
                     <span class="font-semibold">Date</span>
                     <span>
-                        {{ new Date(jobOrder.created_at).toLocaleDateString() }}
+                        {{
+                            formatInstant(jobOrder.created_at, {
+                                dateStyle: 'medium',
+                            })
+                        }}
                     </span>
                 </div>
                 <div class="flex items-center justify-between">

@@ -34,6 +34,7 @@ import {
 import { useLivePoll } from '@/composables/useLivePoll';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { index as designOverridesIndex } from '@/routes/admin/design-overrides';
 
 interface LockedJobOrder {
@@ -106,6 +107,7 @@ function clearFilters(): void {
     searchTerm.value = '';
     artistFilter.value = ALL;
 }
+const { formatTimestamp } = useBusinessTime();
 </script>
 
 <template>
@@ -190,9 +192,7 @@ function clearFilters(): void {
                         </TableCell>
                         <TableCell>
                             {{
-                                new Date(
-                                    jobOrder.design_file.locked_at,
-                                ).toLocaleString()
+                                formatTimestamp(jobOrder.design_file.locked_at)
                             }}
                         </TableCell>
                         <TableCell class="text-right">

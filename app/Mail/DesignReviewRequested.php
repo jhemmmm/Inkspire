@@ -42,7 +42,7 @@ class DesignReviewRequested extends Mailable
             markdown: 'mail.design-review-requested',
             with: [
                 'jobOrderDescription' => $this->revisionLog->jobOrder->description,
-                'reviewUrl' => URL::temporarySignedRoute('public.design-review.show', $this->revisionLog->submitted_at->addDays(7), ['revisionLog' => $this->revisionLog->id]),
+                'reviewUrl' => URL::temporarySignedRoute('public.design-review.show', $this->revisionLog->submitted_at->copy()->addDays(7), ['revisionLog' => $this->revisionLog->id]),
             ],
         );
     }

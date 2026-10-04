@@ -37,6 +37,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useLivePoll } from '@/composables/useLivePoll';
 import { adminNavItems } from '@/config/nav/admin';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import {
     jobOrderStatusBadge,
     jobOrderStatusLabel,
@@ -182,13 +183,13 @@ function save(): void {
 
 /** The shop's own day: an order taken at 7 AM Manila is not yesterday's. */
 function orderedOn(createdAt: string): string {
-    return new Date(createdAt).toLocaleDateString('en-PH', {
+    return formatInstant(createdAt, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
-        timeZone: 'Asia/Manila',
     });
 }
+const { formatInstant } = useBusinessTime();
 </script>
 
 <template>

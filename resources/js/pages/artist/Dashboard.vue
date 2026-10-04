@@ -34,6 +34,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLivePoll } from '@/composables/useLivePoll';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { artistNavItems } from '@/config/nav/artist';
 import { artistStatusBadge, artistStatusLabel } from '@/lib/roles';
 import { jobOrderStatusBadge } from '@/lib/jobOrders';
@@ -97,12 +98,14 @@ function typeLabel(type: string): string {
 }
 
 /** Matches the 'en-PH' long-date convention used across the other portals. */
+const { formatDay } = useBusinessTime();
+
 function deadlineLabel(deadline: string | null): string {
     if (deadline === null) {
         return 'No deadline';
     }
 
-    return new Date(deadline).toLocaleDateString('en-PH', {
+    return formatDay(deadline, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',

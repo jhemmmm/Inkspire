@@ -23,6 +23,7 @@ import {
 import InkCard from '@/components/InkCard.vue';
 import PublicNotice from '@/components/PublicNotice.vue';
 import PublicPage from '@/components/PublicPage.vue';
+import RequestDesignChangesDialog from '@/components/RequestDesignChangesDialog.vue';
 import { Button } from '@/components/ui/button';
 import { home } from '@/routes';
 
@@ -64,7 +65,7 @@ const notice = computed(() => {
             icon: PencilLine,
             tone: 'bg-accent text-accent-foreground',
             title: 'Changes requested',
-            body: 'We sent the design back to our artist. When the new version is ready, we will email you a link to review it. To tell us exactly what to change, call or visit the shop.',
+            body: 'Your feedback has been sent to our artist. When the revised design is ready, we will email you a link to review the new version.',
         };
     }
 
@@ -200,23 +201,20 @@ const notice = computed(() => {
                             </AlertDialogContent>
                         </AlertDialog>
 
-                        <Form
-                            :action="requestChangesUrl"
-                            method="post"
-                            v-slot="{ processing }"
+                        <RequestDesignChangesDialog
+                            :action="requestChangesUrl!"
                         >
                             <Button
-                                type="submit"
+                                type="button"
                                 variant="outline"
                                 size="lg"
                                 class="w-full"
-                                :disabled="processing"
                                 data-test="remote-request-changes-button"
                             >
                                 <PencilLine class="size-4" />
                                 Request changes
                             </Button>
-                        </Form>
+                        </RequestDesignChangesDialog>
                     </div>
                 </div>
             </template>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\BusinessTime;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -38,6 +39,8 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
+            'businessTimezone' => config('app.business_timezone'),
+            'businessDate' => BusinessTime::now()->toDateString(),
             'auth' => [
                 'user' => $request->user(),
             ],

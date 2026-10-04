@@ -52,7 +52,7 @@ class ReportExportController extends Controller
         }
 
         $columns = ReportRegistry::definitions()[$reportKey]['columns'];
-        $built = $this->buildTableRows($reportKey, $reportBuilder->rows($reportKey, $from, $to));
+        $built = $this->buildTableRows($reportKey, $reportBuilder->rows($reportKey, $from, $to, (string) $request->validated('q', '')));
 
         return TableExport::pdf($title, $columns, $built['rows'], $this->moneyColumnIndexes($reportKey), [
             'from' => $from,
@@ -86,7 +86,7 @@ class ReportExportController extends Controller
         }
 
         $columns = ReportRegistry::definitions()[$reportKey]['columns'];
-        $built = $this->buildTableRows($reportKey, $reportBuilder->rows($reportKey, $from, $to));
+        $built = $this->buildTableRows($reportKey, $reportBuilder->rows($reportKey, $from, $to, (string) $request->validated('q', '')));
 
         return TableExport::xlsx($title, $columns, $built['rows'], $this->moneyColumnIndexes($reportKey), null, $built['totalRow'], $filename);
     }

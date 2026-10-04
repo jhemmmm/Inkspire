@@ -5,6 +5,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PublicPage from '@/components/PublicPage.vue';
 import { queueNumberLabel } from '@/lib/utils';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 
 /**
  * The shop's wall board: today's queue numbers, and where each one should
@@ -56,6 +57,7 @@ usePoll(5000, { only: ['queueEntries'] });
 // mechanism above. Empty until mounted: the server's second and the
 // browser's never match, which fails hydration.
 const now = ref<Date | null>(null);
+const { formatInstant } = useBusinessTime();
 let clockTimer: ReturnType<typeof setInterval> | undefined;
 
 onMounted(() => {
@@ -70,11 +72,13 @@ onBeforeUnmount(() => {
 });
 
 const currentTime = computed(() =>
-    now.value?.toLocaleTimeString('en-PH', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    }),
+    now.value === null
+        ? null
+        : formatInstant(now.value, {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+          }),
 );
 
 const called = computed(() =>

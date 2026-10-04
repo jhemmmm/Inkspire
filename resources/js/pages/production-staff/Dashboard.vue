@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLivePoll } from '@/composables/useLivePoll';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { productionStaffNavItems } from '@/config/nav/production-staff';
 import {
@@ -166,12 +167,14 @@ function clearFilters(): void {
     searchTerm.value = '';
 }
 
+const { calendarDay, shiftDay, formatInstant } = useBusinessTime();
+
 function dueTimeOnly(dueAt: string | null): string {
     if (!dueAt) {
         return '—';
     }
 
-    return new Date(dueAt).toLocaleTimeString('en-PH', {
+    return formatInstant(dueAt, {
         hour: 'numeric',
         minute: '2-digit',
     });
@@ -186,21 +189,18 @@ function dueDay(dueAt: string | null): string {
         return '—';
     }
 
-    const date = new Date(dueAt);
-    const now = new Date();
+    const dueBusinessDay = calendarDay(dueAt);
+    const today = calendarDay();
 
-    if (date.toDateString() === now.toDateString()) {
+    if (dueBusinessDay === today) {
         return 'Today';
     }
 
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.toDateString() === tomorrow.toDateString()) {
+    if (dueBusinessDay === shiftDay(today, 1)) {
         return 'Tomorrow';
     }
 
-    return date.toLocaleDateString('en-PH', {
+    return formatInstant(dueAt, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',

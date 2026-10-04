@@ -6,6 +6,7 @@ use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Artist\UpdateConsultationNotesRequest;
 use App\Models\JobOrder;
+use App\Models\RevisionLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +15,16 @@ use Inertia\Response;
 
 class JobOrderWorkspaceController extends Controller
 {
+    /** Open a historical file with a fresh signed storage URL. */
+    public function revisionFile(Request $request, JobOrder $jobOrder, RevisionLog $revisionLog): RedirectResponse
+    {
+        abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
+        abort_unless($revisionLog->job_order_id === $jobOrder->id, 404);
+        abort_if($revisionLog->file_path === null || ! Storage::disk('local')->exists($revisionLog->file_path), 404);
+
+        return redirect()->away(Storage::disk('local')->temporaryUrl($revisionLog->file_path, now()->addMinutes(10)));
+    }
+
     /**
      * Open the stored design at full size. Signs a fresh URL on every click,
      * so the link still works on a workspace left open longer than the
@@ -35,7 +46,7 @@ class JobOrderWorkspaceController extends Controller
     {
         abort_unless($jobOrder->assigned_artist_id === $request->user()->id, 403, 'This job order is not assigned to you.');
 
-        $jobOrder->loadMissing(['designFile', 'queueEntry.customer:id,name,organization', 'revisionLogs' => fn ($query) => $query->latest('submitted_at')]);
+        $jobOrder->loadMissing(['designFile', 'queueEntry.customer:id,name,organization', 'revisionLogs' => fn ($query) => $query->orderBy('submitted_at')->orderBy('id')]);
 
         return Inertia::render('artist/JobOrderWorkspace', [
             'jobOrder' => [
@@ -51,10 +62,7 @@ class JobOrderWorkspaceController extends Controller
                 'customer_name' => $jobOrder->queueEntry?->customer?->name,
                 'customer_organization' => $jobOrder->queueEntry?->customer?->organization,
                 'consultation_notes' => $jobOrder->consultation_notes,
-                // The customer's own words, captured at the counter. Read-only
-                // here: an artist records their own findings in
-                // consultation_notes rather than editing the brief they were
-                // given.
+                // The customer's own words, captured at the counter.
                 'client_notes' => $jobOrder->client_notes,
                 'print_size' => $jobOrder->print_size,
                 'width_ft' => $jobOrder->width_ft,
@@ -80,12 +88,16 @@ class JobOrderWorkspaceController extends Controller
             ],
             'review' => [
                 'canRecordVerdict' => $jobOrder->status === JobOrderStatus::PendingReview,
-                'revisionLogs' => $jobOrder->revisionLogs->map(fn ($log) => [
+                'revisionLogs' => $jobOrder->revisionLogs->map(fn (RevisionLog $log, int $index) => [
                     'id' => $log->id,
+                    'version' => $index + 1,
                     'submitted_at' => $log->submitted_at,
                     'outcome' => $log->outcome,
                     'reviewed_at' => $log->reviewed_at,
-                ])->values(),
+                    'message' => $log->message,
+                    'has_file' => $log->file_path !== null && Storage::disk('local')->exists($log->file_path),
+                    'file_url' => $log->file_path !== null ? route('artist.job-orders.revisions.file', [$jobOrder, $log]) : null,
+                ])->reverse()->values(),
             ],
         ]);
     }

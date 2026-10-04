@@ -70,7 +70,7 @@ test('posting to a valid signed request-changes url bounces the job order to in_
 
     $signedUrl = URL::temporarySignedRoute('public.design-review.request-changes', now()->addDays(7), ['revisionLog' => $revisionLog->id]);
 
-    $response = $this->post($signedUrl);
+    $response = $this->post($signedUrl, ['message' => 'Please enlarge the heading.']);
 
     $response->assertOk();
     expect($revisionLog->fresh()->outcome)->toBe('changes_requested');
@@ -118,9 +118,10 @@ test('an older superseded revision renders the stale state', function () {
         ->where('state', 'stale'));
 });
 
-test('sending a design for review via the existing authenticated artist endpoint dispatches a DesignReviewRequested mail', function () {
+test('a newly emailed design-review link opens the submitted version', function () {
     Mail::fake();
     Storage::fake('local');
+    $this->travelTo('2026-10-03 23:30:00');
     $artist = User::factory()->artist()->create();
     $jobOrder = JobOrder::factory()->assignedTo($artist)->create(['status' => 'in_consultation']);
 
@@ -128,5 +129,18 @@ test('sending a design for review via the existing authenticated artist endpoint
         'file' => UploadedFile::fake()->image('design.png'),
     ]);
 
-    Mail::assertSent(DesignReviewRequested::class, fn ($mail) => $mail->hasTo($jobOrder->fresh()->queueEntry->customer->email));
+    $reviewUrl = null;
+    Mail::assertSent(DesignReviewRequested::class, function (DesignReviewRequested $mail) use ($jobOrder, &$reviewUrl): bool {
+        $reviewUrl = $mail->content()->with['reviewUrl'];
+
+        return $mail->hasTo($jobOrder->fresh()->queueEntry->customer->email);
+    });
+
+    auth()->logout();
+    $this->get($reviewUrl)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('public/DesignReview')
+            ->where('state', 'active')
+            ->where('jobOrderNumber', $jobOrder->number));
 });

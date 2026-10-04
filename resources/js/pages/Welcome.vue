@@ -66,7 +66,7 @@ const trackingNumber = ref('');
 const isOpeningOrder = ref(false);
 
 /** Follows JobOrder's JO-{year}-{0000} format, so the example never looks stale. */
-const placeholderNumber = `JO-${new Date().getFullYear()}-0001`;
+const placeholderNumber = `JO-${page.props.businessDate.slice(0, 4)}-0001`;
 
 /** TrackJobOrderRequest's "Enter a job order number like …" message. */
 const numberError = computed(() => page.props.errors?.number);

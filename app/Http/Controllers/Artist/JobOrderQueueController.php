@@ -33,11 +33,8 @@ class JobOrderQueueController extends Controller
      * server-side (T-04-02): if the two orders ever disagree, the button on
      * the row the Artist can see is rejected with "Another job order is next
      * in your queue" and the queue becomes unworkable.
-     *
-     * `accepted_at` falls back to `created_at` for rows assigned before the
-     * pull model existed.
      */
-    private const string QUEUE_ORDER = 'is_rush DESC, COALESCE(accepted_at, created_at) DESC';
+    private const string QUEUE_ORDER = 'is_rush DESC, accepted_at DESC';
 
     /**
      * The artist's own dashboard queue — every in-progress job order

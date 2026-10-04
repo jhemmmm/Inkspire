@@ -8,6 +8,7 @@ use App\Enums\AccountsReceivableStatus;
 use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AccountsReceivable;
+use App\Support\BusinessTime;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -84,7 +85,7 @@ class CollectionLetterController extends Controller
         $amountPaid = (float) $accountsReceivable->jobOrder->transactions->where('status', TransactionStatus::Completed->value)->sum('amount');
         $amountDue = $accountsReceivable->jobOrder->outstandingBalance();
         $daysPastDue = $accountsReceivable->daysPastDue();
-        $dueDateLabel = $accountsReceivable->due_at?->format('F j, Y') ?? '—';
+        $dueDateLabel = $accountsReceivable->due_at === null ? '—' : BusinessTime::local($accountsReceivable->due_at)->format('F j, Y');
 
         $letterBodyText = str_replace(
             ['{due date}', '{n}'],
@@ -103,7 +104,7 @@ class CollectionLetterController extends Controller
             'dueDateLabel' => $dueDateLabel,
             'daysPastDue' => $daysPastDue,
             'letterBodyText' => $letterBodyText,
-            'today' => now()->format('F j, Y'),
+            'today' => BusinessTime::now()->format('F j, Y'),
         ])
             ->setOption('isPhpEnabled', true)
             ->download("collection-letter_{$accountsReceivable->jobOrder->number}.pdf");

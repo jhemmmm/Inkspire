@@ -20,6 +20,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLivePoll } from '@/composables/useLivePoll';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
 import type { ChartSeries } from '@/lib/charts';
 import { dashboard } from '@/routes/accounting-staff';
@@ -96,6 +97,7 @@ function paymentMethodLabel(method: string | undefined): string {
 function money(value: number | null): string {
     return `₱${Number(value ?? 0).toFixed(2)}`;
 }
+const { formatTimestamp } = useBusinessTime();
 </script>
 
 <template>
@@ -151,7 +153,7 @@ function money(value: number | null): string {
                             }}
                         </TableCell>
                         <TableCell>
-                            {{ new Date(jobOrder.created_at).toLocaleString() }}
+                            {{ formatTimestamp(jobOrder.created_at) }}
                         </TableCell>
                         <TableCell class="text-right">
                             <Button

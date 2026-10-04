@@ -5,7 +5,7 @@ import {
     CircleCheck,
     FileDown,
     ImageUp,
-    MessagesSquare,
+    History,
     Palette,
     Zap,
 } from '@lucide/vue';
@@ -30,10 +30,19 @@ import {
     AlertDialogTrigger,
 } from '@/components/alert-dialog';
 import StatusBadge from '@/components/StatusBadge.vue';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
+import RequestDesignChangesDialog from '@/components/RequestDesignChangesDialog.vue';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { useLivePoll } from '@/composables/useLivePoll';
 import { artistNavItems } from '@/config/nav/artist';
 import { jobOrderStatusBadge } from '@/lib/jobOrders';
@@ -75,14 +84,12 @@ const props = defineProps<{
         deadline: string | null;
         customer_name: string | null;
         customer_organization: string | null;
-        consultation_notes: string | null;
         client_notes: string | null;
         print_size: string | null;
         width_ft: string | null;
         height_ft: string | null;
         quantity: number | null;
         validation_failure_reason: string | null;
-        canEditConsultation: boolean;
     };
     design: {
         customerFileUrl: string | null;
@@ -93,6 +100,10 @@ const props = defineProps<{
         canRecordVerdict: boolean;
         revisionLogs: {
             id: number;
+            version: number;
+            message: string | null;
+            has_file: boolean;
+            file_url: string | null;
             submitted_at: string;
             outcome: string | null;
             reviewed_at: string | null;
@@ -137,6 +148,14 @@ const started = ref(props.design.initialImageUrl !== null);
 // mirrors review.canRecordVerdict, the same server-computed flag that gates
 // the Review card below.
 const isPendingReview = computed(() => props.review.canRecordVerdict);
+const { formatDay, formatInstant } = useBusinessTime();
+const previewRevisionId = ref<number | null>(null);
+const historyPreviewFailed = ref(false);
+
+function onHistoryPreviewOpen(open: boolean, revisionId: number): void {
+    previewRevisionId.value = open ? revisionId : null;
+    historyPreviewFailed.value = false;
+}
 
 const editorRef = ref<InstanceType<typeof PhotopeaEditor> | null>(null);
 const sendForReviewForm = useForm<{ file: File | null }>({ file: null });
@@ -240,12 +259,16 @@ async function sendForReview(): Promise<void> {
 const deadlineLabel = computed(() =>
     props.jobOrder.deadline === null
         ? 'No deadline set'
-        : new Date(props.jobOrder.deadline).toLocaleDateString('en-PH', {
+        : formatDay(props.jobOrder.deadline, {
               month: 'long',
               day: 'numeric',
               year: 'numeric',
           }),
 );
+
+function historyTime(value: string): string {
+    return formatInstant(value, { dateStyle: 'medium', timeStyle: 'short' });
+}
 
 /** The artist-facing label for the two intake routes. */
 const typeLabel = computed(() =>
@@ -271,7 +294,7 @@ function outcomeLabel(outcome: string | null): string {
     <PageContainer>
         <PageHeader
             :title="jobOrder.description"
-            description="Capture the consultation, build the layout, then send it for review."
+            description="Build the layout, review client feedback, and follow the design history."
         >
             <template #actions>
                 <Badge variant="outline" data-test="workspace-type-badge">
@@ -387,39 +410,102 @@ function outcomeLabel(outcome: string | null): string {
             </CardContent>
         </Card>
 
-        <Card>
-            <CardHeader :icon="MessagesSquare">
-                <CardTitle>Consultation Notes</CardTitle>
+        <Card data-test="job-order-history">
+            <CardHeader :icon="History">
+                <CardTitle>Job Order History</CardTitle>
             </CardHeader>
-            <CardContent>
-                <Form
-                    v-if="jobOrder.canEditConsultation"
-                    v-bind="
-                        JobOrderWorkspaceController.updateConsultation.form(
-                            jobOrder.id,
-                        )
-                    "
-                    :options="{ preserveScroll: true }"
-                    class="space-y-4"
-                    v-slot="{ errors, processing }"
+            <CardContent class="space-y-5">
+                <p
+                    v-if="review.revisionLogs.length === 0"
+                    class="text-muted-foreground text-sm"
                 >
-                    <Textarea
-                        name="consultation_notes"
-                        :default-value="jobOrder.consultation_notes ?? ''"
-                        rows="6"
-                    />
-                    <InputError :message="errors.consultation_notes" />
-                    <Button
-                        type="submit"
-                        :disabled="processing"
-                        data-test="save-consultation-notes-button"
-                    >
-                        Save Consultation Notes
-                    </Button>
-                </Form>
-                <p v-else class="text-sm">
-                    {{ jobOrder.consultation_notes ?? '—' }}
+                    No design versions yet. History will appear when a design is
+                    sent for review.
                 </p>
+                <article
+                    v-for="log in review.revisionLogs"
+                    :key="log.id"
+                    class="border-border space-y-3 rounded-lg border p-4"
+                    :data-test="`design-version-${log.version}`"
+                >
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-2"
+                    >
+                        <h3 class="text-sm font-semibold">
+                            Version {{ log.version }}
+                        </h3>
+                        <Badge variant="secondary">{{
+                            outcomeLabel(log.outcome)
+                        }}</Badge>
+                    </div>
+                    <p class="text-muted-foreground text-sm">
+                        Sent for review ·
+                        {{ historyTime(log.submitted_at) }}
+                    </p>
+                    <Dialog
+                        v-if="log.has_file && log.file_url"
+                        @update:open="onHistoryPreviewOpen($event, log.id)"
+                    >
+                        <DialogTrigger as-child>
+                            <Button
+                                type="button"
+                                variant="link"
+                                class="h-auto p-0"
+                                :data-test="`view-design-version-${log.version}`"
+                            >
+                                View design file
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent class="sm:max-w-3xl">
+                            <DialogHeader>
+                                <DialogTitle>
+                                    Design version {{ log.version }}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Sent for review ·
+                                    {{ historyTime(log.submitted_at) }}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <p
+                                v-if="historyPreviewFailed"
+                                role="alert"
+                                class="text-muted-foreground text-sm"
+                            >
+                                Unable to load this file. Close the preview and
+                                try again.
+                            </p>
+                            <img
+                                v-else-if="previewRevisionId === log.id"
+                                :src="
+                                    JobOrderWorkspaceController.revisionFile.url(
+                                        {
+                                            jobOrder: jobOrder.id,
+                                            revisionLog: log.id,
+                                        },
+                                    )
+                                "
+                                :alt="`Design version ${log.version}`"
+                                class="bg-muted mx-auto max-h-[70dvh] max-w-full rounded-lg object-contain"
+                                @error="historyPreviewFailed = true"
+                            />
+                        </DialogContent>
+                    </Dialog>
+                    <p v-else class="text-muted-foreground text-sm">
+                        File unavailable
+                    </p>
+                    <div v-if="log.reviewed_at" class="space-y-2">
+                        <p class="text-sm font-medium">
+                            {{ outcomeLabel(log.outcome) }} ·
+                            {{ historyTime(log.reviewed_at) }}
+                        </p>
+                        <p
+                            v-if="log.message"
+                            class="text-sm break-words whitespace-pre-wrap"
+                        >
+                            {{ log.message }}
+                        </p>
+                    </div>
+                </article>
             </CardContent>
         </Card>
 
@@ -630,35 +716,22 @@ function outcomeLabel(outcome: string | null): string {
                         </AlertDialogContent>
                     </AlertDialog>
 
-                    <Form
-                        v-bind="
-                            DesignEditorController.requestChanges.form(
+                    <RequestDesignChangesDialog
+                        :action="
+                            DesignEditorController.requestChanges.url(
                                 jobOrder.id,
                             )
                         "
-                        :options="{ preserveScroll: true }"
-                        v-slot="{ processing }"
+                        method="patch"
                     >
                         <Button
-                            type="submit"
+                            type="button"
                             variant="outline"
-                            :disabled="processing"
-                            data-test="request-changes-button"
+                            data-test="client-requested-changes-button"
                         >
                             Client Requested Changes
                         </Button>
-                    </Form>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <p
-                        v-for="log in review.revisionLogs"
-                        :key="log.id"
-                        class="text-muted-foreground text-sm"
-                    >
-                        {{ new Date(log.submitted_at).toLocaleString() }}
-                        — {{ outcomeLabel(log.outcome) }}
-                    </p>
+                    </RequestDesignChangesDialog>
                 </div>
             </CardContent>
         </Card>

@@ -16,6 +16,7 @@ use Carbon\CarbonInterface;
 use Carbon\CarbonPeriod;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * The one query implementation shared by ReportController::index() (capped
@@ -37,17 +38,48 @@ final class ReportBuilder
      *
      * @return Collection<int, array<string, mixed>>
      */
-    public function rows(string $key, CarbonInterface $from, CarbonInterface $to): Collection
+    public function rows(string $key, CarbonInterface $from, CarbonInterface $to, string $search = ''): Collection
     {
         ['utc' => $utc, 'days' => $days] = $this->window($from, $to);
 
-        return match ($key) {
+        $rows = match ($key) {
             'sales' => $this->salesRows($utc),
             'cancellations' => $this->cancellationsRows($utc),
             'production-status' => $this->productionStatusRows($utc),
             'expenses' => $this->expensesRows($days),
             default => collect(),
         };
+
+        $search = Str::lower(trim($search));
+
+        if ($search === '') {
+            return $rows;
+        }
+
+        $fields = match ($key) {
+            'sales' => ['job_order', 'customer', 'type', 'method'],
+            'cancellations' => ['job_order', 'customer', 'payment_status'],
+            'production-status' => ['job_order', 'customer', 'product', 'stage', 'urgency'],
+            'expenses' => ['category', 'description', 'recorded_by', 'status'],
+            default => [],
+        };
+
+        return $rows->filter(function (array $row) use ($fields, $search): bool {
+            foreach ($fields as $field) {
+                $value = match ($field) {
+                    'urgency' => $row[$field] ? 'Rush' : 'Normal',
+                    'status' => $row[$field] ?? 'Active',
+                    'type', 'method', 'payment_status', 'stage' => Str::headline($row[$field] ?? ''),
+                    default => $row[$field] ?? '',
+                };
+
+                if (str_contains(Str::lower((string) $value), $search)) {
+                    return true;
+                }
+            }
+
+            return false;
+        })->values();
     }
 
     /**

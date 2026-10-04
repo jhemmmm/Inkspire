@@ -31,6 +31,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import {
     agingBadge,
     BRACKET_LABELS,
@@ -88,12 +89,14 @@ setLayoutProps({
     ],
 });
 
+const { formatInstant } = useBusinessTime();
+
 function dateLabel(value: string | null): string {
     if (!value) {
         return '—';
     }
 
-    return new Date(value).toLocaleDateString('en-PH', {
+    return formatInstant(value, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
@@ -131,6 +134,7 @@ const collectionStatusReason = computed(() => {
 const hasPendingWriteOff = computed(
     () => props.accountsReceivable.write_off_requested_at !== null,
 );
+const { formatTimestamp } = useBusinessTime();
 </script>
 
 <template>
@@ -257,9 +261,9 @@ const hasPendingWriteOff = computed(
                     >
                     <span v-if="accountsReceivable.last_reminder_sent_at">
                         {{
-                            new Date(
+                            formatTimestamp(
                                 accountsReceivable.last_reminder_sent_at,
-                            ).toLocaleString()
+                            )
                         }}
                     </span>
                     <span v-else class="text-muted-foreground"

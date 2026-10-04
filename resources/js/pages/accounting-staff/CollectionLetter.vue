@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import PageContainer from '@/components/PageContainer.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 
 const props = defineProps<{
     jobOrderNumber: string | null;
@@ -19,6 +20,7 @@ const props = defineProps<{
 }>();
 
 const appName = usePage().props.name;
+const { formatInstant } = useBusinessTime();
 
 defineOptions({
     layout: {
@@ -38,14 +40,14 @@ const dueDateLabel = computed(() => {
         return '—';
     }
 
-    return new Date(props.dueDate).toLocaleDateString('en-PH', {
+    return formatInstant(props.dueDate, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',
     });
 });
 
-const today = new Date().toLocaleDateString('en-PH', {
+const today = formatInstant(new Date(), {
     month: 'long',
     day: 'numeric',
     year: 'numeric',

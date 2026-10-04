@@ -49,6 +49,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { index as expensesIndex } from '@/routes/accounting-staff/expenses';
 
 interface ExpenseRow {
@@ -91,8 +92,7 @@ function money(value: number): string {
 }
 
 function dateLabel(value: string): string {
-    const [year, month, day] = value.slice(0, 10).split('-').map(Number);
-    return new Date(year, month - 1, day).toLocaleDateString('en-PH', {
+    return formatDay(value, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -238,6 +238,7 @@ function openVoidDialog(row: ExpenseRow): void {
     voidingExpense.value = row;
     voidDialogOpen.value = true;
 }
+const { formatDay } = useBusinessTime();
 </script>
 
 <template>

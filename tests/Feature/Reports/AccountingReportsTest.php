@@ -152,7 +152,7 @@ test('a range ending on the Manila business date is accepted while that date is 
         ->get(route('accounting-staff.reports.index', ['report' => 'sales', 'from' => '2026-09-29', 'to' => '2026-09-29']));
 
     $response->assertOk();
-    expect($response->json('props.filters'))->toBe(['from' => '2026-09-29', 'to' => '2026-09-29']);
+    expect($response->json('props.filters'))->toBe(['q' => '', 'from' => '2026-09-29', 'to' => '2026-09-29']);
 });
 
 test('the sales chart totals every sale per day across the whole range, with quiet days at zero', function () {

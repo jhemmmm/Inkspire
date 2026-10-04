@@ -17,10 +17,12 @@ use Illuminate\Support\Carbon;
  * @property Carbon $submitted_at
  * @property string|null $outcome
  * @property Carbon|null $reviewed_at
+ * @property string|null $file_path
+ * @property string|null $message
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['job_order_id', 'submitted_at'])]
+#[Fillable(['job_order_id', 'submitted_at', 'file_path'])]
 #[ObservedBy(AuditObserver::class)]
 class RevisionLog extends Model
 {

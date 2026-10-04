@@ -56,6 +56,7 @@ export function jobOrderRowErrors(
 </script>
 
 <script setup lang="ts">
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import {
     CalendarDays,
     CloudUpload,
@@ -66,7 +67,7 @@ import {
     X,
     Zap,
 } from '@lucide/vue';
-import { computed, useId } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue';
 import InputError from '@/components/InputError.vue';
 import JobOrderPriceFields from '@/components/JobOrderPriceFields.vue';
 import { type SearchableOption } from '@/components/SearchableSelect.vue';
@@ -132,17 +133,21 @@ const printSizeOptions = computed<SearchableOption[]>(() =>
     })),
 );
 
-// Today, in the browser's own timezone -- `toISOString()` would render the
-// UTC date and let a Manila-evening walk-in pick "today" only to have the
-// server's `after_or_equal:today` reject it.
-const earliestDeadline = computed(() => {
-    const now = new Date();
+const { calendarDay } = useBusinessTime();
+const earliestDeadline = ref(calendarDay());
+let deadlineRefreshInterval: ReturnType<typeof setInterval> | undefined;
 
-    return [
-        now.getFullYear(),
-        String(now.getMonth() + 1).padStart(2, '0'),
-        String(now.getDate()).padStart(2, '0'),
-    ].join('-');
+onMounted(() => {
+    earliestDeadline.value = calendarDay();
+    deadlineRefreshInterval = setInterval(() => {
+        earliestDeadline.value = calendarDay();
+    }, 60_000);
+});
+
+onBeforeUnmount(() => {
+    if (deadlineRefreshInterval !== undefined) {
+        clearInterval(deadlineRefreshInterval);
+    }
 });
 
 /**

@@ -31,6 +31,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { useLivePoll } from '@/composables/useLivePoll';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import {
     jobOrderStatusBadge,
@@ -119,12 +120,14 @@ defineOptions({
     },
 });
 
+const { formatDay, formatInstant } = useBusinessTime();
+
 function dateTime(iso: string | null): string {
     if (iso === null) {
         return '—';
     }
 
-    return new Date(iso).toLocaleString('en-PH', {
+    return formatInstant(iso, {
         year: 'numeric',
         month: 'short',
         day: '2-digit',
@@ -138,7 +141,7 @@ function date(value: string | null): string {
         return '—';
     }
 
-    return new Date(value).toLocaleDateString('en-PH', {
+    return formatDay(value, {
         year: 'numeric',
         month: 'short',
         day: '2-digit',

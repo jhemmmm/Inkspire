@@ -10,6 +10,13 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class FilterReportRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('q'))) {
+            $this->merge(['q' => trim($this->input('q'))]);
+        }
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -41,6 +48,7 @@ class FilterReportRequest extends FormRequest
         $today = QueueEntry::currentBusinessDate();
 
         return [
+            'q' => ['nullable', 'string', 'max:255'],
             'from' => ['nullable', 'date', "before_or_equal:{$today}", 'required_with:to'],
             'to' => ['nullable', 'date', "before_or_equal:{$today}", 'after_or_equal:from', 'required_with:from'],
         ];

@@ -18,9 +18,7 @@ return new class extends Migration
      * job order enters production, which would silently erase the date the
      * customer was actually promised.
      *
-     * Every column is nullable. Job orders created before this migration have
-     * no specifications to backfill, and the intake form has always accepted
-     * a bare description.
+     * These optional details can be entered at intake.
      */
     public function up(): void
     {

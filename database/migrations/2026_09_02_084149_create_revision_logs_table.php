@@ -14,7 +14,9 @@ return new class extends Migration
         Schema::create('revision_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('job_order_id')->constrained()->cascadeOnDelete();
-            $table->timestamp('submitted_at');
+            $table->timestamp('submitted_at')->useCurrent();
+            $table->string('file_path')->nullable();
+            $table->text('message')->nullable();
             $table->string('outcome')->nullable();
             $table->timestamp('reviewed_at')->nullable();
             $table->timestamps();

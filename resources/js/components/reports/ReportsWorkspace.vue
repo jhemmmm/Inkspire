@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import {
     CalendarRange,
     ChartColumn,
     FileSpreadsheet,
     FileText,
     Info,
+    Search,
     Zap,
 } from '@lucide/vue';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import BarChart from '@/components/BarChart.vue';
+import InputError from '@/components/InputError.vue';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import BreakdownChart from '@/components/BreakdownChart.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import SectionHeading from '@/components/SectionHeading.vue';
@@ -36,6 +40,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import DateRangeControl from '@/components/reports/DateRangeControl.vue';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import type { ReportChart } from '@/lib/charts';
 import {
     jobOrderStatusBadge,
@@ -63,6 +68,7 @@ interface FinancialSummary {
 }
 
 interface ReportFilters {
+    q: string;
     from: string;
     to: string;
 }
@@ -162,8 +168,10 @@ function transactionTypeLabel(type: unknown): string {
     }
 }
 
+const { formatDay, formatInstant } = useBusinessTime();
+
 function formatDateOnly(iso: string): string {
-    return new Date(iso).toLocaleDateString('en-PH', {
+    return formatDay(iso, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
@@ -181,14 +189,20 @@ const rangeLabel = computed(() =>
 const generatedAt = ref(new Date());
 
 watch(
-    () => [props.selected, props.filters.from, props.filters.to] as const,
+    () =>
+        [
+            props.selected,
+            props.filters.from,
+            props.filters.to,
+            props.filters.q,
+        ] as const,
     () => {
         generatedAt.value = new Date();
     },
 );
 
 const generatedAtLabel = computed(() =>
-    generatedAt.value.toLocaleString('en-PH', {
+    formatInstant(generatedAt.value, {
         dateStyle: 'medium',
         timeStyle: 'short',
     }),
@@ -196,18 +210,64 @@ const generatedAtLabel = computed(() =>
 
 /** Which report card or range is loading, so only that control spins. */
 const loading = ref<'range' | string | null>(null);
+const page = usePage();
+const searchTerm = ref(props.filters.q);
+let submittedSearch = props.filters.q;
+let searchTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(searchTerm, () => {
+    clearTimeout(searchTimer);
+
+    if (searchTerm.value.trim() === props.filters.q) {
+        return;
+    }
+
+    searchTimer = setTimeout(() => {
+        load(
+            {
+                report: props.selected,
+                from: props.filters.from,
+                to: props.filters.to,
+                q: searchTerm.value.trim(),
+            },
+            'search',
+        );
+    }, 300);
+});
+
+watch(
+    () => [props.selected, props.filters.q] as const,
+    ([selected], [previousSelected]) => {
+        if (
+            selected !== previousSelected ||
+            searchTerm.value.trim() === submittedSearch
+        ) {
+            clearTimeout(searchTimer);
+            searchTerm.value = props.filters.q;
+        }
+    },
+);
+
+onBeforeUnmount(() => clearTimeout(searchTimer));
 
 function load(
-    query: { report: string; from: string; to: string },
+    query: { report: string; from: string; to: string; q?: string },
     source: string,
 ): void {
-    router.get(props.indexUrl, query, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-        onStart: () => (loading.value = source),
-        onFinish: () => (loading.value = null),
-    });
+    clearTimeout(searchTimer);
+    const { q, ...rangeQuery } = query;
+    submittedSearch = q?.trim() ?? '';
+    router.get(
+        props.indexUrl,
+        submittedSearch ? { ...rangeQuery, q: submittedSearch } : rangeQuery,
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onStart: () => (loading.value = source),
+            onFinish: () => (loading.value = null),
+        },
+    );
 }
 
 function selectReport(key: string): void {
@@ -219,7 +279,10 @@ function selectReport(key: string): void {
 }
 
 function onApplyRange({ from, to }: { from: string; to: string }): void {
-    load({ report: props.selected, from, to }, 'range');
+    load(
+        { report: props.selected, from, to, q: searchTerm.value.trim() },
+        'range',
+    );
 }
 </script>
 
@@ -276,6 +339,40 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                         :loading="loading === 'range'"
                         @apply="onApplyRange"
                     />
+                    <div
+                        v-if="selected !== 'financial-summary'"
+                        class="mt-5 space-y-2"
+                    >
+                        <Label for="report-search">Search report records</Label>
+                        <div class="flex items-center gap-2">
+                            <div class="relative min-w-0 flex-1">
+                                <Search
+                                    class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                                />
+                                <Input
+                                    id="report-search"
+                                    v-model="searchTerm"
+                                    type="search"
+                                    :maxlength="255"
+                                    class="pl-9"
+                                    placeholder="Search job orders, customers, or report details"
+                                    autocomplete="off"
+                                    data-test="report-search"
+                                />
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                :disabled="searchTerm === ''"
+                                @click="searchTerm = ''"
+                                data-test="clear-report-search"
+                            >
+                                Clear
+                            </Button>
+                            <Spinner v-if="loading === 'search'" />
+                        </div>
+                        <InputError :message="page.props.errors.q" />
+                    </div>
                 </CardContent>
             </Card>
 
@@ -321,8 +418,8 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                         </Button>
                     </div>
                     <p class="text-muted-foreground text-sm">
-                        Exports carry every row in this range and are recorded
-                        in the audit trail.
+                        Exports carry every matching row in this range and are
+                        recorded in the audit trail.
                     </p>
 
                     <section
@@ -507,9 +604,24 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                             class="flex flex-col items-center gap-1 text-center"
                                         >
                                             <p class="font-semibold">
-                                                Nothing in this range
+                                                {{
+                                                    filters.q
+                                                        ? 'No matching records'
+                                                        : 'Nothing in this range'
+                                                }}
                                             </p>
-                                            <p class="text-muted-foreground">
+                                            <p
+                                                v-if="filters.q"
+                                                class="text-muted-foreground"
+                                            >
+                                                Try another search or clear it
+                                                to see all records in this
+                                                range.
+                                            </p>
+                                            <p
+                                                v-else
+                                                class="text-muted-foreground"
+                                            >
                                                 No
                                                 {{
                                                     selectedReport?.title.toLowerCase()
@@ -659,6 +771,11 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                                         String(row[field]),
                                                     )
                                                 }}
+                                            </template>
+                                            <template
+                                                v-else-if="field === 'status'"
+                                            >
+                                                {{ row[field] ?? 'Active' }}
                                             </template>
                                             <template v-else>
                                                 {{ displayValue(row[field]) }}

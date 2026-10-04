@@ -23,6 +23,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { artistNavItems } from '@/config/nav/artist';
+import { useBusinessTime } from '@/composables/useBusinessTime';
 import { index as performanceReportIndex } from '@/routes/artist/performance-report';
 
 interface Stats {
@@ -80,8 +81,10 @@ function visit(): void {
 }
 
 /** Matches the 'en-PH' long-date convention used across the other portals. */
+const { formatDay } = useBusinessTime();
+
 function approvedLabel(approvedAt: string): string {
-    return new Date(approvedAt).toLocaleDateString('en-PH', {
+    return formatDay(approvedAt, {
         month: 'long',
         day: 'numeric',
         year: 'numeric',

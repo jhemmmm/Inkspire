@@ -379,7 +379,7 @@ class DemoDataSeeder extends Seeder
      */
     private function seedWriteOff(): void
     {
-        $owner = $this->accounts['owner'];
+        $admin = $this->accounts['admin'];
         $cashier = $this->accounts['cashier'];
         $accounting = $this->accounts['accounting'];
 
@@ -408,12 +408,12 @@ class DemoDataSeeder extends Seeder
         ]);
 
         $receivable->forceFill([
-            'approved_by' => $owner->id,
+            'approved_by' => $admin->id,
             'approved_at' => $day->copy()->subDays(15),
             'due_at' => $day->copy()->subDays(1),
             'write_off_requested_by' => $accounting->id,
             'write_off_requested_at' => $day->copy()->subHours(2),
-            'write_off_reason' => 'Customer unreachable after repeated collection attempts; approved for write-off by Owner.',
+            'write_off_reason' => 'Customer unreachable after repeated collection attempts; approved for write-off by Admin.',
             'written_off_at' => $day,
         ])->save();
     }
@@ -422,11 +422,11 @@ class DemoDataSeeder extends Seeder
      * Three active (not written off) On-Credit receivables at different
      * aging brackets -- not required by the Reports registry, but rounds
      * out the demo data for the AR aging pages a reviewer will also see
-     * from the Owner/Accounting Staff portals.
+     * from the Admin/Accounting Staff portals.
      */
     private function seedAgingReceivables(): void
     {
-        $owner = $this->accounts['owner'];
+        $admin = $this->accounts['admin'];
         $cashier = $this->accounts['cashier'];
 
         $brackets = [
@@ -452,7 +452,7 @@ class DemoDataSeeder extends Seeder
             ]);
 
             $receivable->forceFill([
-                'approved_by' => $owner->id,
+                'approved_by' => $admin->id,
                 'approved_at' => $approvedAt,
                 'due_at' => now()->subDays($daysPastDue),
             ])->save();

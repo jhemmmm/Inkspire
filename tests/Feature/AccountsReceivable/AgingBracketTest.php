@@ -2,20 +2,6 @@
 
 use App\Enums\AccountsReceivableAgingBracket;
 use App\Models\AccountsReceivable;
-use Illuminate\Support\Facades\DB;
-
-/**
- * The backfill is a private helper on the migration's anonymous class,
- * following the WR-10 precedent (`JobOrderNumberBackfillTest.php`) — the
- * migration has already run under RefreshDatabase, so `up()` (which also
- * re-adds already-existing columns) is not re-invocable.
- */
-function backfillAccountsReceivableDueDates(): void
-{
-    $migration = require database_path('migrations/2026_09_08_090000_add_aging_and_collection_columns_to_accounts_receivable_table.php');
-
-    (new ReflectionMethod($migration, 'backfillDueDates'))->invoke($migration);
-}
 
 test('agingBracket() returns Current when due_at is null', function () {
     $accountsReceivable = AccountsReceivable::factory()->make(['due_at' => null]);
@@ -56,23 +42,4 @@ test('daysPastDue() returns the correct positive integer when overdue', function
     $accountsReceivable = AccountsReceivable::factory()->make(['due_at' => now()->subDays(45)]);
 
     expect($accountsReceivable->daysPastDue())->toBe(45);
-});
-
-test('the backfill migration is idempotent and re-runnable (WR-10 shape)', function () {
-    $accountsReceivable = AccountsReceivable::factory()->active()->create();
-    $originalDueAt = $accountsReceivable->fresh()->due_at;
-
-    DB::table('accounts_receivable')->where('id', $accountsReceivable->id)->update(['due_at' => null]);
-    expect($accountsReceivable->fresh()->due_at)->toBeNull();
-
-    backfillAccountsReceivableDueDates();
-
-    $backfilled = $accountsReceivable->fresh()->due_at;
-    expect($backfilled)->not->toBeNull();
-    expect($backfilled->equalTo($originalDueAt))->toBeTrue();
-
-    // Running it again must be a no-op — no row already carrying due_at is touched.
-    backfillAccountsReceivableDueDates();
-
-    expect($accountsReceivable->fresh()->due_at->equalTo($backfilled))->toBeTrue();
 });

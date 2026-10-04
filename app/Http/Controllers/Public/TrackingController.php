@@ -230,14 +230,14 @@ class TrackingController extends Controller
         }
 
         $revisionLog = $jobOrder->revisionLogs()
-            ->latest('submitted_at')
+            ->latest('submitted_at')->latest('id')
             ->first(['id', 'submitted_at', 'outcome']);
 
         if (! $revisionLog instanceof RevisionLog || $revisionLog->outcome !== null) {
             return null;
         }
 
-        $expiresAt = $revisionLog->submitted_at->addDays(7);
+        $expiresAt = $revisionLog->submitted_at->copy()->addDays(7);
 
         if ($expiresAt->isPast()) {
             return null;
