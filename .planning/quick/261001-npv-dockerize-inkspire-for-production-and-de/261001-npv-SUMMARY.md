@@ -6,14 +6,14 @@ subsystem: infrastructure
 status: complete
 tags: [docker, compose, cloudflare-tunnel, deployment, mysql, lxc]
 key-files:
-  created:
-    - Dockerfile
-    - .dockerignore
-    - compose.yaml
-    - deploy.sh
-  modified: []
+    created:
+        - Dockerfile
+        - .dockerignore
+        - compose.yaml
+        - deploy.sh
+    modified: []
 commits:
-  - 0036767
+    - 0036767
 ---
 
 # Quick Task 261001-npv: Dockerize Inkspire and deploy it behind a Cloudflare tunnel

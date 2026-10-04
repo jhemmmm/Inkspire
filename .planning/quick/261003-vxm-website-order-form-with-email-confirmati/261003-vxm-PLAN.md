@@ -5,52 +5,52 @@ type: execute
 wave: 1
 depends_on: []
 files_modified:
-  - app/Models/OnlineOrder.php
-  - database/factories/OnlineOrderFactory.php
-  - database/migrations/*_create_online_orders_table.php
-  - app/Http/Requests/Public/StoreOnlineOrderRequest.php
-  - app/Concerns/JobOrderValidationRules.php
-  - app/Http/Controllers/Public/OnlineOrderController.php
-  - app/Mail/ConfirmOnlineOrder.php
-  - resources/views/mail/confirm-online-order.blade.php
-  - routes/web.php
-  - routes/console.php
-  - bootstrap/app.php
-  - tests/Feature/Public/OnlineOrderTest.php
-  - resources/js/pages/public/Order.vue
-  - resources/js/pages/public/OrderConfirm.vue
-  - resources/js/components/JobOrderRowFields.vue
-  - resources/js/components/JobOrderPriceFields.vue
-  - resources/js/pages/Welcome.vue
-  - tests/Feature/Public/WelcomePageTest.php
+    - app/Models/OnlineOrder.php
+    - database/factories/OnlineOrderFactory.php
+    - database/migrations/*_create_online_orders_table.php
+    - app/Http/Requests/Public/StoreOnlineOrderRequest.php
+    - app/Concerns/JobOrderValidationRules.php
+    - app/Http/Controllers/Public/OnlineOrderController.php
+    - app/Mail/ConfirmOnlineOrder.php
+    - resources/views/mail/confirm-online-order.blade.php
+    - routes/web.php
+    - routes/console.php
+    - bootstrap/app.php
+    - tests/Feature/Public/OnlineOrderTest.php
+    - resources/js/pages/public/Order.vue
+    - resources/js/pages/public/OrderConfirm.vue
+    - resources/js/components/JobOrderRowFields.vue
+    - resources/js/components/JobOrderPriceFields.vue
+    - resources/js/pages/Welcome.vue
+    - tests/Feature/Public/WelcomePageTest.php
 autonomous: true
 requirements: [QUICK-261003-vxm]
 must_haves:
-  truths:
-    - "A visitor can submit an order on /order without logging in and sees a 'Check your email' state"
-    - "Nothing is written to customers, queue_entries or job_orders until the emailed signed link is confirmed"
-    - "Confirming creates/reuses the customer, opens an O-lane visit and sends JobOrdersReceived; a second confirm creates nothing"
-    - "A client-posted quoted_amount never reaches CreateJobOrder; prices are never sent to the public page"
-    - "Expired or invalid links render a friendly expired state, not a 404/blank"
-    - "Landing page links to the order page and still shows no staff links"
-  artifacts:
-    - path: "app/Models/OnlineOrder.php"
-      provides: "Prunable pending-order model"
-    - path: "app/Http/Controllers/Public/OnlineOrderController.php"
-      provides: "create/store/show/confirm"
-    - path: "resources/js/pages/public/Order.vue"
-      provides: "Public order form"
-    - path: "resources/js/pages/public/OrderConfirm.vue"
-      provides: "pending/confirmed/expired states"
-    - path: "tests/Feature/Public/OnlineOrderTest.php"
-      provides: "12 specified feature tests"
-  key_links:
-    - from: "OnlineOrderController::confirm"
-      to: "OpenVisit"
-      via: "$openVisit($customer->id, $payload['job_orders'], QueueEntry::ONLINE_PREFIX)"
-    - from: "bootstrap/app.php"
-      to: "public/OrderConfirm"
-      via: "routeIs('public.orders.*') branch of InvalidSignatureException"
+    truths:
+        - "A visitor can submit an order on /order without logging in and sees a 'Check your email' state"
+        - 'Nothing is written to customers, queue_entries or job_orders until the emailed signed link is confirmed'
+        - 'Confirming creates/reuses the customer, opens an O-lane visit and sends JobOrdersReceived; a second confirm creates nothing'
+        - 'A client-posted quoted_amount never reaches CreateJobOrder; prices are never sent to the public page'
+        - 'Expired or invalid links render a friendly expired state, not a 404/blank'
+        - 'Landing page links to the order page and still shows no staff links'
+    artifacts:
+        - path: 'app/Models/OnlineOrder.php'
+          provides: 'Prunable pending-order model'
+        - path: 'app/Http/Controllers/Public/OnlineOrderController.php'
+          provides: 'create/store/show/confirm'
+        - path: 'resources/js/pages/public/Order.vue'
+          provides: 'Public order form'
+        - path: 'resources/js/pages/public/OrderConfirm.vue'
+          provides: 'pending/confirmed/expired states'
+        - path: 'tests/Feature/Public/OnlineOrderTest.php'
+          provides: '12 specified feature tests'
+    key_links:
+        - from: 'OnlineOrderController::confirm'
+          to: 'OpenVisit'
+          via: "$openVisit($customer->id, $payload['job_orders'], QueueEntry::ONLINE_PREFIX)"
+        - from: 'bootstrap/app.php'
+          to: 'public/OrderConfirm'
+          via: "routeIs('public.orders.*') branch of InvalidSignatureException"
 ---
 
 <objective>
@@ -112,6 +112,7 @@ Rules: read .claude/skills laravel-best-practices, testing-best-practices, inert
     bootstrap/app.php: in the InvalidSignatureException branch, when `$request->routeIs('public.orders.*')` render `public/OrderConfirm` with state 'expired', status 403; leave design-review behaviour as is.
 
     Finally run `php artisan wayfinder:generate --with-form` (flag REQUIRED; generated files are gitignored, never hand-edit or commit).
+
   </action>
   <verify>
     <automated>php artisan test --compact tests/Feature/Public/OnlineOrderTest.php && vendor/bin/pint --dirty --format agent && php artisan test --compact tests/Feature/Artist tests/Feature/FrontlineStaff tests/Feature/JobOrder</automated>
@@ -130,6 +131,7 @@ Rules: read .claude/skills laravel-best-practices, testing-best-practices, inert
     OrderConfirm.vue: props `state: 'pending'|'confirmed'|'expired'`, optional email, items, confirmUrl, jobOrders. Same shell as Order.vue. Pending: summary (count, descriptions, email) + "Confirm my order" via `<Form :action="confirmUrl" method="post">` with processing disabled (DesignReview precedent). Confirmed: each JO number (`tabular-nums`) + description + "Track this order" as a plain `<a :href>` (not Inertia Link), plus a line that the same link is where they approve a design and pay once the shop confirms the price. Expired: says the link expired or was already cleaned up, with a link to `create` from `@/routes/public/orders`.
 
     Customer copy in JobOrderRowFields.vue under `audience="customer"` ONLY (staff output must be byte-identical in behaviour): card title "Item {n}" instead of "Job Order {n}", "What do you need?" instead of "Job Order Type", "Print details" instead of "Print Specifications", remove-button sr-only "Remove item". JobOrderPriceFields.vue: product placeholder reads "Search products…" when `showPrices` is false, else unchanged.
+
   </action>
   <verify>
     <automated>php artisan wayfinder:generate --with-form && npx vp check --fix resources/js/pages/public/Order.vue resources/js/pages/public/OrderConfirm.vue resources/js/components/JobOrderRowFields.vue resources/js/components/JobOrderPriceFields.vue && npm run types:check</automated>
@@ -152,26 +154,27 @@ Rules: read .claude/skills laravel-best-practices, testing-best-practices, inert
 </tasks>
 
 <threat_model>
+
 ## Trust Boundaries
 
-| Boundary | Description |
-|----------|-------------|
-| anonymous visitor -> POST /order | Untrusted fields and uploaded files cross here |
-| email link -> confirm | Signed URL is the only proof of mailbox ownership |
-| public page -> tracking URL | tracking_token is a bearer credential |
+| Boundary                         | Description                                       |
+| -------------------------------- | ------------------------------------------------- |
+| anonymous visitor -> POST /order | Untrusted fields and uploaded files cross here    |
+| email link -> confirm            | Signed URL is the only proof of mailbox ownership |
+| public page -> tracking URL      | tracking_token is a bearer credential             |
 
 ## STRIDE Threat Register
 
-| Threat ID | Category | Component | Disposition | Mitigation Plan |
-|-----------|----------|-----------|-------------|-----------------|
-| T-vxm-01 | Tampering | quoted_amount in payload | mitigate | rule removed via Arr::except so validated() drops it; test 6 |
-| T-vxm-02 | Spoofing | confirm endpoint | mitigate | `signed` middleware, 48h expiry, idempotent lockForUpdate; test 5 and 4 |
-| T-vxm-03 | Denial of service | POST /order spam, mail bombing | mitigate | throttle:5,10, honeypot, max 5 items, 3-day prune |
-| T-vxm-04 | Information disclosure | prices / tracking tokens on public page | mitigate | pricingEntries limited to id,name,unit; tokens only on signed confirmed state and email; test 1 |
-| T-vxm-05 | Tampering | existing customer overwritten by public input | mitigate | firstOrCreate never updates; test 9 |
-| T-vxm-06 | Tampering | malicious upload | mitigate | existing JobOrderValidationRules file rules + ValidateJobOrderFile; stored on private local disk |
-| T-vxm-07 | Repudiation | unconfirmed orphan files | mitigate | Prunable pruning() deletes files of unconfirmed rows |
-</threat_model>
+| Threat ID       | Category               | Component                                     | Disposition | Mitigation Plan                                                                                  |
+| --------------- | ---------------------- | --------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------ |
+| T-vxm-01        | Tampering              | quoted_amount in payload                      | mitigate    | rule removed via Arr::except so validated() drops it; test 6                                     |
+| T-vxm-02        | Spoofing               | confirm endpoint                              | mitigate    | `signed` middleware, 48h expiry, idempotent lockForUpdate; test 5 and 4                          |
+| T-vxm-03        | Denial of service      | POST /order spam, mail bombing                | mitigate    | throttle:5,10, honeypot, max 5 items, 3-day prune                                                |
+| T-vxm-04        | Information disclosure | prices / tracking tokens on public page       | mitigate    | pricingEntries limited to id,name,unit; tokens only on signed confirmed state and email; test 1  |
+| T-vxm-05        | Tampering              | existing customer overwritten by public input | mitigate    | firstOrCreate never updates; test 9                                                              |
+| T-vxm-06        | Tampering              | malicious upload                              | mitigate    | existing JobOrderValidationRules file rules + ValidateJobOrderFile; stored on private local disk |
+| T-vxm-07        | Repudiation            | unconfirmed orphan files                      | mitigate    | Prunable pruning() deletes files of unconfirmed rows                                             |
+| </threat_model> |
 
 <verification>
 - `php artisan test --compact tests/Feature/Public tests/Feature/Artist tests/Feature/FrontlineStaff tests/Feature/JobOrder`

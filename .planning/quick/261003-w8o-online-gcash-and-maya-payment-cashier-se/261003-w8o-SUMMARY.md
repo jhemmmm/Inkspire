@@ -5,41 +5,41 @@ subsystem: payments
 tags: [paymongo, gcash, maya, tracking, cashier, mail]
 requires: []
 provides:
-  - PriceJobOrder and StartPaymongoPayment shared actions
-  - Cashier payment-link flow (save price, email link)
-  - Customer pay flow from the tracking-token page
+    - PriceJobOrder and StartPaymongoPayment shared actions
+    - Cashier payment-link flow (save price, email link)
+    - Customer pay flow from the tracking-token page
 affects: [cashier, public tracking, transactions.recorded_by]
 key-files:
-  created:
-    - app/Actions/POS/PriceJobOrder.php
-    - app/Actions/POS/StartPaymongoPayment.php
-    - app/Http/Controllers/Cashier/PaymentLinkController.php
-    - app/Http/Controllers/Public/OnlinePaymentController.php
-    - app/Http/Requests/Cashier/SendPaymentLinkRequest.php
-    - app/Http/Requests/Public/PayOnlineRequest.php
-    - app/Mail/PaymentRequested.php
-    - resources/views/mail/payment-requested.blade.php
-    - database/migrations/2026_10_03_151651_make_transactions_recorded_by_nullable.php
-    - tests/Feature/Cashier/PaymentLinkTest.php
-    - tests/Feature/Public/OnlinePaymentTest.php
-  modified:
-    - app/Models/JobOrder.php
-    - app/Models/Transaction.php
-    - app/Http/Controllers/Cashier/PaymentController.php
-    - app/Http/Controllers/Cashier/CreditRequestController.php
-    - app/Http/Controllers/Public/TrackingController.php
-    - resources/js/pages/cashier/JobOrderPayment.vue
-    - resources/js/pages/cashier/Dashboard.vue
-    - resources/js/pages/public/TrackingToken.vue
-    - routes/portals.php
-    - routes/web.php
-    - tests/Feature/Public/TrackingTokenTest.php
+    created:
+        - app/Actions/POS/PriceJobOrder.php
+        - app/Actions/POS/StartPaymongoPayment.php
+        - app/Http/Controllers/Cashier/PaymentLinkController.php
+        - app/Http/Controllers/Public/OnlinePaymentController.php
+        - app/Http/Requests/Cashier/SendPaymentLinkRequest.php
+        - app/Http/Requests/Public/PayOnlineRequest.php
+        - app/Mail/PaymentRequested.php
+        - resources/views/mail/payment-requested.blade.php
+        - database/migrations/2026_10_03_151651_make_transactions_recorded_by_nullable.php
+        - tests/Feature/Cashier/PaymentLinkTest.php
+        - tests/Feature/Public/OnlinePaymentTest.php
+    modified:
+        - app/Models/JobOrder.php
+        - app/Models/Transaction.php
+        - app/Http/Controllers/Cashier/PaymentController.php
+        - app/Http/Controllers/Cashier/CreditRequestController.php
+        - app/Http/Controllers/Public/TrackingController.php
+        - resources/js/pages/cashier/JobOrderPayment.vue
+        - resources/js/pages/cashier/Dashboard.vue
+        - resources/js/pages/public/TrackingToken.vue
+        - routes/portals.php
+        - routes/web.php
+        - tests/Feature/Public/TrackingTokenTest.php
 decisions:
-  - Online payment is always the full outstanding balance; only the counter may take a part payment
-  - The unlocked route-bound job order is never mutated; pricing is applied only to the locked re-read inside StartPaymongoPayment
-  - Payment-state rules live in JobOrder::onlinePaymentState(), shared by the tracking page and the pay endpoint
+    - Online payment is always the full outstanding balance; only the counter may take a part payment
+    - The unlocked route-bound job order is never mutated; pricing is applied only to the locked re-read inside StartPaymongoPayment
+    - Payment-state rules live in JobOrder::onlinePaymentState(), shared by the tracking page and the pay endpoint
 metrics:
-  completed: 2026-10-03
+    completed: 2026-10-03
 ---
 
 # Quick 261003-w8o: Online GCash/Maya payment and Cashier payment link
@@ -86,6 +86,7 @@ All created files exist and the three commit hashes resolve in `git log`.
 ## Orchestrator review and browser verification
 
 Commit 6f5a4ab (review of the payment path, then a browser pass):
+
 - Cashier GCash/Maya regression from the extraction: the locked re-check's refusals (paid, cancelled, written off, credit pending) were caught by the controller's `catch (Throwable)` and shown as "Couldn't start the payment". `HttpExceptionInterface` is now rethrown. New test in `RecordPaymentTest`.
 - Public pay takes a cache lock per job order, so a double submit cannot open two PayMongo intents.
 - Public resume handles each intent status by name: `succeeded` confirms; `cancelled` fails the transaction so the order returns to "due"; `awaiting_next_action` reuses the existing checkout URL; `awaiting_payment_method` re-attaches with the wallet stored on the transaction; anything else (`processing` above all) is left untouched. Previously everything that was not `succeeded`/`awaiting_next_action` had a new payment method attached, and the wallet was always the posted one (the pending page always posts GCash).
@@ -93,6 +94,7 @@ Commit 6f5a4ab (review of the payment path, then a browser pass):
 - The tracking page scrolls the payment error into view.
 
 Driven in headless Chrome against a seeded SQLite copy with the log mailer:
+
 - Cashier dashboard shows the Online badge on online-lane orders only.
 - Payment page: "Save price & email payment link" saved the price with no transaction and unchanged payment status, toast named the customer's email, and the logged email has the number, the amount and the Pay online link. Fits at 375px.
 - Tracking page, logged out: amount due with both wallet buttons; keyboard activation works; at 375px no overflow.

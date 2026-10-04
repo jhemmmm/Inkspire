@@ -23,10 +23,10 @@ Reuse the existing send-for-review path; only the source of the file changes.
 
 - [app/Http/Requests/Artist/SendForReviewRequest.php](app/Http/Requests/Artist/SendForReviewRequest.php): allow `mimes:png,jpg,jpeg` and add `max:` from the existing `SystemConfiguration::getInt('max_file_size_mb', 50)`. Update the PHPDoc (it says the canvas is the only producer).
 - [resources/js/pages/artist/JobOrderWorkspace.vue](resources/js/pages/artist/JobOrderWorkspace.vue), Design card:
-  - Add an "Upload a Design" file picker (`accept="image/png,image/jpeg"`) next to "Start from Blank Canvas", and also beside the editor once it is open.
-  - A chosen file shows an instant preview (`URL.createObjectURL`), with "Send for Review" and "Choose a different file / use the editor instead" so the choice is reversible.
-  - `sendForReview()` posts the chosen file if there is one, otherwise exports from Photopea as today. Show `sendForReviewForm.errors.file` with `InputError`.
-  - While pending review, show the submitted design image above "Waiting on the client's verdict." (today the artist sees no image at that point). `design.initialImageUrl` already carries it.
+    - Add an "Upload a Design" file picker (`accept="image/png,image/jpeg"`) next to "Start from Blank Canvas", and also beside the editor once it is open.
+    - A chosen file shows an instant preview (`URL.createObjectURL`), with "Send for Review" and "Choose a different file / use the editor instead" so the choice is reversible.
+    - `sendForReview()` posts the chosen file if there is one, otherwise exports from Photopea as today. Show `sendForReviewForm.errors.file` with `InputError`.
+    - While pending review, show the submitted design image above "Waiting on the client's verdict." (today the artist sees no image at that point). `design.initialImageUrl` already carries it.
 - No change to `RecordDesignRevision`, `DesignEditorController::sendForReview`, the public review page, or Photopea reload: all already handle any browser image.
 
 Not included: PSD/PDF/AI upload. They cannot be previewed by the artist or the customer review page. Artists export PNG/JPG from Photoshop.
@@ -44,11 +44,11 @@ Known trade-off: the due date still starts at approval, so an order that waits d
 
 **Server** ([ProductionStageController.php](app/Http/Controllers/ProductionStaff/ProductionStageController.php), [routes/portals.php](routes/portals.php)): replace `advance` / `sendBack` with three body-less actions over one private helper that keeps the existing lock, cancelled/released guards and `ProductionLog` row:
 
-| Action | From | To |
-| --- | --- | --- |
-| `start` | For Production | Printing |
-| `done` | For Production, Printing, Quality Check | Ready for Pickup |
-| `undo` | Ready for Pickup → Printing; Printing, Quality Check → For Production | |
+| Action  | From                                                                  | To               |
+| ------- | --------------------------------------------------------------------- | ---------------- |
+| `start` | For Production                                                        | Printing         |
+| `done`  | For Production, Printing, Quality Check                               | Ready for Pickup |
+| `undo`  | Ready for Pickup → Printing; Printing, Quality Check → For Production |                  |
 
 Delete `AdvanceProductionStageRequest`, `SendBackProductionStageRequest` and `ProductionLogValidationRules` (no other users). Undo needs no typed reason; the log still records who and when. The `quality_check` enum case stays so existing rows, reports and the tracking page keep working.
 
@@ -77,8 +77,8 @@ Run through `/gsd-quick` (required by CLAUDE.md), one task and commit per part, 
 1. `php artisan test --compact tests/Feature/ProductionStaff tests/Feature/Artist tests/Feature/Cashier/ProductionCompatibilityTest.php tests/Feature/JobOrder/EnterProductionTest.php`
 2. `npm run types:check` and `npm run check`
 3. In the browser (seeded copy on :8011, per the saved setup), at desktop and 375px, both themes:
-   - Artist: upload a JPG, see the preview, swap the file, send for review, see the image while pending, approve.
-   - Production: the order shows under Awaiting Payment with no buttons.
-   - Cashier: the order is listed; record a down payment.
-   - Production: the order moves to To Print; Start, Done, then Undo each work; search and tabs filter correctly.
-   - Frontline: the done order still raises the ready-for-pickup alert and release still demands full payment or credit.
+    - Artist: upload a JPG, see the preview, swap the file, send for review, see the image while pending, approve.
+    - Production: the order shows under Awaiting Payment with no buttons.
+    - Cashier: the order is listed; record a down payment.
+    - Production: the order moves to To Print; Start, Done, then Undo each work; search and tabs filter correctly.
+    - Frontline: the done order still raises the ready-for-pickup alert and release still demands full payment or credit.

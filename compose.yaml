@@ -18,84 +18,84 @@
 name: inkspire
 
 x-app: &app
-  image: inkspire
-  build: .
-  restart: unless-stopped
-  network_mode: host
-  volumes:
-    - storage:/var/www/html/storage/app
-  environment:
-    APP_NAME: Inkspire
-    APP_ENV: production
-    APP_DEBUG: 'false'
-    APP_KEY: ${APP_KEY:?}
-    APP_URL: ${APP_URL:?}
-    LOG_CHANNEL: stderr
-    DB_CONNECTION: mysql
-    DB_HOST: 127.0.0.1
-    DB_DATABASE: inkspire
-    DB_USERNAME: inkspire
-    DB_PASSWORD: ${DB_PASSWORD:?}
-    # ponytail: nothing is queued yet, so no worker. When a job is, add a
-    # `php artisan queue:work` service like scheduler and use `database`.
-    QUEUE_CONNECTION: sync
-    MAIL_MAILER: ${MAIL_MAILER:-log}
-    MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
-    RESEND_API_KEY: ${RESEND_API_KEY:-}
-    PAYMONGO_LIVEMODE: ${PAYMONGO_LIVEMODE:-false}
-    PAYMONGO_PUBLIC_KEY: ${PAYMONGO_PUBLIC_KEY:-}
-    PAYMONGO_SECRET_KEY: ${PAYMONGO_SECRET_KEY:-}
-    PAYMONGO_WEBHOOK_SIG: ${PAYMONGO_WEBHOOK_SIG:-}
-    # Migrate, link storage and cache config/routes/views on start.
-    AUTORUN_ENABLED: 'true'
+    image: inkspire
+    build: .
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+        - storage:/var/www/html/storage/app
+    environment:
+        APP_NAME: Inkspire
+        APP_ENV: production
+        APP_DEBUG: 'false'
+        APP_KEY: ${APP_KEY:?}
+        APP_URL: ${APP_URL:?}
+        LOG_CHANNEL: stderr
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_DATABASE: inkspire
+        DB_USERNAME: inkspire
+        DB_PASSWORD: ${DB_PASSWORD:?}
+        # ponytail: nothing is queued yet, so no worker. When a job is, add a
+        # `php artisan queue:work` service like scheduler and use `database`.
+        QUEUE_CONNECTION: sync
+        MAIL_MAILER: ${MAIL_MAILER:-log}
+        MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+        RESEND_API_KEY: ${RESEND_API_KEY:-}
+        PAYMONGO_LIVEMODE: ${PAYMONGO_LIVEMODE:-false}
+        PAYMONGO_PUBLIC_KEY: ${PAYMONGO_PUBLIC_KEY:-}
+        PAYMONGO_SECRET_KEY: ${PAYMONGO_SECRET_KEY:-}
+        PAYMONGO_WEBHOOK_SIG: ${PAYMONGO_WEBHOOK_SIG:-}
+        # Migrate, link storage and cache config/routes/views on start.
+        AUTORUN_ENABLED: 'true'
 
 services:
-  app:
-    <<: *app
-    depends_on:
-      mysql:
-        condition: service_healthy
-    healthcheck:
-      test: curl -fsS http://127.0.0.1:8080/up
-      interval: 30s
-      start_period: 60s
+    app:
+        <<: *app
+        depends_on:
+            mysql:
+                condition: service_healthy
+        healthcheck:
+            test: curl -fsS http://127.0.0.1:8080/up
+            interval: 30s
+            start_period: 60s
 
-  scheduler:
-    <<: *app
-    command: php artisan schedule:work
-    depends_on:
-      app:
-        condition: service_healthy
-    healthcheck:
-      test: healthcheck-schedule
+    scheduler:
+        <<: *app
+        command: php artisan schedule:work
+        depends_on:
+            app:
+                condition: service_healthy
+        healthcheck:
+            test: healthcheck-schedule
 
-  mysql:
-    image: mysql:8.4
-    restart: unless-stopped
-    network_mode: host
-    # performance_schema off and a small buffer pool: the server has 1 GB.
-    command: --bind-address=127.0.0.1 --mysqlx=OFF --performance-schema=OFF --innodb-buffer-pool-size=128M
-    environment:
-      MYSQL_DATABASE: inkspire
-      MYSQL_USER: inkspire
-      MYSQL_PASSWORD: ${DB_PASSWORD:?}
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?}
-    volumes:
-      - mysql:/var/lib/mysql
-    healthcheck:
-      test: mysqladmin ping -h 127.0.0.1 -uinkspire -p$$MYSQL_PASSWORD --silent
-      interval: 5s
-      retries: 30
+    mysql:
+        image: mysql:8.4
+        restart: unless-stopped
+        network_mode: host
+        # performance_schema off and a small buffer pool: the server has 1 GB.
+        command: --bind-address=127.0.0.1 --mysqlx=OFF --performance-schema=OFF --innodb-buffer-pool-size=128M
+        environment:
+            MYSQL_DATABASE: inkspire
+            MYSQL_USER: inkspire
+            MYSQL_PASSWORD: ${DB_PASSWORD:?}
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?}
+        volumes:
+            - mysql:/var/lib/mysql
+        healthcheck:
+            test: mysqladmin ping -h 127.0.0.1 -uinkspire -p$$MYSQL_PASSWORD --silent
+            interval: 5s
+            retries: 30
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    restart: unless-stopped
-    network_mode: host
-    # In a container cloudflared serves its metrics on 0.0.0.0 unless told.
-    command: tunnel --no-autoupdate --metrics 127.0.0.1:20250 run
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?}
+    cloudflared:
+        image: cloudflare/cloudflared:latest
+        restart: unless-stopped
+        network_mode: host
+        # In a container cloudflared serves its metrics on 0.0.0.0 unless told.
+        command: tunnel --no-autoupdate --metrics 127.0.0.1:20250 run
+        environment:
+            TUNNEL_TOKEN: ${TUNNEL_TOKEN:?}
 
 volumes:
-  storage:
-  mysql:
+    storage:
+    mysql:

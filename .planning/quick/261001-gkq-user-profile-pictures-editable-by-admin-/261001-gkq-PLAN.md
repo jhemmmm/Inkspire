@@ -48,59 +48,64 @@ traceability. Do not revisit a locked decision. Before editing, go through `/gsd
    `#[Fillable]` (D3; both controllers here already force-fill, and `replaceAvatar()` below
    assigns the property directly, bypassing mass assignment entirely).
 
-   New accessor:
-   ```php
-   protected function avatar(): Attribute
-   {
-       return Attribute::make(
-           get: fn (): ?string => $this->avatar_path !== null
-               ? Storage::disk('public')->url($this->avatar_path)
-               : null,
-       );
-   }
-   ```
+    New accessor:
 
-   New method — the one place that writes the file (D4):
-   ```php
-   public function replaceAvatar(?UploadedFile $file, bool $remove): void
-   {
-       if ($file === null && ! $remove) {
-           return;
-       }
+    ```php
+    protected function avatar(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?string => $this->avatar_path !== null
+                ? Storage::disk('public')->url($this->avatar_path)
+                : null,
+        );
+    }
+    ```
 
-       $previousPath = $this->avatar_path;
+    New method — the one place that writes the file (D4):
 
-       // ponytail: no server-side resize or re-encode -- a 2MB original is
-       // served as-is and displayed with object-cover. No image library is
-       // installed. If page weight becomes a problem, resize on upload here.
-       $this->avatar_path = $file !== null ? $file->store('avatars', 'public') : null;
-       $this->save();
+    ```php
+    public function replaceAvatar(?UploadedFile $file, bool $remove): void
+    {
+        if ($file === null && ! $remove) {
+            return;
+        }
 
-       if ($previousPath !== null) {
-           Storage::disk('public')->delete($previousPath);
-       }
-   }
-   ```
-   Store-then-save-then-delete, in that order: the new file is written to disk and the new
-   state persisted before the previous file is ever touched (D4). The no-op branch (no file,
-   no removal) returns before calling `save()`, so an ordinary update that doesn't touch the
-   picture never writes to storage or produces an extra audit row.
+        $previousPath = $this->avatar_path;
 
-   `deactivate()`/`reactivate()` on `UserManagementController` need no change — neither touches
-   `avatar_path`, so a deactivated user keeps their picture (D8).
+        // ponytail: no server-side resize or re-encode -- a 2MB original is
+        // served as-is and displayed with object-cover. No image library is
+        // installed. If page weight becomes a problem, resize on upload here.
+        $this->avatar_path = $file !== null ? $file->store('avatars', 'public') : null;
+        $this->save();
+
+        if ($previousPath !== null) {
+            Storage::disk('public')->delete($previousPath);
+        }
+    }
+    ```
+
+    Store-then-save-then-delete, in that order: the new file is written to disk and the new
+    state persisted before the previous file is ever touched (D4). The no-op branch (no file,
+    no removal) returns before calling `save()`, so an ordinary update that doesn't touch the
+    picture never writes to storage or produces an extra audit row.
+
+    `deactivate()`/`reactivate()` on `UserManagementController` need no change — neither touches
+    `avatar_path`, so a deactivated user keeps their picture (D8).
 
 3. **`ProfileValidationRules` (D5).** Add:
-   ```php
-   protected function avatarRules(): array
-   {
-       return ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'];
-   }
-   ```
-   Both rules together are what rejects SVG — Laravel's `image` rule alone already excludes svg
-   unless `allow_svg` is set, and `mimes:jpg,jpeg,png,webp` excludes it a second way.
+
+    ```php
+    protected function avatarRules(): array
+    {
+        return ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'];
+    }
+    ```
+
+    Both rules together are what rejects SVG — Laravel's `image` rule alone already excludes svg
+    unless `allow_svg` is set, and `mimes:jpg,jpeg,png,webp` excludes it a second way.
 
 4. **`CreateUserRequest::rules()` (D5).** Add `'avatar' => $this->avatarRules(), 'remove_avatar'
-   => ['nullable', 'boolean'],` to the returned array (alongside the existing `...$this->profileRules()`
+=> ['nullable', 'boolean'],` to the returned array (alongside the existing `...$this->profileRules()`
    spread).
 
 5. **`UpdateUserRequest::rules()` (D5).** Same two keys added to its returned array, alongside
@@ -108,13 +113,14 @@ traceability. Do not revisit a locked decision. Before editing, go through `/gsd
 
 6. **`ProfileUpdateRequest::rules()` (D5).** Currently `return $this->profileRules($this->user()->id);`
    — change to:
-   ```php
-   return [
-       ...$this->profileRules($this->user()->id),
-       'avatar' => $this->avatarRules(),
-       'remove_avatar' => ['nullable', 'boolean'],
-   ];
-   ```
+
+    ```php
+    return [
+        ...$this->profileRules($this->user()->id),
+        'avatar' => $this->avatarRules(),
+        'remove_avatar' => ['nullable', 'boolean'],
+    ];
+    ```
 
 7. **`UserManagementController::store()` (D1, D4).** After the existing
    `$user->forceFill([...])->save();`, add
@@ -151,7 +157,7 @@ factory state for a single-field setup.
 **`CreateUserTest.php`**
 
 - `creating a user with a picture stores the file, sets avatar_path, and the avatar appears in
-  the Inertia user list` — post `admin.users.store` with
+the Inertia user list` — post `admin.users.store` with
   `'avatar' => UploadedFile::fake()->image('avatar.jpg')`; assert the created user's
   `avatar_path` is not null and `Storage::disk('public')->assertExists($created->avatar_path)`;
   then, still acting as the same admin, `get(route('admin.users.index'))` and assert the
@@ -219,69 +225,76 @@ Depends on Task 1 — the `avatar` field must already be present on `auth.user` 
    `avatarUrl?: string | null` (the current picture from the server; `null`/absent for a
    brand-new user), `error?: string`.
 
-   State: `previewUrl = ref<string | null>(null)` (an object URL for a newly chosen file),
-   `pendingRemoval = ref(false)`, `fileInputRef = ref<HTMLInputElement | null>(null)`.
+    State: `previewUrl = ref<string | null>(null)` (an object URL for a newly chosen file),
+    `pendingRemoval = ref(false)`, `fileInputRef = ref<HTMLInputElement | null>(null)`.
 
-   `displayUrl = computed(() => previewUrl.value ?? (pendingRemoval.value ? null : (props.avatarUrl ?? null)))`.
+    `displayUrl = computed(() => previewUrl.value ?? (pendingRemoval.value ? null : (props.avatarUrl ?? null)))`.
 
-   `onFileChange(event)`: read `event.target.files?.[0]`; revoke any existing `previewUrl` first
-   (`URL.revokeObjectURL`); if a file was picked, `previewUrl.value = URL.createObjectURL(file)`
-   and `pendingRemoval.value = false` (D11 — choosing a new file cancels a pending removal).
+    `onFileChange(event)`: read `event.target.files?.[0]`; revoke any existing `previewUrl` first
+    (`URL.revokeObjectURL`); if a file was picked, `previewUrl.value = URL.createObjectURL(file)`
+    and `pendingRemoval.value = false` (D11 — choosing a new file cancels a pending removal).
 
-   `removePicture()`: `pendingRemoval.value = true`; clear `fileInputRef.value!.value = ''`;
-   revoke and clear `previewUrl` if set.
+    `removePicture()`: `pendingRemoval.value = true`; clear `fileInputRef.value!.value = ''`;
+    revoke and clear `previewUrl` if set.
 
-   `keepPicture()`: `pendingRemoval.value = false` — the undo (D11).
+    `keepPicture()`: `pendingRemoval.value = false` — the undo (D11).
 
-   `onBeforeUnmount`: revoke `previewUrl` if still set (D11 — revoked on change and on unmount).
+    `onBeforeUnmount`: revoke `previewUrl` if still set (D11 — revoked on change and on unmount).
 
-   Template (single root `<div class="grid gap-2">`): a visible
-   `<Label :for="`${id}-input`">Profile Picture</Label>` (clicking it also opens the file dialog,
+    Template (single root `<div class="grid gap-2">`): a visible
+    `<Label :for="`${id}-input`">Profile Picture</Label>` (clicking it also opens the file dialog,
    since labels are natively associated with file inputs); an `Avatar` (`h-16 w-16`) containing
    `AvatarImage` (`v-if="displayUrl"`, `:src="displayUrl"`, `:alt="name"`, **`class="object-cover"`**
    — the shared `AvatarImage.vue` primitive has no `object-fit` of its own and must not be
    hand-edited, so add it per-usage here per D9) and `AvatarFallback` showing
    `getInitials(name)` from `useInitials`; the real
    `<input :id="`${id}-input`" ref="fileInputRef" type="file" name="avatar" accept="image/png,image/jpeg,image/webp" class="sr-only" @change="onFileChange">`;
-   a `Button type="button" variant="outline" size="sm" @click="fileInputRef?.click()"` reading
-   "Change picture" when `displayUrl` is set, "Add picture" otherwise; a
-   `Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" v-if="avatarUrl && !pendingRemoval" @click="removePicture"`
-   reading "Remove"; a `Button type="button" variant="ghost" size="sm" v-if="pendingRemoval" @click="keepPicture"`
-   reading "Keep picture"; a
-   `<input type="hidden" name="remove_avatar" :value="pendingRemoval ? '1' : '0'">`; and
-   `<InputError :message="error" />`. Tailwind utilities and semantic tokens only — reuse
-   `Avatar`/`AvatarImage`/`AvatarFallback`/`Button`/`Label`/`InputError`, no new styling
-   primitives (D11).
+    a `Button type="button" variant="outline" size="sm" @click="fileInputRef?.click()"` reading
+    "Change picture" when `displayUrl` is set, "Add picture" otherwise; a
+    `Button type="button" variant="ghost" size="sm" class="text-destructive hover:text-destructive" v-if="avatarUrl && !pendingRemoval" @click="removePicture"`
+    reading "Remove"; a `Button type="button" variant="ghost" size="sm" v-if="pendingRemoval" @click="keepPicture"`
+    reading "Keep picture"; a
+    `<input type="hidden" name="remove_avatar" :value="pendingRemoval ? '1' : '0'">`; and
+    `<InputError :message="error" />`. Tailwind utilities and semantic tokens only — reuse
+    `Avatar`/`AvatarImage`/`AvatarFallback`/`Button`/`Label`/`InputError`, no new styling
+    primitives (D11).
 
 2. **`UserManagement.vue` (D10, D12).**
-   - `ManagedUser` interface: add `avatar: string | null;`.
-   - Create dialog: add `const newUserAvatarName = ref('');` updated via
-     `@input="newUserAvatarName = ($event.target as HTMLInputElement).value"` on the existing
-     Name `<Input>` — a side-channel ref purely to feed the live initials fallback, matching
-     this file's existing `newUserRole` pattern (a plain ref alongside the Form, not a
-     controlled input); the Name field's own native `name="name"` submission is untouched.
-     Place `<AvatarField id="create-user-avatar" :name="newUserAvatarName" :avatar-url="null" :error="errors.avatar" />`
-     inside the create `<Form>`.
-   - Edit dialog: `<AvatarField id="edit-user-avatar" :name="editingUser.name" :avatar-url="editingUser.avatar" :error="errors.avatar" />`
-     inside the edit `<Form>` — which already carries `:key="editingUser.id"`, so switching the
-     user being edited remounts the field with fresh state; no manual reset needed.
-   - Table (D12 — do not restructure this table, no search/filter here): in the Name `<td>`,
-     wrap the existing `{{ user.name }}` with an avatar, same gradient/classes `UserInfo.vue`
-     already uses so the look matches the sidebar:
-     ```html
-     <div class="flex items-center gap-3">
-       <Avatar class="h-8 w-8 overflow-hidden rounded-full">
-         <AvatarImage v-if="user.avatar" :src="user.avatar" :alt="user.name" class="object-cover" />
-         <AvatarFallback class="from-ink-cyan to-primary text-primary-foreground bg-linear-to-br text-xs font-semibold">
-           {{ getInitials(user.name) }}
-         </AvatarFallback>
-       </Avatar>
-       <span>{{ user.name }}</span>
-     </div>
-     ```
-   - Imports: `Avatar, AvatarFallback, AvatarImage` from `@/components/ui/avatar`,
-     `useInitials` from `@/composables/useInitials`, `AvatarField` from
-     `@/components/AvatarField.vue`.
+    - `ManagedUser` interface: add `avatar: string | null;`.
+    - Create dialog: add `const newUserAvatarName = ref('');` updated via
+      `@input="newUserAvatarName = ($event.target as HTMLInputElement).value"` on the existing
+      Name `<Input>` — a side-channel ref purely to feed the live initials fallback, matching
+      this file's existing `newUserRole` pattern (a plain ref alongside the Form, not a
+      controlled input); the Name field's own native `name="name"` submission is untouched.
+      Place `<AvatarField id="create-user-avatar" :name="newUserAvatarName" :avatar-url="null" :error="errors.avatar" />`
+      inside the create `<Form>`.
+    - Edit dialog: `<AvatarField id="edit-user-avatar" :name="editingUser.name" :avatar-url="editingUser.avatar" :error="errors.avatar" />`
+      inside the edit `<Form>` — which already carries `:key="editingUser.id"`, so switching the
+      user being edited remounts the field with fresh state; no manual reset needed.
+    - Table (D12 — do not restructure this table, no search/filter here): in the Name `<td>`,
+      wrap the existing `{{ user.name }}` with an avatar, same gradient/classes `UserInfo.vue`
+      already uses so the look matches the sidebar:
+        ```html
+        <div class="flex items-center gap-3">
+            <Avatar class="h-8 w-8 overflow-hidden rounded-full">
+                <AvatarImage
+                    v-if="user.avatar"
+                    :src="user.avatar"
+                    :alt="user.name"
+                    class="object-cover"
+                />
+                <AvatarFallback
+                    class="from-ink-cyan to-primary text-primary-foreground bg-linear-to-br text-xs font-semibold"
+                >
+                    {{ getInitials(user.name) }}
+                </AvatarFallback>
+            </Avatar>
+            <span>{{ user.name }}</span>
+        </div>
+        ```
+    - Imports: `Avatar, AvatarFallback, AvatarImage` from `@/components/ui/avatar`,
+      `useInitials` from `@/composables/useInitials`, `AvatarField` from
+      `@/components/AvatarField.vue`.
 
 3. **`settings/Profile.vue` (D11).** Add
    `<AvatarField id="profile-avatar" :name="user.name" :avatar-url="user.avatar ?? null" :error="errors.avatar" />`

@@ -3,11 +3,13 @@
 Artist PNG/JPG upload, payment-gated production start/done/undo, and a rewritten production board.
 
 ## Commits
+
 - c5b1197 Task 1: artist uploads a finished PNG/JPG design
 - 824d210 Task 2: payment gate and start/done/undo (server + tests)
 - 56da31f Task 3: rewrite the production board page
 
 ## What changed
+
 - `SendForReviewRequest`: `image`, `mimes:png,jpg,jpeg`, `max` = `max_file_size_mb` x 1024 KB.
 - `JobOrderWorkspace.vue`: Upload a Design picker (also beside the open editor), object-URL preview (revoked on change/unmount), Send for Review, Choose a different file, Use the editor instead, `InputError` for `file`, submitted image shown while pending review.
 - `JobOrder::isClearedForProduction()` backed by one private constant (PartiallyPaid, Paid, OnCredit).
@@ -17,6 +19,7 @@ Artist PNG/JPG upload, payment-gated production start/done/undo, and a rewritten
 - `Dashboard.vue` rewritten: tabs To Print / Awaiting Payment / Done / All with counts, Payment column, per-row Start/Done/Undo, search kept, rush banner and amber row kept, failed-move alert kept (shows "Awaiting payment").
 
 ## Verification results
+
 - `php artisan test --compact tests/Feature/ProductionStaff tests/Feature/Artist tests/Feature/Cashier/ProductionCompatibilityTest.php tests/Feature/JobOrder/EnterProductionTest.php`: 150 passed, 0 failed (788 assertions).
 - Task 1 run (Artist): 78 passed. Task 2 run (ProductionStaff + compat + EnterProduction): 72 passed.
 - `vendor/bin/pint --dirty --format agent`: passed.
@@ -26,21 +29,26 @@ Artist PNG/JPG upload, payment-gated production start/done/undo, and a rewritten
 - `composer types:check` (Larastan) not run.
 
 ## NOT browser-verified
+
 I did not run any browser or server (per instructions). Interactions most needing a check:
+
 1. Artist: pick a JPG via Upload a Design, see the preview, "Choose a different file" re-opens the picker and swaps, "Use the editor instead" clears; Send for Review; submitted image visible while pending review; a PDF/oversized file shows the `file` error. Hidden `sr-only` file input is triggered by buttons (keyboard-reachable via the buttons).
 2. Artist: the Upload a Design button next to an already-open Photopea editor, and that choosing a file there swaps the editor view for the preview.
 3. Production board: unpaid order appears under Awaiting Payment with no buttons; after a down payment it moves to To Print; Start, Done, Undo each work and update counts; search filters; tabs wrap at 375px; both themes; the 5-second poll does not reset the active tab.
 4. Quality Check legacy rows show Done and Undo.
 
 ## Deviations
+
 - None from the plan's intent. Notes: the `Urgency` column was dropped (Rush badge now sits in the Job Order cell, per the plan's column list); a ready_for_pickup row that is somehow not cleared shows "Awaiting payment" with no Undo, as the plan specifies.
 - Wayfinder output is gitignored, so nothing generated was committed.
 - The old "Rush only" switch and stat cards were removed as specified.
 
 ## Known Stubs
+
 None.
 
 ## Threat Flags
+
 None beyond the plan's threat model (T-1cb-01..04 mitigated and tested; T-1cb-02/03 covered by locked-row cancellation and payment-reversal tests).
 
 ## Orchestrator review and browser verification (a7e1d8e)

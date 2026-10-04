@@ -3,26 +3,31 @@
 Public `/order` form: an order is parked as a prunable `OnlineOrder`, a signed 48-hour link is emailed, and only confirming creates the customer, an O-lane visit and job orders (then sends `JobOrdersReceived`).
 
 ## Commits
+
 - 7ab24aa backend (model, migration, factory, request, controller, mail, routes, prune schedule, expired-link branch, 12 tests)
 - follow-up fix: Larastan errors in OnlineOrder / controller
 - Order.vue, OrderConfirm.vue, customer wording in JobOrderRowFields / JobOrderPriceFields
 - Welcome call to action + WelcomePageTest assertion
 
 ## Verification
+
 - `php artisan test` on Public, Artist, FrontlineStaff, JobOrder: 354 passed.
 - `composer types:check`: 19 errors (baseline), none in touched files. `npm run types:check` clean. Pint and `vp check` clean on touched files.
 - Migration NOT run against the dev database (file only). UI type-checked and linted but NOT driven in a browser by me.
 
 ## Deviations
+
 - Mail confirm link and the page's confirm POST use separate signed routes (`confirm.show` GET, `confirm` POST, same path), as planned.
 - No Toaster exists on layout-less public pages, so errors use a `role="alert"` summary in the sticky footer.
 
 ## Known stubs
+
 None.
 
 ## Orchestrator review and browser verification
 
 Commit c30cb4f (review of the unauthenticated surface, then a browser pass):
+
 - Item `description` is now the catalog product's name, copied server-side; `pricing_entry_id` is required and must be active. A visitor's own text was otherwise put into an email the shop sends to any address they typed (markdown links included).
 - Only a print-ready row keeps its upload; a file on a design request was stored with no format or size check.
 - Orders are limited where mail is sent (5 per 10 minutes per connection, `RateLimiter` in `store()`); the route throttle is now only a coarse `30,1`. Failed validation no longer uses up the allowance and no longer ends in a bare 429.
@@ -32,6 +37,7 @@ Commit c30cb4f (review of the unauthenticated surface, then a browser pass):
 - Home page header: links stay on one line; below `sm` the pill is "Order online" and the "Track an order" shortcut is dropped (the tracker is the first panel on a phone).
 
 Driven in headless Chrome against a seeded SQLite copy with the log mailer, logged out, at 1366px and 375px, light and dark:
+
 - Home page: three "Order online" links; header on one line from 375px to 1366px; hero button opens the form; no prices on the form.
 - Empty submit: plain-language summary, scrolled into view and focused.
 - Type switched both ways; product picked then changed; items added to the cap of five and removed back; file chosen.

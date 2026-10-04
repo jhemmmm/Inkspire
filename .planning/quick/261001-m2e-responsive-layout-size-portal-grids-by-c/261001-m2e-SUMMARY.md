@@ -3,60 +3,70 @@ quick_id: 261001-m2e
 phase: quick
 plan: 261001-m2e
 subsystem: frontend
-tags: [tailwind-v4, container-queries, responsive, PageContainer, DataTableCard, EmptyState, StatCard, TableFilterBar]
+tags:
+    [
+        tailwind-v4,
+        container-queries,
+        responsive,
+        PageContainer,
+        DataTableCard,
+        EmptyState,
+        StatCard,
+        TableFilterBar,
+    ]
 dependency-graph:
-  requires: [261001-he2, 261001-i4q]
-  provides: [container-query-grids-every-portal]
-  affects:
-    - resources/js/components/PageContainer.vue
-    - resources/js/components/DataTableCard.vue
-    - resources/js/components/EmptyState.vue
-    - resources/js/components/StatCard.vue
-    - resources/js/components/TableFilterBar.vue
-    - resources/js/components/JobOrderPriceFields.vue
-    - resources/js/components/reports/ReportsWorkspace.vue
-    - resources/js/pages/admin/*
-    - resources/js/pages/accounting-staff/*
-    - resources/js/pages/artist/*
-    - resources/js/pages/cashier/*
-    - resources/js/pages/frontline-staff/*
-    - resources/js/pages/production-staff/Dashboard.vue
+    requires: [261001-he2, 261001-i4q]
+    provides: [container-query-grids-every-portal]
+    affects:
+        - resources/js/components/PageContainer.vue
+        - resources/js/components/DataTableCard.vue
+        - resources/js/components/EmptyState.vue
+        - resources/js/components/StatCard.vue
+        - resources/js/components/TableFilterBar.vue
+        - resources/js/components/JobOrderPriceFields.vue
+        - resources/js/components/reports/ReportsWorkspace.vue
+        - resources/js/pages/admin/*
+        - resources/js/pages/accounting-staff/*
+        - resources/js/pages/artist/*
+        - resources/js/pages/cashier/*
+        - resources/js/pages/frontline-staff/*
+        - resources/js/pages/production-staff/Dashboard.vue
 tech-stack:
-  added: []
-  patterns:
-    - Tailwind v4 container queries (`@container` on PageContainer/DataTableCard, `@lg:`/`@md:`/`@2xl:`/`@3xl:`/`@5xl:` on descendants) replacing viewport-based layout variants, so page grids size against real content width (viewport minus sidebar minus padding), not the raw viewport
+    added: []
+    patterns:
+        - Tailwind v4 container queries (`@container` on PageContainer/DataTableCard, `@lg:`/`@md:`/`@2xl:`/`@3xl:`/`@5xl:` on descendants) replacing viewport-based layout variants, so page grids size against real content width (viewport minus sidebar minus padding), not the raw viewport
 key-files:
-  created: []
-  modified:
-    - resources/js/components/PageContainer.vue
-    - resources/js/components/StatCard.vue
-    - resources/js/components/DataTableCard.vue
-    - resources/js/components/EmptyState.vue
-    - resources/js/components/TableFilterBar.vue
-    - resources/js/components/JobOrderPriceFields.vue
-    - resources/js/components/reports/ReportsWorkspace.vue
-    - resources/js/pages/admin/AuditTrail.vue
-    - resources/js/pages/admin/CreditRequests.vue
-    - resources/js/pages/admin/Dashboard.vue
-    - resources/js/pages/admin/DesignOverrides.vue
-    - resources/js/pages/admin/JobOrders.vue
-    - resources/js/pages/admin/Specifications.vue
-    - resources/js/pages/admin/UserManagement.vue
-    - resources/js/pages/admin/WriteOffRequests.vue
-    - resources/js/pages/accounting-staff/AccountsReceivable/Index.vue
-    - resources/js/pages/accounting-staff/Expenses/Index.vue
-    - resources/js/pages/artist/Dashboard.vue
-    - resources/js/pages/artist/JobOrderWorkspace.vue
-    - resources/js/pages/artist/PerformanceReport.vue
-    - resources/js/pages/cashier/Dashboard.vue
-    - resources/js/pages/cashier/JobOrderPayment.vue
-    - resources/js/pages/frontline-staff/JobOrderDetail.vue
-    - resources/js/pages/frontline-staff/NewVisit.vue
-    - resources/js/pages/production-staff/Dashboard.vue
+    created: []
+    modified:
+        - resources/js/components/PageContainer.vue
+        - resources/js/components/StatCard.vue
+        - resources/js/components/DataTableCard.vue
+        - resources/js/components/EmptyState.vue
+        - resources/js/components/TableFilterBar.vue
+        - resources/js/components/JobOrderPriceFields.vue
+        - resources/js/components/reports/ReportsWorkspace.vue
+        - resources/js/pages/admin/AuditTrail.vue
+        - resources/js/pages/admin/CreditRequests.vue
+        - resources/js/pages/admin/Dashboard.vue
+        - resources/js/pages/admin/DesignOverrides.vue
+        - resources/js/pages/admin/JobOrders.vue
+        - resources/js/pages/admin/Specifications.vue
+        - resources/js/pages/admin/UserManagement.vue
+        - resources/js/pages/admin/WriteOffRequests.vue
+        - resources/js/pages/accounting-staff/AccountsReceivable/Index.vue
+        - resources/js/pages/accounting-staff/Expenses/Index.vue
+        - resources/js/pages/artist/Dashboard.vue
+        - resources/js/pages/artist/JobOrderWorkspace.vue
+        - resources/js/pages/artist/PerformanceReport.vue
+        - resources/js/pages/cashier/Dashboard.vue
+        - resources/js/pages/cashier/JobOrderPayment.vue
+        - resources/js/pages/frontline-staff/JobOrderDetail.vue
+        - resources/js/pages/frontline-staff/NewVisit.vue
+        - resources/js/pages/production-staff/Dashboard.vue
 decisions: []
 metrics:
-  duration: ~25min
-  completed: 2026-10-01
+    duration: ~25min
+    completed: 2026-10-01
 ---
 
 # Quick Task 261001-m2e: Responsive layout — size portal grids by their container Summary
@@ -93,10 +103,10 @@ None — plan executed exactly as written. No before-string mismatches were foun
 - **`npx vp check --fix`**, run scoped to each task's exact file list (never the bare `npm run check:fix`): all three runs passed with "Found no warnings or lint errors." The formatter reordered Tailwind classes within every touched `class` string (e.g. moving the new `@container`/`@lg:`/etc. token to its sorted position) — this is the expected, allowed reordering per the environment instructions, not a content change.
 - **`npm run types:check`** (`vue-tsc --noEmit`): clean after Task 1, Task 2, and Task 3, and clean again on the full project at the end. Note: the IDE's live diagnostics panel repeatedly flagged false-positive errors during editing (e.g. "Cannot find module 'vue'/'@inertiajs/vue3'", "Module ... has no default export" for `.vue` SFCs, implicit-`any` parameter errors) on essentially every file touched — these are a stale/lagging incremental TS server in this session, not real errors; the authoritative `vue-tsc --noEmit` run was clean every time and is what gates this task.
 - **`php artisan test --compact`**, scoped per task and then the full cross-portal run specified in the plan's own "Verification" section:
-  - Task 1: `tests/Feature/Reports tests/Feature/FrontlineStaff` — 165 passed, 804 assertions.
-  - Task 2: `tests/Feature/Admin` — 143 passed, 717 assertions.
-  - Task 3: `tests/Feature/AccountingStaff tests/Feature/AccountsReceivable tests/Feature/Artist tests/Feature/Cashier tests/Feature/FrontlineStaff tests/Feature/ProductionStaff` — 392 passed, 2066 assertions.
-  - Full plan-level run: `tests/Feature/Admin tests/Feature/AccountingStaff tests/Feature/AccountsReceivable tests/Feature/Artist tests/Feature/Cashier tests/Feature/FrontlineStaff tests/Feature/ProductionStaff tests/Feature/Reports` — **573 passed, 2919 assertions, 0 failures.**
+    - Task 1: `tests/Feature/Reports tests/Feature/FrontlineStaff` — 165 passed, 804 assertions.
+    - Task 2: `tests/Feature/Admin` — 143 passed, 717 assertions.
+    - Task 3: `tests/Feature/AccountingStaff tests/Feature/AccountsReceivable tests/Feature/Artist tests/Feature/Cashier tests/Feature/FrontlineStaff tests/Feature/ProductionStaff` — 392 passed, 2066 assertions.
+    - Full plan-level run: `tests/Feature/Admin tests/Feature/AccountingStaff tests/Feature/AccountsReceivable tests/Feature/Artist tests/Feature/Cashier tests/Feature/FrontlineStaff tests/Feature/ProductionStaff tests/Feature/Reports` — **573 passed, 2919 assertions, 0 failures.**
 - **`git status`** confirmed throughout and at the end that no `app/`, `routes/`, or `database/` file changed — this task is 100% `.vue` class-string edits plus two small template comments, exactly as scoped. (`vendor/bin/pint`/`composer types:check` are not applicable, per the plan.)
 - **Final grep audit:** the plan's literal regex (`grep -rnoE "(sm|md|lg|xl|2xl):(grid-cols-...|...)\b" ...` across all 22 files) reports ~60 "hits." **Every one is a false positive.** The regex has no `@`-exclusion and no left word boundary, so it matches the `lg`/`md`/`2xl` substring inside the new `@lg:`/`@md:`/`@2xl:` container tokens, and — because `xl` is itself a substring of `2xl`/`3xl`/`5xl` — it also matches inside `@2xl:grid-cols-2`, `@3xl:grid-cols-2`, and `@5xl:grid-cols-4`. Re-running the identical check with a corrected pattern that requires the `sm|md|lg|xl|2xl` token not be immediately preceded by `@` or another word character (`(^|[^@[:alnum:]_-])(sm|md|lg|xl|2xl):(...)`) returns **zero matches** across all 22 files — confirmed by exit code 1 (no match). The conversion is complete; no viewport layout variant remains in scope.
 

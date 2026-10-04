@@ -8,7 +8,7 @@ date: 2026-09-28
 # Quick Task 260928-0gj — Summary
 
 - `app.blade.php` computes `$lightOnly` from the Inertia component
-  (Welcome, auth/*, errors/*). It skips the `dark` class and the
+  (Welcome, auth/_, errors/_). It skips the `dark` class and the
   system-preference script for the first paint.
 - `useAppearance.ts`: `isLightOnlyPage()` is the client twin, and
   `updateTheme` never adds `dark` on such a page. `initializeTheme` now

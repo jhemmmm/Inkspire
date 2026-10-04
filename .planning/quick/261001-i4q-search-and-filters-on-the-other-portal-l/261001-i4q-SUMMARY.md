@@ -3,30 +3,39 @@ quick_id: 261001-i4q
 phase: quick
 plan: 261001-i4q
 subsystem: frontend
-tags: [search, filters, accounting-staff, cashier, production-staff, useTableFilter, TableFilterBar]
+tags:
+    [
+        search,
+        filters,
+        accounting-staff,
+        cashier,
+        production-staff,
+        useTableFilter,
+        TableFilterBar,
+    ]
 dependency-graph:
-  requires: [261001-he2]
-  provides: [client-side-search-filters-non-admin-portals]
-  affects:
-    - resources/js/pages/accounting-staff/AccountsReceivable/Index.vue
-    - resources/js/pages/accounting-staff/Expenses/Index.vue
-    - resources/js/pages/cashier/Dashboard.vue
-    - resources/js/pages/production-staff/Dashboard.vue
+    requires: [261001-he2]
+    provides: [client-side-search-filters-non-admin-portals]
+    affects:
+        - resources/js/pages/accounting-staff/AccountsReceivable/Index.vue
+        - resources/js/pages/accounting-staff/Expenses/Index.vue
+        - resources/js/pages/cashier/Dashboard.vue
+        - resources/js/pages/production-staff/Dashboard.vue
 tech-stack:
-  added: []
-  patterns:
-    - Reused useTableFilter + TableFilterBar (from 261001-he2) as a second filter layer composed on top of each page's existing tab/section filter (AND composition)
+    added: []
+    patterns:
+        - Reused useTableFilter + TableFilterBar (from 261001-he2) as a second filter layer composed on top of each page's existing tab/section filter (AND composition)
 key-files:
-  created: []
-  modified:
-    - resources/js/pages/accounting-staff/AccountsReceivable/Index.vue
-    - resources/js/pages/accounting-staff/Expenses/Index.vue
-    - resources/js/pages/cashier/Dashboard.vue
-    - resources/js/pages/production-staff/Dashboard.vue
+    created: []
+    modified:
+        - resources/js/pages/accounting-staff/AccountsReceivable/Index.vue
+        - resources/js/pages/accounting-staff/Expenses/Index.vue
+        - resources/js/pages/cashier/Dashboard.vue
+        - resources/js/pages/production-staff/Dashboard.vue
 decisions: []
 metrics:
-  duration: ~45min
-  completed: 2026-10-01
+    duration: ~45min
+    completed: 2026-10-01
 ---
 
 # Quick Task 261001-i4q: Search and filters on the other-portal pages Summary
@@ -42,6 +51,7 @@ Search across job order number / customer / description, plus a Collection statu
 Search across description / category / recorded by, plus a Category `SearchableSelect` (configured categories from the `categories` prop, plus any category still present on a row but no longer configured) and a Status `Select` (Active / Voided, derived from `voided_at`). Applied on top of `props.rows` (the existing server-side date range is untouched; "Clear filters" never touches `DateRangeControl`). `total`/`activeCount`/`voidedCount` StatCard keeps reading server props. New "No matches" empty state added after the existing "no expenses" / "nothing in this range" block, `data-test="clear-expense-filters-button"`.
 
 **Task 3 — `cashier/Dashboard.vue` + `production-staff/Dashboard.vue`:**
+
 - Cashier: search across job order number / customer / description, plus a Payment status `Select` (options derived from the rows present). `paymentGroups` now filters `filteredJobOrders.value` per rush/regular section instead of `props.jobOrders` directly, while a new `baseCount` field (unfiltered per-section count) decides between the all-time-empty state (unchanged copy/no action) and the new "No matches" state (with a per-section Clear filters button, `data-test="clear-cashier-rush-filters-button"` / `clear-cashier-regular-filters-button`).
 - Production: search across job order number / customer / description, plus a "Rush only" `Switch` (`data-test="production-rush-only-toggle"`). Applied on top of the existing `filteredJobOrders` (stage/rush tab layer) — `visibleJobOrders` is the new output. `stageCounts` tiles keep summing the whole board. New "No matches" empty state added after the existing tab-empty block, `data-test="clear-production-filters-button"`.
 
@@ -55,11 +65,11 @@ None — plan executed exactly as written. One placement note: in `production-st
 
 - `npx vp check --fix resources/js/pages/accounting-staff/AccountsReceivable/Index.vue resources/js/pages/accounting-staff/Expenses/Index.vue resources/js/pages/cashier/Dashboard.vue resources/js/pages/production-staff/Dashboard.vue` — pass, no warnings/lint errors, scoped to exactly these 4 files (not the bare `npm run check:fix`).
 - `npm run types:check` (`vue-tsc --noEmit`) — clean, zero errors on the full project.
-  - Note: the IDE's live diagnostics panel repeatedly flagged false-positive errors mid-edit (e.g. "Cannot find module 'vue'", "Module ... has no default export" for `.vue` SFCs, `'row' is of type 'unknown'` inside `useTableFilter` callbacks) throughout this task. These were confirmed stale/incorrect against the real `vue-tsc --noEmit` run after every task, which passed cleanly every time — the IDE's incremental TS server was lagging behind the actual file state in this session. No code changes were made in response to these phantom diagnostics.
+    - Note: the IDE's live diagnostics panel repeatedly flagged false-positive errors mid-edit (e.g. "Cannot find module 'vue'", "Module ... has no default export" for `.vue` SFCs, `'row' is of type 'unknown'` inside `useTableFilter` callbacks) throughout this task. These were confirmed stale/incorrect against the real `vue-tsc --noEmit` run after every task, which passed cleanly every time — the IDE's incremental TS server was lagging behind the actual file state in this session. No code changes were made in response to these phantom diagnostics.
 - `php artisan test --compact tests/Feature/AccountingStaff tests/Feature/Cashier tests/Feature/ProductionStaff` — **173 passed, 975 assertions**, 0 failures. Individual task-scoped runs also passed:
-  - `AccountsReceivableListTest.php` — 5 passed, 64 assertions
-  - `ExpenseTest.php` — 14 passed, 41 assertions
-  - `CashierDashboardPaidFilterTest.php` + `CashierPagesTest.php` + `ProductionBoardTest.php` — 31 passed, 285 assertions
+    - `AccountsReceivableListTest.php` — 5 passed, 64 assertions
+    - `ExpenseTest.php` — 14 passed, 41 assertions
+    - `CashierDashboardPaidFilterTest.php` + `CashierPagesTest.php` + `ProductionBoardTest.php` — 31 passed, 285 assertions
 - `git status` confirmed no `app/`, `routes/`, or `database/` file changed at any point — this task is 100% frontend, four `.vue` files only.
 
 ## Unverified Interactions (browser verification required)
@@ -67,23 +77,27 @@ None — plan executed exactly as written. One placement note: in `production-st
 Per the task constraints, no browser was driven in this execution. The following must be exercised in a real browser (both themes, 375px and desktop) before this task is considered closed, per CLAUDE.md's "UI Changes Require a User-Friendly Check":
 
 **Accounts Receivable** (`resources/js/pages/accounting-staff/AccountsReceivable/Index.vue`):
+
 - Search input: `id="receivable-collection-status-filter"` sibling search box inside `TableFilterBar` (label "Search receivables", no fixed id — generated via `useId()` inside `TableFilterBar.vue`)
 - Collection status select: `#receivable-collection-status-filter`
 - Clear filters button: `data-test="clear-receivable-filters-button"` (new matches-empty state) and `data-test="table-filter-clear-button"` (TableFilterBar's own, shown once any filter is active)
 - Confirm: tab switch + search + collection-status filter compose (AND), Clear filters resets the bracket/closed tab back to "All" too, bracket `StatCard` totals never change when filtering, "View Entry" row action still works on `visibleRows`
 
 **Expenses** (`resources/js/pages/accounting-staff/Expenses/Index.vue`):
+
 - Category select: `#expense-category-filter` (a `SearchableSelect` combobox — type to filter, not a native `<select>`)
 - Status select: `#expense-status-filter`
 - Clear filters button: `data-test="clear-expense-filters-button"` and `data-test="table-filter-clear-button"`
 - Confirm: date range control is unaffected by Clear filters, Edit/Void row buttons (`data-test="edit-expense-{id}-button"` / `data-test="void-expense-{id}-button"`) still work on filtered rows, total/activeCount/voidedCount StatCard never changes when filtering
 
 **Cashier Dashboard** (`resources/js/pages/cashier/Dashboard.vue`):
+
 - Payment status select: `#cashier-payment-status-filter`
 - Clear filters buttons: `data-test="clear-cashier-rush-filters-button"`, `data-test="clear-cashier-regular-filters-button"`, `data-test="table-filter-clear-button"`
 - Confirm: each section (rush/regular) keeps its own two-tier empty state and `SectionHeading` stays visible even when that section's filtered result is empty; row actions (`process-payment-{id}-link`, `check-payment-status-{id}-button`, `view-receipt-{id}-link`, `cancel-job-order-{id}-item`) still work on filtered rows
 
 **Production Board** (`resources/js/pages/production-staff/Dashboard.vue`):
+
 - Rush only switch: `data-test="production-rush-only-toggle"` (id `production-rush-only-filter`) — keyboard-reachable via Tab + Space/Enter per the reka-ui `Switch` primitive
 - Clear filters button: `data-test="clear-production-filters-button"` and `data-test="table-filter-clear-button"`
 - Confirm: search + Rush only toggle compose with the existing stage/rush tabs (e.g. "Printing" tab + Rush only together), Clear filters resets the stage/rush tab back to "All" too, stageCounts tiles never change when filtering, Advance/Send Back row actions (`advance-job-order-{id}-button`, `send-back-job-order-{id}-button`) still work on `visibleJobOrders`

@@ -32,10 +32,10 @@ Planned and executed inline by the orchestrator, not by planner/executor agents:
 
 ## Tasks
 
-| # | Task | Files | Verify |
-| - | ---- | ----- | ------ |
-| 1 | Image and stack definition | `Dockerfile`, `.dockerignore`, `compose.yaml` | Image builds on the server; `docker compose ps` shows all four services healthy/running |
-| 2 | Redeploy script | `deploy.sh` | Running it against the server rebuilds and restarts the stack |
-| 3 | Deploy and verify | server only | `/up` returns 200 on `127.0.0.1:8080`; nothing but SSH and the pre-existing Apache listens on the LAN address; login works; tunnel registers; admin password rotated |
+| #   | Task                       | Files                                         | Verify                                                                                                                                                               |
+| --- | -------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Image and stack definition | `Dockerfile`, `.dockerignore`, `compose.yaml` | Image builds on the server; `docker compose ps` shows all four services healthy/running                                                                              |
+| 2   | Redeploy script            | `deploy.sh`                                   | Running it against the server rebuilds and restarts the stack                                                                                                        |
+| 3   | Deploy and verify          | server only                                   | `/up` returns 200 on `127.0.0.1:8080`; nothing but SSH and the pre-existing Apache listens on the LAN address; login works; tunnel registers; admin password rotated |
 
 No application code changes, so no Pest tests are added. The stack's own check is the `app` healthcheck against Laravel's `/up` route.
