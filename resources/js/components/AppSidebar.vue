@@ -4,11 +4,9 @@ import { LayoutGrid } from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
-import NavUser from '@/components/NavUser.vue';
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
@@ -49,10 +47,6 @@ const navItems = computed(() => props.items ?? defaultNavItems);
         <SidebarContent>
             <NavMain :items="navItems" />
         </SidebarContent>
-
-        <SidebarFooter class="border-sidebar-border border-t">
-            <NavUser />
-        </SidebarFooter>
     </Sidebar>
     <slot />
 </template>

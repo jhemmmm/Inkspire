@@ -19,7 +19,7 @@ defineProps<{
 
 <template>
     <div
-        class="bg-muted text-foreground flex min-h-screen flex-col overflow-x-clip"
+        class="bg-muted text-foreground group flex min-h-screen flex-col overflow-x-clip"
     >
         <header
             :class="[

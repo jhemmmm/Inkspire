@@ -7,49 +7,28 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
-    useSidebar,
-} from '@/components/ui/sidebar';
 import UserInfo from '@/components/UserInfo.vue';
 import UserMenuContent from '@/components/UserMenuContent.vue';
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
-const { isMobile, state } = useSidebar();
 </script>
 
 <template>
-    <SidebarMenu>
-        <SidebarMenuItem>
-            <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                    <SidebarMenuButton
-                        size="lg"
-                        class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                        data-test="sidebar-menu-button"
-                    >
-                        <UserInfo :user="user" show-role />
-                        <ChevronsUpDown class="ml-auto size-4" />
-                    </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                    class="w-(--reka-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-                    :side="
-                        isMobile
-                            ? 'bottom'
-                            : state === 'collapsed'
-                              ? 'left'
-                              : 'bottom'
-                    "
-                    align="end"
-                    :side-offset="4"
-                >
-                    <UserMenuContent :user="user" />
-                </DropdownMenuContent>
-            </DropdownMenu>
-        </SidebarMenuItem>
-    </SidebarMenu>
+    <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+            <button
+                type="button"
+                class="text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring data-[state=open]:bg-accent flex h-10 max-w-48 items-center gap-2 rounded-lg px-2 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                :aria-label="`Open profile menu for ${user.name}`"
+                data-test="profile-menu-button"
+            >
+                <UserInfo :user="user" show-role compact-on-mobile />
+                <ChevronsUpDown class="hidden size-4 shrink-0 sm:block" />
+            </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent class="min-w-56 rounded-lg" align="end">
+            <UserMenuContent :user="user" />
+        </DropdownMenuContent>
+    </DropdownMenu>
 </template>

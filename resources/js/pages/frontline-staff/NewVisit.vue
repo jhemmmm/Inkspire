@@ -357,7 +357,7 @@ function formatSlipDate(value: string): string {
 <template>
     <Head title="New Visit" />
 
-    <PageContainer>
+    <PageContainer class="group">
         <PageHeader
             class="print:hidden"
             title="New Visit"
@@ -920,49 +920,44 @@ function formatSlipDate(value: string): string {
                 :removable="intakeForm.job_orders.length > 1"
                 @remove="removeRow(index)"
             />
-
-            <!--
-                Sticky, because a visit with three job orders pushes these
-                buttons a full screen below the last field and staff were
-                scrolling back down to find them.
-            -->
-            <div
-                class="bg-background/95 border-border sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+            <Button
+                type="button"
+                variant="secondary"
+                class="self-start"
+                data-test="add-job-order-row-button"
+                @click="addRow"
             >
+                <Plus class="size-4" />
+                Add Another Job Order
+            </Button>
+
+            <div
+                class="bg-background/95 border-border sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur max-sm:group-has-[input:focus]:static max-sm:group-has-[textarea:focus]:static sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 lg:-mx-8 lg:px-8"
+            >
+                <p
+                    class="text-muted-foreground text-xs tabular-nums sm:text-sm"
+                    data-test="intake-estimated-total"
+                >
+                    {{ intakeForm.job_orders.length }} job order{{
+                        intakeForm.job_orders.length === 1 ? '' : 's'
+                    }}
+                    · Estimated total {{ money(estimatedTotal) }}
+                </p>
                 <Button
                     type="button"
-                    variant="secondary"
-                    data-test="add-job-order-row-button"
-                    @click="addRow"
+                    size="lg"
+                    class="w-full shrink-0 sm:w-auto"
+                    :disabled="intakeForm.processing"
+                    data-test="add-to-queue-button"
+                    @click="submitIntake"
                 >
-                    <Plus class="size-4" />
-                    Add Another Job Order
+                    <Ticket class="size-4" />
+                    {{
+                        intakeForm.processing
+                            ? 'Adding to queue…'
+                            : 'Add to Queue'
+                    }}
                 </Button>
-                <div class="flex items-center gap-4">
-                    <p
-                        class="text-muted-foreground text-sm tabular-nums"
-                        data-test="intake-estimated-total"
-                    >
-                        {{ intakeForm.job_orders.length }} job order{{
-                            intakeForm.job_orders.length === 1 ? '' : 's'
-                        }}
-                        · Estimated total {{ money(estimatedTotal) }}
-                    </p>
-                    <Button
-                        type="button"
-                        size="lg"
-                        :disabled="intakeForm.processing"
-                        data-test="add-to-queue-button"
-                        @click="submitIntake"
-                    >
-                        <Ticket class="size-4" />
-                        {{
-                            intakeForm.processing
-                                ? 'Adding to queue…'
-                                : 'Add to Queue'
-                        }}
-                    </Button>
-                </div>
             </div>
         </template>
     </PageContainer>

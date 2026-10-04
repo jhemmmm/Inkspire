@@ -121,7 +121,7 @@ const matches = computed(() => {
         v-model="model"
         :ignore-filter="true"
         :open-on-click="true"
-        class="relative"
+        class="relative min-w-0"
         @update:open="onOpenChange"
     >
         <ComboboxAnchor as-child>
@@ -133,7 +133,7 @@ const matches = computed(() => {
             <div
                 :class="
                     cn(
-                        'border-input bg-card focus-within:border-ring focus-within:ring-ring/50 dark:bg-input/30 flex h-9 w-full items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]',
+                        'border-input bg-card focus-within:border-ring focus-within:ring-ring/50 dark:bg-input/30 flex h-9 w-full min-w-0 items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]',
                         props.class,
                     )
                 "

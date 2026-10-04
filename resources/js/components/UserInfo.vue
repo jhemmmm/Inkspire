@@ -9,11 +9,13 @@ type Props = {
     user: User;
     showEmail?: boolean;
     showRole?: boolean;
+    compactOnMobile?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
     showEmail: false,
     showRole: false,
+    compactOnMobile: false,
 });
 
 const { getInitials } = useInitials();
@@ -36,10 +38,12 @@ const showAvatar = computed(
 
     <!--
         Secondary lines dim with `opacity` rather than `text-muted-foreground`
-        so they inherit whatever ground they sit on: the navy sidebar and the
-        white dropdown both stay legible.
+        so they inherit the text colour of the header or dropdown.
     -->
-    <div class="grid flex-1 text-left text-sm leading-tight">
+    <div
+        class="min-w-0 flex-1 text-left text-sm leading-tight"
+        :class="compactOnMobile ? 'hidden sm:grid' : 'grid'"
+    >
         <span class="truncate font-medium">{{ user.name }}</span>
         <span v-if="showEmail" class="truncate text-xs opacity-70">{{
             user.email

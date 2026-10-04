@@ -5,9 +5,9 @@
 #   DB_PASSWORD=
 #   TUNNEL_TOKEN=   from the Cloudflare Zero Trust dashboard
 #
-# and, when they exist, PAYMONGO_*, MAIL_MAILER, MAIL_FROM_ADDRESS and
-# RESEND_API_KEY. In the dashboard, route the tunnel's public hostname to
-# http://localhost:8080.
+# and, when they exist, the optional mail, session, PayMongo and Resend
+# settings mapped below. In the dashboard, route the tunnel's public hostname
+# to http://localhost:8080.
 #
 # ponytail: every service is on the host network and binds to 127.0.0.1. The
 # server is an unprivileged Proxmox LXC whose AppArmor profile blocks the
@@ -31,6 +31,9 @@ x-app: &app
         APP_KEY: ${APP_KEY:?}
         APP_URL: ${APP_URL:?}
         LOG_CHANNEL: stderr
+        # Full Inertia responses exceed the image's default 8k FastCGI header buffer.
+        NGINX_FASTCGI_BUFFERS: '8 64k'
+        NGINX_FASTCGI_BUFFER_SIZE: 64k
         DB_CONNECTION: mysql
         DB_HOST: 127.0.0.1
         DB_DATABASE: inkspire
@@ -40,7 +43,17 @@ x-app: &app
         # `php artisan queue:work` service like scheduler and use `database`.
         QUEUE_CONNECTION: sync
         MAIL_MAILER: ${MAIL_MAILER:-log}
+        MAIL_HOST: ${MAIL_HOST:-127.0.0.1}
+        MAIL_PORT: ${MAIL_PORT:-587}
+        MAIL_USERNAME: ${MAIL_USERNAME:-}
+        MAIL_PASSWORD: ${MAIL_PASSWORD:-}
         MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+        MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Inkspire}
+        SESSION_DRIVER: ${SESSION_DRIVER:-cookie}
+        SESSION_LIFETIME: ${SESSION_LIFETIME:-3600}
+        SESSION_ENCRYPT: ${SESSION_ENCRYPT:-false}
+        SESSION_PATH: ${SESSION_PATH:-/}
+        SESSION_DOMAIN: ${SESSION_DOMAIN:-null}
         RESEND_API_KEY: ${RESEND_API_KEY:-}
         PAYMONGO_LIVEMODE: ${PAYMONGO_LIVEMODE:-false}
         PAYMONGO_PUBLIC_KEY: ${PAYMONGO_PUBLIC_KEY:-}

@@ -128,7 +128,7 @@ function submit(): void {
             </PublicNotice>
         </InkCard>
 
-        <div v-else class="@container flex flex-col gap-6">
+        <div v-else class="@container flex flex-col gap-6 pb-12 sm:pb-6">
             <div>
                 <div class="bg-primary mb-4 h-[3px] w-10 rounded-full" />
                 <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">
@@ -260,6 +260,21 @@ function submit(): void {
                     @remove="removeRow(index)"
                 />
             </div>
+            <div class="flex flex-col items-start gap-2">
+                <Button
+                    v-if="form.job_orders.length < MAX_ITEMS"
+                    type="button"
+                    variant="secondary"
+                    data-test="add-item-button"
+                    @click="addRow"
+                >
+                    <Plus class="size-4" />
+                    Add another item
+                </Button>
+                <p v-else class="text-muted-foreground text-sm">
+                    You can order up to {{ MAX_ITEMS }} items at a time.
+                </p>
+            </div>
         </div>
 
         <!--
@@ -268,30 +283,20 @@ function submit(): void {
         -->
         <template v-if="!sentTo" #after>
             <div
-                class="bg-background/95 border-border sticky bottom-0 border-t backdrop-blur"
+                class="bg-background/95 border-border sticky bottom-0 z-10 border-t backdrop-blur max-sm:group-has-[input:focus]:static max-sm:group-has-[textarea:focus]:static"
             >
                 <div
-                    class="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6"
+                    class="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6"
                 >
-                    <Button
-                        v-if="form.job_orders.length < MAX_ITEMS"
-                        type="button"
-                        variant="secondary"
-                        data-test="add-item-button"
-                        @click="addRow"
-                    >
-                        <Plus class="size-4" />
-                        <!-- The short label keeps both buttons on one row on a
-                         phone, so the bar covers less of the form. -->
-                        <span class="sm:hidden">Add item</span>
-                        <span class="max-sm:hidden">Add another item</span>
-                    </Button>
-                    <span v-else class="text-muted-foreground text-sm">
-                        You can order up to {{ MAX_ITEMS }} items at a time.
-                    </span>
+                    <p class="text-muted-foreground text-xs sm:text-sm">
+                        {{ form.job_orders.length }} item{{
+                            form.job_orders.length === 1 ? '' : 's'
+                        }}
+                    </p>
                     <Button
                         type="button"
                         size="lg"
+                        class="w-full sm:w-auto"
                         :disabled="form.processing"
                         data-test="send-order-button"
                         @click="submit"

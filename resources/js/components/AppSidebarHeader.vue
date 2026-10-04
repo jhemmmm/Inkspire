@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Breadcrumbs from '@/components/Breadcrumbs.vue';
+import NavUser from '@/components/NavUser.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItem } from '@/types';
@@ -25,6 +26,9 @@ withDefaults(
             </template>
         </div>
 
-        <ThemeToggle />
+        <div class="flex shrink-0 items-center gap-1">
+            <ThemeToggle />
+            <NavUser />
+        </div>
     </header>
 </template>

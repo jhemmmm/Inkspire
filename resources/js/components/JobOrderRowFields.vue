@@ -259,7 +259,7 @@ function selectJobOrderType(value: unknown): void {
 </script>
 
 <template>
-    <Card>
+    <Card class="min-w-0">
         <CardHeader :icon="FileText">
             <div class="flex items-center justify-between gap-2">
                 <CardTitle>
@@ -280,11 +280,13 @@ function selectJobOrderType(value: unknown): void {
                 </Button>
             </div>
         </CardHeader>
-        <CardContent class="grid gap-6">
-            <fieldset class="grid gap-2">
+        <CardContent
+            class="grid min-w-0 grid-cols-1 gap-6 px-4 py-5 sm:px-6 sm:py-6"
+        >
+            <fieldset class="grid min-w-0 gap-2">
                 <legend class="sr-only">{{ typeLabel }}</legend>
                 <p class="text-sm font-medium">{{ typeLabel }}</p>
-                <div class="grid gap-4 @2xl:grid-cols-2">
+                <div class="grid min-w-0 gap-4 @2xl:grid-cols-2">
                     <label
                         v-for="option in jobOrderTypeOptions"
                         :key="option.value"
@@ -328,9 +330,11 @@ function selectJobOrderType(value: unknown): void {
                 <InputError :message="errors.type" />
             </fieldset>
 
-            <section class="border-border overflow-hidden rounded-xl border">
+            <section
+                class="border-border min-w-0 overflow-hidden rounded-xl border"
+            >
                 <div
-                    class="bg-muted/40 border-border flex items-center gap-3 border-b px-6 py-4"
+                    class="bg-muted/40 border-border flex min-w-0 items-center gap-3 border-b px-4 py-4 sm:px-6"
                 >
                     <span
                         class="bg-accent text-accent-foreground flex size-9 shrink-0 items-center justify-center rounded-lg"
@@ -346,8 +350,10 @@ function selectJobOrderType(value: unknown): void {
                     </h3>
                 </div>
 
-                <div class="grid gap-6 p-6 @2xl:grid-cols-2">
-                    <div class="@2xl:col-span-2">
+                <div
+                    class="grid min-w-0 grid-cols-1 gap-6 p-4 sm:p-6 @2xl:grid-cols-2"
+                >
+                    <div class="min-w-0 @2xl:col-span-2">
                         <JobOrderPriceFields
                             :row="row"
                             :pricing-entries="pricingEntries"
@@ -360,11 +366,11 @@ function selectJobOrderType(value: unknown): void {
                         />
                     </div>
 
-                    <div class="grid gap-2">
+                    <div class="grid min-w-0 gap-2">
                         <Label :for="`job-order-deadline-${index}`">
                             Deadline
                         </Label>
-                        <div class="relative">
+                        <div class="relative min-w-0">
                             <CalendarDays
                                 class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
                             />
@@ -373,13 +379,13 @@ function selectJobOrderType(value: unknown): void {
                                 v-model="row.deadline"
                                 type="date"
                                 :min="earliestDeadline"
-                                class="pl-9"
+                                class="max-w-full min-w-0 pl-9"
                             />
                         </div>
                         <InputError :message="errors.deadline" />
                     </div>
 
-                    <div class="grid gap-2 @2xl:col-span-2">
+                    <div class="grid min-w-0 gap-2 @2xl:col-span-2">
                         <div class="flex items-center gap-3">
                             <Switch
                                 :id="`job-order-rush-${index}`"
@@ -400,7 +406,7 @@ function selectJobOrderType(value: unknown): void {
                         <InputError :message="errors.is_rush" />
                     </div>
 
-                    <div class="grid gap-2 @2xl:col-span-2">
+                    <div class="grid min-w-0 gap-2 @2xl:col-span-2">
                         <Label :for="`job-order-notes-${index}`">
                             {{
                                 row.type === 'type_b'
@@ -427,13 +433,13 @@ function selectJobOrderType(value: unknown): void {
 
                     <div
                         v-if="row.type === 'type_a'"
-                        class="grid gap-2 @2xl:col-span-2"
+                        class="grid min-w-0 gap-2 @2xl:col-span-2"
                     >
                         <Label :for="`job-order-file-${index}`">
                             {{ isCustomer ? 'Your File' : 'Source File' }}
                         </Label>
                         <label
-                            class="border-border bg-muted/30 hover:border-primary hover:bg-accent/40 has-[:focus-visible]:border-ring has-[:focus-visible]:ring-ring/50 flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors has-[:focus-visible]:ring-[3px]"
+                            class="border-border bg-muted/30 hover:border-primary hover:bg-accent/40 has-[:focus-visible]:border-ring has-[:focus-visible]:ring-ring/50 flex min-w-0 cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-10 text-center transition-colors has-[:focus-visible]:ring-[3px] sm:px-6"
                             :data-test="`job-order-${index}-dropzone`"
                             @dragover.prevent
                             @drop.prevent="onFileDrop"
@@ -446,7 +452,7 @@ function selectJobOrderType(value: unknown): void {
                                 @change="onFileChange"
                             />
                             <CloudUpload class="text-muted-foreground size-7" />
-                            <span class="font-semibold">
+                            <span class="max-w-full font-semibold break-all">
                                 {{
                                     row.file
                                         ? row.file.name

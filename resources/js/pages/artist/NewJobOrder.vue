@@ -209,9 +209,9 @@ function submit(): void {
 <template>
     <Head title="New Job Order" />
 
-    <PageContainer class="max-w-none gap-0 p-0">
+    <PageContainer class="group max-w-none gap-0 p-0">
         <div
-            class="@container mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8"
+            class="@container mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-6 px-4 pt-4 pb-12 sm:p-6 lg:p-8"
         >
             <PageHeader
                 title="New Job Order"
@@ -360,41 +360,43 @@ function submit(): void {
                 :removable="form.job_orders.length > 1"
                 @remove="removeRow(index)"
             />
+            <Button
+                type="button"
+                variant="secondary"
+                class="self-start"
+                data-test="add-job-order-row-button"
+                @click="addRow"
+            >
+                <Plus class="size-4" />
+                Add Another Job Order
+            </Button>
         </div>
 
         <div
-            class="bg-background/95 border-border sticky bottom-0 z-10 w-full border backdrop-blur"
+            class="bg-background/95 border-border sticky bottom-0 z-10 w-full border backdrop-blur max-sm:group-has-[input:focus]:static max-sm:group-has-[textarea:focus]:static"
         >
             <div
-                class="mx-auto flex w-full max-w-[100rem] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8"
+                class="mx-auto flex w-full max-w-[100rem] flex-col gap-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 lg:px-8"
             >
+                <p
+                    class="text-muted-foreground text-xs tabular-nums sm:text-sm"
+                >
+                    {{ form.job_orders.length }} job order{{
+                        form.job_orders.length === 1 ? '' : 's'
+                    }}
+                    · Estimated total {{ money(estimatedTotal) }}
+                </p>
                 <Button
                     type="button"
-                    variant="secondary"
-                    data-test="add-job-order-row-button"
-                    @click="addRow"
+                    size="lg"
+                    class="w-full shrink-0 sm:w-auto"
+                    :disabled="form.processing"
+                    data-test="create-job-order-button"
+                    @click="submit"
                 >
-                    <Plus class="size-4" />
-                    Add Another Job Order
+                    <Ticket class="size-4" />
+                    {{ form.processing ? 'Creating…' : 'Create Job Order' }}
                 </Button>
-                <div class="flex items-center gap-4">
-                    <p class="text-muted-foreground text-sm tabular-nums">
-                        {{ form.job_orders.length }} job order{{
-                            form.job_orders.length === 1 ? '' : 's'
-                        }}
-                        · Estimated total {{ money(estimatedTotal) }}
-                    </p>
-                    <Button
-                        type="button"
-                        size="lg"
-                        :disabled="form.processing"
-                        data-test="create-job-order-button"
-                        @click="submit"
-                    >
-                        <Ticket class="size-4" />
-                        {{ form.processing ? 'Creating…' : 'Create Job Order' }}
-                    </Button>
-                </div>
             </div>
         </div>
     </PageContainer>

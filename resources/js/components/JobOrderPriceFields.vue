@@ -189,8 +189,8 @@ function useComputed(): void {
 </script>
 
 <template>
-    <div class="grid gap-6">
-        <div class="grid gap-2">
+    <div class="grid min-w-0 grid-cols-1 gap-6">
+        <div class="grid min-w-0 gap-2">
             <Label :for="`${idPrefix}-service`">Product / Service</Label>
             <SearchableSelect
                 :id="`${idPrefix}-service`"
@@ -219,7 +219,7 @@ function useComputed(): void {
             />
         </div>
 
-        <div class="grid gap-2">
+        <div class="grid min-w-0 gap-2">
             <Label :for="`${idPrefix}-print-size`">Print Size</Label>
             <SearchableSelect
                 :id="`${idPrefix}-print-size`"
@@ -238,7 +238,7 @@ function useComputed(): void {
             <InputError :message="errors.print_size" />
         </div>
 
-        <div v-if="isSqFt" class="grid gap-4 @2xl:grid-cols-2">
+        <div v-if="isSqFt" class="grid min-w-0 gap-4 @2xl:grid-cols-2">
             <div class="grid gap-2">
                 <Label :for="`${idPrefix}-width-ft`">Width (ft)</Label>
                 <Input
@@ -267,7 +267,7 @@ function useComputed(): void {
             </div>
         </div>
 
-        <div class="grid gap-2">
+        <div class="grid min-w-0 gap-2">
             <Label :for="`${idPrefix}-quantity`">Quantity</Label>
             <Input
                 :id="`${idPrefix}-quantity`"
@@ -282,7 +282,7 @@ function useComputed(): void {
 
         <div
             v-if="showPrices"
-            class="border-border bg-muted/30 rounded-xl border p-4"
+            class="border-border bg-muted/30 min-w-0 rounded-xl border p-4"
         >
             <p
                 v-if="!selectedEntry"
@@ -292,7 +292,9 @@ function useComputed(): void {
                 Pick a product to see the price
             </p>
             <template v-else>
-                <p class="text-muted-foreground text-sm tabular-nums">
+                <p
+                    class="text-muted-foreground text-sm break-words tabular-nums"
+                >
                     {{ priceFormula }}
                 </p>
                 <p
