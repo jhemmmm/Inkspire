@@ -205,7 +205,9 @@ const { formatTimestamp } = useBusinessTime();
                         v-else
                         :key="writeOffRequest.id"
                     >
-                        <TableCell class="max-w-56 whitespace-normal wrap-anywhere">
+                        <TableCell
+                            class="max-w-56 wrap-anywhere whitespace-normal"
+                        >
                             <div class="flex flex-col">
                                 <span
                                     class="text-muted-foreground text-xs tabular-nums"
@@ -218,7 +220,9 @@ const { formatTimestamp } = useBusinessTime();
                                 }}</span>
                             </div>
                         </TableCell>
-                        <TableCell class="max-w-56 whitespace-normal wrap-anywhere">
+                        <TableCell
+                            class="max-w-56 wrap-anywhere whitespace-normal"
+                        >
                             {{
                                 writeOffRequest.job_order.queue_entry.customer
                                     ?.name ?? '—'
@@ -230,10 +234,14 @@ const { formatTimestamp } = useBusinessTime();
                         <TableCell class="text-right tabular-nums">
                             {{ writeOffRequest.days_past_due ?? '—' }}
                         </TableCell>
-                        <TableCell class="max-w-xs whitespace-pre-wrap wrap-anywhere">
+                        <TableCell
+                            class="max-w-xs wrap-anywhere whitespace-pre-wrap"
+                        >
                             {{ writeOffRequest.write_off_reason }}
                         </TableCell>
-                        <TableCell class="max-w-48 whitespace-normal wrap-anywhere">
+                        <TableCell
+                            class="max-w-48 wrap-anywhere whitespace-normal"
+                        >
                             {{
                                 writeOffRequest.write_off_requested_by.name ??
                                 '—'
