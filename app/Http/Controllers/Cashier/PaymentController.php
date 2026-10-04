@@ -2,11 +2,8 @@
 
 namespace App\Http\Controllers\Cashier;
 
-use App\Actions\POS\ComputeJobOrderPrice;
 use App\Actions\POS\PriceJobOrder;
-use App\Actions\POS\StartPaymongoPayment;
 use App\Enums\JobOrderStatus;
-use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
@@ -21,16 +18,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
-use Throwable;
 
 class PaymentController extends Controller
 {
-    public function __construct(
-        public ComputeJobOrderPrice $computeJobOrderPrice,
-        public PriceJobOrder $priceJobOrder,
-        public StartPaymongoPayment $startPaymongoPayment,
-    ) {}
+    public function __construct(public PriceJobOrder $priceJobOrder) {}
 
     /**
      * Show the Pricing + Payment page for a job order eligible for POS
@@ -39,17 +30,7 @@ class PaymentController extends Controller
     public function edit(Request $request, JobOrder $jobOrder): Response
     {
         abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
-        abort_unless(
-            in_array($jobOrder->status, [
-                JobOrderStatus::ReadyForProduction,
-                JobOrderStatus::DesignApproved,
-                JobOrderStatus::ForProduction,
-                JobOrderStatus::Printing,
-                JobOrderStatus::ReadyForPickup,
-            ], true),
-            422,
-            'This job order is not ready for pricing.',
-        );
+        abort_unless(in_array($jobOrder->status, JobOrderStatus::PAYABLE, true), 422, 'This job order is not ready for pricing.');
         abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
         abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.'));
 
@@ -60,10 +41,9 @@ class PaymentController extends Controller
             ? $jobOrder->outstandingBalance()
             : null;
 
-        // The most recent still-pending GCash/Maya transaction — sourced
-        // from the actual persisted Transaction row rather than the QR
-        // sub-view's local form state, since a full Inertia redirect resets
-        // every local ref (payment method/type/amount) back to its default.
+        // A checkout the customer opened from their tracking page and has
+        // not finished. The page warns the Cashier about it, so the same
+        // money is not taken twice.
         $pendingPaymongoTransaction = $jobOrder->transactions
             ->where('status', TransactionStatus::PendingConfirmation)
             ->sortByDesc('id')
@@ -78,45 +58,30 @@ class PaymentController extends Controller
             'pricingLocked' => ! $jobOrder->pricingIsEditable(),
             'amountPaid' => $amountPaid,
             'remainingBalance' => $remainingBalance,
-            // Flashed after a GCash/Maya "Generate QR Code" submission
-            // (POS-03) — read once, then gone on the next request, matching
-            // this app's existing session-flash-to-prop convention.
-            'paymongoRedirectUrl' => session('redirectUrl'),
             'pendingPaymongoAmount' => $pendingPaymongoTransaction !== null ? (float) $pendingPaymongoTransaction->amount : null,
             'pendingPaymongoMethod' => $pendingPaymongoTransaction?->payment_method?->value,
         ]);
     }
 
     /**
-     * Save the job order's pricing (first visit only) and record a Cash or
-     * Bank Transfer payment, full or as a down payment (POS-01/POS-02/POS-05).
+     * Save the job order's pricing (first visit only) and record a payment
+     * taken at the counter, full or as a down payment (POS-01/POS-02/POS-05).
+     *
+     * Every method is recorded directly, as a Completed transaction. Bank
+     * Transfer, GCash and Maya carry the reference number the customer
+     * shows; PayMongo is only ever used by the customer's own online
+     * checkout (OnlinePaymentController), never from here.
      *
      * The server always recomputes total_amount via ComputeJobOrderPrice —
      * a client-submitted total is never read or trusted (T-05-03).
      */
     public function store(SavePricingAndPaymentRequest $request, JobOrder $jobOrder): RedirectResponse
     {
-        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
-        abort_unless(
-            in_array($jobOrder->status, [
-                JobOrderStatus::ReadyForProduction,
-                JobOrderStatus::DesignApproved,
-                JobOrderStatus::ForProduction,
-                JobOrderStatus::Printing,
-                JobOrderStatus::ReadyForPickup,
-            ], true),
-            422,
-            'This job order is not ready for pricing.',
-        );
-        abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
-        abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
-        abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.'));
-
-        $paymentMethod = $request->validated('payment_method');
-
-        if (in_array($paymentMethod, [PaymentMethod::Gcash->value, PaymentMethod::Maya->value], true)) {
-            return $this->storePaymongoIntent($request, $jobOrder, $paymentMethod);
+        if (($blocker = $jobOrder->paymentBlocker()) !== null) {
+            abort(422, __($blocker));
         }
+
+        abort_unless(in_array($jobOrder->status, JobOrderStatus::PAYABLE, true), 422, 'This job order is not ready for pricing.');
 
         $result = DB::transaction(function () use ($request, $jobOrder): array {
             // Locked re-read (CR-01) — the terminal-state guards above ran
@@ -128,10 +93,9 @@ class PaymentController extends Controller
             // already uses.
             $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
 
-            abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
-            abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
-            abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
-            abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.'));
+            if (($blocker = $jobOrder->paymentBlocker()) !== null) {
+                abort(422, __($blocker));
+            }
 
             $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
 
@@ -154,7 +118,8 @@ class PaymentController extends Controller
             // Matching edit()'s condition exactly is what keeps the form the
             // Cashier sees and the figures the server saves in agreement.
             // A pending GCash/Maya intent counts as a transaction, so a
-            // repricing cannot slip underneath an outstanding QR either.
+            // repricing cannot slip underneath a checkout the customer has
+            // open either.
             if ($jobOrder->pricingIsEditable()) {
                 ($this->priceJobOrder)($jobOrder, $request->validated());
             }
@@ -201,78 +166,5 @@ class PaymentController extends Controller
         // shows Amount Paid and the remaining Balance, so it answers the
         // "what do I still owe" question this page was kept open for.
         return to_route('cashier.job-orders.receipt.show', $jobOrder);
-    }
-
-    /**
-     * Start a PayMongo Payment Intent for a GCash/Maya payment (POS-03),
-     * pricing the job order first if this is the first pricing/payment
-     * visit — the same server-authoritative snapshot logic the Cash/Bank
-     * Transfer branch above uses. Unlike Cash/Bank Transfer, this never
-     * creates a Completed Transaction directly: the transaction starts
-     * pending_confirmation and is only ever resolved by
-     * ConfirmPaymentIntent (Pattern 1), called from the signature-verified
-     * webhook or manual reconciliation.
-     *
-     * The unlocked, route-bound job order is never mutated here: the total
-     * to charge is computed with ComputeJobOrderPrice alone, and the
-     * snapshot is applied by StartPaymongoPayment to its own locked
-     * re-read, so nothing is persisted if PayMongo fails (CR-02).
-     */
-    private function storePaymongoIntent(SavePricingAndPaymentRequest $request, JobOrder $jobOrder, string $paymentMethod): RedirectResponse
-    {
-        $amountPaid = (float) $jobOrder->transactions()->where('status', TransactionStatus::Completed->value)->sum('amount');
-
-        $pricing = null;
-        $totalAmount = (float) $jobOrder->total_amount;
-
-        if ($jobOrder->pricingIsEditable()) {
-            $pricing = $request->validated();
-            $totalAmount = ($this->computeJobOrderPrice)(
-                (float) $pricing['line_amount'],
-                (bool) $pricing['rush_fee_applied'],
-                $pricing['discount_type'] ?? null,
-                ($pricing['discount_value'] ?? null) !== null ? (float) $pricing['discount_value'] : null,
-            )['total_amount'];
-        }
-
-        $isDownPayment = $request->validated('payment_type') === 'down';
-        $remainingBalance = round($totalAmount - $amountPaid, 2);
-        $transactionAmount = $isDownPayment
-            ? (float) $request->validated('down_payment_amount')
-            : $remainingBalance;
-
-        $methodLabel = $paymentMethod === PaymentMethod::Gcash->value ? 'GCash' : 'Maya';
-
-        try {
-            // route('home') is a placeholder return destination — this is a
-            // Cashier-counter flow, not a customer self-checkout, so the
-            // webhook (not this redirect) is the source of truth; PayMongo
-            // still requires a return_url for e-wallet payment methods.
-            $redirectUrl = ($this->startPaymongoPayment)(
-                $jobOrder,
-                $transactionAmount,
-                $isDownPayment ? TransactionType::DownPayment : TransactionType::FullPayment,
-                PaymentMethod::from($paymentMethod),
-                route('home'),
-                $request->user()->id,
-                $pricing,
-            );
-        } catch (HttpExceptionInterface $e) {
-            // The locked re-check inside StartPaymongoPayment refused (paid,
-            // cancelled, written off, credit pending). That is not a PayMongo
-            // failure, and its own message is what the Cashier needs to see.
-            throw $e;
-        } catch (Throwable $e) {
-            Inertia::flash('toast', [
-                'type' => 'error',
-                'message' => __("Couldn't start the :method payment. Try again, or choose Cash or Bank Transfer instead.", ['method' => $methodLabel]),
-            ]);
-
-            return back();
-        }
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('QR code ready. Waiting for the customer to complete payment.')]);
-
-        return back()->with(['redirectUrl' => $redirectUrl]);
     }
 }

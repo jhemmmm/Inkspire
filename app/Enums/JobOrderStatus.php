@@ -15,4 +15,18 @@ enum JobOrderStatus: string
     case ForProduction = 'for_production';
     case Printing = 'printing';
     case ReadyForPickup = 'ready_for_pickup';
+
+    /**
+     * The stages at which the Cashier may price a job order and take payment
+     * for it.
+     *
+     * @var array<int, self>
+     */
+    public const PAYABLE = [
+        self::ReadyForProduction,
+        self::DesignApproved,
+        self::ForProduction,
+        self::Printing,
+        self::ReadyForPickup,
+    ];
 }

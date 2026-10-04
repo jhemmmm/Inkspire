@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, Link, usePoll } from '@inertiajs/vue3';
+import { Form, Head, Link } from '@inertiajs/vue3';
 import {
     PackageCheck,
     Plus,
@@ -50,6 +50,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import { dashboard, newVisit } from '@/routes/frontline-staff';
 import { index as queueEntriesIndex } from '@/routes/frontline-staff/queue-entries';
@@ -188,8 +189,9 @@ const queueGroups = computed(() => {
 
 // D-13/D-14: the same derived, self-correcting ready-for-pickup alert as the
 // Frontline Dashboard, surfaced here so staff already on this page see it
-// without navigating away.
-usePoll(5000, { only: ['readyForPickup'] });
+// without navigating away. The queue itself is polled too, so a job order an
+// Artist, the Cashier or Production just moved shows its new status here.
+useLivePoll(['queueEntries', 'readyForPickup']);
 
 /**
  * Where to send the customer once an artist has taken the job.

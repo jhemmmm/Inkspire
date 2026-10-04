@@ -6,7 +6,6 @@ use App\Concerns\CustomerValidationRules;
 use App\Concerns\JobOrderValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreJobOrderRequest extends FormRequest
@@ -29,9 +28,7 @@ class StoreJobOrderRequest extends FormRequest
             $rules += [
                 'customer.name' => $this->customerNameRules(),
                 'customer.organization' => $this->organizationRules(),
-                // The shared rule infers its unique column from the attribute name,
-                // which is wrong under the `customer.` prefix.
-                'customer.contact_number' => ['required', 'string', 'max:20', Rule::unique('customers', 'contact_number')],
+                'customer.contact_number' => $this->contactNumberRules(),
                 'customer.email' => $this->customerEmailRules(),
                 'customer.address' => $this->addressRules(),
             ];
@@ -79,13 +76,7 @@ class StoreJobOrderRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                $rows = $this->input('job_orders');
-
-                $prefixes = is_array($rows)
-                    ? array_map(fn (int|string $index): string => "job_orders.{$index}.", array_keys($rows))
-                    : [];
-
-                $this->rejectUnusableTypeAFiles($validator, $prefixes);
+                $this->rejectUnusableTypeAFiles($validator, $this->jobOrderRowPrefixes());
             },
         ];
     }

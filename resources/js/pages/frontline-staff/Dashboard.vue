@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, router, usePoll } from '@inertiajs/vue3';
+import { Form, Head, router } from '@inertiajs/vue3';
 import { Search, Zap } from '@lucide/vue';
 import { ref, watch } from 'vue';
 import JobOrderReleaseController from '@/actions/App/Http/Controllers/FrontlineStaff/JobOrderReleaseController';
@@ -23,6 +23,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import {
     balanceLabel,
@@ -87,10 +88,11 @@ defineOptions({
     },
 });
 
-// D-13/D-14: a derived, polled query — nothing stored. Matches
-// QueueDisplay.vue's exact usePoll call shape. Scoped to `readyForPickup`
-// so a five-second poll never wipes out search results mid-typing.
-usePoll(5000, { only: ['readyForPickup'] });
+// D-13/D-14: a derived, polled query — nothing stored. Scoped to
+// `readyForPickup` so a five-second poll never wipes out search results
+// mid-typing: a poll answers for the last search sent, and landing after a
+// newer one would put the older results back.
+useLivePoll(['readyForPickup']);
 
 const searchTerm = ref(props.filters.q ?? '');
 const searching = ref(false);

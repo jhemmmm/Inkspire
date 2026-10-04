@@ -40,6 +40,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { adminNavItems } from '@/config/nav/admin';
 import type { ChartSeries } from '@/lib/charts';
 import { jobOrderStatusLabel, money } from '@/lib/jobOrders';
@@ -77,6 +78,10 @@ const props = defineProps<{
         created_at: string | null;
     }[];
 }>();
+
+// Everything except the 14-day chart, which only moves with completed days
+// and would redraw on every poll.
+useLivePoll(['attention', 'shop', 'pipeline', 'recentActivity']);
 
 defineOptions({
     layout: {

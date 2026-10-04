@@ -26,6 +26,8 @@ test('an unauthenticated visitor with a valid signed link sees the active review
     $response->assertInertia(fn (Assert $page) => $page
         ->component('public/DesignReview')
         ->where('state', 'active')
+        ->where('jobOrderNumber', $jobOrder->number)
+        ->where('trackingUrl', route('public.tracking.token', ['token' => $jobOrder->tracking_token]))
         ->has('imageUrl')
         ->has('approveUrl')
         ->has('requestChangesUrl'));
@@ -88,10 +90,14 @@ test('posting approve on an already-resolved revision performs no further mutati
     $response = $this->post($signedUrl);
 
     $response->assertOk();
+    // A customer who has given their verdict is pointed at their order,
+    // which is also where they pay for it.
     $response->assertInertia(fn (Assert $page) => $page
         ->component('public/DesignReview')
         ->where('state', 'closed')
-        ->where('outcome', 'approved'));
+        ->where('outcome', 'approved')
+        ->where('jobOrderNumber', $jobOrder->number)
+        ->where('trackingUrl', route('public.tracking.token', ['token' => $jobOrder->tracking_token])));
     expect($designFile->fresh()->locked_at->equalTo($lockedAtBefore))->toBeTrue();
 });
 

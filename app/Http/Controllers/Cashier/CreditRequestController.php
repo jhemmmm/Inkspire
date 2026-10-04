@@ -26,17 +26,7 @@ class CreditRequestController extends Controller
     public function store(CreateCreditRequestRequest $request, JobOrder $jobOrder): RedirectResponse
     {
         abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
-        abort_unless(
-            in_array($jobOrder->status, [
-                JobOrderStatus::ReadyForProduction,
-                JobOrderStatus::DesignApproved,
-                JobOrderStatus::ForProduction,
-                JobOrderStatus::Printing,
-                JobOrderStatus::ReadyForPickup,
-            ], true),
-            422,
-            'This job order is not ready for pricing.',
-        );
+        abort_unless(in_array($jobOrder->status, JobOrderStatus::PAYABLE, true), 422, 'This job order is not ready for pricing.');
         abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
         abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot be placed on credit.'));
         abort_if(

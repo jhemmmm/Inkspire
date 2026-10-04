@@ -21,6 +21,7 @@ import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import JobOrderRowFields, {
     emptyJobOrderRow,
+    jobOrderRowErrors,
     type JobOrderRow,
 } from '@/components/JobOrderRowFields.vue';
 import PageContainer from '@/components/PageContainer.vue';
@@ -289,24 +290,6 @@ function addRow(): void {
 
 function removeRow(index: number): void {
     intakeForm.job_orders.splice(index, 1);
-}
-
-/**
- * Slice this row's prefixed validation errors into the bare field-name keys
- * `JobOrderRowFields` reads — the component has no prefix knowledge of
- * its own.
- */
-function jobOrderRowErrors(index: number): Record<string, string | undefined> {
-    const prefix = `job_orders.${index}.`;
-    const sliced: Record<string, string | undefined> = {};
-
-    for (const [key, value] of Object.entries(intakeForm.errors)) {
-        if (key.startsWith(prefix)) {
-            sliced[key.slice(prefix.length)] = value as string | undefined;
-        }
-    }
-
-    return sliced;
 }
 
 /**
@@ -946,7 +929,7 @@ function formatSlipDate(value: string): string {
                 :key="row._key"
                 :row="row"
                 :index="index"
-                :errors="jobOrderRowErrors(index)"
+                :errors="jobOrderRowErrors(intakeForm.errors, index)"
                 :pricing-entries="pricingEntries"
                 :specification-options="specificationOptions"
                 :print-size-dimensions="printSizeDimensions"

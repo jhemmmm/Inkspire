@@ -266,3 +266,16 @@ export function balanceLabel(jobOrder: {
               Math.max(0, jobOrder.display_total - (jobOrder.amount_paid ?? 0)),
           );
 }
+
+/**
+ * A job order number as the customer typed it, in the shape
+ * TrackJobOrderRequest accepts. Its regex is case-sensitive, so the value is
+ * upper-cased; spaces and the en/em dashes phone keyboards substitute become
+ * the hyphen it expects.
+ */
+export function normalizeJobOrderNumber(typed: string): string {
+    return typed
+        .trim()
+        .toUpperCase()
+        .replace(/[\s–—-]+/g, '-');
+}

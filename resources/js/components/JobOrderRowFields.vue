@@ -36,6 +36,23 @@ export function emptyJobOrderRow(): JobOrderRow {
         _key: uuid(),
     };
 }
+
+/**
+ * Slice one row's prefixed validation errors (`job_orders.0.quantity`) into
+ * the bare field-name keys this component's `errors` prop reads.
+ */
+export function jobOrderRowErrors(
+    errors: Record<string, string | undefined>,
+    index: number,
+): Record<string, string | undefined> {
+    const prefix = `job_orders.${index}.`;
+
+    return Object.fromEntries(
+        Object.entries(errors)
+            .filter(([key]) => key.startsWith(prefix))
+            .map(([key, value]) => [key.slice(prefix.length), value]),
+    );
+}
 </script>
 
 <script setup lang="ts">

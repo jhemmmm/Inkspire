@@ -1,5 +1,7 @@
 <?php
 
+use App\Actions\JobOrder\ValidateJobOrderFile;
+use App\Enums\FileValidationOutcome;
 use App\Enums\JobOrderStatus;
 use App\Mail\ConfirmOnlineOrder;
 use App\Mail\JobOrdersReceived;
@@ -259,7 +261,7 @@ test('a file attached to a design request is not kept', function () {
         ->and(Storage::disk('local')->allFiles())->toBe([]);
 });
 
-test('only orders that send mail count toward the limit, and the sixth is refused', function () {
+test('only orders that send mail count toward the limit, and the twenty-first is refused', function () {
     Mail::fake();
     $payload = onlineOrderTestPayload();
 
@@ -267,12 +269,53 @@ test('only orders that send mail count toward the limit, and the sixth is refuse
         $this->post(route('public.orders.store'), [...$payload, 'email' => 'not-an-email'])->assertSessionHasErrors('email');
     }
 
-    foreach (range(1, 5) as $attempt) {
+    foreach (range(1, 20) as $attempt) {
         $this->post(route('public.orders.store'), $payload)->assertSessionHasNoErrors();
     }
 
     $this->post(route('public.orders.store'), $payload)->assertSessionHasErrors('email');
 
-    expect(OnlineOrder::count())->toBe(5);
-    Mail::assertSent(ConfirmOnlineOrder::class, 5);
+    expect(OnlineOrder::count())->toBe(20);
+    Mail::assertSent(ConfirmOnlineOrder::class, 20);
+});
+
+test('an order placed with a mobile number already on file keeps its own email for the visit', function () {
+    Mail::fake();
+    $customer = Customer::factory()->create(['contact_number' => '09171234567', 'email' => 'on-file@example.test']);
+    $order = OnlineOrder::factory()->create(['email' => 'visitor@example.test']);
+    $order->update(['payload' => [...$order->payload, 'customer' => [...$order->payload['customer'], 'contact_number' => '09171234567', 'email' => 'visitor@example.test']]]);
+
+    $this->post(onlineOrderTestConfirmUrl($order))->assertOk();
+
+    expect($customer->refresh()->email)->toBe('on-file@example.test')
+        ->and(QueueEntry::firstOrFail()->contactEmail())->toBe('visitor@example.test');
+});
+
+test('a visit opened at the counter is contacted at the customer\'s own email', function () {
+    $entry = QueueEntry::factory()->for(Customer::factory()->create(['email' => 'on-file@example.test']))->create();
+
+    expect($entry->contactEmail())->toBe('on-file@example.test');
+});
+
+test('a print-ready upload is inspected once and parked with its verdict', function () {
+    Mail::fake();
+    Storage::fake('local');
+
+    $this->mock(ValidateJobOrderFile::class)
+        ->shouldReceive('__invoke')
+        ->once()
+        ->andReturn(['outcome' => FileValidationOutcome::Passed, 'reason' => null]);
+
+    $this->post(route('public.orders.store'), onlineOrderTestPayload([
+        'job_orders' => [[
+            'pricing_entry_id' => onlineOrderTestProduct('Banner')->id,
+            'type' => 'type_a',
+            'file' => UploadedFile::fake()->create('design.pdf', 10),
+        ]],
+    ]))->assertRedirect(route('public.orders.create'));
+
+    $row = OnlineOrder::firstOrFail()->payload['job_orders'][0];
+
+    expect($row['file_check'])->toBe(['outcome' => FileValidationOutcome::Passed->value, 'reason' => null]);
+    Storage::disk('local')->assertExists($row['file_path']);
 });

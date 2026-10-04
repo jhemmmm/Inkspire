@@ -1,20 +1,24 @@
 import {
     ChartColumn,
     ClipboardList,
+    Contact,
     CreditCard,
     FileMinus,
     LayoutGrid,
     ScrollText,
     Ruler,
     Settings,
+    Tag,
     Unlock,
     Users,
 } from '@lucide/vue';
 import { dashboard } from '@/routes/admin';
 import { index as auditTrailIndex } from '@/routes/admin/audit-trail';
 import { index as creditRequestsIndex } from '@/routes/admin/credit-requests';
+import { index as customersIndex } from '@/routes/admin/customers';
 import { index as designOverridesIndex } from '@/routes/admin/design-overrides';
 import { index as jobOrdersIndex } from '@/routes/admin/job-orders';
+import { index as productsIndex } from '@/routes/admin/products';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as specificationsIndex } from '@/routes/admin/specifications';
 import { edit as systemConfigurationEditRoute } from '@/routes/admin/system-configuration';
@@ -34,6 +38,11 @@ export const adminNavItems: NavItem[] = [
         icon: Users,
     },
     {
+        title: 'Customers',
+        href: customersIndex(),
+        icon: Contact,
+    },
+    {
         title: 'Job Orders',
         href: jobOrdersIndex(),
         icon: ClipboardList,
@@ -47,6 +56,11 @@ export const adminNavItems: NavItem[] = [
         title: 'System Configuration',
         href: systemConfigurationEditRoute(),
         icon: Settings,
+    },
+    {
+        title: 'Products & Services',
+        href: productsIndex(),
+        icon: Tag,
     },
     {
         title: 'Print Specifications',

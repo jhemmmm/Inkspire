@@ -30,6 +30,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
 import {
@@ -73,6 +74,10 @@ const props = defineProps<{
     closedReceivables: AccountsReceivableRow[];
     bracketSummaries: BracketSummary[];
 }>();
+
+// Payments the Cashier takes and credit an Admin approves change these
+// balances while the page is open.
+useLivePoll(['receivables', 'closedReceivables', 'bracketSummaries']);
 
 defineOptions({
     layout: {

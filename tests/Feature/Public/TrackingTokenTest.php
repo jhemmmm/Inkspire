@@ -165,7 +165,7 @@ test('the token route is public, unauthenticated and outside every role group', 
     $route = app('router')->getRoutes()->getByName('public.tracking.token');
 
     expect($route->gatherMiddleware())->not->toContain('auth');
-    expect($route->gatherMiddleware())->toContain('throttle:120,1');
+    expect($route->gatherMiddleware())->toContain('throttle:240,1,track');
     expect(collect($route->gatherMiddleware())->filter(fn ($m) => str_starts_with((string) $m, 'role:')))->toBeEmpty();
 
     $this->get(route('public.tracking.token', ['token' => $jobOrder->tracking_token]))

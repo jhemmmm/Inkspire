@@ -46,7 +46,7 @@ class JobOrderReleaseController extends Controller
             );
 
             abort_unless(
-                in_array($jobOrder->payment_status, [PaymentStatus::Paid, PaymentStatus::OnCredit], true),
+                $jobOrder->isClearedForRelease(),
                 422,
                 match ($jobOrder->payment_status) {
                     PaymentStatus::CreditPendingApproval => __("This job order's On-Credit request is still pending Admin approval. Send the customer to Cashier."),

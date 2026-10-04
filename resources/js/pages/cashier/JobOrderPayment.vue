@@ -1,24 +1,26 @@
 <script setup lang="ts">
+import type { FormComponentRef } from '@inertiajs/core';
 import { Form, Head, router } from '@inertiajs/vue3';
 import {
     Banknote,
+    Clock,
     CreditCard,
     Landmark,
     Receipt,
     Smartphone,
     Wallet,
 } from '@lucide/vue';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import CreditRequestController from '@/actions/App/Http/Controllers/Cashier/CreditRequestController';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
 import PaymentLinkController from '@/actions/App/Http/Controllers/Cashier/PaymentLinkController';
+import ReconciliationController from '@/actions/App/Http/Controllers/Cashier/ReconciliationController';
 import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import SearchableSelect, {
     type SearchableOption,
 } from '@/components/SearchableSelect.vue';
 import PageHeader from '@/components/PageHeader.vue';
-import PaymentQrCode from '@/components/PaymentQrCode.vue';
 import PricingSummary from '@/components/PricingSummary.vue';
 import {
     AlertDialog,
@@ -77,7 +79,6 @@ const props = defineProps<{
     pricingLocked: boolean;
     amountPaid: number;
     remainingBalance: number | null;
-    paymongoRedirectUrl: string | null;
     pendingPaymongoAmount: number | null;
     pendingPaymongoMethod: 'gcash' | 'maya' | null;
 }>();
@@ -123,41 +124,33 @@ const referenceNumber = ref('');
 const downPaymentAmount = ref<number | undefined>(undefined);
 
 /**
- * Flips to 'qr' once the server flashes back a PayMongo redirect URL after
- * a "Generate QR Code" submission (POS-03) — re-derived on every fresh
- * visit to this page, since a full Inertia redirect remounts the
- * component with new props.
+ * Bank Transfer, GCash and Maya are all paid outside this app: the customer
+ * sends the money, and the Cashier records the reference they show.
  */
-const subView = ref<'form' | 'qr'>(props.paymongoRedirectUrl ? 'qr' : 'form');
+const REFERENCE_LABELS: Partial<Record<typeof paymentMethod.value, string>> = {
+    bank_transfer: 'Bank Reference Number',
+    gcash: 'GCash Reference Number',
+    maya: 'Maya Reference Number',
+};
 
-const isPaymongoMethod = computed(
-    () => paymentMethod.value === 'gcash' || paymentMethod.value === 'maya',
-);
+const referenceLabel = computed(() => REFERENCE_LABELS[paymentMethod.value]);
 
 const isOnCredit = computed(() => paymentMethod.value === 'on_credit');
 
 /**
- * Sourced from the persisted pending Transaction (via props), not the
- * local paymentMethod ref, since a full Inertia redirect resets local
- * form state back to its default before this label is needed.
+ * The wallet of a checkout the customer opened from their own tracking page
+ * and has not finished. Shown as a warning so the same money is not taken
+ * twice.
  */
-const paymongoMethodLabel = computed(() =>
+const pendingOnlineMethodLabel = computed(() =>
     props.pendingPaymongoMethod === 'gcash' ? 'GCash' : 'Maya',
 );
-
-/**
- * Discards the pending PayMongo intent client-side only (D-13) — the
- * intent itself simply expires unused on PayMongo's side, no server call
- * needed to "cancel" it.
- */
-function switchPaymentMethod(): void {
-    subView.value = 'form';
-    paymentMethod.value = 'cash';
-}
 
 const checkingPaymentStatus = ref(false);
 
 /**
+ * Ask PayMongo whether the customer's online checkout went through.
+ *
  * A plain router.post() rather than a nested <Form> — this button lives
  * inside the page's single outer <Form> (Pricing + Payment submission),
  * and HTML forbids a <form> nested inside another <form>.
@@ -176,6 +169,28 @@ function checkPaymentStatus(): void {
         },
     );
 }
+
+const cancellingOnlinePayment = ref(false);
+
+/**
+ * Withdraw the customer's unfinished online checkout, so the payment can be
+ * taken here instead. Until it is confirmed or withdrawn, every other way
+ * of paying this job order is refused.
+ */
+function cancelOnlinePayment(): void {
+    cancellingOnlinePayment.value = true;
+
+    router.delete(ReconciliationController.destroy.url(props.jobOrder.id), {
+        preserveScroll: true,
+        onFinish: () => {
+            cancellingOnlinePayment.value = false;
+        },
+    });
+}
+
+const hasPendingOnlinePayment = computed(
+    () => props.pendingPaymongoAmount !== null,
+);
 
 const pricingOptions = computed<SearchableOption[]>(() =>
     props.pricingEntries.map((entry) => ({
@@ -335,14 +350,13 @@ const submitLabel = computed(() => {
         return 'Request On-Credit Approval';
     }
 
-    if (paymentType.value === 'down') {
-        return 'Record Down Payment';
-    }
-
-    return isPaymongoMethod.value ? 'Generate QR Code' : 'Record Payment';
+    return paymentType.value === 'down'
+        ? 'Record Down Payment'
+        : 'Record Payment';
 });
 
 const creditRequestingProcessing = ref(false);
+const creditRequestDialogOpen = ref(false);
 
 /**
  * A plain router.post() rather than a nested <Form> — the On Credit confirm
@@ -353,6 +367,7 @@ const creditRequestingProcessing = ref(false);
  */
 function submitCreditRequest(): void {
     creditRequestingProcessing.value = true;
+    paymentForm.value?.clearErrors();
 
     router.post(
         CreditRequestController.store.url(props.jobOrder.id),
@@ -365,6 +380,13 @@ function submitCreditRequest(): void {
         },
         {
             preserveScroll: true,
+            onError: (errors) => {
+                paymentForm.value?.setError(errors);
+                creditRequestDialogOpen.value = false;
+            },
+            onSuccess: () => {
+                creditRequestDialogOpen.value = false;
+            },
             onFinish: () => {
                 creditRequestingProcessing.value = false;
             },
@@ -374,13 +396,37 @@ function submitCreditRequest(): void {
 
 const paymentLinkProcessing = ref(false);
 
+const paymentForm = useTemplateRef<FormComponentRef>('paymentForm');
+
+function handleCreditDialogClose(event: Event): void {
+    if (!paymentForm.value?.hasErrors) {
+        return;
+    }
+
+    event.preventDefault();
+
+    void nextTick(() => {
+        const pricingCard = document.querySelector<HTMLElement>(
+            '[data-test="pricing-card"]',
+        );
+
+        pricingCard?.focus({ preventScroll: true });
+        pricingCard?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+}
+
 /**
  * Save the price (first visit only) and email the customer a link to pay
  * online. Pricing fields are always included; PaymentLinkController only
  * reads them while the job order is still unpriced.
+ *
+ * This is not the outer <Form>'s own submission, so its validation errors
+ * are handed to that form to show beside the pricing fields, which sit a
+ * screen above this button on a phone.
  */
 function sendPaymentLink(): void {
     paymentLinkProcessing.value = true;
+    paymentForm.value?.clearErrors();
 
     router.post(
         PaymentLinkController.store.url(props.jobOrder.id),
@@ -393,6 +439,18 @@ function sendPaymentLink(): void {
         },
         {
             preserveScroll: true,
+            onError: (errors) => {
+                paymentForm.value?.setError(errors);
+
+                void nextTick(() =>
+                    document
+                        .querySelector('[data-test="pricing-card"]')
+                        ?.scrollIntoView({
+                            block: 'start',
+                            behavior: 'smooth',
+                        }),
+                );
+            },
             onFinish: () => {
                 paymentLinkProcessing.value = false;
             },
@@ -417,12 +475,13 @@ const discountCapHelper = computed(() =>
         />
 
         <Form
+            ref="paymentForm"
             v-bind="PaymentController.store.form(jobOrder.id)"
             :options="{ preserveScroll: true }"
             class="grid gap-6 @3xl:grid-cols-2 @3xl:items-start"
             v-slot="{ errors, processing }"
         >
-            <Card>
+            <Card data-test="pricing-card" tabindex="-1">
                 <CardHeader :icon="Receipt">
                     <CardTitle>Pricing</CardTitle>
                 </CardHeader>
@@ -566,42 +625,59 @@ const discountCapHelper = computed(() =>
                 <CardHeader :icon="CreditCard">
                     <CardTitle>Payment</CardTitle>
                 </CardHeader>
-                <CardContent v-if="subView === 'qr'" class="grid gap-4">
-                    <h2 class="text-lg font-semibold">Scan to Pay</h2>
-
-                    <PaymentQrCode
-                        v-if="paymongoRedirectUrl"
-                        :redirect-url="paymongoRedirectUrl"
-                    />
-
-                    <p class="text-muted-foreground text-sm">
-                        Ask the customer to scan this code with their
-                        {{ paymongoMethodLabel }} app to complete the
-                        {{ money(pendingPaymongoAmount) }}
-                        payment.
-                    </p>
-
-                    <Button
-                        type="button"
-                        :disabled="checkingPaymentStatus"
-                        data-test="check-payment-status-button"
-                        @click="checkPaymentStatus"
+                <CardContent class="grid gap-4">
+                    <div
+                        v-if="pendingPaymongoAmount !== null"
+                        role="status"
+                        class="border-warning/40 bg-warning/10 grid gap-3 rounded-lg border px-4 py-3 text-sm"
+                        data-test="pending-online-payment-notice"
                     >
-                        <Spinner v-if="checkingPaymentStatus" />
-                        Check Payment Status
-                    </Button>
+                        <p class="flex items-start gap-2">
+                            <Clock
+                                aria-hidden="true"
+                                class="text-warning mt-0.5 size-4 shrink-0"
+                            />
+                            <span>
+                                The customer started an online
+                                {{ pendingOnlineMethodLabel }} payment of
+                                <span class="font-semibold tabular-nums">
+                                    {{ money(pendingPaymongoAmount) }}
+                                </span>
+                                that is not confirmed yet. Check it first. If
+                                they did not finish it, cancel it to take the
+                                payment here, so they are not charged twice.
+                            </span>
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                :disabled="
+                                    checkingPaymentStatus ||
+                                    cancellingOnlinePayment
+                                "
+                                data-test="check-payment-status-button"
+                                @click="checkPaymentStatus"
+                            >
+                                <Spinner v-if="checkingPaymentStatus" />
+                                Check Payment Status
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                :disabled="
+                                    checkingPaymentStatus ||
+                                    cancellingOnlinePayment
+                                "
+                                data-test="cancel-online-payment-button"
+                                @click="cancelOnlinePayment"
+                            >
+                                <Spinner v-if="cancellingOnlinePayment" />
+                                Cancel Online Payment
+                            </Button>
+                        </div>
+                    </div>
 
-                    <Button
-                        type="button"
-                        variant="outline"
-                        data-test="switch-payment-method-button"
-                        @click="switchPaymentMethod"
-                    >
-                        Switch Payment Method
-                    </Button>
-                </CardContent>
-
-                <CardContent v-else class="grid gap-4">
                     <div
                         class="bg-muted flex items-baseline justify-between gap-4 rounded-lg px-4 py-3"
                     >
@@ -772,32 +848,45 @@ const discountCapHelper = computed(() =>
                         </p>
                     </div>
 
-                    <div
-                        v-if="paymentMethod === 'bank_transfer'"
-                        class="grid gap-2"
-                    >
+                    <div v-if="referenceLabel" class="grid gap-2">
                         <Label for="reference-number-input">
-                            Bank Reference Number
+                            {{ referenceLabel }}
                         </Label>
                         <Input
                             id="reference-number-input"
                             v-model="referenceNumber"
                             name="reference_number"
                             type="text"
+                            autocomplete="off"
+                            aria-describedby="reference-number-hint"
                         />
+                        <p
+                            id="reference-number-hint"
+                            class="text-muted-foreground text-sm"
+                        >
+                            The reference number on the customer's payment
+                            confirmation. Check the amount on it before
+                            recording.
+                        </p>
                         <InputError :message="errors.reference_number" />
                     </div>
 
-                    <AlertDialog v-if="isOnCredit">
+                    <AlertDialog
+                        v-if="isOnCredit"
+                        v-model:open="creditRequestDialogOpen"
+                    >
                         <AlertDialogTrigger as-child>
                             <Button
                                 type="button"
+                                :disabled="hasPendingOnlinePayment"
                                 data-test="record-payment-button"
                             >
                                 {{ submitLabel }}
                             </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent
+                            @close-auto-focus="handleCreditDialogClose"
+                        >
                             <AlertDialogHeader>
                                 <AlertDialogTitle>
                                     Request On-Credit approval for
@@ -830,20 +919,30 @@ const discountCapHelper = computed(() =>
                     <Button
                         v-else
                         type="submit"
-                        :disabled="processing"
+                        :disabled="processing || hasPendingOnlinePayment"
                         data-test="record-payment-button"
                     >
                         {{ submitLabel }}
                     </Button>
 
+                    <!-- Not for an order already on credit: its tracking page
+                         offers no online payment, so a link would lead
+                         nowhere. -->
                     <div
-                        v-if="!isOnCredit"
+                        v-if="
+                            !isOnCredit &&
+                            jobOrder.payment_status !== 'on_credit'
+                        "
                         class="border-border grid gap-2 border-t pt-4"
                     >
                         <Button
                             type="button"
                             variant="outline"
-                            :disabled="processing || paymentLinkProcessing"
+                            :disabled="
+                                processing ||
+                                paymentLinkProcessing ||
+                                hasPendingOnlinePayment
+                            "
                             data-test="send-payment-link-button"
                             @click="sendPaymentLink"
                         >
@@ -856,7 +955,8 @@ const discountCapHelper = computed(() =>
                         </Button>
                         <p class="text-muted-foreground text-sm">
                             For a customer who is not at the counter. They pay
-                            by GCash or Maya from their tracking link.
+                            the full amount by GCash or Maya from their tracking
+                            link.
                         </p>
                     </div>
                 </CardContent>

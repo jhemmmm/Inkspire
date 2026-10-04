@@ -92,30 +92,39 @@ class DesignReviewController extends Controller
     /**
      * Render the public/DesignReview page in the state matching this
      * revision's current lifecycle position (D-19/D-20/D-21).
+     *
+     * Every state carries the job order's number and its tracking link, so
+     * a customer who has given their verdict has somewhere to go next: the
+     * tracking page is where they follow the order and pay for it. The
+     * signed link was emailed to the same customer the tracking link was,
+     * so this hands the token to nobody who did not already hold it.
      */
     private function render(RevisionLog $revisionLog): Response
     {
         $jobOrder = $revisionLog->jobOrder;
         $expiresAt = $revisionLog->submitted_at->addDays(7);
 
+        $order = [
+            'jobOrderDescription' => $jobOrder->description,
+            'jobOrderNumber' => $jobOrder->number,
+            'trackingUrl' => route('public.tracking.token', ['token' => $jobOrder->tracking_token]),
+        ];
+
         if (! $this->isCurrentRevision($revisionLog, $jobOrder)) {
-            return Inertia::render('public/DesignReview', [
-                'state' => 'stale',
-                'jobOrderDescription' => $jobOrder->description,
-            ]);
+            return Inertia::render('public/DesignReview', ['state' => 'stale', ...$order]);
         }
 
         if (! $this->isActionable($revisionLog, $jobOrder)) {
             return Inertia::render('public/DesignReview', [
                 'state' => 'closed',
-                'jobOrderDescription' => $jobOrder->description,
+                ...$order,
                 'outcome' => $revisionLog->outcome,
             ]);
         }
 
         return Inertia::render('public/DesignReview', [
             'state' => 'active',
-            'jobOrderDescription' => $jobOrder->description,
+            ...$order,
             'imageUrl' => Storage::disk('local')->temporaryUrl($jobOrder->designFile->file_path, now()->addMinutes(10)),
             'approveUrl' => URL::temporarySignedRoute('public.design-review.approve', $expiresAt, ['revisionLog' => $revisionLog->id]),
             'requestChangesUrl' => URL::temporarySignedRoute('public.design-review.request-changes', $expiresAt, ['revisionLog' => $revisionLog->id]),

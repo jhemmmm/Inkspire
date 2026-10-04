@@ -197,3 +197,79 @@ test('the accounting dashboard files a payment taken before 8 AM Manila time und
             ->where('cashFlow.labels.13', 'Sep 28')
             ->where('cashFlow.series.0.values.13', 500));
 });
+
+function reconciliationPendingCheckout(): Transaction
+{
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+    $jobOrder->forceFill(['total_amount' => 1000, 'payment_status' => PaymentStatus::PendingConfirmation])->save();
+
+    return Transaction::factory()->pendingConfirmation()->create([
+        'job_order_id' => $jobOrder->id,
+        'amount' => 1000,
+        'paymongo_payment_intent_id' => 'pi_test_reconcile',
+    ]);
+}
+
+test('a cashier cancelling an unfinished online checkout withdraws it at PayMongo and reopens the order for payment', function () {
+    Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->with('pi_test_reconcile')->andReturn(reconciliationFakeIntent('awaiting_next_action'));
+    Paymongo::shouldReceive('cancel')->once()->andReturn(reconciliationFakeIntent('cancelled'));
+
+    $transaction = reconciliationPendingCheckout();
+
+    $response = $this->actingAs(User::factory()->cashier()->create())
+        ->delete(route('cashier.job-orders.online-payment.destroy', $transaction->job_order_id));
+
+    $response->assertRedirect();
+    $response->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'Online payment cancelled. You can take the payment here now.']);
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::Failed);
+    expect($transaction->jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Unpaid);
+});
+
+test('cancelling an online checkout the customer has already paid confirms the payment instead', function () {
+    Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->andReturn(reconciliationFakeIntent('succeeded'));
+    Paymongo::shouldReceive('cancel')->never();
+
+    $transaction = reconciliationPendingCheckout();
+
+    $response = $this->actingAs(User::factory()->cashier()->create())
+        ->delete(route('cashier.job-orders.online-payment.destroy', $transaction->job_order_id));
+
+    $response->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'The customer already paid online. Payment confirmed.']);
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::Completed);
+    expect($transaction->jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Paid);
+});
+
+test('an online checkout is left pending when it is still processing or PayMongo will not cancel it', function (string $status, bool $cancelThrows, string $message) {
+    Paymongo::shouldReceive('paymentIntent')->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->andReturn(reconciliationFakeIntent($status));
+    $cancelThrows
+        ? Paymongo::shouldReceive('cancel')->once()->andThrow(new Exception('PayMongo refused'))
+        : Paymongo::shouldReceive('cancel')->never();
+
+    $transaction = reconciliationPendingCheckout();
+
+    $response = $this->actingAs(User::factory()->cashier()->create())
+        ->delete(route('cashier.job-orders.online-payment.destroy', $transaction->job_order_id));
+
+    $response->assertRedirect();
+    $response->assertInertiaFlash('toast', ['type' => 'error', 'message' => $message]);
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::PendingConfirmation);
+    expect($transaction->jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PendingConfirmation);
+})->with([
+    'still processing' => ['processing', false, "The customer's payment is being processed and cannot be cancelled. Check its status in a moment."],
+    'PayMongo refuses the cancel' => ['awaiting_next_action', true, 'The online payment could not be cancelled. Check its status, then try again.'],
+]);
+
+test('only a cashier can cancel an online checkout', function () {
+    Paymongo::shouldReceive('paymentIntent')->never();
+
+    $transaction = reconciliationPendingCheckout();
+
+    $this->actingAs(User::factory()->accountingStaff()->create())
+        ->delete(route('cashier.job-orders.online-payment.destroy', $transaction->job_order_id))
+        ->assertForbidden();
+
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::PendingConfirmation);
+});

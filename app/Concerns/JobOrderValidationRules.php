@@ -135,6 +135,41 @@ trait JobOrderValidationRules
     }
 
     /**
+     * The key prefix of every job order row in the request, e.g.
+     * `job_orders.0.`, for rejectUnusableTypeAFiles().
+     *
+     * @return list<string>
+     */
+    protected function jobOrderRowPrefixes(): array
+    {
+        $rows = $this->input('job_orders');
+
+        return is_array($rows)
+            ? array_map(fn (int|string $index): string => "job_orders.{$index}.", array_keys($rows))
+            : [];
+    }
+
+    /**
+     * ValidateJobOrderFile's verdict on each Type A file
+     * rejectUnusableTypeAFiles() inspected, by file field key.
+     *
+     * @var array<string, array{outcome: FileValidationOutcome, reason: string|null}>
+     */
+    protected array $fileChecks = [];
+
+    /**
+     * The verdict rejectUnusableTypeAFiles() reached on a file, so a
+     * controller that stores the outcome does not inspect the file again.
+     * Null for a field it did not check.
+     *
+     * @return array{outcome: FileValidationOutcome, reason: string|null}|null
+     */
+    public function fileCheck(string $fileKey): ?array
+    {
+        return $this->fileChecks[$fileKey] ?? null;
+    }
+
+    /**
      * Reject a Type A file the shop cannot print before any job order is
      * created for it.
      *
@@ -173,6 +208,8 @@ trait JobOrderValidationRules
                 is_numeric($widthFt) ? (float) $widthFt : null,
                 is_numeric($heightFt) ? (float) $heightFt : null,
             );
+
+            $this->fileChecks[$fileKey] = $result;
 
             if ($result['outcome'] === FileValidationOutcome::Rejected) {
                 $reason = $result['reason'] ?? __('This file cannot be used for printing.');

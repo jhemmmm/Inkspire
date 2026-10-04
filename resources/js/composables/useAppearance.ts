@@ -12,16 +12,17 @@ export type UseAppearanceReturn = {
 };
 
 /**
- * The landing page and the brand-panel auth screens were designed on white
- * and have no dark variant, so they stay light whatever the saved
- * appearance. Keep in step with `$lightOnly` in app.blade.php, which does
- * the same for the first paint.
+ * Only the staff panel offers dark mode. The landing page, the brand-panel
+ * auth screens and the customer-facing public pages stay light whatever
+ * the saved appearance. Keep in step with `$lightOnly` in app.blade.php,
+ * which does the same for the first paint.
  */
 export function isLightOnlyPage(component: string): boolean {
     return (
         component === 'Welcome' ||
         component.startsWith('auth/') ||
-        component.startsWith('errors/')
+        component.startsWith('errors/') ||
+        component.startsWith('public/')
     );
 }
 

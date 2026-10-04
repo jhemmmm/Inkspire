@@ -27,13 +27,8 @@ class CustomerController extends Controller
         $customers = collect();
 
         if ($request->filled('q')) {
-            $term = addcslashes((string) $request->string('q'), '%_\\');
-
             $customers = Customer::query()
-                ->where(fn ($query) => $query
-                    ->where('name', 'like', "%{$term}%")
-                    ->orWhere('organization', 'like', "%{$term}%")
-                    ->orWhere('contact_number', 'like', "%{$term}%"))
+                ->search((string) $request->string('q'))
                 ->orderBy('name')
                 ->get();
         }

@@ -6,6 +6,7 @@ import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
+import TablePagination from '@/components/TablePagination.vue';
 import SearchableSelect, {
     type SearchableOption,
 } from '@/components/SearchableSelect.vue';
@@ -14,16 +15,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { adminNavItems } from '@/config/nav/admin';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationFirst,
-    PaginationItem,
-    PaginationLast,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -331,42 +322,6 @@ const exportXlsxUrl = computed(() =>
             </Table>
         </DataTableCard>
 
-        <Pagination
-            v-if="entries.last_page > 1"
-            v-slot="{ page }"
-            :page="entries.current_page"
-            :items-per-page="entries.per_page"
-            :total="entries.total"
-            :sibling-count="1"
-            show-edges
-            @update:page="visit"
-        >
-            <PaginationContent
-                v-slot="{ items }"
-                class="flex-wrap justify-center"
-            >
-                <PaginationFirst />
-                <PaginationPrevious />
-
-                <template v-for="(item, index) in items">
-                    <PaginationItem
-                        v-if="item.type === 'page'"
-                        :key="index"
-                        :value="item.value"
-                        :is-active="item.value === page"
-                    >
-                        {{ item.value }}
-                    </PaginationItem>
-                    <PaginationEllipsis
-                        v-else
-                        :key="`ellipsis-${index}`"
-                        :index="index"
-                    />
-                </template>
-
-                <PaginationNext />
-                <PaginationLast />
-            </PaginationContent>
-        </Pagination>
+        <TablePagination :paginator="entries" @update:page="visit" />
     </PageContainer>
 </template>

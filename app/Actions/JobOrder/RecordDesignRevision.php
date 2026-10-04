@@ -44,7 +44,7 @@ class RecordDesignRevision
         });
 
         try {
-            Mail::to($jobOrder->queueEntry->customer->email)->send(new DesignReviewRequested($revisionLog));
+            Mail::to($jobOrder->queueEntry->contactEmail())->send(new DesignReviewRequested($revisionLog));
         } catch (\Throwable $e) {
             report($e);
         }

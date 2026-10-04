@@ -11,14 +11,17 @@ trait CustomerValidationRules
     /**
      * Get the validation rules used to validate a customer's full profile.
      *
+     * Pass the id of the customer being edited so their own contact number
+     * is not reported as already taken.
+     *
      * @return array<string, array<int, ValidationRule|array<mixed>|string>>
      */
-    protected function customerRules(): array
+    protected function customerRules(?int $customerId = null): array
     {
         return [
             'name' => $this->customerNameRules(),
             'organization' => $this->organizationRules(),
-            'contact_number' => $this->contactNumberRules(),
+            'contact_number' => $this->contactNumberRules($customerId),
             'email' => $this->customerEmailRules(),
             'address' => $this->addressRules(),
         ];
@@ -53,9 +56,14 @@ trait CustomerValidationRules
      *
      * @return array<int, ValidationRule|array<mixed>|string>
      */
-    protected function contactNumberRules(): array
+    protected function contactNumberRules(?int $customerId = null): array
     {
-        return ['required', 'string', 'max:20', Rule::unique(Customer::class)];
+        return [
+            'required',
+            'string',
+            'max:20',
+            Rule::unique(Customer::class, 'contact_number')->ignore($customerId),
+        ];
     }
 
     /**

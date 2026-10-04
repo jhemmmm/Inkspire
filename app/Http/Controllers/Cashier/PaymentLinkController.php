@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Actions\POS\PriceJobOrder;
 use App\Enums\JobOrderStatus;
-use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Cashier\SendPaymentLinkRequest;
 use App\Mail\PaymentRequested;
@@ -27,68 +26,45 @@ class PaymentLinkController extends Controller
      */
     public function store(SendPaymentLinkRequest $request, JobOrder $jobOrder): RedirectResponse
     {
-        $this->abortUnlessPayable($jobOrder);
-
         $jobOrder = DB::transaction(function () use ($request, $jobOrder): JobOrder {
             $locked = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
 
-            $this->abortUnlessPayable($locked);
+            // The same eligibility rules PaymentController::store() applies.
+            if (($blocker = $locked->paymentBlocker()) !== null) {
+                abort(422, __($blocker));
+            }
+
+            abort_unless(in_array($locked->status, JobOrderStatus::PAYABLE, true), 422, 'This job order is not ready for pricing.');
 
             if ($locked->pricingIsEditable()) {
                 ($this->priceJobOrder)($locked, $request->validated());
                 $locked->save();
             }
 
-            abort_unless($locked->outstandingBalance() > 0, 422, __('This job order has no balance to pay yet.'));
+            // The tracking page's own rule, so a link is never sent for an
+            // order it will not offer payment on (On Credit above all).
+            abort_unless($locked->onlinePaymentState() === 'due', 422, __('This job order has nothing the customer can pay online.'));
 
             return $locked;
         });
 
-        $email = $jobOrder->queueEntry->customer->email;
+        $email = $jobOrder->queueEntry->contactEmail();
 
         // Unlike the other customer mails this one is sent synchronously: a
         // failure has to be visible to the Cashier, who can then fix the
         // address or hand the customer the link another way.
         try {
             Mail::to($email)->send(new PaymentRequested($jobOrder));
+
+            $toast = ['type' => 'success', 'message' => __('Price saved. Payment link emailed to :email.', ['email' => $email])];
         } catch (Throwable $e) {
             report($e);
 
-            Inertia::flash('toast', [
-                'type' => 'error',
-                'message' => __("The price was saved, but the email could not be sent. Check the customer's email address."),
-            ]);
-
-            return to_route('cashier.dashboard');
+            $toast = ['type' => 'error', 'message' => __("The price was saved, but the email could not be sent. Check the customer's email address.")];
         }
 
-        Inertia::flash('toast', [
-            'type' => 'success',
-            'message' => __('Price saved. Payment link emailed to :email.', ['email' => $email]),
-        ]);
+        Inertia::flash('toast', $toast);
 
         return to_route('cashier.dashboard');
-    }
-
-    /**
-     * The same eligibility rules PaymentController::store() applies.
-     */
-    private function abortUnlessPayable(JobOrder $jobOrder): void
-    {
-        abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
-        abort_unless(
-            in_array($jobOrder->status, [
-                JobOrderStatus::ReadyForProduction,
-                JobOrderStatus::DesignApproved,
-                JobOrderStatus::ForProduction,
-                JobOrderStatus::Printing,
-                JobOrderStatus::ReadyForPickup,
-            ], true),
-            422,
-            'This job order is not ready for pricing.',
-        );
-        abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
-        abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
-        abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.'));
     }
 }

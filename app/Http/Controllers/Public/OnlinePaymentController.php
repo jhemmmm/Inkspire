@@ -2,21 +2,16 @@
 
 namespace App\Http\Controllers\Public;
 
-use App\Actions\POS\ConfirmPaymentIntent;
+use App\Actions\POS\CancelPaymongoPayment;
+use App\Actions\POS\SettlePaymongoPayment;
 use App\Actions\POS\StartPaymongoPayment;
 use App\Enums\PaymentMethod;
-use App\Enums\TransactionStatus;
-use App\Enums\TransactionType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\PayOnlineRequest;
 use App\Models\JobOrder;
-use App\Models\Transaction;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
-use Luigel\Paymongo\Facades\Paymongo;
-use Luigel\Paymongo\Models\PaymentIntent;
-use RuntimeException;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
@@ -25,7 +20,8 @@ class OnlinePaymentController extends Controller
 {
     public function __construct(
         public StartPaymongoPayment $startPaymongoPayment,
-        public ConfirmPaymentIntent $confirmPaymentIntent,
+        public SettlePaymongoPayment $settlePaymongoPayment,
+        public CancelPaymongoPayment $cancelPaymongoPayment,
     ) {}
 
     /**
@@ -59,8 +55,8 @@ class OnlinePaymentController extends Controller
 
         try {
             $destination = match ($jobOrder->onlinePaymentState()) {
-                'due' => $this->startCheckout($jobOrder, $paymentMethod, $trackingUrl),
-                'pending' => $this->continueCheckout($jobOrder, $trackingUrl),
+                'due' => ($this->startPaymongoPayment)($jobOrder, $jobOrder->outstandingBalance(), $paymentMethod, $trackingUrl),
+                'pending' => $this->continueCheckout($jobOrder, $paymentMethod, $trackingUrl),
                 default => null,
             };
         } catch (HttpExceptionInterface) {
@@ -84,66 +80,42 @@ class OnlinePaymentController extends Controller
     }
 
     /**
-     * Open a new checkout for the full balance.
-     */
-    private function startCheckout(JobOrder $jobOrder, PaymentMethod $paymentMethod, string $trackingUrl): ?string
-    {
-        return ($this->startPaymongoPayment)(
-            $jobOrder,
-            $jobOrder->outstandingBalance(),
-            TransactionType::FullPayment,
-            $paymentMethod,
-            $trackingUrl,
-            null,
-        );
-    }
-
-    /**
      * Carry on with the checkout already open for this job order. Never
      * creates a second intent for a pending transaction: that would charge
      * the customer twice.
      *
-     * The wallet is the one the customer chose when they opened the
-     * checkout, read from the transaction. The pending page has a single
-     * button and no wallet picker, so the posted method is not used here.
+     * The pending page offers both wallets. The one the checkout was
+     * opened with carries it on; the other one switches: the open checkout
+     * is withdrawn at PayMongo first (CancelPaymongoPayment), and only once
+     * that is done is a new one started for the wallet now chosen. If it
+     * cannot be withdrawn, because it was paid or is processing, nothing
+     * new is opened.
      *
-     * PayMongo's status vocabulary is unverified against the sandbox, as
-     * ReconciliationController already notes. Each status handled below is
-     * named; anything else (`processing` above all, a payment in flight) is
-     * left exactly as it is.
+     * SettlePaymongoPayment resolves the two final statuses: `succeeded`
+     * confirms the payment, and `cancelled` fails it, which puts the order
+     * back to "due" where the customer picks a wallet again. Either way
+     * there is nowhere to send the customer. The two statuses that can
+     * still be paid are handled below; anything else (`processing` above
+     * all, a payment in flight) is left exactly as it is.
      */
-    private function continueCheckout(JobOrder $jobOrder, string $trackingUrl): ?string
+    private function continueCheckout(JobOrder $jobOrder, PaymentMethod $paymentMethod, string $trackingUrl): ?string
     {
-        $transaction = $jobOrder->transactions()
-            ->where('status', TransactionStatus::PendingConfirmation)
-            ->latest('id')
-            ->first();
+        $transaction = $jobOrder->pendingPaymongoTransaction();
 
-        if (! $transaction instanceof Transaction) {
+        if ($transaction === null) {
             return null;
         }
 
-        $intent = Paymongo::paymentIntent()->find((string) $transaction->paymongo_payment_intent_id);
+        if ($transaction->payment_method !== $paymentMethod) {
+            if (($this->cancelPaymongoPayment)($transaction) !== 'cancelled' || $jobOrder->refresh()->onlinePaymentState() !== 'due') {
+                return null;
+            }
 
-        if (! $intent instanceof PaymentIntent) {
-            throw new RuntimeException('PayMongo did not return a payment intent.');
+            return ($this->startPaymongoPayment)($jobOrder, $jobOrder->outstandingBalance(), $paymentMethod, $trackingUrl);
         }
 
+        $intent = ($this->settlePaymongoPayment)($transaction);
         $status = (string) ($intent->getData()['status'] ?? '');
-
-        if ($status === 'succeeded') {
-            ($this->confirmPaymentIntent)($transaction, true);
-
-            return null;
-        }
-
-        // Closed at PayMongo and can no longer be paid. Failing it puts the
-        // order back to "due", where the customer picks a wallet again.
-        if ($status === 'cancelled') {
-            ($this->confirmPaymentIntent)($transaction, false);
-
-            return null;
-        }
 
         if ($status === 'awaiting_next_action') {
             $existingUrl = $intent->getData()['next_action']['redirect']['url'] ?? null;
@@ -154,13 +126,7 @@ class OnlinePaymentController extends Controller
         // The earlier attempt never got as far as the wallet. Same intent,
         // fresh payment method.
         if ($status === 'awaiting_payment_method') {
-            $paymongoPaymentMethod = Paymongo::paymentMethod()->create([
-                'type' => $transaction->payment_method === PaymentMethod::Gcash ? 'gcash' : 'paymaya',
-            ]);
-            $attached = Paymongo::paymentIntent()->attach($intent, (string) $paymongoPaymentMethod->getData()['id'], $trackingUrl);
-            $newUrl = $attached->getData()['next_action']['redirect']['url'] ?? null;
-
-            return is_string($newUrl) ? $newUrl : null;
+            return $this->startPaymongoPayment->attachWallet($intent, $transaction->payment_method, $trackingUrl);
         }
 
         return null;

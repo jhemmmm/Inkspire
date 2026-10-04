@@ -12,7 +12,7 @@ import {
     ComboboxTrigger,
     ComboboxViewport,
 } from 'reka-ui';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { cn } from '@/lib/utils';
 
 export interface SearchableOption {
@@ -38,9 +38,26 @@ const props = withDefaults(
     },
 );
 
+const emit = defineEmits<{
+    /**
+     * The typed term, for a list too long to ship whole: the page asks the
+     * server for the matching options and passes them back in as `options`.
+     */
+    search: [term: string];
+}>();
+
 const model = defineModel<string>({ default: '' });
 
 const search = ref('');
+const isOpen = ref(false);
+
+// Only while the menu is open: choosing an option closes it and writes that
+// option's label into the input, which is not somebody searching.
+watch(search, (term) => {
+    if (isOpen.value) {
+        emit('search', term.trim());
+    }
+});
 
 const selected = computed(() =>
     props.options.find((option) => option.value === model.value),
@@ -69,8 +86,13 @@ const selected = computed(() =>
  * closing restores the label via `resetSearchTermOnBlur`.
  */
 function onOpenChange(open: boolean): void {
+    isOpen.value = open;
+
     if (open) {
         search.value = search.value.replace(selected.value?.label ?? '', '');
+        // Even when the term did not change: a list the server narrowed for
+        // an earlier search has to answer for this one before it is shown.
+        emit('search', search.value.trim());
     }
 }
 

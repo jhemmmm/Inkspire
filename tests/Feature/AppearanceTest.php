@@ -8,11 +8,11 @@ use App\Models\User;
  */
 const DARK_HTML_TAG = '/<html[^>]*\bclass="dark"/';
 
-test('guest brand pages render light even when the saved appearance is dark', function (string $routeName) {
+test('guest pages render light even when the saved appearance is dark', function (string $routeName) {
     $response = $this->withUnencryptedCookie('appearance', 'dark')->get(route($routeName));
 
     expect($response->getContent())->not->toMatch(DARK_HTML_TAG);
-})->with(['home', 'login', 'password.request']);
+})->with(['home', 'login', 'password.request', 'public.tracking.show']);
 
 test('the forbidden page renders light even when the saved appearance is dark', function () {
     $cashier = User::factory()->cashier()->create();

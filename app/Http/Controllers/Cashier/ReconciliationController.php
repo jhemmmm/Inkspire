@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers\Cashier;
 
-use App\Actions\POS\ConfirmPaymentIntent;
+use App\Actions\POS\CancelPaymongoPayment;
+use App\Actions\POS\SettlePaymongoPayment;
 use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Enums\UserRole;
@@ -13,13 +14,11 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Luigel\Paymongo\Facades\Paymongo;
-use Luigel\Paymongo\Models\PaymentIntent;
-use RuntimeException;
+use Throwable;
 
 class ReconciliationController extends Controller
 {
-    public function __construct(public ConfirmPaymentIntent $confirmPaymentIntent) {}
+    public function __construct(public SettlePaymongoPayment $settlePaymongoPayment) {}
 
     /**
      * List job orders awaiting GCash/Maya payment confirmation (POS-04) —
@@ -42,7 +41,7 @@ class ReconciliationController extends Controller
                 ])
                 ->orderBy('created_at')
                 ->get(['id', 'description', 'payment_status', 'total_amount', 'queue_entry_id', 'created_at']),
-            'cashFlow' => $reportBuilder->cashFlow(),
+            'cashFlow' => fn () => $reportBuilder->cashFlow(),
         ]);
     }
 
@@ -61,38 +60,17 @@ class ReconciliationController extends Controller
         abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
         abort_unless($jobOrder->payment_status === PaymentStatus::PendingConfirmation, 422, 'This job order is not awaiting payment confirmation.');
 
-        $transaction = $jobOrder->transactions()
-            ->where('status', TransactionStatus::PendingConfirmation)
-            ->latest()
-            ->firstOrFail();
+        $transaction = $jobOrder->pendingPaymongoTransaction() ?? abort(404);
 
-        $intent = Paymongo::paymentIntent()->find((string) $transaction->paymongo_payment_intent_id);
-
-        // The trait's find() is typed to return the generic BaseModel —
-        // paymentIntent() only sets returnModel = PaymentIntent::class at
-        // runtime, so PHPStan can't narrow this by static flow alone
-        // (Pitfall 4, matching PaymentController's own guard).
-        if (! $intent instanceof PaymentIntent) {
-            throw new RuntimeException('PayMongo did not return a payment intent.');
-        }
-
-        // Payment Intent status vocabulary [MEDIUM confidence — RESEARCH.md
-        // flags PayMongo's exact status set as unverified against a real
-        // sandbox delivery: awaiting_payment_method / awaiting_next_action /
-        // processing / succeeded / cancelled. There is no distinct
-        // "expired" status exposed by the API itself, so `cancelled` is
-        // treated as this plan's failed/expired outcome and every other
-        // non-terminal status as still pending — re-verify once the user's
-        // PayMongo sandbox keys are available].
-        $status = (string) ($intent->getData()['status'] ?? '');
+        // Resolves the transaction for a final status (succeeded, or
+        // cancelled as the failed/expired outcome); anything else is still
+        // pending and only reported back here.
+        $status = (string) (($this->settlePaymongoPayment)($transaction)->getData()['status'] ?? '');
 
         if ($status === 'succeeded') {
-            ($this->confirmPaymentIntent)($transaction, true);
-
             Inertia::flash('toast', ['type' => 'success', 'message' => __('Payment confirmed.')]);
 
-            // Only the Cashier's own "Scan to Pay" sub-view expects a
-            // receipt redirect on success (UI-SPEC §1); Accounting Staff
+            // Only a Cashier is sent on to the receipt; Accounting Staff
             // has no route access to cashier.job-orders.receipt.show
             // (role:cashier middleware only, T-05-12) — sending them there
             // would 403, so their dashboard action just returns to the
@@ -103,8 +81,6 @@ class ReconciliationController extends Controller
         }
 
         if ($status === 'cancelled') {
-            ($this->confirmPaymentIntent)($transaction, false);
-
             Inertia::flash('toast', [
                 'type' => 'error',
                 'message' => __('This payment failed or expired. Choose a different payment method to continue.'),
@@ -117,6 +93,45 @@ class ReconciliationController extends Controller
             'type' => 'error',
             'message' => __('Payment not received yet. Try again in a moment, or ask the customer to confirm they completed the payment.'),
         ]);
+
+        return back();
+    }
+
+    /**
+     * Withdraw a checkout the customer opened online and never finished, so
+     * the Cashier can take the payment at the counter instead. Cashier only:
+     * while a checkout is open every other payment path refuses (see
+     * JobOrder::paymentBlocker()), and this is the way out of it.
+     *
+     * A checkout PayMongo reports as paid is confirmed rather than
+     * cancelled, and one still processing is left alone. When PayMongo
+     * cannot be reached nothing changes, so the customer is never left able
+     * to pay a checkout this side has already written off.
+     */
+    public function destroy(JobOrder $jobOrder, CancelPaymongoPayment $cancelPaymongoPayment): RedirectResponse
+    {
+        abort_unless($jobOrder->payment_status === PaymentStatus::PendingConfirmation, 422, 'This job order is not awaiting payment confirmation.');
+
+        $transaction = $jobOrder->pendingPaymongoTransaction() ?? abort(404);
+
+        try {
+            $status = $cancelPaymongoPayment($transaction);
+        } catch (Throwable $e) {
+            report($e);
+
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => __('The online payment could not be cancelled. Check its status, then try again.'),
+            ]);
+
+            return back();
+        }
+
+        Inertia::flash('toast', match ($status) {
+            'cancelled' => ['type' => 'success', 'message' => __('Online payment cancelled. You can take the payment here now.')],
+            'succeeded' => ['type' => 'success', 'message' => __('The customer already paid online. Payment confirmed.')],
+            default => ['type' => 'error', 'message' => __("The customer's payment is being processed and cannot be cancelled. Check its status in a moment.")],
+        });
 
         return back();
     }

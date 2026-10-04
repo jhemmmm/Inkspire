@@ -31,6 +31,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
 import { index as designOverridesIndex } from '@/routes/admin/design-overrides';
@@ -46,6 +47,9 @@ interface LockedJobOrder {
 const props = defineProps<{
     jobOrders: LockedJobOrder[];
 }>();
+
+// A design locks the moment its client approves it; show it without a reload.
+useLivePoll(['jobOrders']);
 
 defineOptions({
     layout: {

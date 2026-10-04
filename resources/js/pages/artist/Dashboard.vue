@@ -33,6 +33,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { artistNavItems } from '@/config/nav/artist';
 import { artistStatusBadge, artistStatusLabel } from '@/lib/roles';
 import { jobOrderStatusBadge } from '@/lib/jobOrders';
@@ -66,6 +67,10 @@ const props = defineProps<{
     artistStatus: string;
     artistLabel: string | null;
 }>();
+
+// New work reaches the shared pool, and a client's verdict reaches this
+// Artist's own queue, without a reload.
+useLivePoll(['jobOrders', 'availableJobOrders', 'artistStatus']);
 
 /**
  * On break or off shift, the queue is read-only.

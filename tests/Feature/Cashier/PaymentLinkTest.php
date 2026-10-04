@@ -80,6 +80,35 @@ test('fully paid and cancelled orders are refused', function (array $attributes)
     'cancelled' => [['cancelled_at' => '2026-09-10 00:00:00']],
 ]);
 
+test('orders the tracking page offers no online payment on are refused', function (PaymentStatus $status) {
+    Mail::fake();
+    $jobOrder = paymentLinkJobOrder(['payment_status' => $status, 'total_amount' => 1000]);
+
+    $this->actingAs(User::factory()->cashier()->create())
+        ->post(route('cashier.job-orders.payment-link.store', $jobOrder))
+        ->assertStatus(422);
+
+    expect($jobOrder->fresh()->onlinePaymentState())->not->toBe('due');
+    Mail::assertNothingSent();
+})->with([
+    'on credit' => [PaymentStatus::OnCredit],
+    'online checkout already open' => [PaymentStatus::PendingConfirmation],
+]);
+
+test('the link for a website order goes to the address it was confirmed from, not the one on file', function () {
+    Mail::fake();
+    $jobOrder = paymentLinkJobOrder(['payment_status' => PaymentStatus::Unpaid, 'total_amount' => 1000]);
+    Transaction::factory()->create(['job_order_id' => $jobOrder->id, 'amount' => 400]);
+    $jobOrder->queueEntry->update(['contact_email' => 'visitor@example.test']);
+
+    $this->actingAs(User::factory()->cashier()->create())
+        ->post(route('cashier.job-orders.payment-link.store', $jobOrder))
+        ->assertRedirect(route('cashier.dashboard'));
+
+    Mail::assertSent(PaymentRequested::class, fn (PaymentRequested $mail) => $mail->hasTo('visitor@example.test')
+        && ! $mail->hasTo('customer@example.test'));
+});
+
 test('invalid pricing input is rejected while pricing is editable', function () {
     Mail::fake();
     $cashier = User::factory()->cashier()->create();

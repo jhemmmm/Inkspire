@@ -8,6 +8,7 @@ use App\Support\BusinessTime;
 use Database\Factories\QueueEntryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * @property int $id
  * @property int $customer_id
+ * @property string|null $contact_email
  * @property Carbon $queue_date
  * @property string $queue_prefix
  * @property int $queue_number
@@ -25,7 +27,7 @@ use Illuminate\Support\Facades\DB;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['customer_id', 'queue_date', 'queue_prefix', 'queue_number', 'status'])]
+#[Fillable(['customer_id', 'contact_email', 'queue_date', 'queue_prefix', 'queue_number', 'status'])]
 #[ObservedBy(AuditObserver::class)]
 class QueueEntry extends Model
 {
@@ -69,6 +71,15 @@ class QueueEntry extends Model
     }
 
     /**
+     * Where this visit's emails go: the address a website order was
+     * confirmed from, otherwise the customer's own.
+     */
+    public function contactEmail(): string
+    {
+        return $this->contact_email ?? $this->customer->email;
+    }
+
+    /**
      * The job orders created during this visit.
      *
      * @return HasMany<JobOrder, $this>
@@ -102,6 +113,23 @@ class QueueEntry extends Model
     public static function currentBusinessDate(): string
     {
         return BusinessTime::now()->toDateString();
+    }
+
+    /**
+     * Today's visits by people standing in the shop, in the order they are
+     * called: the rush lane first, then by number. The online lane is left
+     * out, as it is on every queue display.
+     *
+     * whereDate(), not where(), for the reason nextForBusinessDay() gives.
+     *
+     * @param  Builder<QueueEntry>  $query
+     */
+    public function scopeTodaysFloorQueue(Builder $query): void
+    {
+        $query->whereDate('queue_date', self::currentBusinessDate())
+            ->where('queue_prefix', '!=', self::ONLINE_PREFIX)
+            ->orderByRaw('CASE queue_prefix WHEN ? THEN 0 ELSE 1 END', [self::RUSH_PREFIX])
+            ->orderBy('queue_number');
     }
 
     /**

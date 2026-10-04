@@ -298,6 +298,36 @@ class JobOrder extends Model
     }
 
     /**
+     * The online checkout still waiting on PayMongo's answer, if there is
+     * one: this job order's newest pending_confirmation transaction.
+     */
+    public function pendingPaymongoTransaction(): ?Transaction
+    {
+        return $this->transactions()
+            ->where('status', TransactionStatus::PendingConfirmation)
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * Why this job order can't take a payment, or null when it can.
+     * Returned untranslated; the caller passes it through __(). The counter,
+     * the payment link and the online checkout all refuse with this message,
+     * so they can never disagree.
+     */
+    public function paymentBlocker(): ?string
+    {
+        return match (true) {
+            $this->cancelled_at !== null => 'This job order has been cancelled.',
+            $this->payment_status === PaymentStatus::Paid => 'This job order is already fully paid.',
+            $this->payment_status === PaymentStatus::WrittenOff => 'This job order has been written off and cannot accept further payments.',
+            $this->payment_status === PaymentStatus::CreditPendingApproval => 'This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.',
+            $this->payment_status === PaymentStatus::PendingConfirmation => 'The customer has an online payment open for this job order. Check it or cancel it before taking another payment.',
+            default => null,
+        };
+    }
+
+    /**
      * Payment statuses that unlock an order for printing: the single source
      * of truth for the production gate.
      *
@@ -317,6 +347,17 @@ class JobOrder extends Model
     public function isClearedForProduction(): bool
     {
         return in_array($this->payment_status, self::CLEARED_FOR_PRODUCTION, true);
+    }
+
+    /**
+     * Whether Frontline may hand this order over, as far as money goes: it
+     * is fully paid, or on Admin-approved credit. This is the release gate
+     * JobOrderReleaseController enforces, and what the public queue board
+     * reads to send a printed order to Frontline rather than the Cashier.
+     */
+    public function isClearedForRelease(): bool
+    {
+        return in_array($this->payment_status, [PaymentStatus::Paid, PaymentStatus::OnCredit], true);
     }
 
     /**

@@ -31,6 +31,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
 import { index as writeOffRequestsIndex } from '@/routes/admin/write-off-requests';
@@ -53,6 +54,9 @@ interface WriteOffRequest {
 const props = defineProps<{
     writeOffRequests: WriteOffRequest[];
 }>();
+
+// A request Accounting just raised shows up without a reload.
+useLivePoll(['writeOffRequests']);
 
 defineOptions({
     layout: {

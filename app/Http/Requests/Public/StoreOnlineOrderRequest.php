@@ -83,13 +83,7 @@ class StoreOnlineOrderRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                $rows = $this->input('job_orders');
-
-                $prefixes = is_array($rows)
-                    ? array_map(fn (int|string $index): string => "job_orders.{$index}.", array_keys($rows))
-                    : [];
-
-                $this->rejectUnusableTypeAFiles($validator, $prefixes, customerFacing: true);
+                $this->rejectUnusableTypeAFiles($validator, $this->jobOrderRowPrefixes(), customerFacing: true);
             },
         ];
     }

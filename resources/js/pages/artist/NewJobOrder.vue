@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import { Plus, Ticket, UserPlus, Users } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import JobOrderIntakeController from '@/actions/App/Http/Controllers/Artist/JobOrderIntakeController';
 import InputError from '@/components/InputError.vue';
 import JobOrderRowFields, {
     emptyJobOrderRow,
+    jobOrderRowErrors,
     type JobOrderRow,
 } from '@/components/JobOrderRowFields.vue';
 import PageContainer from '@/components/PageContainer.vue';
@@ -38,7 +39,9 @@ interface PricingEntry {
 }
 
 const props = defineProps<{
+    /** A short list: the first few, or the matches for the current search. */
     customers: CustomerOption[];
+    hasMoreCustomers: boolean;
     specificationOptions: Record<string, string[]>;
     pricingEntries: PricingEntry[];
     printSizeDimensions: Record<
@@ -61,15 +64,28 @@ defineOptions({
 
 const customerMode = ref<'existing' | 'new'>('existing');
 
-const customerOptions = computed(() =>
-    props.customers.map((customer) => ({
+/**
+ * The customer picked from an earlier search. The list moves on with every
+ * search, so the picked one is kept here or its name would vanish from the
+ * field the moment the Artist typed something else.
+ */
+const pickedCustomer = ref<CustomerOption | null>(null);
+
+const customerOptions = computed(() => {
+    const picked = pickedCustomer.value;
+    const listed =
+        picked && !props.customers.some(({ id }) => id === picked.id)
+            ? [picked, ...props.customers]
+            : props.customers;
+
+    return listed.map((customer) => ({
         value: String(customer.id),
         label: customer.name,
         hint: [customer.organization, customer.contact_number]
             .filter(Boolean)
             .join(' · '),
-    })),
-);
+    }));
+});
 
 const emptyCustomer = () => ({
     name: '',
@@ -84,6 +100,63 @@ const form = useForm({
     customer: emptyCustomer(),
     job_orders: [emptyJobOrderRow()] as JobOrderRow[],
 });
+
+watch(
+    () => form.customer_id,
+    (id) => {
+        pickedCustomer.value =
+            props.customers.find((customer) => String(customer.id) === id) ??
+            null;
+    },
+);
+
+const searchingCustomers = ref(false);
+
+// The search the listed customers answer, and the newest one asked for. They
+// start from the address: after a refresh the list is still the last
+// search's, while the field itself is empty again.
+let listedSearch =
+    new URL(usePage().url, 'http://localhost').searchParams.get(
+        'customer_search',
+    ) ?? '';
+let requestedSearch = listedSearch;
+let customerSearchTimer: ReturnType<typeof setTimeout> | undefined;
+
+/**
+ * Ask the server for the customers matching what was typed. Debounced so a
+ * name fires one request, not one per letter, and limited to the two
+ * customer props so the form (and any file already attached) is untouched.
+ */
+function searchCustomers(term: string): void {
+    if (term === listedSearch && term === requestedSearch) {
+        return;
+    }
+
+    requestedSearch = term;
+    searchingCustomers.value = true;
+    clearTimeout(customerSearchTimer);
+    customerSearchTimer = setTimeout(() => {
+        router.get(create.url(), term === '' ? {} : { customer_search: term }, {
+            only: ['customers', 'hasMoreCustomers'],
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onSuccess: () => {
+                listedSearch = term;
+            },
+            // A newer search cancels this one, which also ends here.
+            onFinish: () => {
+                if (term === requestedSearch) {
+                    searchingCustomers.value = false;
+                }
+            },
+        });
+    }, 300);
+}
+
+// A search still waiting to fire would pull the Artist back to this page
+// after they left it, or cancel the save they just started.
+onBeforeUnmount(() => clearTimeout(customerSearchTimer));
 
 // The unused mode's value is cleared on every switch, and the payload below
 // carries only the active mode's key, so the server never sees both.
@@ -107,19 +180,6 @@ function removeRow(index: number): void {
     form.job_orders.splice(index, 1);
 }
 
-function jobOrderRowErrors(index: number): Record<string, string | undefined> {
-    const prefix = `job_orders.${index}.`;
-    const sliced: Record<string, string | undefined> = {};
-
-    for (const [key, value] of Object.entries(form.errors)) {
-        if (key.startsWith(prefix)) {
-            sliced[key.slice(prefix.length)] = value as string | undefined;
-        }
-    }
-
-    return sliced;
-}
-
 const estimatedTotal = computed(() =>
     form.job_orders.reduce(
         (sum: number, row: JobOrderRow) =>
@@ -129,6 +189,8 @@ const estimatedTotal = computed(() =>
 );
 
 function submit(): void {
+    clearTimeout(customerSearchTimer);
+
     form.transform((data) =>
         customerMode.value === 'existing'
             ? { customer_id: data.customer_id, job_orders: data.job_orders }
@@ -195,8 +257,21 @@ function submit(): void {
                         :options="customerOptions"
                         placeholder="Select a customer"
                         search-placeholder="Search by name, organization or number…"
-                        empty-text="No customer matches that. Use New customer to register them."
+                        :empty-text="
+                            searchingCustomers
+                                ? 'Searching…'
+                                : 'No customer matches that. Use New customer to register them.'
+                        "
+                        @search="searchCustomers"
                     />
+                    <p
+                        v-if="hasMoreCustomers"
+                        class="text-muted-foreground text-sm"
+                        data-test="more-customers-hint"
+                    >
+                        Showing the first {{ customers.length }} customers. Type
+                        a name, organization or number to find the rest.
+                    </p>
                     <InputError :message="form.errors.customer_id" />
                 </div>
 
@@ -266,7 +341,7 @@ function submit(): void {
             :key="row._key"
             :row="row"
             :index="index"
-            :errors="jobOrderRowErrors(index)"
+            :errors="jobOrderRowErrors(form.errors, index)"
             :pricing-entries="pricingEntries"
             :specification-options="specificationOptions"
             :print-size-dimensions="printSizeDimensions"

@@ -30,6 +30,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { frontlineStaffNavItems } from '@/config/nav/frontline-staff';
 import {
     jobOrderStatusBadge,
@@ -104,6 +105,9 @@ interface JobOrderDetail {
 }
 
 const props = defineProps<{ jobOrder: JobOrderDetail }>();
+
+// The stage and payment shown here move as other roles work the order.
+useLivePoll(['jobOrder']);
 
 defineOptions({
     layout: {

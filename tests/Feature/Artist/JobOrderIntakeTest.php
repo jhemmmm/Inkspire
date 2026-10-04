@@ -43,6 +43,63 @@ test('the new job order page renders with the intake catalog', function () {
         );
 });
 
+test('the customer picker is handed a short list and told when there are more', function (int $customers, int $listed, bool $hasMore) {
+    Customer::factory()->count($customers)->create();
+
+    $this->actingAs(intakeTestArtist())
+        ->get(route('artist.job-orders.create'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('customers', $listed, fn (Assert $customer) => $customer->hasAll(['id', 'name', 'organization', 'contact_number']))
+            ->where('hasMoreCustomers', $hasMore));
+})->with([
+    'exactly the limit' => [20, 20, false],
+    'one past the limit' => [21, 20, true],
+]);
+
+test('a customer search narrows the picker on the server', function (string $term) {
+    $wanted = Customer::factory()->create([
+        'name' => 'Zenaida Villanueva',
+        'organization' => 'Northgate Bakery',
+        'contact_number' => '09175550142',
+    ]);
+    Customer::factory()->count(25)->create(['organization' => null]);
+
+    $this->actingAs(intakeTestArtist())
+        ->get(route('artist.job-orders.create', ['customer_search' => $term]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('customers', 1)
+            ->where('customers.0.id', $wanted->id)
+            ->where('hasMoreCustomers', false));
+})->with([
+    'by name' => 'zenaida vill',
+    'by organization' => 'Northgate',
+    'by contact number' => '5550142',
+]);
+
+test('a percent sign in a customer search is a literal, not a wildcard', function () {
+    Customer::factory()->count(3)->create();
+    $wanted = Customer::factory()->create(['organization' => '100% Cotton Shirts']);
+
+    $this->actingAs(intakeTestArtist())
+        ->get(route('artist.job-orders.create', ['customer_search' => '100%']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('customers', 1)
+            ->where('customers.0.id', $wanted->id));
+});
+
+test('a customer search asks for the customer list alone, not the whole intake catalog', function () {
+    Customer::factory()->create(['name' => 'Zenaida Villanueva']);
+
+    $this->actingAs(intakeTestArtist())
+        ->get(route('artist.job-orders.create'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->reloadOnly(['customers', 'hasMoreCustomers'], fn (Assert $reload) => $reload
+                ->has('customers', 1)
+                ->has('hasMoreCustomers')
+                ->missing('pricingEntries')
+                ->missing('specificationOptions')));
+});
+
 test('an on-shift artist books a type b order straight into their own queue', function () {
     Mail::fake();
     $artist = intakeTestArtist();

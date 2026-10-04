@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Admin\AuditTrailController;
 use App\Http\Controllers\Admin\CreditApprovalController;
+use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DesignFileController;
 use App\Http\Controllers\Admin\JobOrderController;
+use App\Http\Controllers\Admin\PricingEntryController;
 use App\Http\Controllers\Admin\SpecificationOptionController;
 use App\Http\Controllers\Admin\SystemConfigurationController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -31,11 +33,16 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::patch('users/{user}', [UserManagementController::class, 'update'])->name('users.update');
     Route::patch('users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
     Route::patch('users/{user}/reactivate', [UserManagementController::class, 'reactivate'])->name('users.reactivate');
+    Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
+    Route::patch('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
     Route::get('audit-trail', [AuditTrailController::class, 'index'])->name('audit-trail.index');
     Route::get('audit-trail/export/pdf', [AuditTrailController::class, 'exportPdf'])->name('audit-trail.export.pdf');
     Route::get('audit-trail/export/xlsx', [AuditTrailController::class, 'exportXlsx'])->name('audit-trail.export.xlsx');
     Route::get('system-configuration', [SystemConfigurationController::class, 'edit'])->name('system-configuration.edit');
     Route::patch('system-configuration/{configuration}', [SystemConfigurationController::class, 'update'])->name('system-configuration.update');
+    Route::get('products', [PricingEntryController::class, 'index'])->name('products.index');
+    Route::post('products', [PricingEntryController::class, 'store'])->name('products.store');
+    Route::patch('products/{pricingEntry}', [PricingEntryController::class, 'update'])->name('products.update');
     Route::get('specifications', [SpecificationOptionController::class, 'index'])->name('specifications.index');
     Route::post('specifications', [SpecificationOptionController::class, 'store'])->name('specifications.store');
     Route::patch('specifications/{specificationOption}', [SpecificationOptionController::class, 'update'])->name('specifications.update');

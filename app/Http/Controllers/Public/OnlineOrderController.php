@@ -28,7 +28,7 @@ use Inertia\Response;
 class OnlineOrderController extends Controller
 {
     /** Orders one connection may send before it has to wait. */
-    private const int ORDERS_PER_WINDOW = 5;
+    private const int ORDERS_PER_WINDOW = 20;
 
     private const int WINDOW_SECONDS = 600;
 
@@ -54,7 +54,7 @@ class OnlineOrderController extends Controller
      * Park the order and email the customer a link to confirm it. Nothing
      * reaches the shop's workflow until that link is opened.
      */
-    public function store(StoreOnlineOrderRequest $request, ValidateJobOrderFile $validateFile): RedirectResponse
+    public function store(StoreOnlineOrderRequest $request): RedirectResponse
     {
         // Counted here rather than by the route's throttle, so that only a
         // submission about to send mail uses up the allowance. A visitor
@@ -79,7 +79,7 @@ class OnlineOrderController extends Controller
             ->whereIn('id', array_column($submittedRows, 'pricing_entry_id'))
             ->pluck('name', 'id');
 
-        $rows = array_map(function (array $row) use ($validateFile, $productNames, &$storedPaths): array {
+        $rows = array_map(function (array $row, int|string $index) use ($request, $productNames, &$storedPaths): array {
             $file = $row['file'] ?? null;
             unset($row['file']);
 
@@ -87,26 +87,21 @@ class OnlineOrderController extends Controller
             // shop's own emails and tables go on to show.
             $row['description'] = $productNames[$row['pricing_entry_id']];
 
-            // Only a print-ready row may carry a file, and its format and
-            // size were checked by the request. Anything attached to a
-            // design request was never checked, so it is not kept.
-            if (! $file instanceof UploadedFile || $row['type'] !== JobOrderType::TypeA->value) {
+            // Only a print-ready row may carry a file, and the request
+            // already inspected it: its verdict is reused here rather than
+            // reading the file a second time. Anything attached to a design
+            // request was never checked, so it is not kept.
+            $result = $request->fileCheck("job_orders.{$index}.file");
+
+            if (! $file instanceof UploadedFile || $row['type'] !== JobOrderType::TypeA->value || $result === null) {
                 return $row;
             }
 
             $row['file_path'] = $storedPaths[] = $file->store('job-orders', 'local');
-
-            $result = $validateFile(
-                $file,
-                $row['print_size'] ?? null,
-                isset($row['width_ft']) ? (float) $row['width_ft'] : null,
-                isset($row['height_ft']) ? (float) $row['height_ft'] : null,
-            );
-
             $row['file_check'] = ['outcome' => $result['outcome']->value, 'reason' => $result['reason']];
 
             return $row;
-        }, $submittedRows);
+        }, $submittedRows, array_keys($submittedRows));
 
         $order = OnlineOrder::create([
             'email' => $validated['email'],
@@ -167,12 +162,16 @@ class OnlineOrderController extends Controller
      * Place the order: find or create the customer, open the online-lane
      * visit and email the tracking links. Opening the link twice does
      * nothing the second time.
+     *
+     * The customer is matched by mobile number alone and an existing record
+     * is never overwritten: the visitor has proved they can read the email
+     * they typed, not that the number is theirs. So the visit keeps that
+     * email as its own contact address, and every later mail about these
+     * job orders goes there rather than to the address on file.
      */
     public function confirm(int $onlineOrder, OpenVisit $openVisit): Response
     {
-        $confirmedNow = false;
-
-        $order = DB::transaction(function () use ($onlineOrder, $openVisit, &$confirmedNow): ?OnlineOrder {
+        $order = DB::transaction(function () use ($onlineOrder, $openVisit): ?OnlineOrder {
             $order = OnlineOrder::query()->lockForUpdate()->find($onlineOrder);
 
             if ($order === null || $order->confirmed_at !== null) {
@@ -189,10 +188,9 @@ class OnlineOrderController extends Controller
                 ],
             );
 
-            $entry = $openVisit($customer->id, $order->payload['job_orders'], QueueEntry::ONLINE_PREFIX);
+            $entry = $openVisit($customer->id, $order->payload['job_orders'], QueueEntry::ONLINE_PREFIX, $order->email);
 
             $order->forceFill(['confirmed_at' => now(), 'queue_entry_id' => $entry->id])->save();
-            $confirmedNow = true;
 
             return $order;
         });
@@ -201,12 +199,9 @@ class OnlineOrderController extends Controller
             return Inertia::render('public/OrderConfirm', ['state' => 'expired']);
         }
 
-        if ($confirmedNow) {
-            try {
-                Mail::to($order->email)->send(new JobOrdersReceived($order->queueEntry()->firstOrFail()->load('jobOrders')));
-            } catch (\Throwable $e) {
-                report($e);
-            }
+        // Only the request that confirmed the order sends the mail.
+        if ($order->wasChanged('confirmed_at')) {
+            rescue(fn () => Mail::to($order->email)->send(new JobOrdersReceived($order->queueEntry()->firstOrFail()->load('jobOrders'))));
         }
 
         return $this->renderConfirmed($order);

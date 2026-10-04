@@ -19,6 +19,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { accountingStaffNavItems } from '@/config/nav/accounting-staff';
 import type { ChartSeries } from '@/lib/charts';
 import { dashboard } from '@/routes/accounting-staff';
@@ -42,6 +43,11 @@ defineProps<{
     jobOrders: PendingConfirmationJobOrder[];
     cashFlow: { labels: string[]; series: ChartSeries[] };
 }>();
+
+// A payment confirmed by PayMongo's webhook, or by the customer's own
+// tracking page, drops off this list on its own. The chart is left out: it
+// only moves with completed days.
+useLivePoll(['jobOrders']);
 
 defineOptions({
     layout: {

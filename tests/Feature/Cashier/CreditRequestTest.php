@@ -6,6 +6,40 @@ use App\Models\JobOrder;
 use App\Models\PricingEntry;
 use App\Models\User;
 
+test('invalid credit pricing returns field errors to the payment page without creating credit', function (array $invalidPricing, string $field, string $message) {
+    $cashier = User::factory()->cashier()->create();
+    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+    $paymentPage = route('cashier.job-orders.payment.edit', $jobOrder);
+    $pricing = array_merge([
+        'pricing_entry_id' => $pricingEntry->id,
+        'line_amount' => 1000,
+        'rush_fee_applied' => false,
+    ], $invalidPricing);
+
+    $response = $this->actingAs($cashier)
+        ->from($paymentPage)
+        ->withHeader('X-Inertia', 'true')
+        ->post(route('cashier.job-orders.credit-request.store', $jobOrder), $pricing);
+
+    $response->assertRedirect($paymentPage);
+    $response->assertSessionHasErrors([$field => $message]);
+    $this->assertDatabaseCount('accounts_receivable', 0);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Unpaid);
+    expect($jobOrder->fresh()->total_amount)->toBeNull();
+})->with([
+    'missing product' => [
+        ['pricing_entry_id' => null],
+        'pricing_entry_id',
+        'The pricing entry id field is required.',
+    ],
+    'discount over the cap' => [
+        ['discount_type' => 'percentage', 'discount_value' => 999999],
+        'discount_value',
+        "Discount can't exceed the configured cap.",
+    ],
+]);
+
 test('a written-off job order cannot be placed back on credit', function () {
     $cashier = User::factory()->cashier()->create();
     $jobOrder = JobOrder::factory()->readyForProduction()->create(['payment_status' => 'written_off', 'total_amount' => 1000]);

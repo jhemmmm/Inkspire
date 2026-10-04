@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Actions\POS\SettlePaymongoPayment;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\TrackJobOrderRequest;
 use App\Models\JobOrder;
 use App\Models\RevisionLog;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -36,6 +38,23 @@ use Inertia\Response;
  */
 class TrackingController extends Controller
 {
+    /**
+     * The only job order columns the token page may read. `id` is there to
+     * look up the revision log, the amount due and a pending checkout; it
+     * never reaches the response.
+     *
+     * @var array<int, string>
+     */
+    private const array TOKEN_COLUMNS = ['id', 'number', 'status', 'released_at', 'cancelled_at', 'total_amount', 'payment_status'];
+
+    /**
+     * Seconds between PayMongo look-ups for one job order's pending
+     * checkout. The page polls every 5s from every open tab.
+     */
+    private const int SETTLE_EVERY_SECONDS = 10;
+
+    public function __construct(public SettlePaymongoPayment $settlePaymongoPayment) {}
+
     /**
      * The journey a customer sees, as an ordered list of the labels
      * publicStage() returns. Position in this array is what the page's
@@ -96,9 +115,8 @@ class TrackingController extends Controller
      * (QR-01), plus a freshly signed way into the already-existing
      * design-review flow when a verdict is pending.
      *
-     * `id` is selected solely so the revision log and the amount due can be
-     * looked up, and is deliberately absent from the response. The result is
-     * `found`, `number`, `stage`, `stageStep`, `reviewUrl` and `payment`.
+     * The query is TOKEN_COLUMNS and nothing else. The result is `found`,
+     * `number`, `stage`, `stageStep`, `reviewUrl` and `payment`.
      * `description` and `print_size` are excluded on purpose even though a
      * customer arguably owns both: a description is free text a staff member
      * may have typed a customer's name into, so the narrower shape is the
@@ -111,7 +129,7 @@ class TrackingController extends Controller
     {
         $jobOrder = JobOrder::query()
             ->where('tracking_token', $token)
-            ->first(['id', 'number', 'status', 'released_at', 'cancelled_at', 'total_amount', 'payment_status']);
+            ->first(self::TOKEN_COLUMNS);
 
         // Chosen over abort(404) so a smudged or partially scanned slip gets
         // a readable customer-facing message instead of a raw error page.
@@ -119,6 +137,10 @@ class TrackingController extends Controller
             return Inertia::render('public/TrackingToken', [
                 'result' => ['found' => false],
             ]);
+        }
+
+        if ($this->settlePendingPayment($jobOrder)) {
+            $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->firstOrFail(self::TOKEN_COLUMNS);
         }
 
         return Inertia::render('public/TrackingToken', [
@@ -131,6 +153,40 @@ class TrackingController extends Controller
                 'payment' => $this->paymentSummary($jobOrder),
             ],
         ]);
+    }
+
+    /**
+     * Ask PayMongo about a checkout that is still open, so the page turns to
+     * "paid" on its own once the customer comes back from their wallet --
+     * without waiting on a webhook that may be late, or that cannot reach
+     * this server at all.
+     *
+     * Limited to one look-up per job order every SETTLE_EVERY_SECONDS, and a
+     * PayMongo failure is reported and swallowed: this page has to keep
+     * showing the order's stage whatever PayMongo is doing.
+     *
+     * Returns whether PayMongo was asked, in which case the caller re-reads
+     * the job order.
+     */
+    private function settlePendingPayment(JobOrder $jobOrder): bool
+    {
+        if ($jobOrder->onlinePaymentState() !== 'pending') {
+            return false;
+        }
+
+        if (! Cache::add('paymongo-settle:'.$jobOrder->id, true, self::SETTLE_EVERY_SECONDS)) {
+            return false;
+        }
+
+        $transaction = $jobOrder->pendingPaymongoTransaction();
+
+        if ($transaction === null) {
+            return false;
+        }
+
+        rescue(fn () => ($this->settlePaymongoPayment)($transaction));
+
+        return true;
     }
 
     /**

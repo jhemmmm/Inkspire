@@ -136,8 +136,7 @@ test('an intent that has not been given a method yet is re-attached with the wal
     Paymongo::shouldReceive('create')->once()->with(['type' => 'gcash'])->andReturn(onlinePayPaymentMethod());
     Paymongo::shouldReceive('attach')->once()->andReturn(onlinePayIntent('awaiting_next_action', 'https://paymongo.test/fresh'));
 
-    // The pending page has one button; whatever wallet it posts is not used.
-    onlinePayPost($jobOrder, 'maya')->assertHeader('X-Inertia-Location', 'https://paymongo.test/fresh');
+    onlinePayPost($jobOrder, 'gcash')->assertHeader('X-Inertia-Location', 'https://paymongo.test/fresh');
 
     expect(Transaction::count())->toBe(1);
     expect($transaction->fresh()->payment_method)->toBe(PaymentMethod::Gcash);
@@ -216,6 +215,77 @@ test('a pending checkout that PayMongo reports as succeeded is confirmed and the
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Paid);
 });
 
+test('the tracking page confirms a paid checkout on its own, without the customer pressing anything', function () {
+    $jobOrder = onlinePayJobOrder();
+    $transaction = onlinePayPending($jobOrder);
+
+    Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->with('pi_online1')->andReturn(onlinePayIntent('succeeded'));
+
+    $this->get(route('public.tracking.token', ['token' => $jobOrder->tracking_token]))
+        ->assertInertia(fn (Assert $page) => $page->where('result.payment', ['amountDue' => 0, 'state' => 'paid']));
+
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::Completed);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Paid);
+});
+
+test('the tracking page asks PayMongo about an open checkout at most once every ten seconds', function () {
+    $jobOrder = onlinePayJobOrder();
+    onlinePayPending($jobOrder);
+    $url = route('public.tracking.token', ['token' => $jobOrder->tracking_token]);
+
+    // The page polls every 5s from every open tab; only the first view in
+    // each window, and the first one after it, may reach PayMongo.
+    Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
+    Paymongo::shouldReceive('find')->twice()->andReturn(onlinePayIntent('awaiting_next_action', 'https://paymongo.test/existing'));
+
+    $this->get($url)->assertInertia(fn (Assert $page) => $page->where('result.payment.state', 'pending'));
+    $this->get($url)->assertInertia(fn (Assert $page) => $page->where('result.payment.state', 'pending'));
+
+    $this->travel(11)->seconds();
+
+    $this->get($url)->assertInertia(fn (Assert $page) => $page->where('result.payment.state', 'pending'));
+});
+
+test('the tracking page still shows the order when PayMongo cannot be reached', function () {
+    $jobOrder = onlinePayJobOrder();
+    $transaction = onlinePayPending($jobOrder);
+    Log::spy();
+
+    Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->andThrow(new Exception('PayMongo unavailable'));
+
+    $this->get(route('public.tracking.token', ['token' => $jobOrder->tracking_token]))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('result.number', $jobOrder->number)
+            ->where('result.payment.state', 'pending'));
+
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::PendingConfirmation);
+});
+
+test('the tracking page never calls PayMongo when no checkout is open', function () {
+    $jobOrder = onlinePayJobOrder();
+    Paymongo::shouldReceive('paymentIntent')->never();
+
+    $this->get(route('public.tracking.token', ['token' => $jobOrder->tracking_token]))
+        ->assertInertia(fn (Assert $page) => $page->where('result.payment.state', 'due'));
+});
+
+test('watching the tracking page does not use up the allowance for paying from it', function () {
+    $jobOrder = onlinePayJobOrder();
+    Cache::lock('online-payment:'.$jobOrder->id, 30)->get();
+    $url = route('public.tracking.token', ['token' => $jobOrder->tracking_token]);
+
+    // A minute of polling from three open tabs: more page views than the
+    // pay route allows on its own, so a shared bucket would 429 the post.
+    foreach (range(1, 36) as $view) {
+        $this->get($url)->assertOk();
+    }
+
+    onlinePayPost($jobOrder)->assertRedirect($url);
+});
+
 test('a PayMongo failure shows a generic error and writes nothing', function () {
     $jobOrder = onlinePayJobOrder();
     Log::spy();
@@ -272,3 +342,61 @@ test('orders that are cancelled, on credit or written off offer no payment and s
     'on credit' => [['payment_status' => PaymentStatus::OnCredit]],
     'written off' => [['payment_status' => PaymentStatus::WrittenOff]],
 ]);
+
+test('choosing the other wallet while a checkout is open withdraws it and opens a new one', function () {
+    $jobOrder = onlinePayJobOrder();
+    $gcashCheckout = onlinePayPending($jobOrder);
+
+    Paymongo::shouldReceive('paymentIntent')->times(4)->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->andReturn(onlinePayIntent('awaiting_next_action', 'https://paymongo.test/gcash'));
+    Paymongo::shouldReceive('cancel')->once()->andReturn(onlinePayIntent('cancelled'));
+    Paymongo::shouldReceive('paymentMethod')->once()->andReturnSelf();
+    Paymongo::shouldReceive('create')->twice()->andReturn(
+        (new PaymentIntent)->setData(['id' => 'pi_online2', 'type' => 'payment_intent', 'attributes' => ['status' => 'awaiting_payment_method']]),
+        onlinePayPaymentMethod(),
+    );
+    Paymongo::shouldReceive('attach')->once()->andReturn(onlinePayIntent('awaiting_next_action', 'https://paymongo.test/maya'));
+
+    onlinePayPost($jobOrder, 'maya')->assertHeader('X-Inertia-Location', 'https://paymongo.test/maya');
+
+    $mayaCheckout = Transaction::where('paymongo_payment_intent_id', 'pi_online2')->firstOrFail();
+
+    expect($gcashCheckout->fresh()->status)->toBe(TransactionStatus::Failed);
+    expect($mayaCheckout->status)->toBe(TransactionStatus::PendingConfirmation);
+    expect($mayaCheckout->payment_method)->toBe(PaymentMethod::Maya);
+    expect((float) $mayaCheckout->amount)->toBe(1000.0);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PendingConfirmation);
+});
+
+test('choosing the other wallet for a checkout that was paid confirms it and opens nothing new', function () {
+    $jobOrder = onlinePayJobOrder();
+    $transaction = onlinePayPending($jobOrder);
+
+    Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->andReturn(onlinePayIntent('succeeded'));
+    Paymongo::shouldReceive('cancel')->never();
+    Paymongo::shouldReceive('create')->never();
+
+    onlinePayPost($jobOrder, 'maya')->assertRedirect(route('public.tracking.token', ['token' => $jobOrder->tracking_token]));
+
+    expect(Transaction::count())->toBe(1);
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::Completed);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Paid);
+});
+
+test('a checkout PayMongo will not withdraw stays open when the other wallet is chosen', function () {
+    $jobOrder = onlinePayJobOrder();
+    $transaction = onlinePayPending($jobOrder);
+    Log::spy();
+
+    Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
+    Paymongo::shouldReceive('find')->once()->andReturn(onlinePayIntent('awaiting_next_action', 'https://paymongo.test/gcash'));
+    Paymongo::shouldReceive('cancel')->once()->andThrow(new Exception('PayMongo refused'));
+    Paymongo::shouldReceive('create')->never();
+
+    onlinePayPost($jobOrder, 'maya')->assertSessionHasErrors('payment');
+
+    expect(Transaction::count())->toBe(1);
+    expect($transaction->fresh()->status)->toBe(TransactionStatus::PendingConfirmation);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PendingConfirmation);
+});

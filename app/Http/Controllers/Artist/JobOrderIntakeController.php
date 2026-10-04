@@ -7,6 +7,7 @@ use App\Actions\JobOrder\OpenVisit;
 use App\Actions\JobOrder\ValidateJobOrderFile;
 use App\Enums\JobOrderStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Artist\SearchCustomersRequest;
 use App\Http\Requests\Artist\StoreJobOrderRequest;
 use App\Mail\JobOrdersReceived;
 use App\Models\Customer;
@@ -15,6 +16,7 @@ use App\Models\PricingEntry;
 use App\Models\QueueEntry;
 use App\Models\SpecificationOption;
 use App\Models\SystemConfiguration;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -24,18 +26,40 @@ use Inertia\Response;
 class JobOrderIntakeController extends Controller
 {
     /**
-     * Show the form an Artist uses to book a client's emailed request.
+     * How many customers the picker is handed at a time. The page searches
+     * the server as the Artist types, so the list never has to hold everyone
+     * the shop has served.
      */
-    public function create(): Response
+    private const int CUSTOMER_OPTIONS = 20;
+
+    /**
+     * Show the form an Artist uses to book a client's emailed request.
+     *
+     * The customer picker re-requests `customers` and `hasMoreCustomers`
+     * alone on every search, so everything else is a closure: a partial
+     * reload skips it instead of rebuilding the whole intake catalog per
+     * keystroke.
+     */
+    public function create(SearchCustomersRequest $request): Response
     {
+        // One row past the limit is how the page learns there are more.
+        $customers = Customer::query()
+            ->when($request->filled('customer_search'), function (Builder $query) use ($request): void {
+                $query->search((string) $request->string('customer_search'));
+            })
+            ->orderBy('name')
+            ->orderBy('id')
+            ->limit(self::CUSTOMER_OPTIONS + 1)
+            ->get(['id', 'name', 'organization', 'contact_number']);
+
         return Inertia::render('artist/NewJobOrder', [
-            // ponytail: the whole list ships to the page; move to server-side search when it outgrows that.
-            'customers' => Customer::orderBy('name')->get(['id', 'name', 'organization', 'contact_number']),
-            'specificationOptions' => SpecificationOption::activeLabelsByCategory(),
-            'printSizeDimensions' => SpecificationOption::printSizeDimensionsByLabel(),
-            'rushFeePercentage' => SystemConfiguration::getFloat('rush_fee_percentage', 0.0),
-            'acceptedFileFormats' => ValidateJobOrderFile::acceptedFormats(),
-            'pricingEntries' => PricingEntry::query()
+            'customers' => $customers->take(self::CUSTOMER_OPTIONS),
+            'hasMoreCustomers' => $customers->count() > self::CUSTOMER_OPTIONS,
+            'specificationOptions' => fn () => SpecificationOption::activeLabelsByCategory(),
+            'printSizeDimensions' => fn () => SpecificationOption::printSizeDimensionsByLabel(),
+            'rushFeePercentage' => fn () => SystemConfiguration::getFloat('rush_fee_percentage', 0.0),
+            'acceptedFileFormats' => fn () => ValidateJobOrderFile::acceptedFormats(),
+            'pricingEntries' => fn () => PricingEntry::query()
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->get(['id', 'name', 'base_price', 'unit']),
@@ -75,11 +99,7 @@ class JobOrderIntakeController extends Controller
             return [$customer, $entry, $claimed, $pooled];
         });
 
-        try {
-            Mail::to($customer->email)->send(new JobOrdersReceived($entry->load('jobOrders')));
-        } catch (\Throwable $e) {
-            report($e);
-        }
+        rescue(fn () => Mail::to($customer->email)->send(new JobOrdersReceived($entry->load('jobOrders'))));
 
         Inertia::flash('toast', ['type' => 'success', 'message' => $this->toastMessage($entry, $claimed, $pooled)]);
 

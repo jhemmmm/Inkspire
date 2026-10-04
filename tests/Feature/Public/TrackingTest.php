@@ -134,7 +134,7 @@ test('the tracking route is throttled with enough headroom for a 5s poll behind 
     expect(collect(app('router')->getRoutes())
         ->first(fn ($route) => $route->getName() === 'public.tracking.show')
         ->middleware())
-        ->toContain('throttle:120,1');
+        ->toContain('throttle:240,1,track');
 });
 
 test('the tracking response never leaks pricing, payment, or file data for a found order', function () {

@@ -7,6 +7,7 @@ import OrderProgress from '@/components/OrderProgress.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { normalizeJobOrderNumber } from '@/lib/jobOrders';
 import {
     authErrorClass,
     authInputClass,
@@ -71,20 +72,15 @@ const placeholderNumber = `JO-${new Date().getFullYear()}-0001`;
 const numberError = computed(() => page.props.errors?.number);
 
 /**
- * Open the tracking page for the typed number. The field displays
- * upper-case and TrackJobOrderRequest's regex is case-sensitive, so the
- * value is upper-cased to match what the customer sees; spaces and the
- * en/em dashes phone keyboards substitute become the hyphen it expects.
+ * Open the tracking page for the typed number, normalised to the shape the
+ * server accepts (the field displays upper-case, so that is what is sent).
  *
  * A number in the wrong shape redirects back here with an error, so state
  * is kept on errors only: the typed value survives and the message shows
  * under the field.
  */
 function trackOrder(): void {
-    const number = trackingNumber.value
-        .trim()
-        .toUpperCase()
-        .replace(/[\s–—-]+/g, '-');
+    const number = normalizeJobOrderNumber(trackingNumber.value);
 
     if (number === '') {
         return;
@@ -212,7 +208,7 @@ const ORDER_RULES: readonly OrderRule[] = [
     },
     {
         label: 'Payment',
-        body: 'Pay by cash, bank transfer, GCash or Maya. For GCash and Maya, scan the QR code we show you at the counter. Pay in full, or start with a down payment.',
+        body: 'Pay at the counter by cash, bank transfer, GCash or Maya, in full or with a down payment. You can also pay the full amount by GCash or Maya from your tracking link.',
     },
     {
         label: 'Tracking',
@@ -278,24 +274,26 @@ const panelShadowClass =
                     How to order
                 </a>
                 <a
-                    :href="orderCreate.url()"
-                    data-test="welcome-order-link"
-                    :class="[
-                        linkFocusClass,
-                        'text-muted-foreground hover:text-foreground max-sm:bg-card max-sm:text-primary max-sm:border-border px-3 py-2 whitespace-nowrap max-sm:rounded-full max-sm:border max-sm:px-3.5 max-sm:py-1.5 max-sm:shadow-xs',
-                    ]"
-                >
-                    Order online
-                </a>
-                <a
                     href="#track"
                     data-test="welcome-track-link"
                     :class="[
                         linkFocusClass,
-                        'bg-card text-primary border-border hover:border-primary/40 ml-1 hidden items-center rounded-full border px-3.5 py-1.5 whitespace-nowrap shadow-xs sm:inline-flex',
+                        'text-muted-foreground hover:text-foreground hidden px-3 py-2 whitespace-nowrap sm:inline-flex',
                     ]"
                 >
                     Track an order
+                </a>
+                <!-- The one filled action up here. Tracking needs no button
+                     on a phone: its panel is the first thing on the page. -->
+                <a
+                    :href="orderCreate.url()"
+                    data-test="welcome-order-link"
+                    :class="[
+                        linkFocusClass,
+                        'bg-primary text-primary-foreground hover:bg-primary/90 ml-1 inline-flex items-center rounded-full px-4 py-1.5 whitespace-nowrap shadow-xs',
+                    ]"
+                >
+                    Order online
                 </a>
             </nav>
         </header>

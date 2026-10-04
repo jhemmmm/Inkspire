@@ -67,6 +67,7 @@ Route::middleware(['auth', 'role:cashier'])->prefix('cashier')->name('cashier.')
     Route::post('job-orders/{jobOrder}/payment', [PaymentController::class, 'store'])->name('job-orders.payment.store');
     Route::get('job-orders/{jobOrder}/receipt', [ReceiptController::class, 'show'])->name('job-orders.receipt.show');
     Route::post('job-orders/{jobOrder}/reconcile', [ReconciliationController::class, 'store'])->name('job-orders.reconcile');
+    Route::delete('job-orders/{jobOrder}/online-payment', [ReconciliationController::class, 'destroy'])->name('job-orders.online-payment.destroy');
     Route::post('job-orders/{jobOrder}/cancel', [CancellationController::class, 'store'])->name('job-orders.cancel');
     Route::post('job-orders/{jobOrder}/credit-request', [CreditRequestController::class, 'store'])->name('job-orders.credit-request.store');
     Route::post('job-orders/{jobOrder}/payment-link', [PaymentLinkController::class, 'store'])->name('job-orders.payment-link.store');

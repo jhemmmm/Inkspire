@@ -73,10 +73,7 @@ class QueueEntryController extends Controller
                         ->select(['id', 'queue_entry_id', 'description', 'type', 'status', 'validation_failure_reason', 'assigned_artist_id', 'payment_status', 'released_at', 'number', 'total_amount', 'quoted_amount', 'is_rush'])
                         ->with('assignedArtist:id,name,artist_label'),
                 ])
-                ->whereDate('queue_date', QueueEntry::currentBusinessDate())
-                ->where('queue_prefix', '!=', QueueEntry::ONLINE_PREFIX)
-                ->orderByRaw("CASE queue_prefix WHEN 'R' THEN 0 ELSE 1 END")
-                ->orderBy('queue_number')
+                ->todaysFloorQueue()
                 ->get(['id', 'customer_id', 'queue_prefix', 'queue_number', 'status'])
                 ->each(fn (QueueEntry $entry) => $entry->jobOrders->append('display_total')),
             'readyForPickup' => [

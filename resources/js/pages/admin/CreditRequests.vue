@@ -31,6 +31,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { adminNavItems } from '@/config/nav/admin';
 import { index as creditRequestsIndex } from '@/routes/admin/credit-requests';
@@ -51,6 +52,9 @@ interface CreditRequest {
 const props = defineProps<{
     creditRequests: CreditRequest[];
 }>();
+
+// A request a Cashier just raised shows up without a reload.
+useLivePoll(['creditRequests']);
 
 defineOptions({
     layout: {

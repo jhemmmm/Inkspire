@@ -48,7 +48,8 @@ class DashboardController extends Controller
                 'lockedAccounts' => $this->lockedOutAccounts(),
             ],
             'shop' => $this->shopHealth(),
-            'cashFlow' => $reportBuilder->cashFlow(),
+            // A closure, so the page's poll skips the chart it never asks for.
+            'cashFlow' => fn () => $reportBuilder->cashFlow(),
             'pipeline' => $this->pipeline(),
             'recentActivity' => $this->recentActivity(),
         ]);
@@ -178,7 +179,10 @@ class DashboardController extends Controller
      */
     private function unpaidBalances(): Collection
     {
+        // select() runs before withSum() on purpose: withAggregate() falls
+        // back to `job_orders.*` when no columns are set yet.
         return JobOrder::query()
+            ->select(['id', 'total_amount'])
             ->whereNull('cancelled_at')
             ->whereNotNull('total_amount')
             ->where('payment_status', '!=', PaymentStatus::WrittenOff->value)
@@ -186,7 +190,7 @@ class DashboardController extends Controller
                 ['transactions as completed_amount' => fn (Builder $query) => $query->where('status', TransactionStatus::Completed->value)],
                 'amount',
             )
-            ->get(['id', 'total_amount'])
+            ->get()
             ->map(fn (JobOrder $jobOrder): float => round((float) $jobOrder->total_amount - (float) $jobOrder->completed_amount, 2))
             ->filter(fn (float $balance): bool => $balance > 0)
             ->values();

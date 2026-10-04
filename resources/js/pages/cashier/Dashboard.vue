@@ -5,6 +5,7 @@ import { computed, ref } from 'vue';
 import CancellationController from '@/actions/App/Http/Controllers/Cashier/CancellationController';
 import PaymentController from '@/actions/App/Http/Controllers/Cashier/PaymentController';
 import ReceiptController from '@/actions/App/Http/Controllers/Cashier/ReceiptController';
+import ReconciliationController from '@/actions/App/Http/Controllers/Cashier/ReconciliationController';
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -48,6 +49,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { cashierNavItems } from '@/config/nav/cashier';
 import {
@@ -87,6 +89,10 @@ const props = defineProps<{
     jobOrders: CashierJobOrder[];
     cancellationFeeAmount: number;
 }>();
+
+// A job order appears here the moment an Artist or the customer approves its
+// design, and leaves it once it is paid, without the Cashier reloading.
+useLivePoll(['jobOrders']);
 
 const ALL = 'all';
 
@@ -257,6 +263,21 @@ function checkPaymentStatus(jobOrderId: number): void {
             },
         },
     );
+}
+
+/**
+ * Withdraw a checkout the customer opened online and did not finish, so the
+ * payment can be taken at the counter instead.
+ */
+function cancelOnlinePayment(jobOrderId: number): void {
+    reconcilingId.value = jobOrderId;
+
+    router.delete(ReconciliationController.destroy.url(jobOrderId), {
+        preserveScroll: true,
+        onFinish: () => {
+            reconcilingId.value = null;
+        },
+    });
 }
 </script>
 
@@ -470,6 +491,21 @@ function checkPaymentStatus(jobOrderId: number): void {
                                             "
                                         >
                                             Check Payment Status
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            v-if="
+                                                jobOrder.payment_status ===
+                                                'pending_confirmation'
+                                            "
+                                            :disabled="
+                                                reconcilingId === jobOrder.id
+                                            "
+                                            :data-test="`cancel-online-payment-${jobOrder.id}-button`"
+                                            @select="
+                                                cancelOnlinePayment(jobOrder.id)
+                                            "
+                                        >
+                                            Cancel Online Payment
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                             v-else-if="

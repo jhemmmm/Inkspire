@@ -18,8 +18,10 @@ class PricingDatabaseSeeder extends Seeder
      * installed-vs-supplied as its own priced option is a pricing-engine
      * change, not an intake one.
      *
-     * `updateOrCreate` on `name` keeps this idempotent, matching
-     * SystemConfigurationSeeder and SpecificationOptionSeeder.
+     * `firstOrCreate` on `name` keeps this idempotent and fills gaps only:
+     * the Admin maintains the catalog from `admin.products.index` after
+     * this, and a re-seed must not undo a price they changed or restore an
+     * entry they retired.
      *
      * @return array<int, array{name: string, base_price: float, unit: string}>
      */
@@ -45,7 +47,6 @@ class PricingDatabaseSeeder extends Seeder
             ['name' => 'Pull up Banner (Small)', 'base_price' => 1200, 'unit' => 'piece'],
             ['name' => 'X-Stand Banner', 'base_price' => 500, 'unit' => 'piece'],
             ['name' => 'Sticker on Magnet', 'base_price' => 200, 'unit' => 'sq ft'],
-            ['name' => 'Sticker on Sintraboard', 'base_price' => 150, 'unit' => 'sq ft (250 back-to-back)'],
             ['name' => 'Sticker on Sintraboard', 'base_price' => 200, 'unit' => 'sq ft (300 back-to-back)'],
             ['name' => 'Sticker on Foamboard', 'base_price' => 100, 'unit' => 'sq ft'],
             ['name' => 'Matte Photopaper', 'base_price' => 50, 'unit' => 'sq ft'],
@@ -92,43 +93,15 @@ class PricingDatabaseSeeder extends Seeder
     }
 
     /**
-     * Placeholder rows seeded before the owner supplied the real price list.
-     *
-     * Retired by name rather than by "anything not in my list": an Owner's own
-     * additions must survive a re-seed, so only these known-superseded rows are
-     * touched. Deactivated, never deleted — job orders carry
-     * `pricing_entry_id`, and removing the row would orphan that reference.
-     *
-     * @return array<int, string>
-     */
-    private function supersededEntries(): array
-    {
-        return [
-            'Tarpaulin (per sq ft)',
-            'Business Cards (100 pcs)',
-            'Sticker (per piece)',
-            'Flyers A5 (100 pcs)',
-            'ID Cards (per piece)',
-            'Streamer Banner (per linear ft)',
-            'Signage Vinyl (per sq ft)',
-            'Wedding Invitation (per piece)',
-        ];
-    }
-
-    /**
      * Run the database seeds.
      */
     public function run(): void
     {
         foreach ([...$this->walkInEntries(), ...$this->plainEntries()] as $entry) {
-            PricingEntry::query()->updateOrCreate(
+            PricingEntry::query()->firstOrCreate(
                 ['name' => $entry['name']],
                 [...$entry, 'is_active' => true],
             );
         }
-
-        PricingEntry::query()
-            ->whereIn('name', $this->supersededEntries())
-            ->update(['is_active' => false]);
     }
 }

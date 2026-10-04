@@ -6,7 +6,6 @@ use App\Models\JobOrder;
 use App\Models\QueueEntry;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -18,10 +17,7 @@ class JobOrdersReceived extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(public QueueEntry $queueEntry)
-    {
-        //
-    }
+    public function __construct(public QueueEntry $queueEntry) {}
 
     /**
      * Get the message envelope.
@@ -50,15 +46,5 @@ class JobOrdersReceived extends Mailable
                 ])->all(),
             ],
         );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
     }
 }

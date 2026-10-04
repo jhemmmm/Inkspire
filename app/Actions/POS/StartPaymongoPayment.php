@@ -15,11 +15,10 @@ use RuntimeException;
 
 class StartPaymongoPayment
 {
-    public function __construct(public PriceJobOrder $priceJobOrder) {}
-
     /**
-     * Create a PayMongo Payment Intent for a GCash/Maya payment and record it
-     * as a pending_confirmation Transaction, returning the checkout URL.
+     * Create a PayMongo Payment Intent for a customer paying online by GCash
+     * or Maya and record it as a pending_confirmation Transaction, returning
+     * the checkout URL.
      *
      * Never creates a Completed Transaction: the transaction is only ever
      * resolved by ConfirmPaymentIntent, called from the signature-verified
@@ -32,21 +31,10 @@ class StartPaymongoPayment
      * vendor/luigel/laravel-paymongo/src/Models/PaymentIntent.php).
      *
      * A PayMongo failure throws before anything is written, so a failed call
-     * never leaves a priced-but-untracked job order behind (CR-02). The
-     * optional `$pricing` snapshot is only applied inside the locked
-     * transaction below, after PayMongo has succeeded.
-     *
-     * @param  array<string, mixed>|null  $pricing
+     * never leaves a pending transaction with no checkout behind it (CR-02).
      */
-    public function __invoke(
-        JobOrder $jobOrder,
-        float $amount,
-        TransactionType $type,
-        PaymentMethod $paymentMethod,
-        string $returnUrl,
-        ?int $recordedBy,
-        ?array $pricing = null,
-    ): ?string {
+    public function __invoke(JobOrder $jobOrder, float $amount, PaymentMethod $paymentMethod, string $returnUrl): ?string
+    {
         $intent = Paymongo::paymentIntent()->create([
             'amount' => $amount,
             'currency' => 'PHP',
@@ -64,44 +52,50 @@ class StartPaymongoPayment
             throw new RuntimeException('PayMongo did not return a payment intent.');
         }
 
-        $paymongoPaymentMethod = Paymongo::paymentMethod()->create([
-            'type' => $paymentMethod === PaymentMethod::Gcash ? 'gcash' : 'paymaya',
-        ]);
-        $paymongoPaymentMethodId = (string) $paymongoPaymentMethod->getData()['id'];
-
-        $attached = Paymongo::paymentIntent()->attach($intent, $paymongoPaymentMethodId, $returnUrl);
+        $checkoutUrl = $this->attachWallet($intent, $paymentMethod, $returnUrl);
 
         $paymongoPaymentIntentId = (string) $intent->getData()['id'];
 
-        DB::transaction(function () use ($jobOrder, $pricing, $paymentMethod, $type, $amount, $recordedBy, $paymongoPaymentIntentId): void {
+        DB::transaction(function () use ($jobOrder, $paymentMethod, $amount, $paymongoPaymentIntentId): void {
             // Locked re-read (CR-01). The PayMongo calls above widen the race
             // window between the caller's unlocked guards and this commit
             // considerably, so terminal state is re-verified here.
             $jobOrder = JobOrder::query()->whereKey($jobOrder->id)->lockForUpdate()->firstOrFail();
 
-            abort_if($jobOrder->cancelled_at !== null, 422, __('This job order has been cancelled.'));
-            abort_if($jobOrder->payment_status === PaymentStatus::Paid, 422, 'This job order is already fully paid.');
-            abort_if($jobOrder->payment_status === PaymentStatus::WrittenOff, 422, __('This job order has been written off and cannot accept further payments.'));
-            abort_if($jobOrder->payment_status === PaymentStatus::CreditPendingApproval, 422, __('This job order has an On-Credit request awaiting Admin approval. Resolve it before recording a payment.'));
-
-            if ($pricing !== null) {
-                ($this->priceJobOrder)($jobOrder, $pricing);
+            if (($blocker = $jobOrder->paymentBlocker()) !== null) {
+                abort(422, __($blocker));
             }
 
             Transaction::create([
                 'job_order_id' => $jobOrder->id,
-                'type' => $type->value,
+                'type' => TransactionType::FullPayment->value,
                 'payment_method' => $paymentMethod->value,
                 'amount' => $amount,
                 'status' => TransactionStatus::PendingConfirmation->value,
-                'reference_number' => null,
                 'paymongo_payment_intent_id' => $paymongoPaymentIntentId,
-                'recorded_by' => $recordedBy,
             ]);
 
             $jobOrder->forceFill(['payment_status' => PaymentStatus::PendingConfirmation])->save();
         });
 
-        return $attached->getData()['next_action']['redirect']['url'] ?? null;
+        return $checkoutUrl;
+    }
+
+    /**
+     * Attach the customer's wallet to a Payment Intent and return the URL of
+     * PayMongo's checkout page for it. Also how a checkout that never got as
+     * far as the wallet is carried on: same intent, fresh payment method.
+     */
+    public function attachWallet(PaymentIntent $intent, PaymentMethod $paymentMethod, string $returnUrl): ?string
+    {
+        $paymongoPaymentMethod = Paymongo::paymentMethod()->create([
+            'type' => $paymentMethod === PaymentMethod::Gcash ? 'gcash' : 'paymaya',
+        ]);
+
+        $attached = Paymongo::paymentIntent()->attach($intent, (string) $paymongoPaymentMethod->getData()['id'], $returnUrl);
+
+        $checkoutUrl = $attached->getData()['next_action']['redirect']['url'] ?? null;
+
+        return is_string($checkoutUrl) ? $checkoutUrl : null;
     }
 }

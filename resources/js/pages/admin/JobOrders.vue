@@ -11,21 +11,12 @@ import SearchableSelect, {
     type SearchableOption,
 } from '@/components/SearchableSelect.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
+import TablePagination from '@/components/TablePagination.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Pagination,
-    PaginationContent,
-    PaginationEllipsis,
-    PaginationFirst,
-    PaginationItem,
-    PaginationLast,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination';
 import {
     Table,
     TableBody,
@@ -35,6 +26,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { adminNavItems } from '@/config/nav/admin';
 import {
     balanceLabel,
@@ -88,6 +80,10 @@ const props = defineProps<{
     statuses: string[];
     paymentStatuses: string[];
 }>();
+
+// The current page of results follows the shop as orders move and get paid.
+// A poll reloads the URL as it stands, so the filters and page stay put.
+useLivePoll(['jobOrders']);
 
 defineOptions({
     layout: {
@@ -421,42 +417,6 @@ function sizeLabel(jobOrder: AdminJobOrder): string {
             </div>
         </DataTableCard>
 
-        <Pagination
-            v-if="jobOrders.last_page > 1"
-            v-slot="{ page }"
-            :page="jobOrders.current_page"
-            :items-per-page="jobOrders.per_page"
-            :total="jobOrders.total"
-            :sibling-count="1"
-            show-edges
-            @update:page="visit"
-        >
-            <PaginationContent
-                v-slot="{ items }"
-                class="flex-wrap justify-center"
-            >
-                <PaginationFirst />
-                <PaginationPrevious />
-
-                <template v-for="(item, index) in items">
-                    <PaginationItem
-                        v-if="item.type === 'page'"
-                        :key="index"
-                        :value="item.value"
-                        :is-active="item.value === page"
-                    >
-                        {{ item.value }}
-                    </PaginationItem>
-                    <PaginationEllipsis
-                        v-else
-                        :key="`ellipsis-${index}`"
-                        :index="index"
-                    />
-                </template>
-
-                <PaginationNext />
-                <PaginationLast />
-            </PaginationContent>
-        </Pagination>
+        <TablePagination :paginator="jobOrders" @update:page="visit" />
     </PageContainer>
 </template>

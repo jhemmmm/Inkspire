@@ -9,8 +9,6 @@ use App\Models\SystemConfiguration;
 use App\Models\Transaction;
 use App\Models\User;
 use Luigel\Paymongo\Facades\Paymongo;
-use Luigel\Paymongo\Models\PaymentIntent;
-use Luigel\Paymongo\Models\PaymentMethod as PaymongoPaymentMethod;
 
 test('a down payment leaves the job order partially paid and tracks the remaining balance', function () {
     $cashier = User::factory()->cashier()->create();
@@ -153,38 +151,12 @@ test('an already fully paid job order cannot be paid again', function () {
     $response->assertStatus(422);
 });
 
-test('a gcash payment creates a pending confirmation transaction with a paymongo intent id and shows a QR redirect URL', function () {
-    // luigel/laravel-paymongo's Request trait instantiates `new Client()`
-    // (raw Guzzle) directly rather than going through Laravel's HTTP
-    // client, so Http::fake() cannot intercept it — the Paymongo facade
-    // itself is the mockable seam (verified by reading the installed
-    // package's source, per this plan's SUMMARY).
-    $fakeIntent = (new PaymentIntent)->setData([
-        'id' => 'pi_test123',
-        'type' => 'payment_intent',
-        'attributes' => ['amount' => 100000, 'status' => 'awaiting_payment_method'],
-    ]);
-    $fakePaymentMethod = (new PaymongoPaymentMethod)->setData([
-        'id' => 'pm_test456',
-        'type' => 'payment_method',
-        'attributes' => ['type' => 'gcash'],
-    ]);
-    $fakeAttached = (new PaymentIntent)->setData([
-        'id' => 'pi_test123',
-        'type' => 'payment_intent',
-        'attributes' => [
-            'status' => 'awaiting_next_action',
-            'next_action' => [
-                'type' => 'redirect',
-                'redirect' => ['url' => 'https://paymongo.test/checkout/pi_test123'],
-            ],
-        ],
-    ]);
-
-    Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
-    Paymongo::shouldReceive('paymentMethod')->once()->andReturnSelf();
-    Paymongo::shouldReceive('create')->twice()->andReturn($fakeIntent, $fakePaymentMethod);
-    Paymongo::shouldReceive('attach')->once()->andReturn($fakeAttached);
+test('a gcash or maya payment at the counter is recorded against its reference number without calling PayMongo', function (string $method) {
+    // PayMongo belongs to the customer's own online checkout. At the counter
+    // the customer has already paid the shop's wallet, so there is nothing
+    // to ask PayMongo for.
+    Paymongo::shouldReceive('paymentIntent')->never();
+    Paymongo::shouldReceive('paymentMethod')->never();
 
     $cashier = User::factory()->cashier()->create();
     $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
@@ -194,24 +166,23 @@ test('a gcash payment creates a pending confirmation transaction with a paymongo
         'pricing_entry_id' => $pricingEntry->id,
         'line_amount' => 1000,
         'rush_fee_applied' => false,
-        'payment_method' => 'gcash',
+        'payment_method' => $method,
         'payment_type' => 'full',
+        'reference_number' => '1029384756123',
     ]);
 
-    $response->assertRedirect();
-    $response->assertSessionHas('redirectUrl', 'https://paymongo.test/checkout/pi_test123');
+    $response->assertRedirect(route('cashier.job-orders.receipt.show', $jobOrder));
 
-    $jobOrder->refresh();
-    expect($jobOrder->payment_status)->toBe(PaymentStatus::PendingConfirmation);
-    expect($jobOrder->transactions()->count())->toBe(1);
+    $transaction = $jobOrder->transactions()->sole();
 
-    $transaction = $jobOrder->transactions()->first();
-    expect($transaction->status)->toBe(TransactionStatus::PendingConfirmation);
-    expect($transaction->paymongo_payment_intent_id)->toBe('pi_test123');
-
-    $follow = $this->actingAs($cashier)->get(route('cashier.job-orders.payment.edit', $jobOrder));
-    $follow->assertInertia(fn ($page) => $page->where('paymongoRedirectUrl', 'https://paymongo.test/checkout/pi_test123'));
-});
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Paid);
+    expect($transaction->status)->toBe(TransactionStatus::Completed);
+    expect($transaction->payment_method->value)->toBe($method);
+    expect($transaction->reference_number)->toBe('1029384756123');
+    expect($transaction->paymongo_payment_intent_id)->toBeNull();
+    expect((float) $transaction->amount)->toBe(1000.0);
+    expect($transaction->recorded_by)->toBe($cashier->id);
+})->with(['gcash', 'maya']);
 
 test('a cancelled job order cannot be paid (CR-03)', function () {
     $cashier = User::factory()->cashier()->create();
@@ -270,10 +241,7 @@ test('a job order with a pending credit request cannot be paid directly (CR-01)'
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::CreditPendingApproval);
 });
 
-test('a maya payment failing to create a paymongo intent flashes an error and creates no transaction', function () {
-    Paymongo::shouldReceive('paymentIntent')->once()->andReturnSelf();
-    Paymongo::shouldReceive('create')->once()->andThrow(new Exception('PayMongo unavailable'));
-
+test('a gcash, maya or bank transfer payment without its reference number is rejected and nothing is recorded', function (string $method) {
     $cashier = User::factory()->cashier()->create();
     $pricingEntry = PricingEntry::factory()->create(['base_price' => 500]);
     $jobOrder = JobOrder::factory()->readyForProduction()->create();
@@ -282,18 +250,16 @@ test('a maya payment failing to create a paymongo intent flashes an error and cr
         'pricing_entry_id' => $pricingEntry->id,
         'line_amount' => 500,
         'rush_fee_applied' => false,
-        'payment_method' => 'maya',
+        'payment_method' => $method,
         'payment_type' => 'full',
     ]);
 
-    $response->assertRedirect();
+    $response->assertSessionHasErrors(['reference_number' => 'Enter the reference number for this payment.']);
     expect(Transaction::count())->toBe(0);
-    expect($jobOrder->fresh()->payment_status)->not->toBe(PaymentStatus::PendingConfirmation);
-    // CR-02: pricing must never be persisted when the PayMongo call fails —
-    // otherwise the job order is left silently priced with no transaction
-    // to show for it, and a retry would skip pricing validation entirely.
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::Unpaid);
+    // A rejected payment must not leave the order silently priced either.
     expect($jobOrder->fresh()->total_amount)->toBeNull();
-});
+})->with(['gcash', 'maya', 'bank_transfer']);
 
 test('the rush fee toggle submits as the string 0 or 1, matching the payment form', function (string $submitted, bool $expected) {
     // The Apply Rush Fee switch is a reka-ui SwitchRoot, which renders a real
@@ -329,33 +295,6 @@ test('a gcash payment charges edited pricing on a totalled, transaction-less ord
         'label' => 'Rush fee (%)',
     ]);
 
-    $fakeIntent = (new PaymentIntent)->setData([
-        'id' => 'pi_test123',
-        'type' => 'payment_intent',
-        'attributes' => ['amount' => 100000, 'status' => 'awaiting_payment_method'],
-    ]);
-    $fakePaymentMethod = (new PaymongoPaymentMethod)->setData([
-        'id' => 'pm_test456',
-        'type' => 'payment_method',
-        'attributes' => ['type' => 'gcash'],
-    ]);
-    $fakeAttached = (new PaymentIntent)->setData([
-        'id' => 'pi_test123',
-        'type' => 'payment_intent',
-        'attributes' => [
-            'status' => 'awaiting_next_action',
-            'next_action' => [
-                'type' => 'redirect',
-                'redirect' => ['url' => 'https://paymongo.test/checkout/pi_test123'],
-            ],
-        ],
-    ]);
-
-    Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
-    Paymongo::shouldReceive('paymentMethod')->once()->andReturnSelf();
-    Paymongo::shouldReceive('create')->twice()->andReturn($fakeIntent, $fakePaymentMethod);
-    Paymongo::shouldReceive('attach')->once()->andReturn($fakeAttached);
-
     $cashier = User::factory()->cashier()->create();
     $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
     $jobOrder = JobOrder::factory()->readyForProduction()->create([
@@ -370,6 +309,7 @@ test('a gcash payment charges edited pricing on a totalled, transaction-less ord
         'rush_fee_applied' => true,
         'payment_method' => 'gcash',
         'payment_type' => 'full',
+        'reference_number' => '1029384756123',
     ]);
 
     $response->assertSessionHasNoErrors();
@@ -421,41 +361,18 @@ test('omitting rush_fee_applied entirely is still rejected, so a broken form fai
     $response->assertSessionHasErrors('rush_fee_applied');
 });
 
-test('a refusal found after the paymongo calls keeps its own answer instead of the generic paymongo error', function () {
-    $fakeIntent = (new PaymentIntent)->setData([
-        'id' => 'pi_late_refusal',
-        'type' => 'payment_intent',
-        'attributes' => ['amount' => 100000, 'status' => 'awaiting_payment_method'],
-    ]);
-    $fakePaymentMethod = (new PaymongoPaymentMethod)->setData([
-        'id' => 'pm_late_refusal',
-        'type' => 'payment_method',
-        'attributes' => ['type' => 'gcash'],
-    ]);
-
+test('a counter payment is refused while the customer has an online checkout open', function () {
     $cashier = User::factory()->cashier()->create();
-    $pricingEntry = PricingEntry::factory()->create(['base_price' => 1000]);
     $jobOrder = JobOrder::factory()->readyForProduction()->create();
+    $jobOrder->forceFill(['total_amount' => 1000, 'payment_status' => PaymentStatus::PendingConfirmation])->save();
+    $checkout = Transaction::factory()->pendingConfirmation()->create(['job_order_id' => $jobOrder->id, 'amount' => 1000]);
 
-    Paymongo::shouldReceive('paymentIntent')->twice()->andReturnSelf();
-    Paymongo::shouldReceive('paymentMethod')->once()->andReturnSelf();
-    Paymongo::shouldReceive('create')->twice()->andReturn($fakeIntent, $fakePaymentMethod);
-    // The order is cancelled by someone else while PayMongo is being called.
-    Paymongo::shouldReceive('attach')->once()->andReturnUsing(function () use ($jobOrder, $fakeIntent): PaymentIntent {
-        $jobOrder->forceFill(['cancelled_at' => now()])->save();
-
-        return $fakeIntent;
-    });
-
-    $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
-        'pricing_entry_id' => $pricingEntry->id,
-        'line_amount' => 1000,
-        'rush_fee_applied' => false,
-        'payment_method' => 'gcash',
+    $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
+        'payment_method' => 'cash',
         'payment_type' => 'full',
-    ]);
+    ])->assertStatus(422);
 
-    $response->assertStatus(422);
-    expect(Transaction::count())->toBe(0)
-        ->and($jobOrder->fresh()->total_amount)->toBeNull();
+    expect(Transaction::count())->toBe(1);
+    expect($checkout->fresh()->status)->toBe(TransactionStatus::PendingConfirmation);
+    expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PendingConfirmation);
 });

@@ -84,7 +84,7 @@ class JobOrderController extends Controller
                     'customer' => $jobOrder->queueEntry->customer === null ? null : [
                         'name' => $jobOrder->queueEntry->customer->name,
                         'contact_number' => $jobOrder->queueEntry->customer->contact_number,
-                        'email' => $jobOrder->queueEntry->customer->email,
+                        'email' => $jobOrder->queueEntry->contactEmail(),
                         'organization' => $jobOrder->queueEntry->customer->organization,
                     ],
                 ],

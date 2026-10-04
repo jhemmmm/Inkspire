@@ -34,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { artistNavItems } from '@/config/nav/artist';
 import { jobOrderStatusBadge } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/artist';
@@ -98,6 +99,19 @@ const props = defineProps<{
         }[];
     };
 }>();
+
+// A client can approve or send back a design from their own phone while this
+// page is open, so the order and its review state are kept fresh.
+//
+// `design` is deliberately not polled: its preview is a signed URL that
+// changes on every request, and re-fetching it every five seconds would
+// reload the image each time. It is re-read once, when the status moves.
+useLivePoll(['jobOrder', 'review']);
+
+watch(
+    () => props.jobOrder.status,
+    () => router.reload({ only: ['design'] }),
+);
 
 defineOptions({
     layout: {

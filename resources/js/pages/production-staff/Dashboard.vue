@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head, router, usePoll } from '@inertiajs/vue3';
+import { Form, Head, router } from '@inertiajs/vue3';
 import { Zap } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ProductionStageController from '@/actions/App/Http/Controllers/ProductionStaff/ProductionStageController';
@@ -24,6 +24,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useLivePoll } from '@/composables/useLivePoll';
 import { useTableFilter } from '@/composables/useTableFilter';
 import { productionStaffNavItems } from '@/config/nav/production-staff';
 import {
@@ -63,9 +64,8 @@ defineOptions({
     },
 });
 
-// D-14: the board self-corrects on every 5-second poll, matching the other
-// two polled surfaces built in this phase.
-usePoll(5000, { only: ['jobOrders'] });
+// D-14: the board self-corrects on every 5-second poll.
+useLivePoll(['jobOrders']);
 
 type TabValue = 'to_print' | 'awaiting_payment' | 'done' | 'all';
 

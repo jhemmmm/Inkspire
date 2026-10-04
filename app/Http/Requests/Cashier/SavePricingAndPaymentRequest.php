@@ -58,6 +58,18 @@ class SavePricingAndPaymentRequest extends FormRequest
     }
 
     /**
+     * Get custom messages for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'reference_number.required_if' => __('Enter the reference number for this payment.'),
+        ];
+    }
+
+    /**
      * Configure the validator instance.
      */
     public function withValidator(Validator $validator): void
