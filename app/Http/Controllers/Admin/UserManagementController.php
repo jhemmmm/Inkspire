@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\JobOrder\SyncQueueEntryStatus;
 use App\Enums\ArtistStatus;
+use App\Enums\JobOrderStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CreateUserRequest;
 use App\Http\Requests\Admin\DeactivateUserRequest;
 use App\Http\Requests\Admin\ReactivateUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Models\JobOrder;
 use App\Models\SystemConfiguration;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -127,7 +131,7 @@ class UserManagementController extends Controller
     }
 
     /**
-     * Deactivate a user account. The account is never hard-deleted.
+     * Deactivate a user account.
      */
     public function deactivate(DeactivateUserRequest $request, User $user): RedirectResponse
     {
@@ -146,6 +150,45 @@ class UserManagementController extends Controller
         $user->forceFill(['is_active' => true])->save();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __(":name's account has been reactivated.", ['name' => $user->name])]);
+
+        return back();
+    }
+
+    /**
+     * Remove an account while keeping its historical references intact.
+     */
+    public function destroy(Request $request, User $user, SyncQueueEntryStatus $syncQueueEntryStatus): RedirectResponse
+    {
+        abort_unless($request->user()->can('delete', $user), 403);
+
+        DB::transaction(function () use ($user, $syncQueueEntryStatus): void {
+            JobOrder::query()
+                ->where('assigned_artist_id', $user->id)
+                ->whereNull('cancelled_at')
+                ->whereIn('status', [
+                    JobOrderStatus::Assigned->value,
+                    JobOrderStatus::InConsultation->value,
+                    JobOrderStatus::InDesign->value,
+                    JobOrderStatus::PendingReview->value,
+                ])
+                ->get()
+                ->each(function (JobOrder $jobOrder) use ($syncQueueEntryStatus): void {
+                    $jobOrder->forceFill([
+                        'status' => $jobOrder->status === JobOrderStatus::PendingReview
+                            ? JobOrderStatus::PendingReview
+                            : JobOrderStatus::Intake,
+                        'assigned_artist_id' => null,
+                        'accepted_at' => null,
+                    ])->save();
+
+                    $syncQueueEntryStatus($jobOrder->queueEntry);
+                });
+
+            $user->forceFill(['email' => "deleted-{$user->id}@invalid.local"])->save();
+            $user->delete();
+        });
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __(":name's account has been deleted.", ['name' => $user->name])]);
 
         return back();
     }

@@ -1,8 +1,18 @@
 <?php
 
+use App\Actions\JobOrder\ClaimJobOrderForArtist;
 use App\Enums\ArtistStatus;
+use App\Enums\JobOrderStatus;
+use App\Enums\QueueStatus;
+use App\Models\DesignFile;
+use App\Models\Expense;
+use App\Models\JobOrder;
+use App\Models\QueueEntry;
+use App\Models\RevisionLog;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('admin can view the user management list', function () {
@@ -12,6 +22,131 @@ test('admin can view the user management list', function () {
 
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page->component('admin/UserManagement'));
+});
+
+test('admin can delete another user while preserving referenced expenses and audit history', function () {
+    $admin = User::factory()->admin()->create();
+    $target = User::factory()->accountingStaff()->create();
+    $expense = Expense::factory()->create(['recorded_by' => $target->id, 'expense_date' => now()]);
+    $originalEmail = $target->email;
+
+    $this->actingAs($admin)
+        ->delete(route('admin.users.destroy', $target))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    expect(User::find($target->id))->toBeNull();
+    expect(User::withTrashed()->find($target->id)->trashed())->toBeTrue();
+    expect($expense->fresh()->recorded_by)->toBe($target->id);
+    expect(DB::table('audit_trail')
+        ->where('auditable_type', User::class)
+        ->where('auditable_id', $target->id)
+        ->where('action', 'deleted')
+        ->exists())->toBeTrue();
+
+    $this->get(route('admin.users.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('users', fn ($users) => collect($users)->doesntContain('id', $target->id)));
+
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $this->actingAs($accountingStaff)
+        ->get(route('accounting-staff.expenses.index'))
+        ->assertInertia(fn (Assert $page) => $page->where('rows.0.recorded_by', $target->name));
+
+    auth()->logout();
+    $this->post(route('login.store'), [
+        'email' => $originalEmail,
+        'password' => 'password',
+    ])->assertSessionHasErrors('email');
+    $this->assertGuest();
+
+    User::factory()->create(['email' => $originalEmail]);
+});
+
+test('deleting an artist returns unfinished work to the shared pool and preserves historical assignments', function () {
+    Storage::fake('local');
+    $admin = User::factory()->admin()->create();
+    $artist = User::factory()->artist()->create();
+    $queueEntry = QueueEntry::factory()->serving()->create();
+    $assigned = JobOrder::factory()->for($queueEntry)->assignedTo($artist)->create();
+    $pendingReview = JobOrder::factory()->for($queueEntry)->assignedTo($artist)->create([
+        'status' => JobOrderStatus::PendingReview,
+        'consultation_notes' => 'Keep the approved layout.',
+    ]);
+    $designFile = DesignFile::factory()->for($pendingReview)->create();
+    $revisionLog = RevisionLog::factory()->for($pendingReview)->create();
+    $finished = JobOrder::factory()->assignedTo($artist)->create(['status' => JobOrderStatus::DesignApproved]);
+    $cancelled = JobOrder::factory()->assignedTo($artist)->create([
+        'status' => JobOrderStatus::InDesign,
+        'cancelled_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->delete(route('admin.users.destroy', $artist))
+        ->assertRedirect();
+
+    expect($assigned->fresh()->status)->toBe(JobOrderStatus::Intake);
+    expect($pendingReview->fresh()->status)->toBe(JobOrderStatus::PendingReview);
+
+    foreach ([$assigned, $pendingReview] as $jobOrder) {
+        expect($jobOrder->fresh()->assigned_artist_id)->toBeNull();
+        expect($jobOrder->fresh()->accepted_at)->toBeNull();
+    }
+
+    expect(ClaimJobOrderForArtist::pool()->whereKey([$assigned->id, $pendingReview->id])->count())->toBe(2);
+    expect($queueEntry->fresh()->status)->toBe(QueueStatus::Waiting);
+    expect($pendingReview->fresh()->consultation_notes)->toBe('Keep the approved layout.');
+    expect($designFile->fresh())->not->toBeNull();
+    expect($finished->fresh()->assigned_artist_id)->toBe($artist->id);
+    expect($cancelled->fresh()->assigned_artist_id)->toBe($artist->id);
+
+    $showReviewUrl = URL::temporarySignedRoute('public.design-review.show', now()->addDays(7), ['revisionLog' => $revisionLog->id]);
+    $this->get($showReviewUrl)
+        ->assertInertia(fn (Assert $page) => $page->where('state', 'active'));
+
+    $requestChangesUrl = URL::temporarySignedRoute('public.design-review.request-changes', now()->addDays(7), ['revisionLog' => $revisionLog->id]);
+    $this->post($requestChangesUrl, ['message' => 'Please enlarge the heading.'])->assertOk();
+
+    expect($pendingReview->fresh()->status)->toBe(JobOrderStatus::InDesign);
+    expect(ClaimJobOrderForArtist::pool()->whereKey($pendingReview->id)->exists())->toBeTrue();
+
+    $newArtist = User::factory()->artist()->create(['artist_status' => ArtistStatus::Available]);
+    $this->actingAs($newArtist)->patch(route('artist.job-orders.accept', $pendingReview))->assertRedirect();
+
+    expect($pendingReview->fresh()->assigned_artist_id)->toBe($newArtist->id);
+    expect($pendingReview->fresh()->status)->toBe(JobOrderStatus::InDesign);
+});
+
+test('the soft-delete migration refuses to restore deleted accounts on rollback', function () {
+    $admin = User::factory()->admin()->create();
+    $target = User::factory()->create();
+
+    $this->actingAs($admin)->delete(route('admin.users.destroy', $target))->assertRedirect();
+
+    $migration = require database_path('migrations/2026_10_04_172616_add_deleted_at_to_users_table.php');
+
+    expect(fn () => $migration->down())->toThrow(RuntimeException::class);
+    expect(User::withTrashed()->find($target->id)->trashed())->toBeTrue();
+});
+
+test('admin cannot delete their own account', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->delete(route('admin.users.destroy', $admin))
+        ->assertForbidden();
+
+    expect($admin->fresh())->not->toBeNull();
+});
+
+test('staff cannot delete another user', function () {
+    $staff = User::factory()->cashier()->create();
+    $target = User::factory()->create();
+
+    $this->actingAs($staff)
+        ->delete(route('admin.users.destroy', $target))
+        ->assertForbidden();
+
+    expect($target->fresh())->not->toBeNull();
 });
 
 test('admin deactivating a user flips is_active to false and writes an audited update row', function () {

@@ -10,26 +10,29 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ClaimJobOrderForArtist
 {
+    private const array CLAIMABLE_STATUSES = [
+        JobOrderStatus::Intake,
+        JobOrderStatus::InDesign,
+        JobOrderStatus::PendingReview,
+    ];
+
     /**
      * Let an available Artist take an unclaimed job order out of the shared
-     * pool. Returns false — writing nothing — when another Artist claimed it
-     * first, when the artist is not Available, or when the job order is no
-     * longer claimable.
+     * pool. Transferred designs keep their current stage, including an open
+     * client review. Returns false without writing when another Artist claims
+     * first, the artist is unavailable, or the order is no longer claimable.
      *
-     * Intentionally not filtered by type. `status = intake` already IS the
-     * "waiting for an artist" set: a Type B arrives there, and so does a
-     * Type A whose file the scanner judged NeedsArtist. Filtering on
-     * `type_b` as well stranded every one of those Type A rows — invisible
-     * to the pool that was supposed to hold them, and never sent to
-     * production either. A Type A the scanner rejected outright sits at
-     * `validation_failed`, a different status, and is still excluded.
+     * Intentionally not filtered by type. Intake includes Type B requests and
+     * Type A files that need an artist; transferred design work can also be
+     * claimed. A rejected Type A file remains in validation_failed and is
+     * excluded.
      *
      * Concurrency: the claim is a single conditional UPDATE whose WHERE
-     * clause carries `assigned_artist_id IS NULL`, and the decision is the
-     * affected-row count. Two Artists pressing Accept on the same row at
-     * the same moment both issue that statement; the engine serialises them
-     * on the row's exclusive write lock, the first flips the column to a
-     * non-null id, and the second's predicate no longer matches, so it
+     * clause carries `assigned_artist_id IS NULL` and the observed status.
+     * The decision is the affected-row count. Two Artists pressing Accept on
+     * the same row at the same moment both issue that statement; the engine
+     * serialises them on the row's exclusive write lock. The first flips the
+     * column to a non-null id, and the second's predicate no longer matches, so it
      * affects 0 rows and is told it lost. There is no read-then-write
      * window for a competing writer to slip into.
      *
@@ -40,18 +43,21 @@ class ClaimJobOrderForArtist
      */
     public function __invoke(JobOrder $jobOrder, User $artist): bool
     {
-        if ($artist->artist_status !== ArtistStatus::Available) {
+        if ($artist->artist_status !== ArtistStatus::Available
+            || ! in_array($jobOrder->status, self::CLAIMABLE_STATUSES, true)) {
             return false;
         }
 
         $claimed = JobOrder::query()
             ->whereKey($jobOrder->getKey())
             ->whereNull('assigned_artist_id')
-            ->where('status', JobOrderStatus::Intake->value)
+            ->where('status', $jobOrder->status->value)
             ->whereNull('cancelled_at')
             ->update([
                 'assigned_artist_id' => $artist->id,
-                'status' => JobOrderStatus::Assigned->value,
+                'status' => $jobOrder->status === JobOrderStatus::Intake
+                    ? JobOrderStatus::Assigned->value
+                    : $jobOrder->status->value,
                 'accepted_at' => now(),
             ]);
 
@@ -76,9 +82,9 @@ class ClaimJobOrderForArtist
     }
 
     /**
-     * The shared pool every available Artist sees: job orders nobody has
-     * claimed yet. Both kinds land here — a Type B consultation, and a
-     * Type A whose file the scanner sent for artist work.
+     * The shared pool every available Artist sees: new intake work and
+     * transferred designs that still need an Artist. Both Type A and Type B
+     * orders can appear here.
      *
      * Rush jobs lead, newest first. Regular jobs follow in arrival order so
      * a new regular job joins the bottom of the available list.
@@ -88,7 +94,10 @@ class ClaimJobOrderForArtist
     public static function pool(): Builder
     {
         return JobOrder::query()
-            ->where('status', JobOrderStatus::Intake->value)
+            ->whereIn('status', array_map(
+                fn (JobOrderStatus $status) => $status->value,
+                self::CLAIMABLE_STATUSES,
+            ))
             ->whereNull('assigned_artist_id')
             ->whereNull('cancelled_at')
             ->orderByDesc('is_rush')

@@ -23,6 +23,26 @@ test('admin can view the audit trail', function () {
     $response->assertInertia(fn (Assert $page) => $page->component('admin/AuditTrail'));
 });
 
+test('deleted users remain selectable when filtering historical audit entries', function () {
+    $admin = User::factory()->admin()->create();
+    $target = User::factory()->cashier()->create();
+    DB::table('audit_trail')->insert([
+        'user_id' => $target->id,
+        'action' => 'login',
+        'auditable_type' => User::class,
+        'auditable_id' => $target->id,
+        'ip_address' => '127.0.0.1',
+        'created_at' => now(),
+    ]);
+
+    $this->actingAs($admin)->delete(route('admin.users.destroy', $target))->assertRedirect();
+
+    $this->get(route('admin.audit-trail.index', ['user' => $target->id]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('users', fn ($users) => collect($users)->contains('id', $target->id))
+            ->where('entries.data', fn ($entries) => collect($entries)->contains('user_id', $target->id)));
+});
+
 test('audit trail returns a validation error instead of a 500 for a malformed from date', function () {
     $admin = User::factory()->admin()->create();
 

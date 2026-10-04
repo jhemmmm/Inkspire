@@ -33,7 +33,7 @@ class AuditTrailController extends Controller
         return Inertia::render('admin/AuditTrail', [
             'entries' => $entries,
             'filters' => $request->only(['user', 'action', 'from', 'to']),
-            'users' => User::query()->select(['id', 'name'])->orderBy('name')->get(),
+            'users' => User::withTrashed()->select(['id', 'name'])->orderBy('name')->get(),
             'actions' => ['created', 'updated', 'deleted', 'login', 'logout', 'failed_login', 'lockout', 'report_exported'],
         ]);
     }

@@ -60,6 +60,6 @@ class ProductionLog extends Model
      */
     public function recordedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'recorded_by');
+        return $this->belongsTo(User::class, 'recorded_by')->withTrashed();
     }
 }

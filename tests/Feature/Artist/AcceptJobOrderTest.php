@@ -61,6 +61,20 @@ test('an available artist can accept a job order out of the pool', function () {
     expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::Assigned);
 });
 
+test('an available artist can take over an unclaimed design without resetting its stage', function (JobOrderStatus $status) {
+    $artist = User::factory()->artist()->create(['artist_status' => ArtistStatus::Available->value]);
+    $jobOrder = unclaimedJobOrder(['status' => $status]);
+
+    $this->actingAs($artist)
+        ->get(route('artist.dashboard'))
+        ->assertInertia(fn (Assert $page) => $page->where('availableJobOrders.0.status', $status->value));
+
+    $this->patch(route('artist.job-orders.accept', $jobOrder))->assertRedirect();
+
+    expect($jobOrder->fresh()->assigned_artist_id)->toBe($artist->id);
+    expect($jobOrder->fresh()->status)->toBe($status);
+})->with([JobOrderStatus::InDesign, JobOrderStatus::PendingReview]);
+
 test('the second artist to accept the same job order is told they lost the race', function () {
     $first = User::factory()->artist()->create(['artist_status' => ArtistStatus::Available->value]);
     $second = User::factory()->artist()->create(['artist_status' => ArtistStatus::Available->value]);

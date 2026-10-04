@@ -55,6 +55,7 @@ interface PoolJobOrder {
     id: number;
     number: string;
     description: string;
+    status: string;
     created_at: string;
     is_rush: boolean;
     type: string;
@@ -329,7 +330,7 @@ function waitingSince(createdAt: string): string {
                         >
                             <EmptyState
                                 title="No jobs waiting to be accepted"
-                                description="New jobs appear here the moment Frontline Staff create them."
+                                description="New and transferred jobs appear here when they need an artist."
                                 :icon="Inbox"
                             />
                         </TableEmpty>
@@ -359,6 +360,16 @@ function waitingSince(createdAt: string): string {
                                             <Zap class="size-3" />
                                             Rush
                                         </Badge>
+                                        <StatusBadge
+                                            v-if="jobOrder.status !== 'intake'"
+                                            :tone="
+                                                jobOrderStatusBadge(
+                                                    jobOrder.status,
+                                                )
+                                            "
+                                        >
+                                            {{ statusLabel(jobOrder.status) }}
+                                        </StatusBadge>
                                     </div>
                                     <span class="text-muted-foreground text-sm">
                                         {{ jobOrder.description }}

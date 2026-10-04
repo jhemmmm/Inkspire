@@ -31,6 +31,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('users', [UserManagementController::class, 'index'])->name('users.index');
     Route::post('users', [UserManagementController::class, 'store'])->name('users.store');
     Route::patch('users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+    Route::delete('users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
     Route::patch('users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('users.deactivate');
     Route::patch('users/{user}/reactivate', [UserManagementController::class, 'reactivate'])->name('users.reactivate');
     Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');

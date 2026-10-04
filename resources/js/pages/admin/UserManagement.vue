@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, usePage } from '@inertiajs/vue3';
-import { Clock, Lock, Pencil, Plus, UserX } from '@lucide/vue';
+import { Clock, Lock, Pencil, Plus, Trash2, UserX } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import UserManagementController from '@/actions/App/Http/Controllers/Admin/UserManagementController';
 import AvatarField from '@/components/AvatarField.vue';
@@ -212,7 +212,7 @@ defineOptions({
     <PageContainer>
         <PageHeader
             title="User Management"
-            description="Create staff accounts and control who can still sign in. Accounts are deactivated, never deleted, so their audit history stays intact."
+            description="Create staff accounts and manage access. Deactivate an account temporarily or delete it from the directory while retaining its historical records."
         >
             <template #actions>
                 <Dialog v-model:open="createDialogOpen">
@@ -543,7 +543,8 @@ defineOptions({
                                 <AlertDialog v-if="user.is_active">
                                     <AlertDialogTrigger as-child>
                                         <Button
-                                            variant="destructive"
+                                            variant="outline"
+                                            class="border-warning/40 bg-warning/10 text-warning hover:bg-warning/20 hover:text-warning focus-visible:border-warning focus-visible:ring-warning/30 dark:bg-warning/15 dark:hover:bg-warning/25"
                                             :data-test="`deactivate-user-${user.id}-button`"
                                         >
                                             <UserX class="size-4" />
@@ -581,7 +582,8 @@ defineOptions({
                                             >
                                                 <Button
                                                     type="submit"
-                                                    variant="destructive"
+                                                    variant="outline"
+                                                    class="border-warning/40 bg-warning/10 text-warning hover:bg-warning/20 hover:text-warning focus-visible:border-warning focus-visible:ring-warning/30 dark:bg-warning/15 dark:hover:bg-warning/25"
                                                     :disabled="processing"
                                                     :data-test="`confirm-deactivate-user-${user.id}-button`"
                                                 >
@@ -612,6 +614,59 @@ defineOptions({
                                         Reactivate Account
                                     </Button>
                                 </Form>
+                                <AlertDialog v-if="user.id !== currentUserId">
+                                    <AlertDialogTrigger as-child>
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            :data-test="`delete-user-${user.id}-button`"
+                                        >
+                                            <Trash2 class="size-4" />
+                                            Delete
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>
+                                                Delete {{ user.name }}'s
+                                                account?
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This removes the account from
+                                                the user directory and prevents
+                                                future sign-ins. Historical
+                                                records remain available.
+                                                Unfinished artist work returns
+                                                to Available Jobs.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel
+                                                >Cancel</AlertDialogCancel
+                                            >
+                                            <Form
+                                                v-bind="
+                                                    UserManagementController.destroy.form(
+                                                        user.id,
+                                                    )
+                                                "
+                                                :options="{
+                                                    preserveScroll: true,
+                                                }"
+                                                v-slot="{ processing }"
+                                            >
+                                                <Button
+                                                    type="submit"
+                                                    variant="destructive"
+                                                    :disabled="processing"
+                                                    :data-test="`confirm-delete-user-${user.id}-button`"
+                                                >
+                                                    Delete Account
+                                                </Button>
+                                            </Form>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
                         </TableCell>
                     </TableRow>

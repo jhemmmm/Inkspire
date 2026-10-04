@@ -8,6 +8,14 @@ use App\Models\User;
 class UserPolicy
 {
     /**
+     * Admin may remove another account, including another Admin account.
+     */
+    public function delete(User $actor, User $target): bool
+    {
+        return $actor->role === UserRole::Admin && ! $actor->is($target);
+    }
+
+    /**
      * Determine whether the actor can deactivate the target user.
      *
      * Admin may act on anyone but themselves. The self-check is the whole

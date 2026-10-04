@@ -106,36 +106,13 @@ test('the avatar appears in auth.user', function () {
     ));
 });
 
-test('user can delete their account', function () {
+test('a user cannot delete their own account through profile settings', function () {
     $user = User::factory()->create();
 
-    $response = $this
+    $this
         ->actingAs($user)
-        ->delete(route('profile.destroy'), [
-            'password' => 'password',
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('home'));
-
-    $this->assertGuest();
-    expect($user->fresh())->toBeNull();
-});
-
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->from(route('profile.edit'))
-        ->delete(route('profile.destroy'), [
-            'password' => 'wrong-password',
-        ]);
-
-    $response
-        ->assertSessionHasErrors('password')
-        ->assertRedirect(route('profile.edit'));
+        ->delete(route('profile.update'))
+        ->assertMethodNotAllowed();
 
     expect($user->fresh())->not->toBeNull();
 });

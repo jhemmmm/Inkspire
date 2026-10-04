@@ -99,7 +99,7 @@ class AccountsReceivable extends Model
      */
     public function requestedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'requested_by');
+        return $this->belongsTo(User::class, 'requested_by')->withTrashed();
     }
 
     /**
@@ -109,7 +109,7 @@ class AccountsReceivable extends Model
      */
     public function approvedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'approved_by');
+        return $this->belongsTo(User::class, 'approved_by')->withTrashed();
     }
 
     /**
@@ -119,7 +119,7 @@ class AccountsReceivable extends Model
      */
     public function writeOffRequestedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'write_off_requested_by');
+        return $this->belongsTo(User::class, 'write_off_requested_by')->withTrashed();
     }
 
     /**

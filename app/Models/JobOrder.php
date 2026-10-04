@@ -169,7 +169,7 @@ class JobOrder extends Model
      */
     public function assignedArtist(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_artist_id');
+        return $this->belongsTo(User::class, 'assigned_artist_id')->withTrashed();
     }
 
     /**

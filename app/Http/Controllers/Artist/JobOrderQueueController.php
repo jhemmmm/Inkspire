@@ -58,14 +58,14 @@ class JobOrderQueueController extends Controller
                 ->get(['id', 'number', 'description', 'status', 'created_at', 'is_rush', 'type', 'deadline']),
             'availableJobOrders' => ClaimJobOrderForArtist::pool()
                 ->with('queueEntry.customer:id,name')
-                ->get(['id', 'number', 'description', 'queue_entry_id', 'created_at', 'is_rush', 'type', 'deadline']),
+                ->get(['id', 'number', 'description', 'status', 'queue_entry_id', 'created_at', 'is_rush', 'type', 'deadline']),
             'artistStatus' => $request->user()->artist_status,
             'artistLabel' => $request->user()->artist_label,
         ]);
     }
 
     /**
-     * Accept an unclaimed Type B job order out of the shared pool.
+     * Accept an unclaimed job order out of the shared pool.
      *
      * The claim itself is a compare-and-swap UPDATE inside
      * ClaimJobOrderForArtist -- when two Artists press Accept on the same
