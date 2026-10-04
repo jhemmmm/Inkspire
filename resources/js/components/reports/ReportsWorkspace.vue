@@ -7,6 +7,7 @@ import {
     FileText,
     Info,
     Search,
+    Clock3,
     Zap,
 } from '@lucide/vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
@@ -641,6 +642,18 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                         v-for="(row, idx) in rows"
                                         v-else
                                         :key="idx"
+                                        :class="{
+                                            'bg-warning/10 hover:bg-warning/15':
+                                                selected ===
+                                                    'production-status' &&
+                                                (row.urgency === 'Urgent' ||
+                                                    row.urgency ===
+                                                        'Rush + Urgent'),
+                                            'bg-brand/5 hover:bg-brand/10':
+                                                selected ===
+                                                    'production-status' &&
+                                                row.urgency === 'Rush',
+                                        }"
                                     >
                                         <TableCell
                                             v-for="field in rowFields"
@@ -713,20 +726,46 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                             <template
                                                 v-else-if="field === 'urgency'"
                                             >
-                                                <Badge
-                                                    v-if="row[field]"
-                                                    variant="outline"
-                                                    class="border-brand/40 text-brand"
+                                                <div
+                                                    class="flex flex-wrap gap-1"
                                                 >
-                                                    <Zap class="size-3" />
-                                                    Rush
-                                                </Badge>
-                                                <StatusBadge
-                                                    v-else
-                                                    tone="neutral"
-                                                >
-                                                    Normal
-                                                </StatusBadge>
+                                                    <Badge
+                                                        v-if="
+                                                            row[field] ===
+                                                                'Rush' ||
+                                                            row[field] ===
+                                                                'Rush + Urgent'
+                                                        "
+                                                        variant="outline"
+                                                        class="border-brand/40 text-brand"
+                                                    >
+                                                        <Zap class="size-3" />
+                                                        Rush
+                                                    </Badge>
+                                                    <StatusBadge
+                                                        v-if="
+                                                            row[field] ===
+                                                                'Urgent' ||
+                                                            row[field] ===
+                                                                'Rush + Urgent'
+                                                        "
+                                                        tone="warning"
+                                                    >
+                                                        <Clock3
+                                                            class="size-3"
+                                                        />
+                                                        Urgent
+                                                    </StatusBadge>
+                                                    <StatusBadge
+                                                        v-if="
+                                                            row[field] ===
+                                                            'Normal'
+                                                        "
+                                                        tone="neutral"
+                                                    >
+                                                        Normal
+                                                    </StatusBadge>
+                                                </div>
                                             </template>
                                             <template
                                                 v-else-if="

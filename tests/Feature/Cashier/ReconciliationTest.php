@@ -185,6 +185,23 @@ test('the accounting dashboard carries the last 14 days of revenue and expenses'
             ->where('cashFlow.series.1.name', 'Expenses'));
 });
 
+test('rush payment confirmations lead the accounting list and include their rush flag', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $rush = JobOrder::factory()->rush()->create(['created_at' => now()]);
+    $rush->forceFill(['payment_status' => PaymentStatus::PendingConfirmation])->save();
+    $regular = JobOrder::factory()->create(['created_at' => now()->subHour()]);
+    $regular->forceFill(['payment_status' => PaymentStatus::PendingConfirmation])->save();
+
+    $response = $this->actingAs($accountingStaff)->get(route('accounting-staff.dashboard'));
+
+    $response->assertInertia(fn ($page) => $page
+        ->where('jobOrders.0.id', $rush->id)
+        ->where('jobOrders.0.number', $rush->number)
+        ->where('jobOrders.0.is_rush', true)
+        ->where('jobOrders.1.id', $regular->id)
+        ->where('jobOrders.1.is_rush', false));
+});
+
 test('the accounting dashboard files a payment taken before 8 AM Manila time under that Manila day', function () {
     $accountingStaff = User::factory()->accountingStaff()->create();
     // 1 AM on September 28 in Manila, still September 27 in UTC.

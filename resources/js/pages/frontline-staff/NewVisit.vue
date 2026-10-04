@@ -178,29 +178,10 @@ const showJobOrderForm = computed(
     () => newJobOrderRequested.value || props.customerJobOrders.length === 0,
 );
 
-/**
- * The past week's orders, rush in their own table above the rest, so a rush
- * job already in progress is the first thing staff see rather than a badge
- * somewhere down the list. An empty group is left out.
- */
-const recentOrderGroups = computed(() =>
-    [
-        {
-            key: 'rush',
-            title: 'Rush Orders',
-            rows: props.customerJobOrders.filter(
-                (jobOrder) => jobOrder.is_rush,
-            ),
-        },
-        {
-            key: 'regular',
-            title: 'Regular Orders',
-            rows: props.customerJobOrders.filter(
-                (jobOrder) => !jobOrder.is_rush,
-            ),
-        },
-    ].filter((group) => group.rows.length > 0),
-);
+const recentJobOrders = computed(() => [
+    ...props.customerJobOrders.filter((jobOrder) => jobOrder.is_rush),
+    ...props.customerJobOrders.filter((jobOrder) => !jobOrder.is_rush),
+]);
 
 // Inertia can preserve this component instance across the post-registration
 // redirect instead of remounting it — keep `selected` in sync when that happens.
@@ -679,7 +660,7 @@ function formatSlipDate(value: string): string {
             <CardContent class="flex flex-col gap-6">
                 <div class="flex items-center gap-4 print:hidden">
                     <p
-                        class="bg-primary text-primary-foreground flex size-20 shrink-0 items-center justify-center rounded-2xl text-4xl leading-none font-extrabold tabular-nums"
+                        class="bg-primary text-primary-foreground flex min-h-20 shrink-0 items-center justify-center rounded-2xl px-4 text-4xl leading-none font-extrabold whitespace-nowrap tabular-nums"
                     >
                         {{
                             queueNumberLabel(
@@ -856,23 +837,7 @@ function formatSlipDate(value: string): string {
                 </Button>
             </div>
 
-            <section
-                v-for="group in recentOrderGroups"
-                :key="group.key"
-                class="flex flex-col gap-2"
-                :data-test="`recent-orders-${group.key}`"
-            >
-                <h3 class="flex items-center gap-2 text-sm font-semibold">
-                    <Zap
-                        v-if="group.key === 'rush'"
-                        class="text-brand size-4"
-                        aria-hidden="true"
-                    />
-                    {{ group.title }}
-                    <Badge variant="secondary" class="tabular-nums">
-                        {{ group.rows.length }}
-                    </Badge>
-                </h3>
+            <section class="flex flex-col gap-2" data-test="recent-orders">
                 <DataTableCard>
                     <Table>
                         <TableHeader>
@@ -886,9 +851,13 @@ function formatSlipDate(value: string): string {
                         </TableHeader>
                         <TableBody>
                             <TableRow
-                                v-for="jobOrder in group.rows"
+                                v-for="jobOrder in recentJobOrders"
                                 :key="jobOrder.id"
                                 class="hover:bg-accent/50 cursor-pointer"
+                                :class="{
+                                    'bg-warning/10 hover:bg-warning/15':
+                                        jobOrder.is_rush,
+                                }"
                                 tabindex="0"
                                 :data-test="`customer-job-order-${jobOrder.id}-row`"
                                 @click="router.visit(jobOrderShow(jobOrder.id))"
@@ -897,7 +866,17 @@ function formatSlipDate(value: string): string {
                                 "
                             >
                                 <TableCell class="tabular-nums">
-                                    {{ jobOrder.number ?? '—' }}
+                                    <div class="flex items-center gap-2">
+                                        {{ jobOrder.number ?? '—' }}
+                                        <Badge
+                                            v-if="jobOrder.is_rush"
+                                            variant="outline"
+                                            class="border-brand/40 text-brand"
+                                        >
+                                            <Zap class="size-3" />
+                                            Rush
+                                        </Badge>
+                                    </div>
                                 </TableCell>
                                 <TableCell>{{
                                     jobOrder.description

@@ -112,77 +112,6 @@ function deadlineLabel(deadline: string | null): string {
     });
 }
 
-/**
- * Rush and regular are shown as two tables rather than one sorted list.
- * Sorting alone puts the boundary between "drop everything" and "normal
- * work" somewhere in the middle of a scrolling table, where it is invisible
- * — the artist has to read the badge on every row to find it.
- *
- * Both lists arrive from the server already ordered (rush first, newest
- * first within each), so partitioning preserves that order and the top row
- * of the rush table stays the row `nextEligibleId()` will authorise.
- */
-function splitByRush<T extends { is_rush: boolean }>(
-    rows: T[],
-): { rush: T[]; regular: T[] } {
-    return {
-        rush: rows.filter((row) => row.is_rush),
-        regular: rows.filter((row) => !row.is_rush),
-    };
-}
-
-const availableGroups = computed(() => {
-    const { rush, regular } = splitByRush(props.availableJobOrders);
-
-    return [
-        {
-            key: 'rush',
-            title: 'Available — Rush Print',
-            description:
-                'Priority jobs nobody has claimed yet. Take these before anything below.',
-            rows: rush,
-            emptyTitle: 'No rush jobs waiting',
-            emptyDescription:
-                'Rush jobs appear here the moment Frontline Staff create one.',
-        },
-        {
-            key: 'regular',
-            title: 'Available — Regular',
-            description:
-                'Unclaimed jobs — first to accept gets it. Accepting one moves it into your queue.',
-            rows: regular,
-            emptyTitle: 'No jobs waiting to be accepted',
-            emptyDescription:
-                'New jobs appear here the moment Frontline Staff create them.',
-        },
-    ];
-});
-
-const queueGroups = computed(() => {
-    const { rush, regular } = splitByRush(props.jobOrders);
-
-    return [
-        {
-            key: 'rush',
-            title: 'My Queue — Rush Print',
-            description: 'Your priority work, newest first.',
-            rows: rush,
-            emptyTitle: 'No rush jobs in your queue',
-            emptyDescription:
-                'Accept a rush job from Available above and it lands here.',
-        },
-        {
-            key: 'regular',
-            title: 'My Queue — Regular',
-            description: 'The rest of your queue, newest first.',
-            rows: regular,
-            emptyTitle: 'No job orders assigned',
-            emptyDescription:
-                'Accept a job from Available Jobs above to start working on it.',
-        },
-    ];
-});
-
 const rushCount = computed(
     () =>
         props.jobOrders.filter((jobOrder) => jobOrder.is_rush).length +
@@ -376,14 +305,10 @@ function waitingSince(createdAt: string): string {
             />
         </div>
 
-        <section
-            v-for="group in availableGroups"
-            :key="group.key"
-            class="flex flex-col gap-3"
-        >
+        <section class="flex flex-col gap-3">
             <SectionHeading
-                :title="group.title"
-                :description="group.description"
+                title="Available Jobs"
+                description="Unclaimed jobs, rush first. Accepting one moves it into your queue."
             />
 
             <DataTableCard>
@@ -398,24 +323,33 @@ function waitingSince(createdAt: string): string {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableEmpty v-if="group.rows.length === 0" :colspan="5">
+                        <TableEmpty
+                            v-if="availableJobOrders.length === 0"
+                            :colspan="5"
+                        >
                             <EmptyState
-                                :title="group.emptyTitle"
-                                :description="group.emptyDescription"
+                                title="No jobs waiting to be accepted"
+                                description="New jobs appear here the moment Frontline Staff create them."
                                 :icon="Inbox"
                             />
                         </TableEmpty>
                         <TableRow
-                            v-for="jobOrder in group.rows"
+                            v-for="jobOrder in availableJobOrders"
                             v-else
                             :key="jobOrder.id"
+                            :class="{
+                                'bg-warning/10 hover:bg-warning/15':
+                                    jobOrder.is_rush,
+                            }"
                         >
                             <TableCell>
                                 <div class="flex flex-col gap-1">
                                     <div
                                         class="flex flex-wrap items-center gap-2"
                                     >
-                                        <span>{{ jobOrder.description }}</span>
+                                        <span class="font-medium tabular-nums">
+                                            {{ jobOrder.number }}
+                                        </span>
                                         <Badge
                                             v-if="jobOrder.is_rush"
                                             variant="outline"
@@ -426,10 +360,8 @@ function waitingSince(createdAt: string): string {
                                             Rush
                                         </Badge>
                                     </div>
-                                    <span
-                                        class="text-muted-foreground text-xs tabular-nums"
-                                    >
-                                        {{ jobOrder.number }}
+                                    <span class="text-muted-foreground text-sm">
+                                        {{ jobOrder.description }}
                                     </span>
                                 </div>
                             </TableCell>
@@ -522,18 +454,14 @@ function waitingSince(createdAt: string): string {
             </DataTableCard>
         </section>
 
-        <section
-            v-for="group in queueGroups"
-            :key="group.key"
-            class="flex flex-col gap-3"
-        >
+        <section class="flex flex-col gap-3">
             <div class="flex flex-wrap items-end justify-between gap-2">
                 <SectionHeading
-                    :title="group.title"
-                    :description="group.description"
+                    title="My Queue"
+                    description="Your accepted jobs, rush first and newest first within each priority."
                 />
                 <p
-                    v-if="!isOnShift && group.key === 'rush'"
+                    v-if="!isOnShift"
                     class="text-muted-foreground text-sm"
                     data-test="queue-off-duty-note"
                 >
@@ -552,24 +480,30 @@ function waitingSince(createdAt: string): string {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableEmpty v-if="group.rows.length === 0" :colspan="5">
+                        <TableEmpty v-if="jobOrders.length === 0" :colspan="5">
                             <EmptyState
-                                :title="group.emptyTitle"
-                                :description="group.emptyDescription"
+                                title="No job orders assigned"
+                                description="Accept a job from Available Jobs above to start working on it."
                                 :icon="LayoutList"
                             />
                         </TableEmpty>
                         <TableRow
-                            v-for="jobOrder in group.rows"
+                            v-for="jobOrder in jobOrders"
                             v-else
                             :key="jobOrder.id"
+                            :class="{
+                                'bg-warning/10 hover:bg-warning/15':
+                                    jobOrder.is_rush,
+                            }"
                         >
                             <TableCell>
                                 <div class="flex flex-col gap-1">
                                     <div
                                         class="flex flex-wrap items-center gap-2"
                                     >
-                                        <span>{{ jobOrder.description }}</span>
+                                        <span class="font-medium tabular-nums">
+                                            {{ jobOrder.number ?? '—' }}
+                                        </span>
                                         <Badge
                                             v-if="jobOrder.is_rush"
                                             variant="outline"
@@ -580,10 +514,8 @@ function waitingSince(createdAt: string): string {
                                             Rush
                                         </Badge>
                                     </div>
-                                    <span
-                                        class="text-muted-foreground text-xs tabular-nums"
-                                    >
-                                        {{ jobOrder.number ?? '—' }}
+                                    <span class="text-muted-foreground text-sm">
+                                        {{ jobOrder.description }}
                                     </span>
                                 </div>
                             </TableCell>

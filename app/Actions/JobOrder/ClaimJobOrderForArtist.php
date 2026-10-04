@@ -80,14 +80,8 @@ class ClaimJobOrderForArtist
      * claimed yet. Both kinds land here — a Type B consultation, and a
      * Type A whose file the scanner sent for artist work.
      *
-     * Rush leads, then newest first, so a job created at the counter
-     * surfaces at the top of the artist's list while the customer is still
-     * standing there.
-     *
-     * Note the trade-off that buys: this is no longer FIFO, so a quiet
-     * job can be pushed down indefinitely by newer arrivals. The shop asked
-     * for newest-first; if a job is ever found to have starved, `latest()`
-     * here is the single line to put back to `oldest()`.
+     * Rush jobs lead, newest first. Regular jobs follow in arrival order so
+     * a new regular job joins the bottom of the available list.
      *
      * @return Builder<JobOrder>
      */
@@ -98,6 +92,9 @@ class ClaimJobOrderForArtist
             ->whereNull('assigned_artist_id')
             ->whereNull('cancelled_at')
             ->orderByDesc('is_rush')
-            ->latest('created_at');
+            ->orderByRaw('CASE WHEN is_rush = 1 THEN created_at END DESC')
+            ->orderByRaw('CASE WHEN is_rush = 1 THEN id END DESC')
+            ->orderBy('created_at')
+            ->orderBy('id');
     }
 }

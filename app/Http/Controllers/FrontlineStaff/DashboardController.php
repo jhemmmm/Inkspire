@@ -19,13 +19,13 @@ class DashboardController extends Controller
      * this list the instant it's released or sent back a stage, with no
      * code path needed to explicitly clear it.
      *
-     * "Ready since" and the oldest-first ordering come from the
+     * "Ready since" and the oldest-first ordering within each priority come from the
      * production_logs row that recorded the ready_for_pickup transition,
      * not from `updated_at`: any unrelated write to the row (recording a
      * payment, requesting credit, an Admin approving credit) bumps
      * updated_at, which reset "Ready Since" to "Just now" and dropped the
-     * longest-waiting order to the bottom of the list — and out of the
-     * QueueList banner, which shows only the two oldest.
+     * longest-waiting order to the bottom of the list. The QueueList banner
+     * separately shows the two oldest across all priorities.
      *
      * `select()` runs before `withMax()` on purpose: withAggregate() falls
      * back to `job_orders.*` when no columns are set yet, which would
@@ -47,6 +47,7 @@ class DashboardController extends Controller
                 ->withAmountPaid()
                 ->get()
                 ->sortBy(fn (JobOrder $jobOrder) => $jobOrder->ready_at ?? $jobOrder->updated_at)
+                ->sortByDesc('is_rush')
                 ->values()
                 ->append('display_total'),
             'searchResults' => fn () => $this->search($request),
@@ -77,6 +78,7 @@ class DashboardController extends Controller
             ->search((string) $request->string('q'))
             ->with(['queueEntry.customer:id,name', 'assignedArtist:id,name,artist_label'])
             ->withAmountPaid()
+            ->orderByDesc('is_rush')
             ->latest('id')
             ->take(25)
             ->get(['id', 'number', 'description', 'status', 'payment_status', 'is_rush', 'queue_entry_id', 'assigned_artist_id', 'released_at', 'cancelled_at', 'created_at', 'total_amount', 'quoted_amount'])

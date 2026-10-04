@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowRight } from '@lucide/vue';
+import { ArrowRight, Zap } from '@lucide/vue';
 import { ref } from 'vue';
 import BarChart from '@/components/BarChart.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
@@ -8,6 +8,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -33,7 +34,9 @@ interface PendingConfirmationTransaction {
 
 interface PendingConfirmationJobOrder {
     id: number;
+    number: string | null;
     description: string;
+    is_rush: boolean;
     total_amount: number | null;
     created_at: string;
     queue_entry: { customer: { name: string } };
@@ -137,8 +140,31 @@ const { formatTimestamp } = useBusinessTime();
                         v-for="jobOrder in jobOrders"
                         v-else
                         :key="jobOrder.id"
+                        :class="{
+                            'bg-warning/10 hover:bg-warning/15':
+                                jobOrder.is_rush,
+                        }"
                     >
-                        <TableCell>{{ jobOrder.description }}</TableCell>
+                        <TableCell>
+                            <div class="flex flex-col gap-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="font-medium tabular-nums">
+                                        {{ jobOrder.number ?? '—' }}
+                                    </span>
+                                    <Badge
+                                        v-if="jobOrder.is_rush"
+                                        variant="outline"
+                                        class="border-brand/40 text-brand"
+                                    >
+                                        <Zap class="size-3" />
+                                        Rush
+                                    </Badge>
+                                </div>
+                                <span class="text-muted-foreground text-sm">
+                                    {{ jobOrder.description }}
+                                </span>
+                            </div>
+                        </TableCell>
                         <TableCell>
                             {{ jobOrder.queue_entry.customer.name }}
                         </TableCell>

@@ -229,13 +229,17 @@ test('exporting production-status to xlsx resolves urgency and stage to the same
 
     $productionStaff = User::factory()->productionStaff()->create();
 
-    $rush = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
-    $rush->forceFill(['due_at' => now()->subDay()])->save();
+    $rush = JobOrder::factory()->rush()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $rush->forceFill(['due_at' => now()->addWeek()])->save();
     ProductionLog::factory()->for($rush)->create(['to_status' => JobOrderStatus::ForProduction->value, 'created_at' => now()]);
 
     $normal = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
     $normal->forceFill(['due_at' => now()->addWeek()])->save();
     ProductionLog::factory()->for($normal)->create(['to_status' => JobOrderStatus::ForProduction->value, 'created_at' => now()]);
+
+    $urgent = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $urgent->forceFill(['due_at' => now()->subDay()])->save();
+    ProductionLog::factory()->for($urgent)->create(['to_status' => JobOrderStatus::ForProduction->value, 'created_at' => now()]);
 
     $response = $this->actingAs($productionStaff)->get(route('production-staff.reports.export.xlsx', 'production-status'));
 
@@ -243,13 +247,14 @@ test('exporting production-status to xlsx resolves urgency and stage to the same
 
     $rows = readXlsxRows($response->streamedContent());
 
-    expect([$rows[1][4], $rows[2][4]])
+    expect([$rows[1][4], $rows[2][4], $rows[3][4]])
         ->toContain('Rush')
-        ->toContain('Normal');
+        ->toContain('Normal')
+        ->toContain('Urgent');
     expect($rows[1][3])->toBe('For Production');
     expect($rows[2][3])->toBe('For Production');
-    // No money column, so no Total row: header + the two job orders only.
-    expect($rows)->toHaveCount(3);
+    // No money column, so no Total row: header + the three job orders only.
+    expect($rows)->toHaveCount(4);
 });
 
 test('exporting expenses to xlsx resolves an active expense\'s status to "Active" (export parity)', function () {

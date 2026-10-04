@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { CalendarRange, CircleCheck, Repeat2, Target } from '@lucide/vue';
-import { ref } from 'vue';
 import DataTableCard from '@/components/DataTableCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
@@ -9,6 +8,7 @@ import PageHeader from '@/components/PageHeader.vue';
 import SectionHeading from '@/components/SectionHeading.vue';
 import StatCard from '@/components/StatCard.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
+import TableFilterBar from '@/components/TableFilterBar.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/table';
 import { artistNavItems } from '@/config/nav/artist';
 import { useBusinessTime } from '@/composables/useBusinessTime';
+import { useTableFilter } from '@/composables/useTableFilter';
 import { index as performanceReportIndex } from '@/routes/artist/performance-report';
 
 interface Stats {
@@ -66,19 +67,10 @@ defineOptions({
     },
 });
 
-const fromDate = ref(props.filters.from ?? '');
-const toDate = ref(props.filters.to ?? '');
-
-function visit(): void {
-    router.get(
-        performanceReportIndex.url(),
-        {
-            ...(fromDate.value ? { from: fromDate.value } : {}),
-            ...(toDate.value ? { to: toDate.value } : {}),
-        },
-        { preserveState: true, preserveScroll: true, replace: true },
-    );
-}
+const { searchTerm, filtered: visibleJobOrders } = useTableFilter(
+    () => props.completedJobOrders,
+    (jobOrder) => [jobOrder.number, jobOrder.description],
+);
 
 /** Matches the 'en-PH' long-date convention used across the other portals. */
 const { formatDay } = useBusinessTime();
@@ -93,12 +85,6 @@ function approvedLabel(approvedAt: string): string {
 
 function daysLabel(days: number): string {
     return days === 1 ? '1 day' : `${days} days`;
-}
-
-function clearFilters(): void {
-    fromDate.value = '';
-    toDate.value = '';
-    visit();
 }
 </script>
 
@@ -117,14 +103,16 @@ function clearFilters(): void {
             </CardHeader>
             <CardContent>
                 <form
+                    :action="performanceReportIndex.url()"
+                    method="get"
                     class="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-4"
-                    @submit.prevent="visit()"
                 >
                     <div class="flex min-w-0 flex-col gap-2">
                         <Label for="performance-filter-from">From</Label>
                         <Input
                             id="performance-filter-from"
-                            v-model="fromDate"
+                            name="from"
+                            :default-value="filters.from ?? ''"
                             type="date"
                             class="w-full"
                         />
@@ -134,7 +122,8 @@ function clearFilters(): void {
                         <Label for="performance-filter-to">To</Label>
                         <Input
                             id="performance-filter-to"
-                            v-model="toDate"
+                            name="to"
+                            :default-value="filters.to ?? ''"
                             type="date"
                             class="w-full"
                         />
@@ -149,13 +138,13 @@ function clearFilters(): void {
                         >
                             Apply Filters
                         </Button>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            data-test="clear-performance-filters-button"
-                            @click="clearFilters"
-                        >
-                            Clear
+                        <Button as-child variant="secondary">
+                            <Link
+                                :href="performanceReportIndex()"
+                                data-test="clear-performance-filters-button"
+                            >
+                                Clear
+                            </Link>
                         </Button>
                     </div>
                 </form>
@@ -192,6 +181,15 @@ function clearFilters(): void {
                 title="Completed Job Orders"
                 description="The jobs behind the figures above, most recently approved first."
             />
+            <TableFilterBar
+                v-model:search="searchTerm"
+                search-label="Search completed job orders"
+                search-placeholder="Search job number or description…"
+                :shown="visibleJobOrders.length"
+                :total="completedJobOrders.length"
+                :active="searchTerm.trim() !== ''"
+                @clear="searchTerm = ''"
+            />
             <DataTableCard>
                 <Table>
                     <TableHeader>
@@ -205,17 +203,25 @@ function clearFilters(): void {
                     </TableHeader>
                     <TableBody>
                         <TableEmpty
-                            v-if="completedJobOrders.length === 0"
+                            v-if="visibleJobOrders.length === 0"
                             :colspan="5"
                         >
                             <EmptyState
-                                title="No completed job orders in this range"
-                                description="Only designs the client approved count here. Try a wider date range."
+                                :title="
+                                    searchTerm.trim()
+                                        ? 'No matching job orders'
+                                        : 'No completed job orders in this range'
+                                "
+                                :description="
+                                    searchTerm.trim()
+                                        ? 'Try a different job number or description.'
+                                        : 'Only designs the client approved count here. Try a wider date range.'
+                                "
                                 :icon="CalendarRange"
                             />
                         </TableEmpty>
                         <TableRow
-                            v-for="jobOrder in completedJobOrders"
+                            v-for="jobOrder in visibleJobOrders"
                             v-else
                             :key="jobOrder.id"
                             :data-test="`completed-job-order-${jobOrder.id}-row`"

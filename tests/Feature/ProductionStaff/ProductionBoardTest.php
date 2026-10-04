@@ -27,10 +27,11 @@ test('the board lists a job order on a production stage with the required fields
         ->where('jobOrders.0.status', $jobOrder->status->value)
         ->where('jobOrders.0.queue_entry_id', $jobOrder->queue_entry_id)
         ->has('jobOrders.0.due_at')
-        ->where('jobOrders.0.is_rush', false));
+        ->where('jobOrders.0.is_rush', false)
+        ->where('jobOrders.0.is_urgent', false));
 });
 
-test('a job order due today or earlier is flagged rush', function (Closure $dueAt) {
+test('a job order due today or earlier is urgent without becoming an intake rush job', function (Closure $dueAt) {
     $staff = User::factory()->productionStaff()->create();
     $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value]);
     $jobOrder->forceFill(['due_at' => $dueAt()])->save();
@@ -38,7 +39,8 @@ test('a job order due today or earlier is flagged rush', function (Closure $dueA
     $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->where('jobOrders.0.is_rush', true));
+        ->where('jobOrders.0.is_rush', false)
+        ->where('jobOrders.0.is_urgent', true));
 })->with([
     'due right now' => fn () => now(),
     'due earlier today' => fn () => now()->startOfDay(),
@@ -53,29 +55,25 @@ test('a job order due strictly after today is not flagged rush', function () {
     $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->where('jobOrders.0.is_rush', false));
+        ->where('jobOrders.0.is_rush', false)
+        ->where('jobOrders.0.is_urgent', false));
 });
 
-test('rush is scoped to the Asia/Manila business day, not the UTC one', function () {
-    // 02:00 UTC is 10:00 the same day in Manila. The Manila business day
-    // ends at 15:59:59 UTC; the UTC day runs eight hours longer, so a job
-    // order due 07:00 tomorrow Manila (23:00 today UTC) falls inside the
-    // UTC day but outside the business day it is actually due on.
+test('a due date on the next Manila business day does not mark a job rush', function () {
     $this->travelTo(Carbon::parse('2026-09-05 02:00:00', 'UTC'));
 
     $staff = User::factory()->productionStaff()->create();
     $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::Printing->value]);
-    // ->utc() matters: Eloquent's datetime cast stores the wall-clock of
-    // whatever timezone the Carbon instance carries, without converting.
     $jobOrder->forceFill(['due_at' => Carbon::parse('2026-09-06 07:00:00', 'Asia/Manila')->utc()])->save();
 
     $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->where('jobOrders.0.is_rush', false));
+        ->where('jobOrders.0.is_rush', false)
+        ->where('jobOrders.0.is_urgent', false));
 });
 
-test('a job order due at the very end of the Manila business day is flagged rush', function () {
+test('a job order due at the end of the Manila business day remains regular when unmarked', function () {
     $this->travelTo(Carbon::parse('2026-09-05 02:00:00', 'UTC'));
 
     $staff = User::factory()->productionStaff()->create();
@@ -85,7 +83,8 @@ test('a job order due at the very end of the Manila business day is flagged rush
     $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->where('jobOrders.0.is_rush', true));
+        ->where('jobOrders.0.is_rush', false)
+        ->where('jobOrders.0.is_urgent', true));
 });
 
 test('a job order with no due_at is not flagged rush', function () {
@@ -95,7 +94,8 @@ test('a job order with no due_at is not flagged rush', function () {
     $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
 
     $response->assertInertia(fn (Assert $page) => $page
-        ->where('jobOrders.0.is_rush', false));
+        ->where('jobOrders.0.is_rush', false)
+        ->where('jobOrders.0.is_urgent', false));
 });
 
 test('a job order not yet entered production does not appear on the board', function (JobOrderStatus $status) {
@@ -171,4 +171,26 @@ test('a job order marked rush at intake is flagged rush regardless of its due da
 
     $response->assertInertia(fn (Assert $page) => $page
         ->where('jobOrders.0.is_rush', true));
+});
+
+test('the board puts overdue deadlines before future rush jobs and rush ahead of future regular jobs', function () {
+    $staff = User::factory()->productionStaff()->create();
+    $dueToday = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $dueToday->forceFill(['due_at' => now()->subDay()])->save();
+    $regular = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $regular->forceFill(['due_at' => now()->addDays(2)])->save();
+    $intakeRush = JobOrder::factory()->rush()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $intakeRush->forceFill(['due_at' => now()->addWeek()])->save();
+
+    $response = $this->actingAs($staff)->get(route('production-staff.dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('jobOrders.0.id', $dueToday->id)
+        ->where('jobOrders.0.is_rush', false)
+        ->where('jobOrders.0.is_urgent', true)
+        ->where('jobOrders.1.id', $intakeRush->id)
+        ->where('jobOrders.1.is_rush', true)
+        ->where('jobOrders.1.is_urgent', false)
+        ->where('jobOrders.2.id', $regular->id)
+        ->where('jobOrders.2.is_rush', false));
 });

@@ -67,6 +67,32 @@ test('ready since and the dashboard ordering come from the logged ready_for_pick
         ->has('readyForPickup.0.ready_at'));
 });
 
+test('rush pickup orders lead while ready time still orders jobs within each priority', function () {
+    $staff = User::factory()->frontlineStaff()->create();
+    $normal = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    ProductionLog::factory()->for($normal)->create([
+        'to_status' => JobOrderStatus::ReadyForPickup->value,
+        'created_at' => now()->subHours(3),
+    ]);
+    $olderRush = JobOrder::factory()->rush()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    ProductionLog::factory()->for($olderRush)->create([
+        'to_status' => JobOrderStatus::ReadyForPickup->value,
+        'created_at' => now()->subHours(2),
+    ]);
+    $newerRush = JobOrder::factory()->rush()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    ProductionLog::factory()->for($newerRush)->create([
+        'to_status' => JobOrderStatus::ReadyForPickup->value,
+        'created_at' => now()->subHour(),
+    ]);
+
+    $response = $this->actingAs($staff)->get(route('frontline-staff.dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('readyForPickup.0.id', $olderRush->id)
+        ->where('readyForPickup.1.id', $newerRush->id)
+        ->where('readyForPickup.2.id', $normal->id));
+});
+
 test('the ready_at aggregate does not widen the dashboard payload beyond its column list', function () {
     // withAggregate() falls back to selecting job_orders.* when no columns
     // are set before it runs, which would silently expose pricing data not

@@ -322,6 +322,10 @@ function timeAgo(isoString: string): string {
                             v-for="result in searchResults"
                             :key="result.id"
                             class="hover:bg-accent/50 cursor-pointer"
+                            :class="{
+                                'bg-warning/10 hover:bg-warning/15':
+                                    result.is_rush,
+                            }"
                             tabindex="0"
                             :data-test="`search-result-${result.id}-row`"
                             @click="openJobOrder(result.id)"
@@ -416,15 +420,31 @@ function timeAgo(isoString: string): string {
                         v-else
                         :key="jobOrder.id"
                         class="hover:bg-accent/50 cursor-pointer"
+                        :class="{
+                            'bg-warning/10 hover:bg-warning/15':
+                                jobOrder.is_rush,
+                        }"
                         tabindex="0"
                         :data-test="`ready-for-pickup-${jobOrder.id}-row`"
                         @click="openJobOrder(jobOrder.id)"
                         @keyup.enter="openJobOrder(jobOrder.id)"
                     >
                         <TableCell>
-                            <span class="text-muted-foreground tabular-nums">
-                                {{ jobOrder.number ?? '—' }}
-                            </span>
+                            <div class="flex items-center gap-2">
+                                <span
+                                    class="text-muted-foreground tabular-nums"
+                                >
+                                    {{ jobOrder.number ?? '—' }}
+                                </span>
+                                <Badge
+                                    v-if="jobOrder.is_rush"
+                                    variant="outline"
+                                    class="border-brand/40 text-brand"
+                                >
+                                    <Zap class="size-3" />
+                                    Rush
+                                </Badge>
+                            </div>
                         </TableCell>
                         <TableCell>
                             {{ jobOrder.queue_entry.customer.name }}

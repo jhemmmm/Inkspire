@@ -80,3 +80,15 @@ test('search results are capped at 25', function () {
 
     $response->assertInertia(fn ($page) => $page->has('searchResults', 25));
 });
+
+test('a rush search match leads even when newer regular matches exceed the result cap', function () {
+    $frontline = User::factory()->frontlineStaff()->create();
+    $rush = JobOrder::factory()->rush()->create(['description' => 'Bulk flyer batch']);
+    JobOrder::factory()->count(26)->create(['description' => 'Bulk flyer batch']);
+
+    $response = $this->actingAs($frontline)->get(route('frontline-staff.dashboard', ['q' => 'Bulk flyer']));
+
+    $response->assertInertia(fn ($page) => $page
+        ->has('searchResults', 25)
+        ->where('searchResults.0.id', $rush->id));
+});

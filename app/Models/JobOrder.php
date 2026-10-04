@@ -9,6 +9,7 @@ use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Observers\AuditObserver;
 use App\Support\BusinessTime;
+use Carbon\CarbonInterface;
 use Database\Factories\JobOrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -63,9 +64,7 @@ use Illuminate\Support\Str;
  * @property bool $is_rush The staff-declared urgency flag captured at the
  *                         counter at intake (RUSH-01). A real, NOT NULL column since
  *                         2026_09_10_120000 — it was previously computed in memory only.
- *                         ProductionBoardController::index() deliberately widens the
- *                         in-memory value with its due-date heuristic for display
- *                         (PROD-01, D-05, D-07) and never saves that widened value.
+ *                         Due-date urgency is a separate, computed display flag.
  * @property Carbon|null $ready_at Not a persisted column — only present when
  *                                 eager-loaded via withMax() over productionLogs (PROD-03, D-13);
  *                                 the moment this job order last reached ready_for_pickup.
@@ -78,6 +77,11 @@ class JobOrder extends Model
 {
     /** @use HasFactory<JobOrderFactory> */
     use HasFactory;
+
+    public function isUrgentByDeadline(CarbonInterface $endOfBusinessDay): bool
+    {
+        return $this->due_at !== null && $this->due_at->lessThanOrEqualTo($endOfBusinessDay);
+    }
 
     /**
      * The two display statuses with no JobOrderStatus case behind them:

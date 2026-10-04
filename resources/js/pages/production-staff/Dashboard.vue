@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, router } from '@inertiajs/vue3';
-import { Zap } from '@lucide/vue';
+import { Clock3, Zap } from '@lucide/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ProductionStageController from '@/actions/App/Http/Controllers/ProductionStaff/ProductionStageController';
 import AlertError from '@/components/AlertError.vue';
@@ -43,6 +43,7 @@ interface ProductionJobOrder {
     status: string;
     due_at: string | null;
     is_rush: boolean;
+    is_urgent: boolean;
     payment_status: string;
     cleared_for_production: boolean;
     queue_entry_id: number;
@@ -162,6 +163,12 @@ function onTabChange(value: unknown): void {
 const rushJobOrders = computed(() =>
     props.jobOrders.filter((jobOrder) => jobOrder.is_rush),
 );
+const urgentJobOrders = computed(() =>
+    props.jobOrders.filter(
+        (jobOrder) =>
+            jobOrder.is_urgent && jobOrder.status !== 'ready_for_pickup',
+    ),
+);
 
 function clearFilters(): void {
     searchTerm.value = '';
@@ -242,7 +249,21 @@ function rushBannerBody(): string {
         subject += ` and ${extra} more`;
     }
 
-    return `${subject}. Work these first.`;
+    return `${subject}. ${urgentJobOrders.value.length > 0 ? 'Prioritize after urgent deadlines.' : 'Prioritize this customer-requested rush work.'}`;
+}
+
+function urgentBannerTitle(): string {
+    const count = urgentJobOrders.value.length;
+
+    return `${count} urgent deadline${count === 1 ? '' : 's'} on the board`;
+}
+
+function urgentBannerBody(): string {
+    const items = urgentJobOrders.value.slice(0, 2);
+    const names = items.map((jobOrder) => jobOrder.number ?? '—');
+    const extra = urgentJobOrders.value.length - names.length;
+
+    return `${names.join(', ')}${extra > 0 ? ` and ${extra} more` : ''}. Due today or overdue; work these first.`;
 }
 
 /**
@@ -278,6 +299,16 @@ onUnmounted(() => {
             title="Production Board"
             description="Print what is paid for. Start an order when it hits the press, mark it Done when it is ready for the counter, and Undo if you tapped too soon."
         />
+
+        <Alert v-if="urgentJobOrders.length > 0" variant="default">
+            <Clock3 class="text-warning size-4" />
+            <AlertTitle class="text-warning">
+                {{ urgentBannerTitle() }}
+            </AlertTitle>
+            <AlertDescription>
+                {{ urgentBannerBody() }}
+            </AlertDescription>
+        </Alert>
 
         <Alert v-if="rushJobOrders.length > 0" variant="default">
             <Zap class="text-warning size-4" />
@@ -391,7 +422,10 @@ onUnmounted(() => {
                         v-else
                         :key="jobOrder.id"
                         :class="{
-                            'bg-warning/10': jobOrder.is_rush,
+                            'bg-warning/10 hover:bg-warning/15':
+                                jobOrder.is_urgent,
+                            'bg-brand/5 hover:bg-brand/10':
+                                jobOrder.is_rush && !jobOrder.is_urgent,
                         }"
                     >
                         <!--
@@ -416,6 +450,13 @@ onUnmounted(() => {
                                         <Zap class="size-3" />
                                         Rush
                                     </Badge>
+                                    <StatusBadge
+                                        v-if="jobOrder.is_urgent"
+                                        tone="warning"
+                                    >
+                                        <Clock3 class="size-3" />
+                                        Urgent
+                                    </StatusBadge>
                                 </div>
                                 <span class="text-muted-foreground text-sm">
                                     {{ jobOrder.queue_entry?.customer?.name }}

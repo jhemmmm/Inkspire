@@ -220,7 +220,7 @@ class ReportExportController extends Controller
                 $row['customer'],
                 $row['product'],
                 Str::headline($row['stage']),
-                $row['urgency'] ? 'Rush' : 'Normal',
+                $row['urgency'],
                 $row['entered_production'],
                 $row['due'],
             ],

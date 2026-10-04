@@ -29,6 +29,7 @@ class JobOrderController extends Controller
     public function index(FilterJobOrdersRequest $request): Response
     {
         $jobOrders = $this->filteredQuery($request)
+            ->orderByDesc('is_rush')
             ->latest('id')
             ->paginate(25)
             ->withQueryString();

@@ -138,43 +138,6 @@ function clearFilters(): void {
 }
 
 /**
- * Rush and regular as two lists. The cashier's decision on a rush job is
- * different — the rush fee toggle is theirs to set — so the two are worth
- * separating rather than distinguishing by a badge partway down one table.
- *
- * `baseCount` is the unfiltered rush/regular split (D5) — it drives which
- * "nothing at all" empty state a section shows, kept separate from `rows`
- * (the search/payment-status-filtered set) so an empty filtered section on a
- * non-empty rush/regular split renders "No matches," not the all-time-empty
- * copy.
- */
-const paymentGroups = computed(() => [
-    {
-        key: 'rush',
-        title: 'Ready for Payment — Rush Print',
-        description:
-            'Priority jobs. Decide the rush fee here, then hand over the receipt.',
-        baseCount: props.jobOrders.filter((jobOrder) => jobOrder.is_rush)
-            .length,
-        rows: filteredJobOrders.value.filter((jobOrder) => jobOrder.is_rush),
-        emptyTitle: 'No rush jobs waiting on payment',
-        emptyDescription:
-            'Rush jobs appear here once they are validated or design-approved.',
-    },
-    {
-        key: 'regular',
-        title: 'Ready for Payment — Regular',
-        description: 'Take payment here, then hand the customer their receipt.',
-        baseCount: props.jobOrders.filter((jobOrder) => !jobOrder.is_rush)
-            .length,
-        rows: filteredJobOrders.value.filter((jobOrder) => !jobOrder.is_rush),
-        emptyTitle: 'No job orders ready for payment',
-        emptyDescription:
-            "Job orders will appear here once they're validated or design-approved.",
-    },
-]);
-
-/**
  * Mirrors CancellationController@store's exact design-started set (D-04) so
  * the pre-confirmation dialog body always matches what the server will
  * actually charge.
@@ -324,10 +287,10 @@ function cancelOnlinePayment(jobOrderId: number): void {
             </div>
         </TableFilterBar>
 
-        <template v-for="group in paymentGroups" :key="group.key">
+        <section class="flex flex-col gap-3">
             <SectionHeading
-                :title="group.title"
-                :description="group.description"
+                title="Ready for Payment"
+                description="Rush jobs appear first. Decide any rush fee, take payment, then hand over the receipt."
             />
 
             <DataTableCard>
@@ -344,25 +307,25 @@ function cancelOnlinePayment(jobOrderId: number): void {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableEmpty v-if="group.baseCount === 0" :colspan="7">
+                        <TableEmpty v-if="jobOrders.length === 0" :colspan="7">
                             <EmptyState
-                                :title="group.emptyTitle"
-                                :description="group.emptyDescription"
+                                title="No job orders ready for payment"
+                                description="Job orders appear here once they're validated or design-approved."
                             />
                         </TableEmpty>
                         <TableEmpty
-                            v-else-if="group.rows.length === 0"
+                            v-else-if="filteredJobOrders.length === 0"
                             :colspan="7"
                         >
                             <EmptyState
                                 title="No matches"
-                                description="No job orders in this section match that search or payment status filter."
+                                description="No job orders match that search or payment status filter."
                             >
                                 <template #actions>
                                     <Button
                                         type="button"
                                         variant="secondary"
-                                        :data-test="`clear-cashier-${group.key}-filters-button`"
+                                        data-test="clear-cashier-filters-button"
                                         @click="clearFilters"
                                     >
                                         Clear filters
@@ -371,26 +334,35 @@ function cancelOnlinePayment(jobOrderId: number): void {
                             </EmptyState>
                         </TableEmpty>
                         <TableRow
-                            v-for="jobOrder in group.rows"
+                            v-for="jobOrder in filteredJobOrders"
                             v-else
                             :key="jobOrder.id"
+                            :class="{
+                                'bg-warning/10 hover:bg-warning/15':
+                                    jobOrder.is_rush,
+                            }"
                         >
                             <TableCell>
                                 <div class="flex flex-col items-start gap-1">
-                                    <span
-                                        class="text-muted-foreground text-xs tabular-nums"
-                                        >{{ jobOrder.number ?? '—' }}</span
+                                    <div
+                                        class="flex flex-wrap items-center gap-2"
                                     >
-                                    <span>{{ jobOrder.description }}</span>
-                                    <Badge
-                                        v-if="jobOrder.is_rush"
-                                        variant="outline"
-                                        class="border-brand/40 text-brand"
-                                        :data-test="`cashier-rush-${jobOrder.id}-badge`"
-                                    >
-                                        <Zap class="size-3" />
-                                        Rush
-                                    </Badge>
+                                        <span class="font-medium tabular-nums">
+                                            {{ jobOrder.number ?? '—' }}
+                                        </span>
+                                        <Badge
+                                            v-if="jobOrder.is_rush"
+                                            variant="outline"
+                                            class="border-brand/40 text-brand"
+                                            :data-test="`cashier-rush-${jobOrder.id}-badge`"
+                                        >
+                                            <Zap class="size-3" />
+                                            Rush
+                                        </Badge>
+                                    </div>
+                                    <span class="text-muted-foreground text-sm">
+                                        {{ jobOrder.description }}
+                                    </span>
                                 </div>
                             </TableCell>
                             <TableCell>
@@ -616,6 +588,6 @@ function cancelOnlinePayment(jobOrderId: number): void {
                     </TableBody>
                 </Table>
             </DataTableCard>
-        </template>
+        </section>
     </PageContainer>
 </template>

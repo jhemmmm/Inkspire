@@ -67,7 +67,7 @@ final class ReportBuilder
         return $rows->filter(function (array $row) use ($fields, $search): bool {
             foreach ($fields as $field) {
                 $value = match ($field) {
-                    'urgency' => $row[$field] ? 'Rush' : 'Normal',
+                    'urgency' => $row[$field],
                     'status' => $row[$field] ?? 'Active',
                     'type', 'method', 'payment_status', 'stage' => Str::headline($row[$field] ?? ''),
                     default => $row[$field] ?? '',
@@ -372,8 +372,6 @@ final class ReportBuilder
      */
     private function productionStatusRows(array $utc): Collection
     {
-        // "Due today" is a business day -- mirrors ProductionBoardController's
-        // identical urgency computation.
         $endOfBusinessDay = BusinessTime::now()->endOfDay();
 
         // One row per job order: its first for_production log. An Undo back
@@ -390,24 +388,28 @@ final class ReportBuilder
                 ->whereColumn('earlier.id', '<', 'production_logs.id')
                 ->where('earlier.to_status', JobOrderStatus::ForProduction->value))
             ->with([
-                'jobOrder:id,number,description,status,due_at,queue_entry_id,released_at,cancelled_at',
+                'jobOrder:id,number,description,status,due_at,is_rush,queue_entry_id,released_at,cancelled_at',
                 'jobOrder.queueEntry.customer:id,name',
             ])
             ->orderByDesc('created_at')
             ->get(['id', 'job_order_id', 'created_at'])
             ->map(function (ProductionLog $productionLog) use ($endOfBusinessDay): array {
                 $jobOrder = $productionLog->jobOrder;
+                $isActive = $jobOrder->released_at === null && $jobOrder->cancelled_at === null;
+                $isRush = $isActive && $jobOrder->is_rush;
+                $isUrgent = $isActive && $jobOrder->isUrgentByDeadline($endOfBusinessDay);
 
                 return [
                     'job_order' => $jobOrder->number,
                     'customer' => $jobOrder->queueEntry?->customer?->name,
                     'product' => $jobOrder->description,
                     'stage' => $jobOrder->display_status,
-                    // An order that has left the shop is never a rush.
-                    'urgency' => $jobOrder->released_at === null
-                        && $jobOrder->cancelled_at === null
-                        && $jobOrder->due_at !== null
-                        && $jobOrder->due_at->lessThanOrEqualTo($endOfBusinessDay),
+                    'urgency' => match (true) {
+                        $isRush && $isUrgent => 'Rush + Urgent',
+                        $isRush => 'Rush',
+                        $isUrgent => 'Urgent',
+                        default => 'Normal',
+                    },
                     'entered_production' => BusinessTime::local($productionLog->created_at),
                     'due' => $jobOrder->due_at === null ? null : BusinessTime::local($jobOrder->due_at),
                 ];

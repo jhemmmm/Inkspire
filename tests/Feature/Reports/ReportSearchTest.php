@@ -70,7 +70,7 @@ test('matching voided expenses stay visible but contribute nothing to totals or 
 test('production search matches products stages customers and urgency labels', function (string $search, bool $matchesRush) {
     $this->travelTo('2026-10-04 04:00:00');
     $user = User::factory()->productionStaff()->create();
-    $rush = JobOrder::factory()->create(['description' => 'Festival Banner', 'status' => JobOrderStatus::ReadyForPickup]);
+    $rush = JobOrder::factory()->rush()->create(['description' => 'Festival Banner', 'status' => JobOrderStatus::ReadyForPickup]);
     $rush->queueEntry->customer->update(['name' => 'Banner Buyer']);
     $rush->forceFill(['due_at' => now()->subDay()])->save();
     ProductionLog::factory()->for($rush)->create();
@@ -109,6 +109,22 @@ test('cancellation search matches the displayed payment status', function () {
             ->where('rowsTotal', 1)
             ->where('rows.0.job_order', $matching->number)
             ->where('chart.series.0.values', [0, 0, 0, 1]));
+});
+
+test('production search finds overdue regular work by the Urgent label', function () {
+    $user = User::factory()->productionStaff()->create();
+    $urgent = JobOrder::factory()->create(['description' => 'Deadline banner', 'status' => JobOrderStatus::Printing]);
+    $urgent->forceFill(['due_at' => now()->subDay()])->save();
+    ProductionLog::factory()->for($urgent)->create();
+    $rush = JobOrder::factory()->rush()->create(['description' => 'Future priority banner', 'status' => JobOrderStatus::Printing]);
+    $rush->forceFill(['due_at' => now()->addWeek()])->save();
+    ProductionLog::factory()->for($rush)->create();
+
+    $this->actingAs($user)->get(route('production-staff.reports.index', ['report' => 'production-status', 'q' => 'urgent']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('rowsTotal', 1)
+            ->where('rows.0.job_order', $urgent->number)
+            ->where('rows.0.urgency', 'Urgent'));
 });
 
 test('search finds a matching sale beyond the first hundred rows and clearing restores the range', function () {

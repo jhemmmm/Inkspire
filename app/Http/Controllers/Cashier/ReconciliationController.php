@@ -39,8 +39,9 @@ class ReconciliationController extends Controller
                         ->where('status', TransactionStatus::PendingConfirmation)
                         ->latest(),
                 ])
+                ->orderByDesc('is_rush')
                 ->orderBy('created_at')
-                ->get(['id', 'description', 'payment_status', 'total_amount', 'queue_entry_id', 'created_at']),
+                ->get(['id', 'number', 'description', 'payment_status', 'total_amount', 'queue_entry_id', 'created_at', 'is_rush']),
             'cashFlow' => fn () => $reportBuilder->cashFlow(),
         ]);
     }

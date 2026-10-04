@@ -25,6 +25,22 @@ test('the cashier dashboard lists eligible job orders', function () {
     );
 });
 
+test('rush jobs lead the cashier list while older jobs stay first within each priority', function () {
+    $cashier = User::factory()->cashier()->create();
+    $olderNormal = JobOrder::factory()->readyForProduction()->create(['created_at' => now()->subHours(4)]);
+    $olderRush = JobOrder::factory()->rush()->readyForProduction()->create(['created_at' => now()->subHours(3)]);
+    $newerRush = JobOrder::factory()->rush()->readyForProduction()->create(['created_at' => now()->subHours(2)]);
+    $newerNormal = JobOrder::factory()->readyForProduction()->create(['created_at' => now()->subHour()]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('jobOrders.0.id', $olderRush->id)
+        ->where('jobOrders.1.id', $newerRush->id)
+        ->where('jobOrders.2.id', $olderNormal->id)
+        ->where('jobOrders.3.id', $newerNormal->id));
+});
+
 test('the job order payment page renders the pricing catalog and system config for an eligible job order', function () {
     $cashier = User::factory()->cashier()->create();
     PricingEntry::factory()->create(['is_active' => true]);

@@ -86,12 +86,43 @@ test('the production chart counts jobs per board step in order, empty steps incl
     ]);
 });
 
+test('production report distinguishes deadline urgency from customer-requested rush', function () {
+    $productionStaff = User::factory()->productionStaff()->create();
+    $overdueRegular = JobOrder::factory()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $overdueRegular->forceFill(['due_at' => now()->subDay()])->save();
+    ProductionLog::factory()->for($overdueRegular)->create(['to_status' => JobOrderStatus::ForProduction->value]);
+    $futureRush = JobOrder::factory()->rush()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $futureRush->forceFill(['due_at' => now()->addWeek()])->save();
+    ProductionLog::factory()->for($futureRush)->create(['to_status' => JobOrderStatus::ForProduction->value]);
+
+    $response = $this->actingAs($productionStaff)
+        ->withHeaders(productionReportHeaders())
+        ->get(route('production-staff.reports.index', ['report' => 'production-status']));
+
+    $rows = collect($response->json('props.rows'));
+    expect($rows->firstWhere('job_order', $overdueRegular->number)['urgency'])->toBe('Urgent')
+        ->and($rows->firstWhere('job_order', $futureRush->number)['urgency'])->toBe('Rush');
+});
+
+test('production report shows both priority reasons for a rush order with an urgent deadline', function () {
+    $productionStaff = User::factory()->productionStaff()->create();
+    $rush = JobOrder::factory()->rush()->create(['status' => JobOrderStatus::ForProduction->value]);
+    $rush->forceFill(['due_at' => now()->subDay()])->save();
+    ProductionLog::factory()->for($rush)->create(['to_status' => JobOrderStatus::ForProduction->value]);
+
+    $response = $this->actingAs($productionStaff)
+        ->withHeaders(productionReportHeaders())
+        ->get(route('production-staff.reports.index', ['report' => 'production-status']));
+
+    expect($response->json('props.rows.0.urgency'))->toBe('Rush + Urgent');
+});
+
 test('a job order that left the shop reports how it left, not the stage it was last at', function (array $leftAt, string $stage, string $chartLabel) {
     $this->travelTo('2026-09-10 12:00:00');
 
     $productionStaff = User::factory()->productionStaff()->create();
-    // Due yesterday, so it would read Rush if it were still in the shop.
-    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value, ...$leftAt]);
+    // A marked Rush order stops counting as urgent after leaving the shop.
+    $jobOrder = JobOrder::factory()->rush()->create(['status' => JobOrderStatus::ReadyForPickup->value, ...$leftAt]);
     $jobOrder->forceFill(['due_at' => '2026-09-09 09:00:00'])->save();
     ProductionLog::factory()->for($jobOrder)->create([
         'to_status' => JobOrderStatus::ForProduction->value,
@@ -103,7 +134,7 @@ test('a job order that left the shop reports how it left, not the stage it was l
         ->get(route('production-staff.reports.index', ['report' => 'production-status']));
 
     expect($response->json('props.rows.0.stage'))->toBe($stage)
-        ->and($response->json('props.rows.0.urgency'))->toBeFalse()
+        ->and($response->json('props.rows.0.urgency'))->toBe('Normal')
         ->and(collect($response->json('props.chart.items'))->pluck('value', 'label')->all())->toMatchArray([
             'Ready for Pickup' => 0,
             $chartLabel => 1,

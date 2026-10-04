@@ -83,6 +83,19 @@ test('pagination limits the list to 25 per page', function () {
     );
 });
 
+test('rush jobs lead the admin list before pagination', function () {
+    $admin = User::factory()->admin()->create();
+    $rush = JobOrder::factory()->rush()->create();
+    JobOrder::factory()->count(26)->create();
+
+    $response = $this->actingAs($admin)->get(route('admin.job-orders.index'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->has('jobOrders.data', 25)
+        ->where('jobOrders.data.0.id', $rush->id)
+        ->where('jobOrders.total', 27));
+});
+
 test('a cancelled job order is excluded from the list', function () {
     $admin = User::factory()->admin()->create();
     JobOrder::factory()->create(['cancelled_at' => now()]);

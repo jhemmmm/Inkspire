@@ -54,6 +54,7 @@ class DashboardController extends Controller
                         ->where('status', AccountsReceivableStatus::Active->value)
                         ->select(['id', 'job_order_id', 'balance', 'status']),
                 ])
+                ->orderByDesc('is_rush')
                 ->orderBy('created_at')
                 ->get()
                 ->reject(fn (JobOrder $jobOrder) => $jobOrder->total_amount !== null

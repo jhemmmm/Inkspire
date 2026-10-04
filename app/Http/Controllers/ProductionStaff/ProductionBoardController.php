@@ -23,23 +23,8 @@ class ProductionBoardController extends Controller
 {
     /**
      * Show every job order on the three production stages, excluding
-     * released and cancelled job orders (D-12), each carrying a
-     * server-computed `is_rush` boolean (D-05, D-07).
-     *
-     * `is_rush` is a real, persisted column since 2026_09_10_120000 — the
-     * urgency Frontline Staff declared at the counter (RUSH-01). The
-     * assignment below deliberately WIDENS the in-memory value to the OR of
-     * that column and this board's own due-date heuristic: the heuristic
-     * answers "is this urgent by the clock", the column answers "did the
-     * customer ask for urgency", and Production Staff need both. The widened
-     * value is never persisted — nothing on this request path calls save().
-     *
-     * "Due today" is an Asia/Manila business day, not a UTC one —
-     * config('app.timezone') stays UTC project-wide, so a bare
-     * now()->endOfDay() would end the day at 07:59:59 the next Manila
-     * morning and badge tomorrow-morning work as Rush. Mirrors the same
-     * narrow, per-call-site scoping as JobOrder::currentNumberingYear()
-     * and QueueEntry::currentBusinessDate().
+     * released and cancelled job orders (D-12). Intake Rush and deadline
+     * Urgent are separate flags; overdue deadlines lead the board.
      */
     public function index(Request $request): Response
     {
@@ -55,11 +40,13 @@ class ProductionBoardController extends Controller
                 ->whereNull('released_at')
                 ->whereNull('cancelled_at')
                 ->with('queueEntry.customer:id,name')
+                ->orderByRaw('CASE WHEN due_at <= ? THEN 0 ELSE 1 END', [$endOfBusinessDay->utc()])
+                ->orderByRaw('CASE WHEN due_at <= ? THEN due_at END ASC', [$endOfBusinessDay->utc()])
+                ->orderByDesc('is_rush')
                 ->orderByRaw('due_at IS NULL, due_at ASC')
                 ->get(['id', 'number', 'description', 'status', 'due_at', 'queue_entry_id', 'is_rush', 'payment_status'])
                 ->each(function (JobOrder $jobOrder) use ($endOfBusinessDay): void {
-                    $jobOrder->is_rush = $jobOrder->is_rush
-                        || ($jobOrder->due_at !== null && $jobOrder->due_at->lessThanOrEqualTo($endOfBusinessDay));
+                    $jobOrder->setAttribute('is_urgent', $jobOrder->isUrgentByDeadline($endOfBusinessDay));
                     $jobOrder->setAttribute('cleared_for_production', $jobOrder->isClearedForProduction());
                 }),
         ]);

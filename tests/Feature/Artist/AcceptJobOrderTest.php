@@ -32,6 +32,23 @@ test('the dashboard lists unclaimed job orders in the shared pool', function () 
         );
 });
 
+test('the available pool keeps rush jobs first and adds regular jobs after older regular jobs', function () {
+    $artist = User::factory()->artist()->create(['artist_status' => ArtistStatus::Available->value]);
+    $olderRegular = unclaimedJobOrder(['is_rush' => false, 'created_at' => now()->subHours(4)]);
+    $olderRush = unclaimedJobOrder(['is_rush' => true, 'created_at' => now()->subHours(3)]);
+    $newerRegular = unclaimedJobOrder(['is_rush' => false, 'created_at' => now()->subHour()]);
+    $newerRush = unclaimedJobOrder(['is_rush' => true, 'created_at' => now()]);
+
+    $this->actingAs($artist)
+        ->get(route('artist.dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('availableJobOrders.0.id', $newerRush->id)
+            ->where('availableJobOrders.1.id', $olderRush->id)
+            ->where('availableJobOrders.2.id', $olderRegular->id)
+            ->where('availableJobOrders.3.id', $newerRegular->id)
+        );
+});
+
 test('an available artist can accept a job order out of the pool', function () {
     $artist = User::factory()->artist()->create(['artist_status' => ArtistStatus::Available->value]);
     $jobOrder = unclaimedJobOrder();

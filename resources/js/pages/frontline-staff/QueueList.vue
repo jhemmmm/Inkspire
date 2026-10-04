@@ -136,16 +136,11 @@ defineOptions({
 });
 
 /**
- * The two lanes, shown as two tables.
- *
- * The lane is already baked into the queue number — R-001 is rush, A-001 is
- * regular (QueueEntry::RUSH_PREFIX) — so this splits on the prefix rather
- * than re-deriving it from the job orders hanging off the entry. A visit
- * containing any rush job order was given an R number at intake, and that
- * number is what the customer is holding.
+ * The queue number carries the visit's intake priority. The server orders R
+ * tickets before A tickets, so one open table keeps the calling order intact.
  *
  * A Done visit has nothing left for the counter or an artist, so it leaves
- * the lanes for a Done Today list below them, shown only once it has rows.
+ * the open queue for a Done Today list below it, shown only once it has rows.
  * It stays on the page because a returning customer may add a job order.
  */
 const queueGroups = computed(() => {
@@ -154,19 +149,11 @@ const queueGroups = computed(() => {
 
     return [
         {
-            key: 'rush',
-            title: 'Rush Lane',
-            description: 'R numbers. Called before the regular lane.',
-            rows: open.filter((entry) => entry.queue_prefix === 'R'),
-            emptyTitle: 'No rush visits waiting',
-            emptyDescription:
-                'A visit gets an R number when any of its job orders is marked Rush Print.',
-        },
-        {
-            key: 'regular',
-            title: 'Regular Lane',
-            description: 'A numbers, in the order they arrived.',
-            rows: open.filter((entry) => entry.queue_prefix !== 'R'),
+            key: 'open',
+            title: 'Today’s Queue',
+            description:
+                'Rush R tickets first, then regular A tickets in calling order.',
+            rows: open,
             emptyTitle: 'Nobody waiting',
             emptyDescription:
                 'Queue numbers reset each business day. Start a visit to create the next one.',
@@ -389,18 +376,32 @@ function visitTotal(entry: QueueEntryRecord): number {
                             v-for="entry in group.rows"
                             v-else
                             :key="entry.id"
+                            :class="{
+                                'bg-warning/10 hover:bg-warning/15':
+                                    entry.queue_prefix === 'R',
+                            }"
                         >
                             <TableCell>
-                                <span
-                                    class="bg-secondary text-secondary-foreground inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2.5 text-base font-bold whitespace-nowrap tabular-nums"
-                                >
-                                    {{
-                                        queueNumberLabel(
-                                            entry.queue_prefix,
-                                            entry.queue_number,
-                                        )
-                                    }}
-                                </span>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span
+                                        class="bg-secondary text-secondary-foreground inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2.5 text-base font-bold whitespace-nowrap tabular-nums"
+                                    >
+                                        {{
+                                            queueNumberLabel(
+                                                entry.queue_prefix,
+                                                entry.queue_number,
+                                            )
+                                        }}
+                                    </span>
+                                    <Badge
+                                        v-if="entry.queue_prefix === 'R'"
+                                        variant="outline"
+                                        class="border-brand/40 text-brand"
+                                    >
+                                        <Zap class="size-3" />
+                                        Rush
+                                    </Badge>
+                                </div>
                             </TableCell>
                             <TableCell>{{ entry.customer.name }}</TableCell>
                             <TableCell>
@@ -470,24 +471,6 @@ function visitTotal(entry: QueueEntryRecord): number {
                                                 </span>
                                             </Button>
                                         </ReplaceJobOrderFileDialog>
-                                        <Form
-                                            v-if="isReleaseEligible(jobOrder)"
-                                            v-bind="
-                                                JobOrderReleaseController.store.form(
-                                                    jobOrder.id,
-                                                )
-                                            "
-                                            :options="{ preserveScroll: true }"
-                                            v-slot="{ processing }"
-                                        >
-                                            <Button
-                                                type="submit"
-                                                :disabled="processing"
-                                                :data-test="`release-job-order-${jobOrder.id}-button`"
-                                            >
-                                                Release to Customer
-                                            </Button>
-                                        </Form>
                                     </div>
                                 </div>
                             </TableCell>
@@ -509,6 +492,32 @@ function visitTotal(entry: QueueEntryRecord): number {
                                 <div
                                     class="flex items-center justify-end gap-2"
                                 >
+                                    <Form
+                                        v-for="jobOrder in entry.job_orders.filter(
+                                            isReleaseEligible,
+                                        )"
+                                        :key="jobOrder.id"
+                                        v-bind="
+                                            JobOrderReleaseController.store.form(
+                                                jobOrder.id,
+                                            )
+                                        "
+                                        :options="{ preserveScroll: true }"
+                                        v-slot="{ processing }"
+                                    >
+                                        <Button
+                                            type="submit"
+                                            :disabled="processing"
+                                            :data-test="`release-job-order-${jobOrder.id}-button`"
+                                        >
+                                            Release
+                                            {{
+                                                jobOrder.number ??
+                                                `Job #${jobOrder.id}`
+                                            }}
+                                            to Customer
+                                        </Button>
+                                    </Form>
                                     <Dialog
                                         :open="openJobOrderDialog === entry.id"
                                         @update:open="

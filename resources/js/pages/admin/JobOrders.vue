@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { FileSpreadsheet, FileText, Filter, Search } from '@lucide/vue';
+import { FileSpreadsheet, FileText, Filter, Search, Zap } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 import JobOrderTotal from '@/components/JobOrderTotal.vue';
 import DataTableCard from '@/components/DataTableCard.vue';
@@ -346,6 +346,10 @@ function sizeLabel(jobOrder: AdminJobOrder): string {
                             v-for="jobOrder in jobOrders.data"
                             v-else
                             :key="jobOrder.id"
+                            :class="{
+                                'bg-warning/10 hover:bg-warning/15':
+                                    jobOrder.is_rush,
+                            }"
                         >
                             <TableCell class="font-medium tabular-nums">
                                 <div class="flex items-center gap-2">
@@ -353,7 +357,9 @@ function sizeLabel(jobOrder: AdminJobOrder): string {
                                     <Badge
                                         v-if="jobOrder.is_rush"
                                         variant="outline"
+                                        class="border-brand/40 text-brand"
                                     >
+                                        <Zap class="size-3" />
                                         Rush
                                     </Badge>
                                 </div>
