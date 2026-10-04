@@ -209,177 +209,192 @@ function submit(): void {
 <template>
     <Head title="New Job Order" />
 
-    <PageContainer>
-        <PageHeader
-            title="New Job Order"
-            description="For a client who sent their request by email. The job order goes straight to your queue and the client is emailed a tracking link."
-        />
+    <PageContainer class="max-w-none gap-0 p-0">
+        <div
+            class="@container mx-auto flex w-full max-w-[100rem] flex-1 flex-col gap-6 p-4 sm:p-6 lg:p-8"
+        >
+            <PageHeader
+                title="New Job Order"
+                description="For a client who sent their request by email. The job order goes straight to your queue and the client is emailed a tracking link."
+            />
 
-        <Card>
-            <CardContent class="flex flex-col gap-4">
-                <div class="flex flex-wrap items-end justify-between gap-3">
-                    <SectionHeading
-                        title="Customer"
-                        :description="
-                            customerMode === 'existing'
-                                ? 'Pick the client from the list, or register them if they are new.'
-                                : 'Register the client. They are saved together with this job order.'
-                        "
-                    />
-                    <Button
-                        v-if="customerMode === 'existing'"
-                        type="button"
-                        variant="secondary"
-                        data-test="new-customer-toggle"
-                        @click="useNewCustomer"
-                    >
-                        <UserPlus class="size-4" />
-                        New customer
-                    </Button>
-                    <Button
-                        v-else
-                        type="button"
-                        variant="secondary"
-                        data-test="existing-customer-toggle"
-                        @click="useExistingCustomer"
-                    >
-                        <Users class="size-4" />
-                        Pick an existing customer
-                    </Button>
-                </div>
+            <Card>
+                <CardContent class="flex flex-col gap-4">
+                    <div class="flex flex-wrap items-end justify-between gap-3">
+                        <SectionHeading
+                            title="Customer"
+                            :description="
+                                customerMode === 'existing'
+                                    ? 'Pick the client from the list, or register them if they are new.'
+                                    : 'Register the client. They are saved together with this job order.'
+                            "
+                        />
+                        <Button
+                            v-if="customerMode === 'existing'"
+                            type="button"
+                            variant="secondary"
+                            data-test="new-customer-toggle"
+                            @click="useNewCustomer"
+                        >
+                            <UserPlus class="size-4" />
+                            New customer
+                        </Button>
+                        <Button
+                            v-else
+                            type="button"
+                            variant="secondary"
+                            data-test="existing-customer-toggle"
+                            @click="useExistingCustomer"
+                        >
+                            <Users class="size-4" />
+                            Pick an existing customer
+                        </Button>
+                    </div>
 
-                <div v-if="customerMode === 'existing'" class="grid gap-2">
-                    <Label for="customer-select">Customer</Label>
-                    <SearchableSelect
-                        id="customer-select"
-                        v-model="form.customer_id"
-                        data-test="customer-select"
-                        :options="customerOptions"
-                        placeholder="Select a customer"
-                        search-placeholder="Search by name, organization or number…"
-                        :empty-text="
-                            searchingCustomers
-                                ? 'Searching…'
-                                : 'No customer matches that. Use New customer to register them.'
-                        "
-                        @search="searchCustomers"
-                    />
-                    <p
-                        v-if="hasMoreCustomers"
-                        class="text-muted-foreground text-sm"
-                        data-test="more-customers-hint"
-                    >
-                        Showing the first {{ customers.length }} customers. Type
-                        a name, organization or number to find the rest.
-                    </p>
-                    <InputError :message="form.errors.customer_id" />
-                </div>
+                    <div v-if="customerMode === 'existing'" class="grid gap-2">
+                        <Label for="customer-select">Customer</Label>
+                        <SearchableSelect
+                            id="customer-select"
+                            v-model="form.customer_id"
+                            data-test="customer-select"
+                            :options="customerOptions"
+                            placeholder="Select a customer"
+                            search-placeholder="Search by name, organization or number…"
+                            :empty-text="
+                                searchingCustomers
+                                    ? 'Searching…'
+                                    : 'No customer matches that. Use New customer to register them.'
+                            "
+                            @search="searchCustomers"
+                        />
+                        <p
+                            v-if="hasMoreCustomers"
+                            class="text-muted-foreground text-sm"
+                            data-test="more-customers-hint"
+                        >
+                            Showing the first {{ customers.length }} customers.
+                            Type a name, organization or number to find the
+                            rest.
+                        </p>
+                        <InputError :message="form.errors.customer_id" />
+                    </div>
 
-                <div v-else class="grid gap-4 @2xl:grid-cols-2">
-                    <div class="grid content-start gap-2">
-                        <Label for="customer-name">Name</Label>
-                        <Input
-                            id="customer-name"
-                            v-model="form.customer.name"
-                            autocomplete="off"
-                        />
-                        <InputError :message="form.errors['customer.name']" />
+                    <div v-else class="grid gap-4 @2xl:grid-cols-2">
+                        <div class="grid content-start gap-2">
+                            <Label for="customer-name">Name</Label>
+                            <Input
+                                id="customer-name"
+                                v-model="form.customer.name"
+                                autocomplete="off"
+                            />
+                            <InputError
+                                :message="form.errors['customer.name']"
+                            />
+                        </div>
+                        <div class="grid content-start gap-2">
+                            <Label for="customer-organization">
+                                Organization (optional)
+                            </Label>
+                            <Input
+                                id="customer-organization"
+                                v-model="form.customer.organization"
+                                autocomplete="off"
+                            />
+                            <InputError
+                                :message="form.errors['customer.organization']"
+                            />
+                        </div>
+                        <div class="grid content-start gap-2">
+                            <Label for="customer-contact-number">
+                                Contact number
+                            </Label>
+                            <Input
+                                id="customer-contact-number"
+                                v-model="form.customer.contact_number"
+                                autocomplete="off"
+                            />
+                            <InputError
+                                :message="
+                                    form.errors['customer.contact_number']
+                                "
+                            />
+                        </div>
+                        <div class="grid content-start gap-2">
+                            <Label for="customer-email">Email</Label>
+                            <Input
+                                id="customer-email"
+                                v-model="form.customer.email"
+                                type="email"
+                                autocomplete="off"
+                            />
+                            <InputError
+                                :message="form.errors['customer.email']"
+                            />
+                        </div>
+                        <div class="grid content-start gap-2 @2xl:col-span-2">
+                            <Label for="customer-address">Address</Label>
+                            <Textarea
+                                id="customer-address"
+                                v-model="form.customer.address"
+                                rows="2"
+                            />
+                            <InputError
+                                :message="form.errors['customer.address']"
+                            />
+                        </div>
                     </div>
-                    <div class="grid content-start gap-2">
-                        <Label for="customer-organization">
-                            Organization (optional)
-                        </Label>
-                        <Input
-                            id="customer-organization"
-                            v-model="form.customer.organization"
-                            autocomplete="off"
-                        />
-                        <InputError
-                            :message="form.errors['customer.organization']"
-                        />
-                    </div>
-                    <div class="grid content-start gap-2">
-                        <Label for="customer-contact-number">
-                            Contact number
-                        </Label>
-                        <Input
-                            id="customer-contact-number"
-                            v-model="form.customer.contact_number"
-                            autocomplete="off"
-                        />
-                        <InputError
-                            :message="form.errors['customer.contact_number']"
-                        />
-                    </div>
-                    <div class="grid content-start gap-2">
-                        <Label for="customer-email">Email</Label>
-                        <Input
-                            id="customer-email"
-                            v-model="form.customer.email"
-                            type="email"
-                            autocomplete="off"
-                        />
-                        <InputError :message="form.errors['customer.email']" />
-                    </div>
-                    <div class="grid content-start gap-2 @2xl:col-span-2">
-                        <Label for="customer-address">Address</Label>
-                        <Textarea
-                            id="customer-address"
-                            v-model="form.customer.address"
-                            rows="2"
-                        />
-                        <InputError
-                            :message="form.errors['customer.address']"
-                        />
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
 
-        <JobOrderRowFields
-            v-for="(row, index) in form.job_orders"
-            :key="row._key"
-            :row="row"
-            :index="index"
-            :errors="jobOrderRowErrors(form.errors, index)"
-            :pricing-entries="pricingEntries"
-            :specification-options="specificationOptions"
-            :print-size-dimensions="printSizeDimensions"
-            :rush-fee-percentage="rushFeePercentage"
-            :accepted-file-formats="acceptedFileFormats"
-            :removable="form.job_orders.length > 1"
-            @remove="removeRow(index)"
-        />
+            <JobOrderRowFields
+                v-for="(row, index) in form.job_orders"
+                :key="row._key"
+                :row="row"
+                :index="index"
+                :errors="jobOrderRowErrors(form.errors, index)"
+                :pricing-entries="pricingEntries"
+                :specification-options="specificationOptions"
+                :print-size-dimensions="printSizeDimensions"
+                :rush-fee-percentage="rushFeePercentage"
+                :accepted-file-formats="acceptedFileFormats"
+                :removable="form.job_orders.length > 1"
+                @remove="removeRow(index)"
+            />
+        </div>
 
         <div
-            class="bg-background/95 border-border sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+            class="bg-background/95 border-border sticky bottom-0 z-10 w-full border backdrop-blur"
         >
-            <Button
-                type="button"
-                variant="secondary"
-                data-test="add-job-order-row-button"
-                @click="addRow"
+            <div
+                class="mx-auto flex w-full max-w-[100rem] flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8"
             >
-                <Plus class="size-4" />
-                Add Another Job Order
-            </Button>
-            <div class="flex items-center gap-4">
-                <p class="text-muted-foreground text-sm tabular-nums">
-                    {{ form.job_orders.length }} job order{{
-                        form.job_orders.length === 1 ? '' : 's'
-                    }}
-                    · Estimated total {{ money(estimatedTotal) }}
-                </p>
                 <Button
                     type="button"
-                    size="lg"
-                    :disabled="form.processing"
-                    data-test="create-job-order-button"
-                    @click="submit"
+                    variant="secondary"
+                    data-test="add-job-order-row-button"
+                    @click="addRow"
                 >
-                    <Ticket class="size-4" />
-                    {{ form.processing ? 'Creating…' : 'Create Job Order' }}
+                    <Plus class="size-4" />
+                    Add Another Job Order
                 </Button>
+                <div class="flex items-center gap-4">
+                    <p class="text-muted-foreground text-sm tabular-nums">
+                        {{ form.job_orders.length }} job order{{
+                            form.job_orders.length === 1 ? '' : 's'
+                        }}
+                        · Estimated total {{ money(estimatedTotal) }}
+                    </p>
+                    <Button
+                        type="button"
+                        size="lg"
+                        :disabled="form.processing"
+                        data-test="create-job-order-button"
+                        @click="submit"
+                    >
+                        <Ticket class="size-4" />
+                        {{ form.processing ? 'Creating…' : 'Create Job Order' }}
+                    </Button>
+                </div>
             </div>
         </div>
     </PageContainer>

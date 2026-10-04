@@ -205,7 +205,7 @@ const { formatTimestamp } = useBusinessTime();
                         v-else
                         :key="writeOffRequest.id"
                     >
-                        <TableCell>
+                        <TableCell class="max-w-56 whitespace-normal wrap-anywhere">
                             <div class="flex flex-col">
                                 <span
                                     class="text-muted-foreground text-xs tabular-nums"
@@ -218,7 +218,7 @@ const { formatTimestamp } = useBusinessTime();
                                 }}</span>
                             </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell class="max-w-56 whitespace-normal wrap-anywhere">
                             {{
                                 writeOffRequest.job_order.queue_entry.customer
                                     ?.name ?? '—'
@@ -230,12 +230,10 @@ const { formatTimestamp } = useBusinessTime();
                         <TableCell class="text-right tabular-nums">
                             {{ writeOffRequest.days_past_due ?? '—' }}
                         </TableCell>
-                        <TableCell class="max-w-xs">
-                            <span class="line-clamp-2">{{
-                                writeOffRequest.write_off_reason
-                            }}</span>
+                        <TableCell class="max-w-xs whitespace-pre-wrap wrap-anywhere">
+                            {{ writeOffRequest.write_off_reason }}
                         </TableCell>
-                        <TableCell>
+                        <TableCell class="max-w-48 whitespace-normal wrap-anywhere">
                             {{
                                 writeOffRequest.write_off_requested_by.name ??
                                 '—'
