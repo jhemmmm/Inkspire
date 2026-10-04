@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Concerns\SystemConfigValidationRules;
+use App\Models\SystemConfiguration;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,6 +18,12 @@ class UpdateSystemConfigurationRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->valueRules($this->route('configuration')->type);
+        $configuration = $this->route('configuration');
+
+        if (! $configuration instanceof SystemConfiguration) {
+            abort(404);
+        }
+
+        return $this->valueRules($configuration->type);
     }
 }

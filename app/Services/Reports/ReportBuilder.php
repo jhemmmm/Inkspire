@@ -33,10 +33,10 @@ use Illuminate\Support\Str;
 final class ReportBuilder
 {
     /**
-     * The full, uncapped row set for a rendered report. Never called for
-     * `financial-summary` -- see summary() for that report's figure block.
+     * The full, uncapped row set for a rendered report. Returns no rows for
+     * `financial-summary`; see summary() for that report's figure block.
      *
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, covariant array<string, mixed>>
      */
     public function rows(string $key, CarbonInterface $from, CarbonInterface $to, string $search = ''): Collection
     {
@@ -140,7 +140,7 @@ final class ReportBuilder
      * because where the money and the work sit is the question those two
      * reports answer.
      *
-     * @param  Collection<int, array<string, mixed>>  $rows
+     * @param  Collection<int, covariant array<string, mixed>>  $rows
      * @return array<string, mixed>
      */
     public function chart(string $key, Collection $rows, CarbonInterface $from, CarbonInterface $to): array
@@ -309,7 +309,7 @@ final class ReportBuilder
 
     /**
      * @param  array{CarbonImmutable, CarbonImmutable}  $utc
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, covariant array<string, mixed>>
      */
     private function salesRows(array $utc): Collection
     {
@@ -337,7 +337,7 @@ final class ReportBuilder
 
     /**
      * @param  array{CarbonImmutable, CarbonImmutable}  $utc
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, covariant array<string, mixed>>
      */
     private function cancellationsRows(array $utc): Collection
     {
@@ -368,7 +368,7 @@ final class ReportBuilder
 
     /**
      * @param  array{CarbonImmutable, CarbonImmutable}  $utc
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, covariant array<string, mixed>>
      */
     private function productionStatusRows(array $utc): Collection
     {
@@ -417,7 +417,7 @@ final class ReportBuilder
 
     /**
      * @param  array{CarbonImmutable, CarbonImmutable}  $days
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, covariant array<string, mixed>>
      */
     private function expensesRows(array $days): Collection
     {

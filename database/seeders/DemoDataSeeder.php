@@ -530,14 +530,14 @@ class DemoDataSeeder extends Seeder
      */
     private function printCredentials(): void
     {
-        $this->command?->newLine();
-        $this->command?->info('Demo/UAT accounts (password is the same for all): '.self::DEMO_PASSWORD);
+        $this->command->newLine();
+        $this->command->info('Demo/UAT accounts (password is the same for all): '.self::DEMO_PASSWORD);
 
         $rows = collect($this->accounts)
             ->map(fn (User $user): array => [$user->role->value, $user->email, self::DEMO_PASSWORD])
             ->values()
             ->all();
 
-        $this->command?->table(['Role', 'Email', 'Password'], $rows);
+        $this->command->table(['Role', 'Email', 'Password'], $rows);
     }
 }

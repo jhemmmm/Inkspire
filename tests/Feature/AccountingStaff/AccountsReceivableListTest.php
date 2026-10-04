@@ -57,7 +57,7 @@ test('each Active entry lands in the correct one of the six bracketSummaries buc
     $response = $this->actingAs($accountingStaff)->get(route('accounting-staff.accounts-receivable.index'));
 
     $response->assertOk();
-    $response->assertInertia(function (Assert $page) use ($current, $oneToFifteen, $ninetyPlus) {
+    $response->assertInertia(function (Assert $page) {
         $summaries = collect($page->toArray()['props']['bracketSummaries'])->keyBy('bracket');
 
         expect($summaries)->toHaveCount(6);

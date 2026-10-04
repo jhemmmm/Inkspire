@@ -132,7 +132,7 @@ class ReportExportController extends Controller
      * nothing to total, so it gets no Total row at all rather than a bare
      * label.
      *
-     * @param  Collection<int, array<string, mixed>>  $rows
+     * @param  Collection<int, covariant array<string, mixed>>  $rows
      * @return array{rows: list<list<mixed>>, totalRow: list<mixed>|null}
      */
     private function buildTableRows(string $reportKey, Collection $rows): array

@@ -80,7 +80,7 @@ class JobOrderController extends Controller
                 'tracking_token' => $jobOrder->tracking_token,
                 'queue_entry' => $jobOrder->queueEntry === null ? null : [
                     'label' => $jobOrder->queueEntry->paddedNumber(),
-                    'queue_date' => $jobOrder->queueEntry->queue_date?->toDateString(),
+                    'queue_date' => $jobOrder->queueEntry->queue_date->toDateString(),
                     'customer' => $jobOrder->queueEntry->customer === null ? null : [
                         'name' => $jobOrder->queueEntry->customer->name,
                         'contact_number' => $jobOrder->queueEntry->customer->contact_number,
@@ -100,7 +100,7 @@ class JobOrderController extends Controller
                 'transactions' => $jobOrder->transactions->map(fn ($transaction): array => [
                     'id' => $transaction->id,
                     'amount' => $transaction->amount,
-                    'method' => $transaction->payment_method?->value,
+                    'method' => $transaction->payment_method->value,
                     'status' => $transaction->status->value,
                     'created_at' => $transaction->created_at?->toIso8601String(),
                 ])->all(),

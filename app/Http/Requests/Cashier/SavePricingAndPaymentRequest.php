@@ -6,6 +6,7 @@ use App\Actions\POS\ComputeJobOrderPrice;
 use App\Concerns\PaymentValidationRules;
 use App\Concerns\PricingValidationRules;
 use App\Enums\TransactionStatus;
+use App\Models\JobOrder;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -35,7 +36,18 @@ class SavePricingAndPaymentRequest extends FormRequest
      */
     private function pricingIsStillEditable(): bool
     {
-        return $this->route('jobOrder')->pricingIsEditable();
+        return $this->jobOrder()->pricingIsEditable();
+    }
+
+    private function jobOrder(): JobOrder
+    {
+        $jobOrder = $this->route('jobOrder');
+
+        if (! $jobOrder instanceof JobOrder) {
+            abort(404);
+        }
+
+        return $jobOrder;
     }
 
     /**
@@ -79,7 +91,7 @@ class SavePricingAndPaymentRequest extends FormRequest
                 return;
             }
 
-            $jobOrder = $this->route('jobOrder');
+            $jobOrder = $this->jobOrder();
             $downPaymentAmount = (float) $this->input('down_payment_amount', 0);
 
             // Duplicated rather than injecting PaymentController, since

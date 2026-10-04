@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Cashier;
 
 use App\Concerns\PricingValidationRules;
+use App\Models\JobOrder;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -37,7 +38,13 @@ class CreateCreditRequestRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->route('jobOrder')->pricingIsEditable()
+        $jobOrder = $this->route('jobOrder');
+
+        if (! $jobOrder instanceof JobOrder) {
+            abort(404);
+        }
+
+        return $jobOrder->pricingIsEditable()
             ? $this->pricingRules()
             : [];
     }

@@ -41,6 +41,7 @@ use Illuminate\Support\Str;
  * @property Carbon|null $due_at
  * @property string|null $file_path
  * @property int|null $assigned_artist_id
+ * @property Carbon|null $accepted_at
  * @property string|null $validation_failure_reason
  * @property string|null $consultation_notes
  * @property PaymentStatus $payment_status

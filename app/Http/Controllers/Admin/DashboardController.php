@@ -6,7 +6,6 @@ use App\Enums\AccountsReceivableCollectionStatus;
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\PaymentStatus;
-use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\AccountsReceivable;
 use App\Models\AuditLog;
@@ -179,19 +178,16 @@ class DashboardController extends Controller
      */
     private function unpaidBalances(): Collection
     {
-        // select() runs before withSum() on purpose: withAggregate() falls
+        // select() runs before withAmountPaid() on purpose: withAggregate() falls
         // back to `job_orders.*` when no columns are set yet.
         return JobOrder::query()
             ->select(['id', 'total_amount'])
             ->whereNull('cancelled_at')
             ->whereNotNull('total_amount')
             ->where('payment_status', '!=', PaymentStatus::WrittenOff->value)
-            ->withSum(
-                ['transactions as completed_amount' => fn (Builder $query) => $query->where('status', TransactionStatus::Completed->value)],
-                'amount',
-            )
+            ->withAmountPaid()
             ->get()
-            ->map(fn (JobOrder $jobOrder): float => round((float) $jobOrder->total_amount - (float) $jobOrder->completed_amount, 2))
+            ->map(fn (JobOrder $jobOrder): float => round((float) $jobOrder->total_amount - (float) $jobOrder->amount_paid, 2))
             ->filter(fn (float $balance): bool => $balance > 0)
             ->values();
     }

@@ -153,7 +153,7 @@ test('an account serving a lockout is flagged in the list', function () {
     $this->actingAs($admin)
         ->get(route('admin.users.index'))
         ->assertOk()
-        ->assertInertia(function (\Inertia\Testing\AssertableInertia $page) use ($lockedOut, $expired) {
+        ->assertInertia(function (Assert $page) use ($lockedOut, $expired) {
             $users = collect($page->toArray()['props']['users']);
 
             expect($users->firstWhere('id', $lockedOut->id)['is_locked_out'])->toBeTrue();

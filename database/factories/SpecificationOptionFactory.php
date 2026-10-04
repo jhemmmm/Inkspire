@@ -24,7 +24,7 @@ class SpecificationOptionFactory extends Factory
     {
         return [
             'category' => SpecificationCategory::PrintSize,
-            'label' => ucfirst(fake()->unique()->words(2, true)),
+            'label' => rtrim(ucfirst(fake()->unique()->sentence(2)), '.'),
             'is_active' => true,
             'sort_order' => 0,
         ];

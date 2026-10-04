@@ -27,13 +27,19 @@ class ReportController extends Controller
 
         [$from, $to] = $request->range();
 
-        $key = (string) ($request->query('report') ?? array_key_first(ReportRegistry::entitledFor($user)));
+        $requestedReport = $request->query('report');
+
+        if ($requestedReport !== null && ! is_string($requestedReport)) {
+            abort(403);
+        }
+
+        $key = $requestedReport ?? array_key_first(ReportRegistry::entitledFor($user)) ?? abort(403);
 
         abort_unless(ReportRegistry::isEntitled($user, $key), 403);
 
         if ($key === 'financial-summary') {
             $summary = $reportBuilder->summary($from, $to);
-            $all = collect();
+            $all = $reportBuilder->rows($key, $from, $to);
             $rows = [];
             $rowsTotal = 0;
             $rowsAmountTotal = null;
@@ -80,7 +86,7 @@ class ReportController extends Controller
      * what the expense ledger and the financial summary both already count.
      * They stay visible as rows (D-11) but were never money spent.
      *
-     * @param  Collection<int, array<string, mixed>>  $rows
+     * @param  Collection<int, covariant array<string, mixed>>  $rows
      */
     private function amountTotal(string $key, Collection $rows): ?float
     {

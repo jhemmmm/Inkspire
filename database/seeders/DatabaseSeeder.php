@@ -60,6 +60,6 @@ class DatabaseSeeder extends Seeder
 
         $admin->forceFill(['is_active' => true])->save();
 
-        $this->command?->warn('Administrator: admin@inkspire.test / DemoPass123! — change this password before the shop uses it.');
+        $this->command->warn('Administrator: admin@inkspire.test / DemoPass123! — change this password before the shop uses it.');
     }
 }
