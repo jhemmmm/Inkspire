@@ -295,14 +295,7 @@ onUnmounted(() => {
             :errors="[failedMoveMessage]"
         />
 
-        <!--
-            Search sits beside the tabs, not in a card of its own (the shared
-            filter bar's `inline` mode): it covers the whole board and the
-            tab counts follow it, so the two read as one control. The tabs
-            keep their natural width; when both don't fit, the search wraps
-            to its own line instead of squeezing them. Top-aligned, so the
-            tabs line up with the search box and not with the count under it.
-        -->
+        <!-- Search covers the whole board; the tab counts follow it. -->
         <div class="flex flex-wrap items-start justify-between gap-3">
             <Tabs
                 class="max-w-full shrink-0"
@@ -319,7 +312,7 @@ onUnmounted(() => {
                         v-for="tab in tabs"
                         :key="tab.value"
                         :value="tab.value"
-                        class="h-8 flex-none"
+                        class="h-8 flex-none px-3"
                         :data-test="`production-tab-${tab.value}`"
                     >
                         {{ tab.label }}

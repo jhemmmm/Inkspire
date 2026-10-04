@@ -274,19 +274,19 @@ function dueSubLine(row: AccountsReceivableRow): string {
                 wrapped list each one stretched to the height of every row
                 combined. A fixed height keeps them the size of one row.
             -->
-            <TabsList class="h-auto max-w-full flex-wrap justify-start">
-                <TabsTrigger value="all" class="h-8 flex-none">
+            <TabsList class="h-auto max-w-full flex-wrap justify-start gap-1">
+                <TabsTrigger value="all" class="h-10 flex-none px-3">
                     All
                 </TabsTrigger>
                 <TabsTrigger
                     v-for="bracket in BRACKETS"
                     :key="bracket"
                     :value="bracket"
-                    class="h-8 flex-none"
+                    class="h-10 flex-none px-3"
                 >
                     {{ BRACKET_LABELS[bracket] }}
                 </TabsTrigger>
-                <TabsTrigger value="closed" class="h-8 flex-none">
+                <TabsTrigger value="closed" class="h-10 flex-none px-3">
                     Closed
                 </TabsTrigger>
             </TabsList>

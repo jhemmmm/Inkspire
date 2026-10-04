@@ -252,28 +252,30 @@ function total(series: ChartSeries): number {
             </svg>
         </div>
 
-        <table class="sr-only">
-            <caption>
-                {{
-                    label
-                }}
-            </caption>
-            <thead>
-                <tr>
-                    <th scope="col">Period</th>
-                    <th v-for="item in series" :key="item.name" scope="col">
-                        {{ item.name }}
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="(text, index) in labels" :key="index">
-                    <th scope="row">{{ text }}</th>
-                    <td v-for="item in series" :key="item.name">
-                        {{ chartValue(item.values[index], format) }}
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="sr-only">
+            <table>
+                <caption>
+                    {{
+                        label
+                    }}
+                </caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Period</th>
+                        <th v-for="item in series" :key="item.name" scope="col">
+                            {{ item.name }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(text, index) in labels" :key="index">
+                        <th scope="row">{{ text }}</th>
+                        <td v-for="item in series" :key="item.name">
+                            {{ chartValue(item.values[index], format) }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </figure>
 </template>

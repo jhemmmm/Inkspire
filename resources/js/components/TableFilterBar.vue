@@ -16,8 +16,7 @@ withDefaults(
         /**
          * No card of its own and a tighter layout, for a search that sits
          * beside another control (the production board's tabs) rather than
-         * above a table. The count keeps its own line in both modes, so
-         * Clear appearing never changes the bar's height.
+         * above a table. In inline mode the count precedes the search.
          */
         inline?: boolean;
     }>(),
@@ -37,12 +36,22 @@ const searchInputId = useId();
     <component :is="inline ? 'div' : Card">
         <component
             :is="inline ? 'div' : CardContent"
-            :class="['flex flex-col', inline ? 'gap-2' : 'gap-4']"
+            :class="[
+                'flex',
+                inline ? 'flex-wrap items-center gap-3' : 'flex-col gap-4',
+            ]"
         >
+            <p
+                v-if="inline"
+                class="text-muted-foreground shrink-0 text-sm whitespace-nowrap tabular-nums"
+                aria-live="polite"
+            >
+                Showing {{ shown }} of {{ total }}
+            </p>
             <div
                 :class="
                     inline
-                        ? 'flex items-center gap-3'
+                        ? 'flex min-w-0 flex-1 items-center gap-3'
                         : 'flex flex-col gap-3 @lg:flex-row @lg:flex-wrap @lg:items-end'
                 "
             >
@@ -87,6 +96,7 @@ const searchInputId = useId();
             </div>
 
             <p
+                v-if="!inline"
                 class="text-muted-foreground text-sm tabular-nums"
                 aria-live="polite"
             >
