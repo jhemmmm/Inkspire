@@ -86,8 +86,7 @@ class ClaimJobOrderForArtist
      * transferred designs that still need an Artist. Both Type A and Type B
      * orders can appear here.
      *
-     * Rush jobs lead, newest first. Regular jobs follow in arrival order so
-     * a new regular job joins the bottom of the available list.
+     * Rush jobs lead, with newest jobs first within each group.
      *
      * @return Builder<JobOrder>
      */
@@ -101,9 +100,7 @@ class ClaimJobOrderForArtist
             ->whereNull('assigned_artist_id')
             ->whereNull('cancelled_at')
             ->orderByDesc('is_rush')
-            ->orderByRaw('CASE WHEN is_rush = 1 THEN created_at END DESC')
-            ->orderByRaw('CASE WHEN is_rush = 1 THEN id END DESC')
-            ->orderBy('created_at')
-            ->orderBy('id');
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
     }
 }
