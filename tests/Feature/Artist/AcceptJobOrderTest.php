@@ -32,7 +32,7 @@ test('the dashboard lists unclaimed job orders in the shared pool', function () 
         );
 });
 
-test('the available pool keeps rush jobs first and adds regular jobs after older regular jobs', function () {
+test('the available pool keeps rush jobs first and sorts each group newest first', function () {
     $artist = User::factory()->artist()->create(['artist_status' => ArtistStatus::Available->value]);
     $olderRegular = unclaimedJobOrder(['is_rush' => false, 'created_at' => now()->subHours(4)]);
     $olderRush = unclaimedJobOrder(['is_rush' => true, 'created_at' => now()->subHours(3)]);
@@ -44,8 +44,8 @@ test('the available pool keeps rush jobs first and adds regular jobs after older
         ->assertInertia(fn (Assert $page) => $page
             ->where('availableJobOrders.0.id', $newerRush->id)
             ->where('availableJobOrders.1.id', $olderRush->id)
-            ->where('availableJobOrders.2.id', $olderRegular->id)
-            ->where('availableJobOrders.3.id', $newerRegular->id)
+            ->where('availableJobOrders.2.id', $newerRegular->id)
+            ->where('availableJobOrders.3.id', $olderRegular->id)
         );
 });
 
