@@ -38,7 +38,7 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
         <div class="flex flex-col lg:flex-row lg:space-x-12">
             <aside class="w-full max-w-xl lg:w-48">
                 <nav
-                    class="flex flex-col space-y-1 space-x-0"
+                    class="bg-muted/50 flex flex-col gap-2 rounded-xl border p-2"
                     aria-label="Settings"
                 >
                     <Button
@@ -46,13 +46,21 @@ const { isCurrentOrParentUrl } = useCurrentUrl();
                         :key="toUrl(item.href)"
                         variant="ghost"
                         :class="[
-                            'w-full justify-start',
-                            { 'bg-muted': isCurrentOrParentUrl(item.href) },
+                            'h-11 w-full justify-start rounded-lg border px-4 text-base shadow-xs',
+                            isCurrentOrParentUrl(item.href)
+                                ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+                                : 'border-border bg-background text-foreground hover:border-primary/40 hover:bg-accent',
                         ]"
                         as-child
                     >
-                        <Link :href="item.href">
-                            <component :is="item.icon" class="h-4 w-4" />
+                        <Link
+                            :href="item.href"
+                            :aria-current="
+                                isCurrentOrParentUrl(item.href)
+                                    ? 'page'
+                                    : undefined
+                            "
+                        >
                             {{ item.title }}
                         </Link>
                     </Button>

@@ -672,11 +672,12 @@ function outcomeLabel(outcome: string | null): string {
                 <CardTitle>Review</CardTitle>
             </CardHeader>
             <CardContent class="space-y-4">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <AlertDialog>
                         <AlertDialogTrigger as-child>
                             <Button
                                 type="button"
+                                class="w-full sm:w-auto"
                                 data-test="client-approved-button"
                             >
                                 Client Approved
@@ -727,6 +728,7 @@ function outcomeLabel(outcome: string | null): string {
                         <Button
                             type="button"
                             variant="outline"
+                            class="w-full sm:w-auto"
                             data-test="client-requested-changes-button"
                         >
                             Client Requested Changes
