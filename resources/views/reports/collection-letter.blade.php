@@ -3,7 +3,7 @@
 @section('content')
     <p>{{ $today }}</p>
     <p>To: {{ $customerName ?? '—' }}</p>
-    <p>Re: Job Order {{ $jobOrderNumber ?? '—' }} &mdash; {{ $jobOrderDescription }}</p>
+    <p>Re: Job Order {{ $jobOrderNumber ?? '—' }}, {{ $jobOrderDescription }}</p>
 
     <p>{{ $letterBodyText }}</p>
 

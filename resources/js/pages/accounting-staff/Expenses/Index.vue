@@ -104,7 +104,7 @@ const rangeLabel = computed(() => {
         return dateLabel(props.filters.from);
     }
 
-    return `${dateLabel(props.filters.from)} – ${dateLabel(props.filters.to)}`;
+    return `${dateLabel(props.filters.from)} to ${dateLabel(props.filters.to)}`;
 });
 
 const expenseCountLabel = computed(() => {
@@ -214,7 +214,9 @@ function onApplyRange(range: { from: string; to: string }): void {
     );
 }
 
-// Record Expense dialog
+// Record Expense dialog (controlled, so a successful save closes it and the
+// next open starts from an empty form instead of inviting a duplicate entry)
+const recordDialogOpen = ref(false);
 const recordCategory = ref('');
 
 // Edit Expense dialog (single shared instance, controlled — Actions column
@@ -250,7 +252,7 @@ const { formatDay } = useBusinessTime();
             description="Shop costs recorded against the business, offset against sales in the reports. Voided entries stay on the list but count toward nothing."
         >
             <template #actions>
-                <Dialog>
+                <Dialog v-model:open="recordDialogOpen">
                     <DialogTrigger as-child>
                         <Button
                             data-test="record-expense-button"
@@ -264,6 +266,7 @@ const { formatDay } = useBusinessTime();
                         <Form
                             v-bind="ExpenseController.store.form()"
                             :options="{ preserveScroll: true }"
+                            @success="recordDialogOpen = false"
                             class="space-y-4"
                             v-slot="{ errors, processing }"
                         >
@@ -352,7 +355,7 @@ const { formatDay } = useBusinessTime();
                                     id="record-description"
                                     name="description"
                                     rows="3"
-                                    placeholder="e.g. Meralco — August billing"
+                                    placeholder="e.g. Electricity bill, August"
                                 />
                                 <p class="text-muted-foreground text-sm">
                                     A short note makes this row readable a month
@@ -466,8 +469,8 @@ const { formatDay } = useBusinessTime();
                         >
                             <p class="font-semibold">No expenses recorded</p>
                             <p class="text-muted-foreground">
-                                Record the shop's costs here — utilities,
-                                supplies, rent — so they show up in the Summary
+                                Record the shop's costs here (utilities,
+                                supplies, rent) so they show up in the Summary
                                 of Sales &amp; Expenses report.
                             </p>
                         </div>
@@ -586,6 +589,7 @@ const { formatDay } = useBusinessTime();
                     v-else
                     v-bind="ExpenseController.update.form(editingExpense.id)"
                     :options="{ preserveScroll: true }"
+                    @success="editDialogOpen = false"
                     class="space-y-4"
                     v-slot="{ errors, processing }"
                 >
@@ -670,7 +674,7 @@ const { formatDay } = useBusinessTime();
                             id="edit-description"
                             name="description"
                             rows="3"
-                            placeholder="e.g. Meralco — August billing"
+                            placeholder="e.g. Electricity bill, August"
                             :default-value="editingExpense.description ?? ''"
                         />
                         <p class="text-muted-foreground text-sm">
@@ -699,6 +703,7 @@ const { formatDay } = useBusinessTime();
                 <Form
                     v-bind="ExpenseController.void.form(voidingExpense.id)"
                     :options="{ preserveScroll: true }"
+                    @success="voidDialogOpen = false"
                     class="space-y-4"
                     v-slot="{ errors, processing }"
                 >
@@ -710,8 +715,8 @@ const { formatDay } = useBusinessTime();
                         >
                         <DialogDescription>
                             It stays on the list for the record but stops
-                            counting toward every report. This can't be undone —
-                            if the entry just needs a correction, edit it
+                            counting toward every report. This can't be undone.
+                            If the entry just needs a correction, edit it
                             instead.
                         </DialogDescription>
                     </DialogHeader>

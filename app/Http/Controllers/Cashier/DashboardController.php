@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\JobOrder;
 use App\Models\SystemConfiguration;
@@ -43,6 +44,9 @@ class DashboardController extends Controller
                 ->select(['id', 'number', 'description', 'status', 'payment_status', 'queue_entry_id', 'total_amount', 'quoted_amount', 'is_rush', 'released_at', 'cancelled_at'])
                 ->whereIn('status', JobOrderStatus::PAYABLE)
                 ->whereNull('cancelled_at')
+                // A written-off balance is closed: paymentBlocker() refuses
+                // any payment, so listing it as "ready for payment" misled.
+                ->where('payment_status', '!=', PaymentStatus::WrittenOff->value)
                 ->withAmountPaid()
                 ->with([
                     'queueEntry.customer:id,name',

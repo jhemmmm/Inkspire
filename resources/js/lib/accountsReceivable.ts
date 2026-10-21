@@ -7,10 +7,10 @@ import type { StatusTone } from '@/components/StatusBadge.vue';
  */
 export const BRACKET_LABELS: Record<string, string> = {
     current: 'Current',
-    one_to_fifteen: '1–15 Days',
-    sixteen_to_thirty: '16–30 Days',
-    thirty_one_to_sixty: '31–60 Days',
-    sixty_one_to_ninety: '61–90 Days',
+    one_to_fifteen: '1-15 Days',
+    sixteen_to_thirty: '16-30 Days',
+    thirty_one_to_sixty: '31-60 Days',
+    sixty_one_to_ninety: '61-90 Days',
     ninety_plus: '90+ Days',
 };
 

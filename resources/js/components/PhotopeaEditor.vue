@@ -169,7 +169,7 @@ defineExpose({ exportPng, toggleFullscreen });
             <p class="text-muted-foreground text-sm">
                 {{
                     isReady
-                        ? 'Photopea — your work stays on this computer until you send it for review.'
+                        ? 'Photopea: your work stays on this computer until you send it for review.'
                         : 'Loading the editor…'
                 }}
             </p>

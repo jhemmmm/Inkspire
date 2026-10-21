@@ -31,7 +31,7 @@ const { title = '', description = '' } = defineProps<{
                     class="text-muted-foreground mb-8 text-[13px] leading-relaxed"
                 >
                     Faster workflows, smarter order management, and real-time
-                    team coordination — built for Squarefoot Graphics &amp; Ads.
+                    team coordination, built for Squarefoot Graphics &amp; Ads.
                 </p>
                 <div class="flex items-center gap-5">
                     <div>

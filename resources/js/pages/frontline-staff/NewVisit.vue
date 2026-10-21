@@ -732,8 +732,7 @@ function formatSlipDate(value: string): string {
                             />
                             <div class="flex flex-col gap-1">
                                 <p class="text-sm font-semibold">
-                                    Not approved for printing — sent to an
-                                    artist
+                                    Not approved for printing. Sent to an artist
                                 </p>
                                 <p class="text-muted-foreground text-sm">
                                     {{ jobOrder.validation_failure_reason }}

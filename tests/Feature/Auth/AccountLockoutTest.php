@@ -55,3 +55,25 @@ test('failed attempts and the resulting lockout are written to the audit trail',
     expect(DB::table('audit_trail')->where('action', 'failed_login')->count())->toBe(5);
     expect(DB::table('audit_trail')->where('action', 'lockout')->exists())->toBeTrue();
 });
+
+test('the attempt that locks the account says it is locked', function () {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 4; $i++) {
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password']);
+    }
+    $response = $this->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password']);
+
+    $response->assertSessionHasErrors(['email' => 'Too many failed attempts. This account is locked for 15 minutes. Contact your Admin if you need immediate access.']);
+});
+
+test('attempts after the lockout get the lock message, not a 429', function () {
+    $user = User::factory()->create();
+
+    for ($i = 0; $i < 5; $i++) {
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password']);
+    }
+    $response = $this->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password']);
+
+    $response->assertSessionHasErrors(['email' => 'Too many failed attempts. This account is locked for 15 minutes. Contact your Admin if you need immediate access.']);
+});

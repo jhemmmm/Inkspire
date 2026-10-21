@@ -51,6 +51,7 @@ interface AuditEntry {
     action: string;
     auditable_type: string | null;
     auditable_id: number | null;
+    record_label: string | null;
     old_values: Record<string, unknown> | null;
     new_values: Record<string, unknown> | null;
     ip_address: string | null;
@@ -115,22 +116,8 @@ function actionLabel(action: string): string {
         .join(' ');
 }
 
-function shortClassName(type: string | null): string {
-    if (!type) {
-        return '—';
-    }
-
-    const parts = type.split('\\');
-
-    return parts[parts.length - 1];
-}
-
 function target(entry: AuditEntry): string {
-    const className = shortClassName(entry.auditable_type);
-
-    return entry.auditable_id
-        ? `${className} #${entry.auditable_id}`
-        : className;
+    return entry.record_label ?? '—';
 }
 
 const { formatTimestamp } = useBusinessTime();
@@ -315,7 +302,9 @@ const exportXlsxUrl = computed(() =>
                         :key="entry.id"
                     >
                         <TableCell>{{ formattedTimestamp(entry) }}</TableCell>
-                        <TableCell>{{ entry.user?.name ?? '—' }}</TableCell>
+                        <TableCell>{{
+                            entry.user?.name ?? 'System'
+                        }}</TableCell>
                         <TableCell>{{ entry.user?.role ?? '—' }}</TableCell>
                         <TableCell>{{ actionLabel(entry.action) }}</TableCell>
                         <TableCell>{{ target(entry) }}</TableCell>

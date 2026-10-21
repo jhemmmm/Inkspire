@@ -54,7 +54,7 @@ test('a transition from the wrong stage is rejected and creates no log row', fun
     $response->assertSessionHas(
         'inertia.flash_data',
         fn (array $flash) => $flash['toast']['type'] === 'error'
-            && $flash['toast']['message'] === 'This job order already moved on. The board has refreshed — check its current stage before trying again.',
+            && $flash['toast']['message'] === 'This job order already moved on. The board has refreshed, so check its current stage before trying again.',
     );
     expect($jobOrder->fresh()->status)->toBe($from);
     expect(ProductionLog::query()->where('job_order_id', $jobOrder->id)->count())->toBe(0);
@@ -79,7 +79,7 @@ test('start and done reject an order that is not cleared for production', functi
     $response->assertSessionHas(
         'inertia.flash_data',
         fn (array $flash) => $flash['toast']['type'] === 'error'
-            && $flash['toast']['message'] === 'Awaiting payment — send the customer to the Cashier.',
+            && $flash['toast']['message'] === 'Awaiting payment. Send the customer to the Cashier.',
     );
     expect($jobOrder->fresh()->status)->toBe($from);
     expect(ProductionLog::query()->where('job_order_id', $jobOrder->id)->count())->toBe(0);

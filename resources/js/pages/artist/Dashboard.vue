@@ -418,7 +418,7 @@ function waitingSince(createdAt: string): string {
                                                     Accept this job order?
                                                 </AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                    {{ jobOrder.number }} —
+                                                    {{ jobOrder.number }}:
                                                     {{ jobOrder.description }}
                                                     for
                                                     {{

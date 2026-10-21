@@ -169,7 +169,7 @@ const completedPaid = computed((): number =>
 </script>
 
 <template>
-    <Head :title="`Job Order — ${jobOrder.number ?? jobOrder.id}`" />
+    <Head :title="`Job Order ${jobOrder.number ?? jobOrder.id}`" />
 
     <PageContainer>
         <Button

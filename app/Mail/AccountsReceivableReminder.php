@@ -74,11 +74,11 @@ class AccountsReceivableReminder extends Mailable
         $daysPastDue = $this->receivable->daysPastDue();
 
         return match ($this->bracket) {
-            AccountsReceivableAgingBracket::OneToFifteen => "AR notice — {$number} is {$daysPastDue} days past due",
-            AccountsReceivableAgingBracket::SixteenToThirty => "Urgent — {$number} is {$daysPastDue} days past due",
-            AccountsReceivableAgingBracket::ThirtyOneToSixty => "Escalation — {$number} is {$daysPastDue} days past due",
-            AccountsReceivableAgingBracket::NinetyPlus => "Final notice — {$number} is {$daysPastDue} days past due, write-off decision needed",
-            default => "AR notice — {$number} is {$daysPastDue} days past due",
+            AccountsReceivableAgingBracket::OneToFifteen => "AR notice: {$number} is {$daysPastDue} days past due",
+            AccountsReceivableAgingBracket::SixteenToThirty => "Urgent: {$number} is {$daysPastDue} days past due",
+            AccountsReceivableAgingBracket::ThirtyOneToSixty => "Escalation: {$number} is {$daysPastDue} days past due",
+            AccountsReceivableAgingBracket::NinetyPlus => "Final notice: {$number} is {$daysPastDue} days past due, write-off decision needed",
+            default => "AR notice: {$number} is {$daysPastDue} days past due",
         };
     }
 

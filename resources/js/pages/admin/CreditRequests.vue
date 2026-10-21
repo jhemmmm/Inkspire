@@ -292,7 +292,7 @@ const { formatTimestamp } = useBusinessTime();
                                             <AlertDialogDescription>
                                                 The job order stays flagged
                                                 "Credit Rejected." There's no
-                                                automatic fallback — someone
+                                                automatic fallback, so someone
                                                 will need to follow up with the
                                                 customer on another payment
                                                 method.

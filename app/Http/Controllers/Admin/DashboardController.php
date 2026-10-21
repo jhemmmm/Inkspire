@@ -13,7 +13,6 @@ use App\Models\JobOrder;
 use App\Models\QueueEntry;
 use App\Models\User;
 use App\Services\Reports\ReportBuilder;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -43,7 +42,6 @@ class DashboardController extends Controller
             'attention' => [
                 'creditRequests' => $this->pendingCreditRequests(),
                 'writeOffRequests' => $this->pendingWriteOffRequests(),
-                'lockedDesigns' => $this->lockedDesignFiles(),
                 'lockedAccounts' => $this->lockedOutAccounts(),
             ],
             'shop' => $this->shopHealth(),
@@ -85,16 +83,6 @@ class DashboardController extends Controller
             ->with(['jobOrder:id,total_amount', 'jobOrder.transactions:id,job_order_id,amount,status'])
             ->get(['id', 'job_order_id', 'collection_status', 'due_at'])
             ->reject(fn (AccountsReceivable $accountsReceivable): bool => $accountsReceivable->isClosed())
-            ->count();
-    }
-
-    /**
-     * Mirrors DesignFileController@index.
-     */
-    private function lockedDesignFiles(): int
-    {
-        return JobOrder::query()
-            ->whereHas('designFile', fn (Builder $query) => $query->whereNotNull('locked_at'))
             ->count();
     }
 
@@ -209,7 +197,7 @@ class DashboardController extends Controller
             ->map(fn (AuditLog $entry): array => [
                 'id' => $entry->id,
                 'action' => $entry->action,
-                'entity' => class_basename((string) $entry->auditable_type),
+                'entity' => $entry->recordLabel(),
                 'user' => $entry->user?->name,
                 'created_at' => $entry->created_at?->toIso8601String(),
             ])

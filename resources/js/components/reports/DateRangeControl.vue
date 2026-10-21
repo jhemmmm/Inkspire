@@ -195,7 +195,7 @@ const rangeLabel = computed(() => {
         return formatDate(props.from);
     }
 
-    return `${formatDate(props.from)} – ${formatDate(props.to)}`;
+    return `${formatDate(props.from)} to ${formatDate(props.to)}`;
 });
 </script>
 

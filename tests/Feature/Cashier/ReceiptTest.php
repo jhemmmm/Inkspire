@@ -138,3 +138,20 @@ test('a shop that sets VAT to 0 gets no VAT on the receipt', function () {
         ->where('vat.vatable_sales', 1120)
         ->where('vat.amount', 0));
 });
+
+test('the receipt is numbered by the payment it was issued for', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => 'paid']);
+    $payment = Transaction::factory()->create([
+        'job_order_id' => $jobOrder->id,
+        'amount' => 1000,
+        'status' => 'completed',
+        'confirmed_at' => '2026-10-21 10:00:00',
+        'recorded_by' => $cashier->id,
+    ]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.job-orders.receipt.show', $jobOrder));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('latestTransaction.receipt_number', sprintf('R-2026-%06d', $payment->id)));
+});

@@ -170,7 +170,7 @@ test('the token route is public, unauthenticated and outside every role group', 
 
     $this->get(route('public.tracking.token', ['token' => $jobOrder->tracking_token]))
         ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page->where('result.stage', 'Ready for Pickup'));
+        ->assertInertia(fn (Assert $page) => $page->where('result.stage', 'Ready for pickup'));
 });
 
 test('a cancelled or released job order reports its terminal stage, not its production status', function (array $overrides, string $expected) {
@@ -182,5 +182,5 @@ test('a cancelled or released job order reports its terminal stage, not its prod
     $response->assertInertia(fn (Assert $page) => $page->where('result.stage', $expected));
 })->with([
     'cancelled' => [['cancelled_at' => '2026-09-10 00:00:00'], 'Cancelled'],
-    'released' => [['released_at' => '2026-09-10 00:00:00'], 'Completed'],
+    'released' => [['released_at' => '2026-09-10 00:00:00'], 'Picked up'],
 ]);

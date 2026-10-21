@@ -184,14 +184,14 @@ const jobOrderTypeOptions = computed(() =>
               {
                   value: 'type_a' as const,
                   icon: Printer,
-                  title: 'Type A — Print Only',
+                  title: 'Type A: Print Only',
                   badge: 'READY-MADE',
-                  blurb: 'Has own design file. For printing only — no artist needed.',
+                  blurb: 'Has own design file. For printing only, no artist needed.',
               },
               {
                   value: 'type_b' as const,
                   icon: PencilRuler,
-                  title: 'Type B — Consultation',
+                  title: 'Type B: Consultation',
                   badge: 'NO LAYOUT',
                   blurb: 'No design yet. Needs artist consultation and layout creation.',
               },

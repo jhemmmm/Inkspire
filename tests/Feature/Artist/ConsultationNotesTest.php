@@ -49,3 +49,19 @@ test('saving consultation notes on an assigned not yet in_consultation job order
     expect($jobOrder->fresh()->status)->toBe(JobOrderStatus::Assigned);
     expect($jobOrder->fresh()->consultation_notes)->toBeNull();
 });
+
+test('the workspace hands the consultation notes field its notes, editable only during consultation', function () {
+    $artist = User::factory()->artist()->create();
+    $inConsultation = JobOrder::factory()->assignedTo($artist)->create(['status' => 'in_consultation', 'consultation_notes' => 'Brown and cream, logo on top.']);
+    $inDesign = JobOrder::factory()->assignedTo($artist)->create(['status' => 'in_design', 'consultation_notes' => 'Bold red text.']);
+
+    $editable = $this->actingAs($artist)->get(route('artist.job-orders.show', $inConsultation));
+    $readOnly = $this->actingAs($artist)->get(route('artist.job-orders.show', $inDesign));
+
+    $editable->assertInertia(fn (Assert $page) => $page
+        ->where('jobOrder.consultation_notes', 'Brown and cream, logo on top.')
+        ->where('jobOrder.canEditConsultation', true));
+    $readOnly->assertInertia(fn (Assert $page) => $page
+        ->where('jobOrder.consultation_notes', 'Bold red text.')
+        ->where('jobOrder.canEditConsultation', false));
+});

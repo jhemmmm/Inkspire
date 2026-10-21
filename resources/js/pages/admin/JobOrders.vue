@@ -213,7 +213,7 @@ function sizeLabel(jobOrder: AdminJobOrder): string {
     <PageContainer>
         <PageHeader
             title="Job Orders"
-            description="Every job order across every stage, with the price the shop is quoting or has charged. Read-only — make changes from the role portal that owns each order."
+            description="Every job order across every stage, with the price the shop is quoting or has charged. Read-only: make changes from the role portal that owns each order."
         >
             <template #actions>
                 <Button

@@ -36,7 +36,7 @@
 
     @if ($summary['write_off_total'] > 0)
         <p class="meta-line" style="margin-top: 16px;">
-            Bad debt written off: ₱{{ number_format($summary['write_off_total'], 2) }} &mdash; not deducted above (never counted as revenue, so never subtracted from it).
+            Bad debt written off: ₱{{ number_format($summary['write_off_total'], 2) }}. Not deducted above (never counted as revenue, so never subtracted from it).
         </p>
     @endif
 @endsection

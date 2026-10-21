@@ -186,7 +186,7 @@ function toggleActive(entry: PricingEntry, isActive: boolean): void {
     <PageContainer>
         <PageHeader
             title="Products & Services"
-            description="The price list staff pick from when creating a job order. A new price applies to job orders created from now on — ones already quoted keep theirs. Retire an entry to hide it from new job orders without touching past ones."
+            description="The price list staff pick from when creating a job order. A new price applies to job orders created from now on. Ones already quoted keep theirs. Retire an entry to hide it from new job orders without touching past ones."
         >
             <template #actions>
                 <Button

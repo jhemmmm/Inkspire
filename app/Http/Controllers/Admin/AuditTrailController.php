@@ -28,7 +28,8 @@ class AuditTrailController extends Controller
         $entries = $this->filteredQuery($request)
             ->latest('created_at')
             ->paginate(25)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn (AuditLog $entry): AuditLog => $entry->setAttribute('record_label', $entry->recordLabel()));
 
         return Inertia::render('admin/AuditTrail', [
             'entries' => $entries,
@@ -65,7 +66,7 @@ class AuditTrailController extends Controller
         // If the shop ever needs the full list in PDF past this ceiling,
         // move this export to a queued job instead of raising the cap.
         if ($matched > self::PDF_ROW_CAP) {
-            $meta['note'] = 'Showing '.number_format(self::PDF_ROW_CAP).' of '.number_format($matched).' — narrow the filters or use Excel.';
+            $meta['note'] = 'Showing '.number_format(self::PDF_ROW_CAP).' of '.number_format($matched).'. Narrow the filters or use Excel.';
         }
 
         return TableExport::pdf('Audit Trail', $this->exportColumns(), $this->exportRows($entries), [], $meta, null, 'audit-trail_'.BusinessTime::now()->toDateString(), landscape: true);
@@ -128,7 +129,7 @@ class AuditTrailController extends Controller
                 // A string, not Carbon -- TableExport would strip the time. Shop
                 // time, not UTC, so it matches what the page shows.
                 $entry->created_at === null ? '—' : BusinessTime::local($entry->created_at)->format('M j, Y g:i A'),
-                $entry->user === null ? '—' : $entry->user->name,
+                $entry->user === null ? __('System') : $entry->user->name,
                 $entry->user !== null ? Str::headline($entry->user->role->value) : '—',
                 Str::headline($entry->action),
                 $this->record($entry),
@@ -142,13 +143,7 @@ class AuditTrailController extends Controller
 
     private function record(AuditLog $entry): string
     {
-        if ($entry->auditable_type === null) {
-            return '—';
-        }
-
-        $class = class_basename($entry->auditable_type); // same helper DashboardController::recentActivity() already uses
-
-        return $entry->auditable_id !== null ? "{$class} #{$entry->auditable_id}" : $class;
+        return $entry->recordLabel() ?? '—';
     }
 
     /**

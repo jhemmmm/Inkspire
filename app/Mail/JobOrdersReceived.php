@@ -25,7 +25,7 @@ class JobOrdersReceived extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: __('We received your order — :number', [
+            subject: __('We received your order: :number', [
                 'number' => $this->queueEntry->jobOrders->first()?->number,
             ]),
         );

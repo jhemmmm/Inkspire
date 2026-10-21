@@ -2,6 +2,7 @@
 
 namespace App\Listeners\Auth;
 
+use App\Actions\Fortify\EnsureAccountIsNotLocked;
 use App\Models\SystemConfiguration;
 use App\Models\User;
 use App\Support\AuditLogger;
@@ -29,6 +30,10 @@ class RecordFailedLoginAttempt
             $event->user->forceFill(['locked_until' => now()->addMinutes($duration)])->save();
 
             AuditLogger::recordAuthEvent($event->user, 'lockout', request());
+
+            // Say so now, rather than "these credentials do not match" on
+            // the very attempt that locked the account.
+            throw EnsureAccountIsNotLocked::lockedException($event->user);
         }
     }
 }

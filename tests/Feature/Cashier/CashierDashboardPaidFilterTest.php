@@ -167,3 +167,17 @@ test('a released on-credit job order stays on the dashboard, shown as released',
         ->where('jobOrders.0.display_status', 'released')
         ->where('jobOrders.0.can_cancel', false));
 });
+
+test('a written-off job order is not offered for payment', function () {
+    $cashier = User::factory()->cashier()->create();
+    $jobOrder = JobOrder::factory()->create(['status' => JobOrderStatus::ReadyForPickup->value]);
+    $jobOrder->forceFill([
+        'total_amount' => 800,
+        'payment_status' => PaymentStatus::WrittenOff->value,
+    ])->save();
+    Transaction::factory()->for($jobOrder)->downPayment()->create(['amount' => 300]);
+
+    $response = $this->actingAs($cashier)->get(route('cashier.dashboard'));
+
+    $response->assertInertia(fn (Assert $page) => $page->has('jobOrders', 0));
+});

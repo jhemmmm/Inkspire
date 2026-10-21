@@ -30,6 +30,7 @@ interface ReceiptJobOrder {
 
 interface ReceiptLatestTransaction {
     payment_method: string;
+    receipt_number: string;
 }
 
 /** The VAT already inside the total -- prices are VAT-inclusive. */
@@ -99,7 +100,7 @@ const { formatInstant } = useBusinessTime();
 </script>
 
 <template>
-    <Head :title="`Receipt — ${jobOrder.number ?? jobOrder.id}`" />
+    <Head :title="`Receipt ${jobOrder.number ?? jobOrder.id}`" />
 
     <PageContainer>
         <Button
@@ -112,6 +113,16 @@ const { formatInstant } = useBusinessTime();
 
         <Card class="mx-auto w-full max-w-md">
             <CardContent class="grid gap-4">
+                <div
+                    v-if="latestTransaction"
+                    class="flex items-center justify-between"
+                    data-test="receipt-number"
+                >
+                    <span class="font-semibold">Receipt No.</span>
+                    <span class="tabular-nums">{{
+                        latestTransaction.receipt_number
+                    }}</span>
+                </div>
                 <div class="flex items-center justify-between">
                     <span class="font-semibold">Job Order No.</span>
                     <span class="tabular-nums">{{

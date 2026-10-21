@@ -95,9 +95,9 @@ class ProductionStageController extends Controller
 
             $target = $transitions[$jobOrder->status->value] ?? null;
 
-            abort_if($target === null, 422, __('This job order already moved on. The board has refreshed — check its current stage before trying again.'));
+            abort_if($target === null, 422, __('This job order already moved on. The board has refreshed, so check its current stage before trying again.'));
 
-            abort_if($requiresPayment && ! $jobOrder->isClearedForProduction(), 422, __('Awaiting payment — send the customer to the Cashier.'));
+            abort_if($requiresPayment && ! $jobOrder->isClearedForProduction(), 422, __('Awaiting payment. Send the customer to the Cashier.'));
 
             $from = $jobOrder->status;
 

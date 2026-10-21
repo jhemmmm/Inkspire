@@ -304,20 +304,16 @@ const { formatTimestamp } = useBusinessTime();
                 <dl v-else class="flex flex-col gap-1 text-sm">
                     <div class="flex items-baseline justify-between gap-4">
                         <dt class="text-muted-foreground">
-                            Not yet due &ndash; 15 days past due
+                            Not yet due to 15 days past due
                         </dt>
                         <dd class="font-medium tabular-nums">Pending</dd>
                     </div>
                     <div class="flex items-baseline justify-between gap-4">
-                        <dt class="text-muted-foreground">
-                            16 &ndash; 30 days
-                        </dt>
+                        <dt class="text-muted-foreground">16 to 30 days</dt>
                         <dd class="font-medium tabular-nums">Follow-up</dd>
                     </div>
                     <div class="flex items-baseline justify-between gap-4">
-                        <dt class="text-muted-foreground">
-                            31 &ndash; 90 days
-                        </dt>
+                        <dt class="text-muted-foreground">31 to 90 days</dt>
                         <dd class="font-medium tabular-nums">Warning Sent</dd>
                     </div>
                     <div class="flex items-baseline justify-between gap-4">
@@ -408,7 +404,7 @@ const { formatTimestamp } = useBusinessTime();
                                         id="write-off-reason"
                                         name="reason"
                                         rows="4"
-                                        placeholder="e.g. Business closed permanently — three collection attempts returned undeliverable"
+                                        placeholder="e.g. Business closed permanently. Three collection attempts returned undeliverable"
                                     />
                                     <p class="text-muted-foreground text-sm">
                                         The Admin sees this reason when

@@ -6,6 +6,7 @@ use App\Actions\Fortify\CaptureAuthenticatedSessionId;
 use App\Actions\Fortify\EnsureAccountIsNotLocked;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Http\Responses\LoginResponse;
+use App\Models\SystemConfiguration;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -83,7 +84,10 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 
-            return Limit::perMinute(5)->by($throttleKey);
+            // Above the account lockout threshold, so the lockout's own
+            // message is what a user sees, not a bare 429 page. Once locked,
+            // EnsureAccountIsNotLocked refuses before any password check.
+            return Limit::perMinute(SystemConfiguration::getInt('account_lockout_max_attempts', 5) * 2)->by($throttleKey);
         });
 
     }

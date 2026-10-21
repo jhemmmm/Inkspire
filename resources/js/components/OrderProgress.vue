@@ -36,7 +36,7 @@ const STEPS = [
     },
     {
         title: 'Ready for pickup',
-        blurb: 'Come and collect it at the shop — bring this slip with you.',
+        blurb: 'Come and collect it at the shop. Bring this slip with you.',
     },
     {
         title: 'Picked up',

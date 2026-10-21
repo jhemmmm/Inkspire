@@ -6,6 +6,7 @@ import {
     FileDown,
     ImageUp,
     History,
+    MessagesSquare,
     Palette,
     Zap,
 } from '@lucide/vue';
@@ -41,6 +42,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
 import RequestDesignChangesDialog from '@/components/RequestDesignChangesDialog.vue';
 import { useBusinessTime } from '@/composables/useBusinessTime';
 import { useLivePoll } from '@/composables/useLivePoll';
@@ -85,6 +87,8 @@ const props = defineProps<{
         customer_name: string | null;
         customer_organization: string | null;
         client_notes: string | null;
+        consultation_notes: string | null;
+        canEditConsultation: boolean;
         print_size: string | null;
         width_ft: string | null;
         height_ft: string | null;
@@ -407,6 +411,47 @@ function outcomeLabel(outcome: string | null): string {
                         Open the file the customer supplied
                     </a>
                 </div>
+            </CardContent>
+        </Card>
+
+        <Card v-if="jobOrder.status !== 'assigned'">
+            <CardHeader :icon="MessagesSquare">
+                <CardTitle>Consultation Notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Form
+                    v-if="jobOrder.canEditConsultation"
+                    v-bind="
+                        JobOrderWorkspaceController.updateConsultation.form(
+                            jobOrder.id,
+                        )
+                    "
+                    :options="{ preserveScroll: true }"
+                    class="space-y-4"
+                    v-slot="{ errors, processing }"
+                >
+                    <Textarea
+                        name="consultation_notes"
+                        :default-value="jobOrder.consultation_notes ?? ''"
+                        rows="5"
+                        placeholder="What the customer asked for at the table: wording, colors, logo, sizes."
+                        data-test="consultation-notes-input"
+                    />
+                    <InputError :message="errors.consultation_notes" />
+                    <Button
+                        type="submit"
+                        :disabled="processing"
+                        data-test="save-consultation-notes-button"
+                    >
+                        Save Consultation Notes
+                    </Button>
+                </Form>
+                <p v-else class="text-sm whitespace-pre-line">
+                    {{
+                        jobOrder.consultation_notes ||
+                        'No consultation notes were recorded.'
+                    }}
+                </p>
             </CardContent>
         </Card>
 

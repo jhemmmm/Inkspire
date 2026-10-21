@@ -166,7 +166,7 @@ function cancellationDialogBody(jobOrder: CashierJobOrder): string {
     let body: string;
 
     if (!DESIGN_STARTED_STATUSES.includes(jobOrder.status)) {
-        body = "No cancellation fee applies — design work hasn't started yet.";
+        body = "No cancellation fee applies: design work hasn't started yet.";
     } else {
         const fee = props.cancellationFeeAmount;
         // Coerced defensively (CR-04) — a decimal-cast/raw-SQL-aggregate
@@ -178,9 +178,9 @@ function cancellationDialogBody(jobOrder: CashierJobOrder): string {
         if (downPayment <= 0) {
             body = `A cancellation fee of ${money(fee)} applies since design work has started. Collect this amount from the customer.`;
         } else if (downPayment >= fee) {
-            body = `A cancellation fee of ${money(fee)} applies. The existing down payment of ${money(downPayment)} covers it — ${money(downPayment - fee)} is refundable to the customer.`;
+            body = `A cancellation fee of ${money(fee)} applies. The existing down payment of ${money(downPayment)} covers it, so ${money(downPayment - fee)} is refundable to the customer.`;
         } else {
-            body = `A cancellation fee of ${money(fee)} applies. The existing down payment of ${money(downPayment)} covers part of it — collect the remaining ${money(fee - downPayment)} from the customer.`;
+            body = `A cancellation fee of ${money(fee)} applies. The existing down payment of ${money(downPayment)} covers part of it. Collect the remaining ${money(fee - downPayment)} from the customer.`;
         }
     }
 
@@ -189,7 +189,7 @@ function cancellationDialogBody(jobOrder: CashierJobOrder): string {
     // reminders; only the cancellation fee above stands. Say so, so the
     // Cashier doesn't chase a balance the system has already closed.
     if (jobOrder.accounts_receivable) {
-        body += ` Its On-Credit balance of ${money(Number(jobOrder.accounts_receivable.balance))} is closed by cancelling — the customer no longer owes it.`;
+        body += ` Its On-Credit balance of ${money(Number(jobOrder.accounts_receivable.balance))} is closed by cancelling, so the customer no longer owes it.`;
     }
 
     return body;

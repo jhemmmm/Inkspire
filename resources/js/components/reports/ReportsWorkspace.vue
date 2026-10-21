@@ -182,7 +182,7 @@ function formatDateOnly(iso: string): string {
 const rangeLabel = computed(() =>
     props.filters.from === props.filters.to
         ? formatDateOnly(props.filters.from)
-        : `${formatDateOnly(props.filters.from)} – ${formatDateOnly(props.filters.to)}`,
+        : `${formatDateOnly(props.filters.from)} to ${formatDateOnly(props.filters.to)}`,
 );
 
 // Stamped once per data load (this prop change, not a ticking clock) --
@@ -568,7 +568,7 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                             </Alert>
 
                             <p class="text-muted-foreground text-sm">
-                                Revenue counts money that actually arrived — a
+                                Revenue counts money that actually arrived. A
                                 payment is included on the day it was confirmed,
                                 not the day it was started. Balances still on
                                 credit contribute nothing until they're paid.
@@ -859,8 +859,8 @@ function onApplyRange({ from, to }: { from: string; to: string }): void {
                                             Showing the first 100 of
                                             {{ rowsTotal }} rows. This total
                                             covers every row in the range, not
-                                            just the ones shown &mdash; export
-                                            to see them all.
+                                            just the ones shown. Export to see
+                                            them all.
                                         </TableCell>
                                     </TableRow>
                                 </TableFooter>

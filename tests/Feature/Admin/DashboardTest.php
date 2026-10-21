@@ -22,7 +22,6 @@ test('the dashboard renders on an empty database', function () {
             ->component('admin/Dashboard')
             ->where('attention.creditRequests', 0)
             ->where('attention.writeOffRequests', 0)
-            ->where('attention.lockedDesigns', 0)
             ->where('attention.lockedAccounts', 0)
             ->where('shop.outstandingAmount', 0)
             ->where('shop.unpaidJobOrders', 0)
@@ -66,17 +65,16 @@ test('a write-off request settled since it was raised is not counted', function 
         ->assertInertia(fn (Assert $page) => $page->where('attention.writeOffRequests', 1));
 });
 
-test('locked designs and locked-out accounts are counted', function () {
+test('locked-out accounts are counted, approved designs are not a pending decision', function () {
     $admin = User::factory()->admin()->create();
     DesignFile::factory()->for(JobOrder::factory())->create(['locked_at' => now()]);
-    DesignFile::factory()->for(JobOrder::factory())->create(['locked_at' => null]);
     User::factory()->cashier()->create(['locked_until' => now()->addMinutes(15)]);
     User::factory()->cashier()->create(['locked_until' => now()->subMinutes(15)]);
 
     $this->actingAs($admin)
         ->get(route('admin.dashboard'))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('attention.lockedDesigns', 1)
+            ->missing('attention.lockedDesigns')
             ->where('attention.lockedAccounts', 1));
 });
 

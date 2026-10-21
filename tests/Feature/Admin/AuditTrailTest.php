@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\AuditLog;
+use App\Models\JobOrder;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -291,3 +293,20 @@ test('audit trail date filters name shop days, not UTC days', function (string $
     'the shop day it happened on' => ['2026-10-03', 1],
     'the UTC day it is stored under' => ['2026-10-02', 0],
 ]);
+
+test('audit entries name the record in words staff recognise', function () {
+    $admin = User::factory()->admin()->create(['name' => 'John Michael Mujar']);
+    $jobOrder = JobOrder::factory()->create(['number' => 'JO-2026-0230']);
+    $transaction = Transaction::factory()->for($jobOrder)->create();
+    foreach ([[JobOrder::class, $jobOrder->id], [Transaction::class, $transaction->id], [User::class, $admin->id]] as $at => [$type, $id]) {
+        // Dated ahead of the factories' own audit rows so these sort first.
+        DB::table('audit_trail')->insert(['user_id' => null, 'action' => 'updated', 'auditable_type' => $type, 'auditable_id' => $id, 'created_at' => now()->addMinutes(10 - $at)]);
+    }
+
+    $response = $this->actingAs($admin)->get(route('admin.audit-trail.index'));
+
+    $response->assertInertia(fn (Assert $page) => $page
+        ->where('entries.data.0.record_label', 'Job Order JO-2026-0230')
+        ->where('entries.data.1.record_label', 'Transaction for JO-2026-0230')
+        ->where('entries.data.2.record_label', 'User John Michael Mujar'));
+});

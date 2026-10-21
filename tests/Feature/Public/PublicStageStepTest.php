@@ -18,12 +18,12 @@ test('each public stage reports its position on the customer journey', function 
         ->where('result.stageStep', $expectedStep)
         ->where('result.stage', $expectedLabel));
 })->with([
-    'intake collapses to the first step' => [JobOrderStatus::Intake, 0, 'In Progress'],
-    'in design collapses to the first step' => [JobOrderStatus::InDesign, 0, 'In Progress'],
-    'pending review collapses to the first step' => [JobOrderStatus::PendingReview, 0, 'In Progress'],
-    'for production' => [JobOrderStatus::ForProduction, 1, 'For Production'],
+    'intake collapses to the first step' => [JobOrderStatus::Intake, 0, 'Order received'],
+    'in design collapses to the first step' => [JobOrderStatus::InDesign, 0, 'Order received'],
+    'pending review collapses to the first step' => [JobOrderStatus::PendingReview, 0, 'Order received'],
+    'for production' => [JobOrderStatus::ForProduction, 1, 'Queued for printing'],
     'printing' => [JobOrderStatus::Printing, 2, 'Printing'],
-    'ready for pickup' => [JobOrderStatus::ReadyForPickup, 3, 'Ready for Pickup'],
+    'ready for pickup' => [JobOrderStatus::ReadyForPickup, 3, 'Ready for pickup'],
 ]);
 
 test('a released job order sits on the last step', function () {
@@ -35,7 +35,7 @@ test('a released job order sits on the last step', function () {
     $this->get(route('public.tracking.show', ['number' => $jobOrder->number]))
         ->assertInertia(fn ($page) => $page
             ->where('result.stageStep', 4)
-            ->where('result.stage', 'Completed'));
+            ->where('result.stage', 'Picked up'));
 });
 
 test('a cancelled job order is off the ladder entirely', function () {

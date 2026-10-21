@@ -752,8 +752,8 @@ defineOptions({
                             v-if="isEditingSelf"
                             class="text-muted-foreground text-sm"
                         >
-                            You can't change your own role — another Admin has
-                            to do it, so the portal is never left without one.
+                            You can't change your own role. Another Admin has to
+                            do it, so the portal is never left without one.
                         </p>
                         <p
                             v-else-if="

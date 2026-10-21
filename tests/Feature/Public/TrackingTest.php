@@ -39,7 +39,7 @@ test('every pre-production status collapses to the In Progress public label', fu
 
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
-        ->where('result.stage', 'In Progress'));
+        ->where('result.stage', 'Order received'));
 })->with([
     JobOrderStatus::Intake,
     JobOrderStatus::ValidationFailed,
@@ -62,7 +62,7 @@ test('an order with released_at set shows Completed regardless of status', funct
 
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
-        ->where('result.stage', 'Completed'));
+        ->where('result.stage', 'Picked up'));
 });
 
 test('a cancelled job order reports Cancelled, not its production stage', function () {

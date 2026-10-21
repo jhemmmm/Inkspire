@@ -168,7 +168,7 @@ const priceFormula = computed(() => {
 
     if (isSqFt.value) {
         if (widthFt.value === null || heightFt.value === null) {
-            return `${base} per sq ft — enter width and height to see the total`;
+            return `${base} per sq ft. Enter width and height to see the total`;
         }
 
         return `${base} × ${widthFt.value} ft × ${heightFt.value} ft × ${quantity.value} = ${money(computedAmount.value)}`;

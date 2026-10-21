@@ -45,6 +45,9 @@ class ReceiptController extends Controller
             'customerName' => $jobOrder->queueEntry?->customer?->name,
             'latestTransaction' => $latestTransaction ? [
                 'payment_method' => $latestTransaction->payment_method,
+                // Unique and in issue order: the transaction's own id, under the
+                // year it was paid. Shown so a customer can quote one payment.
+                'receipt_number' => sprintf('R-%s-%06d', ($latestTransaction->confirmed_at ?? $latestTransaction->created_at)->format('Y'), $latestTransaction->id),
             ] : null,
             'amountPaid' => $amountPaid,
             'balance' => $balance,

@@ -155,7 +155,7 @@ function whereToSend(result: JobOrderSearchResult): string {
     }
 
     if (result.display_status === 'ready_for_pickup') {
-        return 'On the shelf — ready to hand over.';
+        return 'On the shelf, ready to hand over.';
     }
 
     if (result.assigned_artist) {
@@ -247,7 +247,7 @@ function timeAgo(isoString: string): string {
 
         <SectionHeading
             title="Find a Job Order"
-            description="Search by job order number, description, or customer name — at any stage, not just the ones ready for pickup."
+            description="Search by job order number, description, or customer name, at any stage, not just the ones ready for pickup."
         />
 
         <DataTableCard>

@@ -12,5 +12,5 @@
 
 {{ $closing }}
 
-{{ config('app.name') }} — automated accounts receivable notice. No reply is needed.
+{{ config('app.name') }}: automated accounts receivable notice. No reply is needed.
 </x-mail::message>

@@ -76,7 +76,7 @@ class JobOrderController extends Controller
         // If the shop ever needs the full list in PDF past this ceiling,
         // move this export to a queued job instead of raising the cap.
         if ($matched > self::PDF_ROW_CAP) {
-            $meta['note'] = 'Showing '.number_format(self::PDF_ROW_CAP).' of '.number_format($matched).' — narrow the filters or use Excel.';
+            $meta['note'] = 'Showing '.number_format(self::PDF_ROW_CAP).' of '.number_format($matched).'. Narrow the filters or use Excel.';
         }
 
         $built = $this->buildTableRows($jobOrders);

@@ -195,7 +195,7 @@ function artistDestination(jobOrder: JobOrderRecord): string {
     }
 
     return artist.artist_label
-        ? `${artist.artist_label} — ${artist.name}`
+        ? `${artist.artist_label}: ${artist.name}`
         : artist.name;
 }
 
@@ -613,7 +613,7 @@ function visitTotal(entry: QueueEntryRecord): number {
                                                             <Label
                                                                 :for="`add-job-order-type-a-${entry.id}`"
                                                             >
-                                                                Type A —
+                                                                Type A:
                                                                 Print-ready file
                                                             </Label>
                                                         </div>
@@ -627,7 +627,7 @@ function visitTotal(entry: QueueEntryRecord): number {
                                                             <Label
                                                                 :for="`add-job-order-type-b-${entry.id}`"
                                                             >
-                                                                Type B — Needs
+                                                                Type B: Needs
                                                                 consultation
                                                             </Label>
                                                         </div>

@@ -10,7 +10,6 @@ import {
     Layers,
     Lock,
     Ticket,
-    Unlock,
     UserCheck,
     Wallet,
 } from '@lucide/vue';
@@ -48,7 +47,6 @@ import { jobOrderStatusLabel, money } from '@/lib/jobOrders';
 import { dashboard } from '@/routes/admin';
 import { index as auditTrailIndex } from '@/routes/admin/audit-trail';
 import { index as creditRequestsIndex } from '@/routes/admin/credit-requests';
-import { index as designOverridesIndex } from '@/routes/admin/design-overrides';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as usersIndex } from '@/routes/admin/users';
 import { index as writeOffRequestsIndex } from '@/routes/admin/write-off-requests';
@@ -57,7 +55,6 @@ const props = defineProps<{
     attention: {
         creditRequests: number;
         writeOffRequests: number;
-        lockedDesigns: number;
         lockedAccounts: number;
     };
     shop: {
@@ -74,7 +71,7 @@ const props = defineProps<{
     recentActivity: {
         id: number;
         action: string;
-        entity: string;
+        entity: string | null;
         user: string | null;
         created_at: string | null;
     }[];
@@ -97,7 +94,7 @@ defineOptions({
 });
 
 /**
- * The four decisions only an Admin can make. Each tile links to the page
+ * The decisions only an Admin can make. Each tile links to the page
  * that makes it, and turns `attention` the moment it is non-zero — these
  * are queues where waiting has a cost to somebody else.
  */
@@ -117,14 +114,6 @@ const attentionTiles = computed(() => [
         hint: 'Accounting has asked to write these receivables off.',
         icon: FileMinus,
         href: writeOffRequestsIndex(),
-    },
-    {
-        key: 'designs',
-        label: 'Locked Designs',
-        value: props.attention.lockedDesigns,
-        hint: 'An artist cannot edit these again until you unlock them.',
-        icon: Unlock,
-        href: designOverridesIndex(),
     },
     {
         key: 'accounts',
@@ -202,7 +191,7 @@ function actionLabel(action: string): string {
             Nothing is waiting on you right now.
         </p>
 
-        <div class="grid grid-cols-1 gap-4 @lg:grid-cols-2 @5xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-4 @lg:grid-cols-3">
             <Link
                 v-for="tile in attentionTiles"
                 :key="tile.key"
@@ -223,7 +212,7 @@ function actionLabel(action: string): string {
 
         <SectionHeading
             title="The Shop Today"
-            description="Live counts, derived on read — nothing here is stored or needs syncing."
+            description="Live counts, derived on read. Nothing here is stored or needs syncing."
         />
 
         <div class="grid grid-cols-1 gap-4 @lg:grid-cols-2 @5xl:grid-cols-4">

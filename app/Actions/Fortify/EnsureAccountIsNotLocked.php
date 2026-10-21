@@ -25,11 +25,7 @@ class EnsureAccountIsNotLocked
         }
 
         if ($user->locked_until?->isFuture()) {
-            throw ValidationException::withMessages([
-                'email' => [__('Too many failed attempts. This account is locked for :minutes minutes. Contact your Admin if you need immediate access.', [
-                    'minutes' => now()->diffInMinutes($user->locked_until),
-                ])],
-            ]);
+            throw self::lockedException($user);
         }
 
         if (! $user->is_active) {
@@ -39,5 +35,19 @@ class EnsureAccountIsNotLocked
         }
 
         return $next($request);
+    }
+
+    /**
+     * The error a locked-out account gets, both on the attempt that locks it
+     * and on every attempt until the lock expires. Minutes are rounded up:
+     * Carbon 3 returns a fractional diff, which read as "14.98 minutes".
+     */
+    public static function lockedException(User $user): ValidationException
+    {
+        return ValidationException::withMessages([
+            'email' => [__('Too many failed attempts. This account is locked for :minutes minutes. Contact your Admin if you need immediate access.', [
+                'minutes' => (int) ceil(now()->diffInMinutes($user->locked_until)),
+            ])],
+        ]);
     }
 }

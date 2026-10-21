@@ -466,11 +466,11 @@ const discountCapHelper = computed(() =>
 </script>
 
 <template>
-    <Head :title="`Job Order Payment — ${jobOrder.description}`" />
+    <Head :title="`Job Order Payment: ${jobOrder.description}`" />
 
     <PageContainer>
         <PageHeader
-            :title="`Job Order Payment — ${jobOrder.description}`"
+            :title="`Job Order Payment: ${jobOrder.description}`"
             description="Confirm the pricing, then take the payment. Both panels submit together."
         />
 

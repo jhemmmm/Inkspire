@@ -162,7 +162,7 @@ function clearFilters(): void {
  */
 function printedSizeLabel(option: SpecificationOption): string {
     if (option.width_inches === null || option.height_inches === null) {
-        return 'Not set — file check skipped';
+        return 'Not set, file check skipped';
     }
 
     return `${option.width_inches}″ × ${option.height_inches}″`;
@@ -459,8 +459,8 @@ function deleteOption(option: SpecificationOption): void {
                                                             .toLowerCase()
                                                             .replace(/s$/, '')
                                                     }}
-                                                    keep it — they store the
-                                                    name, not a link to this
+                                                    keep it, since they store
+                                                    the name, not a link to this
                                                     row. Retire it instead if
                                                     you only want it gone from
                                                     new job orders.

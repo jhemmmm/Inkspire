@@ -162,12 +162,12 @@ class QueueEntryController extends Controller
     private function jobOrderOutcomeToastMessage(JobOrder $jobOrder): string
     {
         return match ($jobOrder->status) {
-            JobOrderStatus::ReadyForProduction => __('Job order added — ready for production.'),
-            JobOrderStatus::ForProduction => __('Job order added — ready for production.'),
-            JobOrderStatus::ValidationFailed => __('Job order added — this file can\'t be used. See details in the queue list.'),
+            JobOrderStatus::ReadyForProduction => __('Job order added. Ready for production.'),
+            JobOrderStatus::ForProduction => __('Job order added. Ready for production.'),
+            JobOrderStatus::ValidationFailed => __('Job order added, but this file can\'t be used. See details in the queue list.'),
             JobOrderStatus::Intake => $jobOrder->validation_failure_reason === null
-                ? __('Job order added — waiting for an artist to accept it.')
-                : __('Job order added — the file needs an artist to improve it before printing.'),
+                ? __('Job order added. Waiting for an artist to accept it.')
+                : __('Job order added. The file needs an artist to improve it before printing.'),
             default => __('Job order added.'),
         };
     }

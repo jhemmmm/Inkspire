@@ -29,7 +29,7 @@ class DesignReviewRequested extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: __('Your design is ready for review — :description', ['description' => $this->revisionLog->jobOrder->description]),
+            subject: __('Your design is ready for review: :description', ['description' => $this->revisionLog->jobOrder->description]),
         );
     }
 

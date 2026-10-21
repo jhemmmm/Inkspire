@@ -72,11 +72,11 @@ class TrackingController extends Controller
      * @var array<int, string>
      */
     private const array PUBLIC_STAGE_ORDER = [
-        'In Progress',
-        'For Production',
+        'Order received',
+        'Queued for printing',
         'Printing',
-        'Ready for Pickup',
-        'Completed',
+        'Ready for pickup',
+        'Picked up',
     ];
 
     /**
@@ -249,7 +249,7 @@ class TrackingController extends Controller
     /**
      * Map a job order's internal status (and released/cancelled state) to
      * the public, customer-facing stage label (D-02, 06-UI-SPEC.md §5).
-     * Every pre-production status collapses into "In Progress" so the
+     * Every pre-production status collapses into "Order received" so the
      * public page never leaks an internal validation-failure or
      * design-review state.
      *
@@ -267,14 +267,14 @@ class TrackingController extends Controller
         }
 
         if ($jobOrder->released_at !== null) {
-            return 'Completed';
+            return 'Picked up';
         }
 
         return match ($jobOrder->status) {
-            JobOrderStatus::ForProduction => 'For Production',
+            JobOrderStatus::ForProduction => 'Queued for printing',
             JobOrderStatus::Printing => 'Printing',
-            JobOrderStatus::ReadyForPickup => 'Ready for Pickup',
-            default => 'In Progress',
+            JobOrderStatus::ReadyForPickup => 'Ready for pickup',
+            default => 'Order received',
         };
     }
 
@@ -285,6 +285,9 @@ class TrackingController extends Controller
      * renders an ended journey instead of a step. An integer carries no
      * status vocabulary at all, which is what keeps the raw enum out of the
      * response.
+     *
+     * The labels are the timeline's own step titles (OrderProgress.vue), so
+     * the page's headline can never contradict the step it highlights.
      *
      * The page's own step copy must stay the same length and order as
      * PUBLIC_STAGE_ORDER; OrderProgress.vue names this file for that reason,
