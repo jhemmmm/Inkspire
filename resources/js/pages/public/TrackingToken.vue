@@ -1,14 +1,25 @@
 <script setup lang="ts">
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
     AlertCircle,
     ArrowRight,
     CircleCheck,
     Clock,
+    PackageCheck,
     PencilRuler,
     ScanLine,
 } from '@lucide/vue';
 import { computed, nextTick, ref } from 'vue';
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/alert-dialog';
 import InkCard from '@/components/InkCard.vue';
 import OrderProgress from '@/components/OrderProgress.vue';
 import PublicNotice from '@/components/PublicNotice.vue';
@@ -31,6 +42,7 @@ interface TrackingTokenResult {
         amountDue: number;
         state: 'due' | 'pending' | 'paid';
     } | null;
+    pickup?: 'awaiting' | 'confirmed' | null;
 }
 
 const props = defineProps<{
@@ -40,6 +52,11 @@ const props = defineProps<{
 const isLive = useTrackingPoll(() => props.result);
 
 const page = usePage();
+
+/** The page's own address without its query, which every action posts under. */
+const trackingPath = computed(() => page.url.split('?')[0]);
+
+const confirmingPickup = ref(false);
 
 const paying = ref(false);
 
@@ -56,10 +73,8 @@ const paymentError = computed(
  * to PayMongo's own page, which Inertia follows as a full-page visit.
  */
 function pay(method: 'gcash' | 'maya'): void {
-    const path = page.url.split('?')[0];
-
     router.post(
-        `${path}/pay`,
+        `${trackingPath.value}/pay`,
         { payment_method: method },
         {
             only: ['result', 'errors'],
@@ -127,7 +142,7 @@ function pay(method: 'gcash' | 'maya'): void {
                 <!-- What the customer has to do comes before the ladder: on a
                      phone the ladder alone fills most of the first screen. -->
                 <div
-                    v-if="result.reviewUrl || result.payment"
+                    v-if="result.reviewUrl || result.payment || result.pickup"
                     class="flex flex-col gap-4 px-6 pt-6 sm:px-10"
                 >
                     <div
@@ -165,6 +180,89 @@ function pay(method: 'gcash' | 'maya'): void {
                             Review your design
                             <ArrowRight class="size-4" />
                         </a>
+                    </div>
+
+                    <div
+                        v-if="result.pickup === 'awaiting'"
+                        class="bg-muted/60 border-border flex flex-col gap-4 rounded-xl border p-5"
+                        data-test="tracking-token-pickup"
+                    >
+                        <div class="flex items-start gap-3">
+                            <span
+                                class="bg-accent text-accent-foreground flex size-10 shrink-0 items-center justify-center rounded-xl"
+                            >
+                                <PackageCheck class="size-5" />
+                            </span>
+                            <div class="flex flex-col gap-0.5">
+                                <p class="font-bold">
+                                    Did you receive your order?
+                                </p>
+                                <p class="text-muted-foreground text-sm">
+                                    Our staff marked it as picked up. Confirm it
+                                    so we know you have it. If you did not
+                                    receive it, contact the shop.
+                                </p>
+                            </div>
+                        </div>
+                        <AlertDialog v-model:open="confirmingPickup">
+                            <AlertDialogTrigger as-child>
+                                <Button
+                                    type="button"
+                                    size="lg"
+                                    class="w-full"
+                                    data-test="confirm-pickup-open-button"
+                                >
+                                    Confirm I received my order
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Confirm you received this order?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        You can't undo this.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                        Not yet
+                                    </AlertDialogCancel>
+                                    <Form
+                                        :action="`${trackingPath}/received`"
+                                        method="post"
+                                        :options="{ preserveScroll: true }"
+                                        v-slot="{ processing }"
+                                        @success="confirmingPickup = false"
+                                    >
+                                        <Button
+                                            type="submit"
+                                            class="w-full"
+                                            :disabled="processing"
+                                            data-test="confirm-pickup-button"
+                                        >
+                                            <Spinner v-if="processing" />
+                                            Yes, I received it
+                                        </Button>
+                                    </Form>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+
+                    <div
+                        v-else-if="result.pickup === 'confirmed'"
+                        class="bg-success/10 border-success/20 flex items-center gap-3 rounded-xl border p-5"
+                        data-test="tracking-token-pickup-confirmed"
+                    >
+                        <span
+                            class="bg-success/15 text-success flex size-10 shrink-0 items-center justify-center rounded-xl"
+                        >
+                            <CircleCheck class="size-5" />
+                        </span>
+                        <p class="font-bold">
+                            You confirmed you received this order. Thank you.
+                        </p>
                     </div>
 
                     <div

@@ -89,8 +89,9 @@ function checkAnother(): void {
                     <p
                         class="text-muted-foreground mt-2 text-sm leading-relaxed"
                     >
-                        Here is where your order is right now. To pay online or
-                        to check your design, scan the QR code on your slip.
+                        Here is where your order is right now. To pay online,
+                        check your design or confirm you received it, scan the
+                        QR code on your slip.
                     </p>
                 </div>
 

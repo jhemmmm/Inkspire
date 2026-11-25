@@ -76,6 +76,7 @@ class JobOrderController extends Controller
                 'created_at' => $jobOrder->created_at?->toIso8601String(),
                 'accepted_at' => $jobOrder->accepted_at?->toIso8601String(),
                 'released_at' => $jobOrder->released_at?->toIso8601String(),
+                'pickup_confirmed_at' => $jobOrder->pickup_confirmed_at?->toIso8601String(),
                 'cancelled_at' => $jobOrder->cancelled_at?->toIso8601String(),
                 'tracking_token' => $jobOrder->tracking_token,
                 'queue_entry' => $jobOrder->queueEntry === null ? null : [

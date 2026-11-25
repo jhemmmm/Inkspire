@@ -54,7 +54,7 @@ export function useLivePoll(only: string[]): void {
  * per-IP rate-limit bucket forever on every device that ever opened the
  * order, without the answer ever changing again.
  */
-const TERMINAL_STAGES = ['Completed', 'Cancelled'];
+const TERMINAL_STAGES = ['Picked up', 'Cancelled'];
 
 /**
  * The public tracking pages' poll of their `result` prop: every 5s, like the

@@ -45,7 +45,7 @@ class TrackingController extends Controller
      *
      * @var array<int, string>
      */
-    private const array TOKEN_COLUMNS = ['id', 'number', 'status', 'released_at', 'cancelled_at', 'total_amount', 'payment_status'];
+    private const array TOKEN_COLUMNS = ['id', 'number', 'status', 'released_at', 'cancelled_at', 'pickup_confirmed_at', 'total_amount', 'payment_status'];
 
     /**
      * Seconds between PayMongo look-ups for one job order's pending
@@ -116,14 +116,15 @@ class TrackingController extends Controller
      * design-review flow when a verdict is pending.
      *
      * The query is TOKEN_COLUMNS and nothing else. The result is `found`,
-     * `number`, `stage`, `stageStep`, `reviewUrl` and `payment`.
+     * `number`, `stage`, `stageStep`, `reviewUrl`, `payment` and `pickup`.
      * `description` and `print_size` are excluded on purpose even though a
      * customer arguably owns both: a description is free text a staff member
      * may have typed a customer's name into, so the narrower shape is the
      * defensible one. `stageStep` is an integer position, not a status --
      * see PUBLIC_STAGE_ORDER. `payment` is deliberately shown to the token's
      * bearer, because the token is the customer's own credential; it is null
-     * whenever there is nothing to pay online.
+     * whenever there is nothing to pay online. `pickup` is a state, never the
+     * time it happened, and null until staff release the order.
      */
     public function showByToken(string $token): Response
     {
@@ -151,6 +152,7 @@ class TrackingController extends Controller
                 'stageStep' => $this->publicStageStep($jobOrder),
                 'reviewUrl' => $this->designReviewUrl($jobOrder),
                 'payment' => $this->paymentSummary($jobOrder),
+                'pickup' => $jobOrder->pickupState(),
             ],
         ]);
     }

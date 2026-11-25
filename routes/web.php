@@ -3,6 +3,7 @@
 use App\Http\Controllers\Public\DesignReviewController;
 use App\Http\Controllers\Public\OnlineOrderController;
 use App\Http\Controllers\Public\OnlinePaymentController;
+use App\Http\Controllers\Public\PickupConfirmationController;
 use App\Http\Controllers\Public\QueueDisplayController;
 use App\Http\Controllers\Public\TrackingController;
 use App\Http\Controllers\Webhooks\PaymongoWebhookController;
@@ -72,6 +73,13 @@ Route::get('track/{token}', [TrackingController::class, 'showByToken'])
 Route::post('track/{token}/pay', [OnlinePaymentController::class, 'store'])
     ->middleware('throttle:30,1,track-pay')
     ->name('public.tracking.pay');
+
+// A customer confirming, from that tracking page, that they received an order
+// staff had already released. The token is the credential; nothing is read
+// from the request.
+Route::post('track/{token}/received', [PickupConfirmationController::class, 'store'])
+    ->middleware('throttle:30,1,track-received')
+    ->name('public.tracking.received');
 
 // Public, unauthenticated, signed-URL-protected (D-17 through D-21) — the
 // client's remote design-review path, reached only via an emailed

@@ -21,6 +21,16 @@ test('frontline staff can open any job order, whatever stage it is at', function
         ->has('jobOrder.production_logs'));
 });
 
+test('the detail view shows when the customer confirmed the pickup', function () {
+    $jobOrder = JobOrder::factory()->create();
+    $jobOrder->forceFill(['released_at' => '2026-11-20 09:00:00', 'pickup_confirmed_at' => '2026-11-20 10:00:00'])->save();
+
+    $this->actingAs(User::factory()->frontlineStaff()->create())
+        ->get(route('frontline-staff.job-orders.show', $jobOrder))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('jobOrder.pickup_confirmed_at', $jobOrder->pickup_confirmed_at->toIso8601String()));
+});
+
 test('the detail view carries the file check reason so the counter can explain it', function () {
     $frontline = User::factory()->frontlineStaff()->create();
     $jobOrder = JobOrder::factory()->typeA()->create([

@@ -26,7 +26,9 @@ test('looking up an existing job order returns its mapped public stage', functio
         ->component('public/Tracking')
         ->where('result.found', true)
         ->where('result.number', 'JO-2026-0001')
-        ->where('result.stage', 'Printing'));
+        ->where('result.stage', 'Printing')
+        // Confirming a pickup needs the slip's token; a number is guessable.
+        ->missing('result.pickup'));
 });
 
 test('every pre-production status collapses to the In Progress public label', function (JobOrderStatus $status) {

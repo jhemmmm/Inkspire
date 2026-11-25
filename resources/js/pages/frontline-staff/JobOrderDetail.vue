@@ -72,6 +72,7 @@ interface JobOrderDetail {
     created_at: string | null;
     accepted_at: string | null;
     released_at: string | null;
+    pickup_confirmed_at: string | null;
     cancelled_at: string | null;
     tracking_token: string | null;
     queue_entry: {
@@ -396,6 +397,14 @@ const completedPaid = computed((): number =>
                             {{ dateTime(jobOrder.released_at) }}
                         </span>
                     </div>
+                    <div class="flex justify-between gap-4">
+                        <span class="text-muted-foreground">
+                            Customer confirmed
+                        </span>
+                        <span class="text-right tabular-nums">
+                            {{ dateTime(jobOrder.pickup_confirmed_at) }}
+                        </span>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -561,8 +570,18 @@ const completedPaid = computed((): number =>
             v-if="jobOrder.released_at !== null"
             class="text-muted-foreground flex items-center gap-2 text-sm"
         >
-            <PackageCheck class="size-4" />
-            Released to the customer on {{ dateTime(jobOrder.released_at) }}.
+            <PackageCheck class="size-4 shrink-0" />
+            <p data-test="released-note">
+                Released to the customer on
+                {{ dateTime(jobOrder.released_at) }}.
+                <template v-if="jobOrder.pickup_confirmed_at !== null">
+                    The customer confirmed receiving it on
+                    {{ dateTime(jobOrder.pickup_confirmed_at) }}.
+                </template>
+                <template v-else>
+                    Waiting for the customer to confirm.
+                </template>
+            </p>
         </div>
     </PageContainer>
 </template>

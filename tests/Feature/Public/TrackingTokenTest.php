@@ -52,17 +52,31 @@ test('a valid token renders the tracking page with the number and its public sta
     $response->assertOk();
     $response->assertInertia(fn (Assert $page) => $page
         ->component('public/TrackingToken')
-        // Exactly six keys. Any future widening of this payload fails here,
+        // Exactly seven keys. Any future widening of this payload fails here,
         // loudly, which is the point. `payment` is the amount due and a
         // three-value state, shown to the token's bearer only.
-        ->has('result', 6)
+        ->has('result', 7)
         ->where('result.found', true)
         ->where('result.number', 'JO-2026-0777')
         ->where('result.stage', 'Printing')
         ->where('result.stageStep', 2)
         ->where('result.reviewUrl', null)
-        ->where('result.payment', ['amountDue' => 8642.75, 'state' => 'due']));
+        ->where('result.payment', ['amountDue' => 8642.75, 'state' => 'due'])
+        ->where('result.pickup', null));
 });
+
+test('the pickup state follows the release and the customer\'s confirmation', function (array $attributes, ?string $state) {
+    $jobOrder = trackedJobOrder(['status' => JobOrderStatus::ReadyForPickup->value]);
+    $jobOrder->forceFill($attributes)->save();
+
+    $this->get(route('public.tracking.token', ['token' => $jobOrder->tracking_token]))
+        ->assertInertia(fn (Assert $page) => $page->where('result.pickup', $state));
+})->with([
+    'not released' => [[], null],
+    'released' => [['released_at' => '2026-11-20 09:00:00'], 'awaiting'],
+    'confirmed' => [['released_at' => '2026-11-20 09:00:00', 'pickup_confirmed_at' => '2026-11-20 10:00:00'], 'confirmed'],
+    'cancelled' => [['released_at' => '2026-11-20 09:00:00', 'cancelled_at' => '2026-11-20 10:00:00'], null],
+]);
 
 test('an unknown token renders a readable not-found state rather than an error page', function () {
     $response = $this->get(route('public.tracking.token', ['token' => 'thisisnotarealtrackingtoken00000']));
