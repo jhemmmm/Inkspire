@@ -14,6 +14,6 @@ git archive HEAD | ssh "$host" '
     mkdir -p /opt/inkspire && cd /opt/inkspire
     find . -mindepth 1 -maxdepth 1 ! -name .env -exec rm -rf {} +
     tar -x
-    docker compose up -d --build --remove-orphans
     docker system prune -f
+    docker compose up -d --build --remove-orphans
 '

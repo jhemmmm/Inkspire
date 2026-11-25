@@ -19,7 +19,6 @@ name: inkspire
 
 x-app: &app
     image: inkspire
-    build: .
     restart: unless-stopped
     network_mode: host
     volumes:
@@ -65,6 +64,7 @@ x-app: &app
 services:
     app:
         <<: *app
+        build: .
         depends_on:
             mysql:
                 condition: service_healthy
@@ -73,8 +73,11 @@ services:
             interval: 30s
             start_period: 60s
 
+    # Runs the image app builds instead of building its own copy: two builds
+    # at once run the server's 7.8 GB disk out of space during npm ci.
     scheduler:
         <<: *app
+        pull_policy: never
         command: php artisan schedule:work
         depends_on:
             app:
