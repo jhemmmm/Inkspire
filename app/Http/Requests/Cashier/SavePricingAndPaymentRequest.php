@@ -87,7 +87,7 @@ class SavePricingAndPaymentRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            if ($this->input('payment_type') !== 'down') {
+            if ($this->input('payment_type') !== 'down' || $validator->errors()->has('down_payment_amount')) {
                 return;
             }
 
@@ -96,11 +96,12 @@ class SavePricingAndPaymentRequest extends FormRequest
 
             // Duplicated rather than injecting PaymentController, since
             // FormRequests are constructed independently of controllers.
-            $amountPaid = $jobOrder->transactions()
+            $amountPaid = (float) $jobOrder->transactions()
                 ->where('status', TransactionStatus::Completed->value)
                 ->sum('amount');
 
             if (! $this->pricingIsStillEditable()) {
+                $total = (float) $jobOrder->total_amount;
                 $remainingBalance = $jobOrder->outstandingBalance();
             } else {
                 // First pricing/payment visit (WR-01) — the total this down
@@ -121,11 +122,26 @@ class SavePricingAndPaymentRequest extends FormRequest
                     $this->input('discount_value') !== null ? (float) $this->input('discount_value') : null,
                 );
 
-                $remainingBalance = $computed['total_amount'] - $amountPaid;
+                $total = $computed['total_amount'];
+                $remainingBalance = $total - $amountPaid;
             }
 
             if ($downPaymentAmount > $remainingBalance) {
                 $validator->errors()->add('down_payment_amount', __('Down payment cannot exceed the remaining balance.'));
+
+                return;
+            }
+
+            // Whole centavos, rounded up, so the page's own figure
+            // (JobOrderPayment.vue) always agrees with this one.
+            $percentage = $jobOrder->downPaymentMinimumPercentage();
+            $minimumDue = ceil(round($total * 100) * $percentage / 100) - round($amountPaid * 100);
+
+            if (round($downPaymentAmount * 100) < $minimumDue) {
+                $validator->errors()->add('down_payment_amount', __('Take at least ₱:amount. The minimum down payment is :percent% of the total.', [
+                    'amount' => number_format($minimumDue / 100, 2),
+                    'percent' => $percentage,
+                ]));
             }
         });
     }

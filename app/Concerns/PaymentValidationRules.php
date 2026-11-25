@@ -36,8 +36,8 @@ trait PaymentValidationRules
                 'string',
                 'max:255',
             ],
-            // D-14: no configured minimum down payment — min:0.01 only
-            // excludes a literal zero/blank submission, not a business rule.
+            // The minimum down payment depends on the order's total, so it is
+            // checked in SavePricingAndPaymentRequest::withValidator().
             'down_payment_amount' => ['required_if:payment_type,down', 'nullable', 'numeric', 'min:0.01'],
         ];
     }

@@ -132,14 +132,14 @@ class DemoDataSeeder extends Seeder
                 [TransactionType::FullPayment, 4500, PaymentMethod::BankTransfer, 8],
             ]],
             ['total' => 2500, 'status' => PaymentStatus::PartiallyPaid, 'day' => 7, 'payments' => [
-                [TransactionType::DownPayment, 1000, PaymentMethod::Gcash, 7],
+                [TransactionType::DownPayment, 1250, PaymentMethod::Gcash, 7],
             ]],
             ['total' => 6000, 'status' => PaymentStatus::Paid, 'day' => 6, 'payments' => [
                 [TransactionType::FullPayment, 6000, PaymentMethod::Maya, 6],
             ]],
             ['total' => 3500, 'status' => PaymentStatus::Paid, 'day' => 5, 'payments' => [
-                [TransactionType::DownPayment, 1500, PaymentMethod::Cash, 3],
-                [TransactionType::BalancePayment, 2000, PaymentMethod::Gcash, 5],
+                [TransactionType::DownPayment, 1750, PaymentMethod::Cash, 3],
+                [TransactionType::BalancePayment, 1750, PaymentMethod::Gcash, 5],
             ]],
             ['total' => 2000, 'status' => PaymentStatus::Paid, 'day' => 4, 'payments' => [
                 [TransactionType::FullPayment, 2000, PaymentMethod::Cash, 4],
@@ -148,7 +148,7 @@ class DemoDataSeeder extends Seeder
                 [TransactionType::FullPayment, 5000, PaymentMethod::BankTransfer, 3],
             ]],
             ['total' => 1800, 'status' => PaymentStatus::PartiallyPaid, 'day' => 2, 'payments' => [
-                [TransactionType::DownPayment, 800, PaymentMethod::Maya, 2],
+                [TransactionType::DownPayment, 900, PaymentMethod::Maya, 2],
             ]],
             ['total' => 4000, 'status' => PaymentStatus::Paid, 'day' => 2, 'payments' => [
                 [TransactionType::FullPayment, 4000, PaymentMethod::Gcash, 2],
@@ -395,14 +395,14 @@ class DemoDataSeeder extends Seeder
             'job_order_id' => $jobOrder->id,
             'type' => TransactionType::DownPayment->value,
             'payment_method' => PaymentMethod::Cash->value,
-            'amount' => 300,
+            'amount' => 400,
             'confirmed_at' => $day->copy()->subDays(20),
             'recorded_by' => $cashier->id,
         ]);
 
         $receivable = AccountsReceivable::factory()->create([
             'job_order_id' => $jobOrder->id,
-            'balance' => 500,
+            'balance' => 400,
             'status' => AccountsReceivableStatus::Active->value,
             'requested_by' => $cashier->id,
         ]);

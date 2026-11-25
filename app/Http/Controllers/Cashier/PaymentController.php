@@ -55,6 +55,7 @@ class PaymentController extends Controller
             'rushFeePercentage' => SystemConfiguration::getFloat('rush_fee_percentage', 0.0),
             'discountCapPercentage' => SystemConfiguration::getFloat('discount_cap_percentage', 20.0),
             'discountCapFlatAmount' => SystemConfiguration::getFloat('discount_cap_flat_amount', 500.0),
+            'downPaymentMinimumPercentage' => $jobOrder->downPaymentMinimumPercentage(),
             'pricingLocked' => ! $jobOrder->pricingIsEditable(),
             'amountPaid' => $amountPaid,
             'remainingBalance' => $remainingBalance,

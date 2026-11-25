@@ -125,6 +125,14 @@ class SystemConfigurationSeeder extends Seeder
                 'description' => null,
             ],
             [
+                'key' => 'down_payment_minimum_percentage',
+                'group' => 'business_rules',
+                'value' => 50,
+                'type' => 'integer',
+                'label' => 'Minimum down payment (%)',
+                'description' => 'From 50 to 60. Payments already made count toward it.',
+            ],
+            [
                 'key' => 'credit_term_days',
                 'group' => 'business_rules',
                 'value' => 30,

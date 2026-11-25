@@ -24,6 +24,10 @@ class UpdateSystemConfigurationRequest extends FormRequest
             abort(404);
         }
 
+        if ($configuration->key === 'down_payment_minimum_percentage') {
+            return ['value' => ['required', 'integer', 'between:50,60']];
+        }
+
         return $this->valueRules($configuration->type);
     }
 }

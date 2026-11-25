@@ -49,3 +49,20 @@ test('an invalid value is rejected and does not persist', function () {
 
     expect(SystemConfiguration::getInt('account_lockout_max_attempts', 0))->toBe(5);
 });
+
+test('the minimum down payment only accepts whole percentages from 50 to 60', function (int|float $value, bool $accepted) {
+    $response = $this->actingAs(User::factory()->admin()->create())->patch(
+        route('admin.system-configuration.update', 'down_payment_minimum_percentage'),
+        ['value' => $value],
+    );
+
+    $accepted ? $response->assertSessionHasNoErrors() : $response->assertSessionHasErrors('value');
+
+    expect(SystemConfiguration::getInt('down_payment_minimum_percentage', 0))->toBe($accepted ? $value : 50);
+})->with([
+    'below' => [49, false],
+    'lowest' => [50, true],
+    'fraction' => [55.5, false],
+    'highest' => [60, true],
+    'above' => [61, false],
+]);

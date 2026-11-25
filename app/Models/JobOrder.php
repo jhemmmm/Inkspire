@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Actions\POS\ComputeJobOrderPrice;
+use App\Enums\AccountsReceivableStatus;
 use App\Enums\JobOrderStatus;
 use App\Enums\JobOrderType;
 use App\Enums\PaymentStatus;
@@ -57,6 +58,7 @@ use Illuminate\Support\Str;
  * @property float|null $total_amount
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $released_at
+ * @property Carbon|null $pickup_confirmed_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property float|null $amount_paid Not a persisted column — only present
@@ -135,6 +137,7 @@ class JobOrder extends Model
             'amount_paid' => 'float',
             'cancelled_at' => 'datetime',
             'released_at' => 'datetime',
+            'pickup_confirmed_at' => 'datetime',
             'due_at' => 'datetime',
             // When an Artist claimed this out of the shared pool. Uncast
             // until now because nothing read it as a date -- QUEUE_ORDER
@@ -363,6 +366,40 @@ class JobOrder extends Model
     public function isClearedForRelease(): bool
     {
         return in_array($this->payment_status, [PaymentStatus::Paid, PaymentStatus::OnCredit], true);
+    }
+
+    /**
+     * The percentage of the total a down payment must bring the customer's
+     * payments to, or 0 when no minimum applies.
+     *
+     * An Active receivable is exempt: Admin already accepted the whole
+     * balance as credit, so a partial payment on it is a collection. The
+     * receivable is what is checked, not `payment_status`, because the first
+     * such payment turns that from OnCredit to PartiallyPaid.
+     */
+    public function downPaymentMinimumPercentage(): int
+    {
+        $onApprovedCredit = $this->accountsReceivable()
+            ->where('status', AccountsReceivableStatus::Active->value)
+            ->exists();
+
+        return $onApprovedCredit ? 0 : SystemConfiguration::getInt('down_payment_minimum_percentage', 50);
+    }
+
+    /**
+     * Where this job order stands for the customer confirming they received
+     * it, shared by the tracking page and the endpoint its button posts to.
+     * Null until staff release the order, and for a cancelled one.
+     *
+     * @return 'awaiting'|'confirmed'|null
+     */
+    public function pickupState(): ?string
+    {
+        if ($this->cancelled_at !== null || $this->released_at === null) {
+            return null;
+        }
+
+        return $this->pickup_confirmed_at === null ? 'awaiting' : 'confirmed';
     }
 
     /**

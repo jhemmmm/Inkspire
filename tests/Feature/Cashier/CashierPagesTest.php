@@ -54,6 +54,7 @@ test('the job order payment page renders the pricing catalog and system config f
         ->component('cashier/JobOrderPayment')
         ->has('pricingEntries', 1)
         ->where('pricingLocked', false)
+        ->where('downPaymentMinimumPercentage', 50)
         ->where('remainingBalance', null)
     );
 });

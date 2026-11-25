@@ -76,6 +76,8 @@ const props = defineProps<{
     rushFeePercentage: number;
     discountCapPercentage: number;
     discountCapFlatAmount: number;
+    /** 0 when no minimum applies (an order on approved credit). */
+    downPaymentMinimumPercentage: number;
     pricingLocked: boolean;
     amountPaid: number;
     remainingBalance: number | null;
@@ -284,6 +286,35 @@ const targetAmount = computed<number>(() =>
 );
 
 /**
+ * The least a down payment may be today: the minimum share of the total,
+ * less what was already paid. Mirrors SavePricingAndPaymentRequest, in whole
+ * centavos rounded up so the two always agree.
+ */
+const minimumDownPayment = computed<number>(() => {
+    const { total, paid } = pricingSummary.value;
+    const minimum =
+        Math.ceil(
+            (Math.round(total * 100) * props.downPaymentMinimumPercentage) /
+                100,
+        ) / 100;
+
+    return Math.max(0, round2(minimum - paid));
+});
+
+const minimumDownPaymentHint = computed<string | null>(() => {
+    if (minimumDownPayment.value <= 0) {
+        return null;
+    }
+
+    const amount = money(minimumDownPayment.value);
+    const percent = props.downPaymentMinimumPercentage;
+
+    return pricingSummary.value.paid > 0
+        ? `${amount} more reaches the ${percent}% minimum.`
+        : `Minimum down payment: ${amount} (${percent}% of the total).`;
+});
+
+/**
  * A cash down payment shows the change calculator only on request, so the
  * usual case (customer hands over the exact down payment) stays one field.
  */
@@ -317,9 +348,13 @@ const cashHint = computed<string>(() => {
     if (received < cashPaysFor.value) {
         const short = money(round2(cashPaysFor.value - received));
 
-        return paymentType.value === 'down'
-            ? `${short} short of the down payment.`
-            : `${short} short. Paying only part now? Choose Down Payment.`;
+        if (paymentType.value === 'down') {
+            return `${short} short of the down payment.`;
+        }
+
+        return received >= minimumDownPayment.value
+            ? `${short} short. Paying only part now? Choose Down Payment.`
+            : `${short} short. A down payment needs at least ${money(minimumDownPayment.value)}.`;
     }
 
     return `Change: ${money(round2(received - cashPaysFor.value))}`;
@@ -335,6 +370,7 @@ watch(paymentType, (type) => {
         type === 'down' &&
         !Number(downPaymentAmount.value) &&
         received > 0 &&
+        received >= minimumDownPayment.value &&
         received < targetAmount.value
     ) {
         downPaymentAmount.value = received;
@@ -798,8 +834,17 @@ const discountCapHelper = computed(() =>
                             name="down_payment_amount"
                             type="number"
                             step="0.01"
-                            min="0.01"
+                            :min="minimumDownPayment || 0.01"
+                            aria-describedby="down-payment-minimum-hint"
                         />
+                        <p
+                            v-if="minimumDownPaymentHint"
+                            id="down-payment-minimum-hint"
+                            class="text-sm font-medium tabular-nums"
+                            data-test="down-payment-minimum"
+                        >
+                            {{ minimumDownPaymentHint }}
+                        </p>
                         <p class="text-muted-foreground text-sm tabular-nums">
                             Balance left after this:
                             {{ money(downPaymentRemainingBalance) }}

@@ -3,11 +3,13 @@
 use App\Enums\PaymentStatus;
 use App\Enums\TransactionStatus;
 use App\Enums\TransactionType;
+use App\Models\AccountsReceivable;
 use App\Models\JobOrder;
 use App\Models\PricingEntry;
 use App\Models\SystemConfiguration;
 use App\Models\Transaction;
 use App\Models\User;
+use Illuminate\Testing\TestResponse;
 use Luigel\Paymongo\Facades\Paymongo;
 
 test('a down payment leaves the job order partially paid and tracks the remaining balance', function () {
@@ -21,7 +23,7 @@ test('a down payment leaves the job order partially paid and tracks the remainin
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'down',
-        'down_payment_amount' => 400,
+        'down_payment_amount' => 500,
     ]);
 
     $response->assertRedirect();
@@ -31,7 +33,7 @@ test('a down payment leaves the job order partially paid and tracks the remainin
     expect((float) $jobOrder->total_amount)->toBe(1000.0);
     expect($jobOrder->transactions()->count())->toBe(1);
     expect($jobOrder->transactions()->first()->type)->toBe(TransactionType::DownPayment);
-    expect((float) $jobOrder->transactions()->first()->amount)->toBe(400.0);
+    expect((float) $jobOrder->transactions()->first()->amount)->toBe(500.0);
 });
 
 test('a second submission against an already-priced job order ignores resubmitted pricing fields and never recomputes the total', function () {
@@ -45,7 +47,7 @@ test('a second submission against an already-priced job order ignores resubmitte
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'down',
-        'down_payment_amount' => 400,
+        'down_payment_amount' => 500,
     ]);
 
     $jobOrder->refresh();
@@ -65,7 +67,7 @@ test('a second submission against an already-priced job order ignores resubmitte
     expect((float) $jobOrder->total_amount)->toBe(1000.0);
     expect($jobOrder->payment_status)->toBe(PaymentStatus::Paid);
     expect($jobOrder->transactions()->count())->toBe(2);
-    expect((float) $jobOrder->transactions()->latest('id')->first()->amount)->toBe(600.0);
+    expect((float) $jobOrder->transactions()->latest('id')->first()->amount)->toBe(500.0);
 });
 
 test('a down payment cannot exceed the remaining balance', function () {
@@ -79,7 +81,7 @@ test('a down payment cannot exceed the remaining balance', function () {
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'down',
-        'down_payment_amount' => 400,
+        'down_payment_amount' => 500,
     ]);
 
     $response = $this->actingAs($cashier)->post(route('cashier.job-orders.payment.store', $jobOrder), [
@@ -88,7 +90,8 @@ test('a down payment cannot exceed the remaining balance', function () {
         'down_payment_amount' => 900,
     ]);
 
-    $response->assertSessionHasErrors('down_payment_amount');
+    $response->assertSessionHasErrors(['down_payment_amount' => 'Down payment cannot exceed the remaining balance.']);
+    expect($jobOrder->transactions()->count())->toBe(1);
 });
 
 test('a down payment cannot exceed the computed total on the very first pricing/payment visit (WR-01)', function () {
@@ -375,4 +378,86 @@ test('a counter payment is refused while the customer has an online checkout ope
     expect(Transaction::count())->toBe(1);
     expect($checkout->fresh()->status)->toBe(TransactionStatus::PendingConfirmation);
     expect($jobOrder->fresh()->payment_status)->toBe(PaymentStatus::PendingConfirmation);
+});
+
+/**
+ * @param  array<string, mixed>  $overrides
+ */
+function recordDownPayment(JobOrder $jobOrder, float $amount, array $overrides = []): TestResponse
+{
+    return test()->actingAs(User::factory()->cashier()->create())
+        ->post(route('cashier.job-orders.payment.store', $jobOrder), [
+            'pricing_entry_id' => PricingEntry::factory()->create()->id,
+            'line_amount' => 1000,
+            'rush_fee_applied' => false,
+            'payment_method' => 'cash',
+            'payment_type' => 'down',
+            'down_payment_amount' => $amount,
+            ...$overrides,
+        ]);
+}
+
+function setDownPaymentMinimum(int $percentage): void
+{
+    SystemConfiguration::query()->where('key', 'down_payment_minimum_percentage')->sole()->update(['value' => $percentage]);
+    SystemConfiguration::invalidate('down_payment_minimum_percentage');
+}
+
+test('a first down payment must reach the minimum of the total', function (int $percentage, array $pricing, float $minimum) {
+    setDownPaymentMinimum($percentage);
+    SystemConfiguration::query()->updateOrCreate(
+        ['key' => 'rush_fee_percentage'],
+        ['group' => 'business_rules', 'value' => 20, 'type' => 'decimal', 'label' => 'Rush fee'],
+    );
+    SystemConfiguration::invalidate('rush_fee_percentage');
+    $jobOrder = JobOrder::factory()->readyForProduction()->create();
+
+    recordDownPayment($jobOrder, round($minimum - 0.01, 2), $pricing)->assertSessionHasErrors([
+        'down_payment_amount' => 'Take at least ₱'.number_format($minimum, 2).". The minimum down payment is {$percentage}% of the total.",
+    ]);
+
+    expect($jobOrder->fresh()->total_amount)->toBeNull()
+        ->and(Transaction::count())->toBe(0);
+
+    recordDownPayment($jobOrder, $minimum, $pricing)->assertSessionHasNoErrors();
+
+    expect((float) $jobOrder->transactions()->sole()->amount)->toBe($minimum);
+})->with([
+    'default' => [50, [], 500.0],
+    'Admin raised it to 60' => [60, [], 600.0],
+    'half a centavo rounds up' => [50, ['line_amount' => 333.33], 166.67],
+    'rush fee counts toward the total' => [50, ['rush_fee_applied' => true], 600.0],
+    'discount comes off the total' => [50, ['discount_type' => 'flat', 'discount_value' => 100], 450.0],
+]);
+
+test('payments already made count toward the minimum', function (float $alreadyPaid, float $refused, float $accepted) {
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::PartiallyPaid]);
+    Transaction::factory()->for($jobOrder)->create(['amount' => $alreadyPaid]);
+
+    recordDownPayment($jobOrder, $refused)->assertSessionHasErrors('down_payment_amount');
+    recordDownPayment($jobOrder, $accepted)->assertSessionHasNoErrors();
+
+    expect($jobOrder->outstandingBalance())->toBe(1000 - $alreadyPaid - $accepted);
+})->with([
+    'still short of it' => [300.0, 199.99, 200.0],
+    'already past it, so any amount' => [500.0, 0.0, 1.0],
+]);
+
+test('an order on approved credit takes installments of any amount', function () {
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::OnCredit]);
+    AccountsReceivable::factory()->active()->for($jobOrder)->create(['balance' => 1000]);
+
+    recordDownPayment($jobOrder, 100)->assertSessionHasNoErrors();
+    recordDownPayment($jobOrder, 100)->assertSessionHasNoErrors();
+
+    expect($jobOrder->transactions()->count())->toBe(2);
+});
+
+test('a rejected credit request does not lift the minimum', function () {
+    $jobOrder = JobOrder::factory()->readyForProduction()->create(['total_amount' => 1000, 'payment_status' => PaymentStatus::CreditRejected]);
+    AccountsReceivable::factory()->rejected()->for($jobOrder)->create(['balance' => 1000]);
+
+    recordDownPayment($jobOrder, 100)->assertSessionHasErrors('down_payment_amount');
+
+    expect($jobOrder->transactions()->count())->toBe(0);
 });

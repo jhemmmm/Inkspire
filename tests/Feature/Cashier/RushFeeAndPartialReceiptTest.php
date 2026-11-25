@@ -106,7 +106,7 @@ test('a down payment lands on the receipt so the customer gets proof of what the
         'rush_fee_applied' => false,
         'payment_method' => 'cash',
         'payment_type' => 'down',
-        'down_payment_amount' => 300,
+        'down_payment_amount' => 500,
     ]);
 
     $response->assertRedirect(route('cashier.job-orders.receipt.show', $jobOrder));
