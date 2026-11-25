@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
-import { Clock } from '@lucide/vue';
+import { Clock, Mail } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import DataTableCard from '@/components/DataTableCard.vue';
+import EmailCustomerBalanceDialog from '@/components/EmailCustomerBalanceDialog.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
@@ -62,6 +63,9 @@ interface AccountsReceivableRow {
     collection_status: string;
     due_at: string | null;
     write_off_requested_at: string | null;
+    customer_email: string;
+    customer_emailed_at: string | null;
+    can_email_customer: boolean;
 }
 
 interface BracketSummary {
@@ -463,14 +467,31 @@ function dueSubLine(row: AccountsReceivableRow): string {
                             </div>
                         </TableCell>
                         <TableCell class="text-right">
-                            <Button as-child variant="outline" size="sm">
-                                <Link
-                                    :href="show.url(row.id)"
-                                    :data-test="`view-entry-${row.id}-link`"
+                            <div class="flex justify-end gap-2">
+                                <EmailCustomerBalanceDialog
+                                    v-if="row.can_email_customer"
+                                    :receivable="row"
                                 >
-                                    View Entry
-                                </Link>
-                            </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        :aria-label="`Email ${row.job_order.queue_entry.customer?.name ?? 'customer'} about ${row.job_order.number ?? 'this order'}`"
+                                        :data-test="`email-customer-${row.id}-button`"
+                                    >
+                                        <Mail class="size-4" />
+                                        Email Customer
+                                    </Button>
+                                </EmailCustomerBalanceDialog>
+                                <Button as-child variant="outline" size="sm">
+                                    <Link
+                                        :href="show.url(row.id)"
+                                        :data-test="`view-entry-${row.id}-link`"
+                                    >
+                                        View Entry
+                                    </Link>
+                                </Button>
+                            </div>
                         </TableCell>
                     </TableRow>
                 </TableBody>

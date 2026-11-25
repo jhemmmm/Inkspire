@@ -24,6 +24,9 @@ use Inertia\Response;
  *     write_off_reason: string|null,
  *     write_off_requested_at: \Illuminate\Support\Carbon|null,
  *     last_reminder_sent_at: \Illuminate\Support\Carbon|null,
+ *     customer_email: string,
+ *     customer_emailed_at: \Illuminate\Support\Carbon|null,
+ *     can_email_customer: bool,
  * }
  */
 class AccountsReceivableController extends Controller
@@ -41,7 +44,7 @@ class AccountsReceivableController extends Controller
     {
         return [
             'jobOrder:id,number,description,total_amount,queue_entry_id',
-            'jobOrder.queueEntry.customer:id,name',
+            'jobOrder.queueEntry.customer:id,name,email',
             'jobOrder.transactions:id,job_order_id,amount,status',
         ];
     }
@@ -56,7 +59,7 @@ class AccountsReceivableController extends Controller
         $entries = AccountsReceivable::query()
             ->where('status', AccountsReceivableStatus::Active->value)
             ->with($this->eagerLoads())
-            ->get(['id', 'job_order_id', 'balance', 'status', 'collection_status', 'due_at', 'write_off_reason', 'write_off_requested_at']);
+            ->get(['id', 'job_order_id', 'balance', 'status', 'collection_status', 'due_at', 'write_off_reason', 'write_off_requested_at', 'customer_emailed_at']);
 
         $rows = $entries->map(fn (AccountsReceivable $accountsReceivable): array => $this->deriveRow($accountsReceivable));
 
@@ -166,6 +169,9 @@ class AccountsReceivableController extends Controller
             'write_off_reason' => $accountsReceivable->write_off_reason,
             'write_off_requested_at' => $accountsReceivable->write_off_requested_at,
             'last_reminder_sent_at' => $accountsReceivable->last_reminder_sent_at,
+            'customer_email' => $accountsReceivable->jobOrder->queueEntry->contactEmail(),
+            'customer_emailed_at' => $accountsReceivable->customer_emailed_at,
+            'can_email_customer' => $accountsReceivable->canEmailCustomer(),
         ];
     }
 }

@@ -7,10 +7,12 @@ import {
     FileMinus,
     FileText,
     ListChecks,
+    Mail,
     Printer,
 } from '@lucide/vue';
 import { computed } from 'vue';
 import WriteOffRequestController from '@/actions/App/Http/Controllers/AccountingStaff/WriteOffRequestController';
+import EmailCustomerBalanceDialog from '@/components/EmailCustomerBalanceDialog.vue';
 import InputError from '@/components/InputError.vue';
 import PageContainer from '@/components/PageContainer.vue';
 import PageHeader from '@/components/PageHeader.vue';
@@ -66,6 +68,9 @@ interface AccountsReceivableDetail {
     write_off_reason: string | null;
     write_off_requested_at: string | null;
     last_reminder_sent_at: string | null;
+    customer_email: string;
+    customer_emailed_at: string | null;
+    can_email_customer: boolean;
     approved_at: string | null;
 }
 
@@ -177,8 +182,8 @@ const { formatTimestamp } = useBusinessTime();
             <AlertTitle>Write-off request submitted</AlertTitle>
             <AlertDescription>
                 {{ money(accountsReceivable.balance) }} is awaiting Admin
-                approval. Reminder emails continue until it's approved. Reason
-                given: "{{ accountsReceivable.write_off_reason }}"
+                approval. Staff reminder emails continue until it's approved.
+                Reason given: "{{ accountsReceivable.write_off_reason }}"
             </AlertDescription>
         </Alert>
 
@@ -257,12 +262,27 @@ const { formatTimestamp } = useBusinessTime();
                 </div>
                 <div class="flex flex-col gap-1">
                     <span class="text-sm font-semibold"
-                        >Last Reminder Sent</span
+                        >Last Staff Reminder</span
                     >
                     <span v-if="accountsReceivable.last_reminder_sent_at">
                         {{
                             formatTimestamp(
                                 accountsReceivable.last_reminder_sent_at,
+                            )
+                        }}
+                    </span>
+                    <span v-else class="text-muted-foreground"
+                        >None sent yet</span
+                    >
+                </div>
+                <div class="flex flex-col gap-1">
+                    <span class="text-sm font-semibold"
+                        >Last Email to Customer</span
+                    >
+                    <span v-if="accountsReceivable.customer_emailed_at">
+                        {{
+                            formatTimestamp(
+                                accountsReceivable.customer_emailed_at,
                             )
                         }}
                     </span>
@@ -334,7 +354,21 @@ const { formatTimestamp } = useBusinessTime();
                 <CardTitle>Actions</CardTitle>
             </CardHeader>
             <CardContent class="flex flex-col gap-2">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
+                    <EmailCustomerBalanceDialog
+                        v-if="accountsReceivable.can_email_customer"
+                        :receivable="accountsReceivable"
+                    >
+                        <Button
+                            type="button"
+                            class="w-fit"
+                            data-test="email-customer-button"
+                        >
+                            <Mail class="size-4" />
+                            Email Customer
+                        </Button>
+                    </EmailCustomerBalanceDialog>
+
                     <Button
                         v-if="
                             !isTerminal &&

@@ -14,6 +14,16 @@ export const BRACKET_LABELS: Record<string, string> = {
     ninety_plus: '90+ Days',
 };
 
+/** What the customer email says at each age, named for the staff sending it. */
+export const CUSTOMER_EMAIL_LABELS: Record<string, string> = {
+    current: 'a friendly reminder that nothing is overdue yet',
+    one_to_fifteen: 'a friendly past-due reminder',
+    sixteen_to_thirty: 'a past-due notice asking for payment within 7 days',
+    thirty_one_to_sixty: 'a formal request for full payment within 7 days',
+    sixty_one_to_ninety: 'an urgent notice, the last before a final notice',
+    ninety_plus: 'a final notice before collection or write-off',
+};
+
 export const COLLECTION_STATUS_LABELS: Record<string, string> = {
     pending: 'Pending',
     follow_up: 'Follow-up',

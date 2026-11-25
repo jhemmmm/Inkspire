@@ -113,3 +113,25 @@ test('show 404s for a pending approval entry and 200s for both an open and a clo
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->component('accounting-staff/AccountsReceivable/Show'));
 });
+
+test('the list and the entry page say who would be emailed and whether the entry can be', function () {
+    $accountingStaff = User::factory()->accountingStaff()->create();
+    $open = AccountsReceivable::factory()->active()->for(JobOrder::factory()->create(['total_amount' => 1000]))->create(['balance' => 1000]);
+    $settled = AccountsReceivable::factory()->active()->for(JobOrder::factory()->create(['total_amount' => 1000]))->create(['balance' => 1000]);
+    Transaction::factory()->for($settled->jobOrder)->create(['amount' => 1000]);
+    $email = $open->jobOrder->queueEntry->contactEmail();
+
+    $this->actingAs($accountingStaff)
+        ->get(route('accounting-staff.accounts-receivable.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('receivables.0.customer_email', $email)
+            ->where('receivables.0.customer_emailed_at', null)
+            ->where('receivables.0.can_email_customer', true)
+            ->where('closedReceivables.0.can_email_customer', false));
+
+    $this->actingAs($accountingStaff)
+        ->get(route('accounting-staff.accounts-receivable.show', $open))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('accountsReceivable.customer_email', $email)
+            ->where('accountsReceivable.can_email_customer', true));
+});

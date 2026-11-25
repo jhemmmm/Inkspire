@@ -68,4 +68,19 @@ enum AccountsReceivableAgingBracket: string
             self::SixtyOneToNinety, self::NinetyPlus => 'This is a final notice. The balance below is {n} days past its due date of {due date} and remains unsettled despite our earlier reminders. Please settle it in full within seven (7) days of this notice. If we do not hear from you, this account will be endorsed for collection and may be written off as a loss, which ends your credit terms with us.',
         };
     }
+
+    /**
+     * The body of the email Accounting sends the customer, with the same
+     * `{due date}` and `{n}` tokens as letterBody(). Two brackets differ from
+     * the letter: the email also goes out before the due date, and it keeps
+     * the final notice for 90+ days alone.
+     */
+    public function emailBody(): string
+    {
+        return match ($this) {
+            self::Current => 'This is a friendly reminder of the balance below. It is not overdue. If you have already sent your payment, thank you, and please disregard this message.',
+            self::SixtyOneToNinety => 'The balance below is now {n} days past its due date of {due date}. Please settle it in full within seven (7) days. If it stays unpaid, our next notice will be a final notice.',
+            default => $this->letterBody(),
+        };
+    }
 }

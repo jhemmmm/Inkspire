@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $due_at
  * @property AccountsReceivableAgingBracket|null $last_reminder_bracket
  * @property Carbon|null $last_reminder_sent_at
+ * @property Carbon|null $customer_emailed_at
  * @property string|null $write_off_reason
  * @property int|null $write_off_requested_by
  * @property Carbon|null $write_off_requested_at
@@ -76,6 +77,7 @@ class AccountsReceivable extends Model
             'due_at' => 'datetime',
             'last_reminder_bracket' => AccountsReceivableAgingBracket::class,
             'last_reminder_sent_at' => 'datetime',
+            'customer_emailed_at' => 'datetime',
             'collection_status' => AccountsReceivableCollectionStatus::class,
             'write_off_requested_at' => 'datetime',
             'written_off_at' => 'datetime',
@@ -194,6 +196,19 @@ class AccountsReceivable extends Model
     public function isClosed(): bool
     {
         return in_array($this->collectionStatus(), self::TERMINAL_COLLECTION_STATUSES, true);
+    }
+
+    /**
+     * Whether Accounting may email the customer about this entry: it is open
+     * and something is owed on it, whether or not it is due yet. The balance
+     * is checked as well as isClosed(), because an unpriced job order owes
+     * nothing yet but is not closed.
+     */
+    public function canEmailCustomer(): bool
+    {
+        return $this->status === AccountsReceivableStatus::Active
+            && ! $this->isClosed()
+            && $this->jobOrder->outstandingBalance() > 0;
     }
 
     /**
