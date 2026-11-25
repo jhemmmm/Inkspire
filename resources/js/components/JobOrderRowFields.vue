@@ -82,7 +82,7 @@ import { Textarea } from '@/components/ui/textarea';
 interface PricingEntry {
     id: number;
     name: string;
-    base_price?: string;
+    base_price: string;
     unit: string | null;
 }
 
@@ -101,7 +101,7 @@ const props = withDefaults(
         rushFeePercentage: number;
         acceptedFileFormats: string[];
         removable?: boolean;
-        /** `customer` uses plain wording and never shows a price. */
+        /** `customer` uses plain wording and shows an estimate it can't change. */
         audience?: 'staff' | 'customer';
     }>(),
     {
@@ -362,7 +362,7 @@ function selectJobOrderType(value: unknown): void {
                             :rush-fee-percentage="rushFeePercentage"
                             :id-prefix="`job-order-${index}`"
                             :errors="errors"
-                            :show-prices="!isCustomer"
+                            :adjustable="!isCustomer"
                         />
                     </div>
 

@@ -10,6 +10,7 @@ use App\Models\JobOrder;
 use App\Models\OnlineOrder;
 use App\Models\PricingEntry;
 use App\Models\QueueEntry;
+use App\Models\SystemConfiguration;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -43,15 +44,20 @@ function onlineOrderTestConfirmUrl(OnlineOrder $order): string
     return URL::temporarySignedRoute('public.orders.confirm', now()->addHours(48), ['onlineOrder' => $order->id]);
 }
 
-test('the order page renders without prices', function () {
+test('the order page carries the prices of active products and the rush fee to estimate from', function () {
+    SystemConfiguration::create(['key' => 'rush_fee_percentage', 'group' => 'business_rules', 'value' => 15, 'type' => 'decimal', 'label' => 'Rush fee']);
     PricingEntry::factory()->create(['name' => 'Tarpaulin', 'base_price' => 123.45]);
+    PricingEntry::factory()->create(['name' => 'Discontinued', 'is_active' => false]);
 
     $this->get(route('public.orders.create'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('public/Order')
-            ->has('pricingEntries', 1, fn (Assert $entry) => $entry->hasAll(['id', 'name', 'unit']))
-            ->missing('rushFeePercentage')
+            ->has('pricingEntries', 1, fn (Assert $entry) => $entry
+                ->where('name', 'Tarpaulin')
+                ->where('base_price', '123.45')
+                ->hasAll(['id', 'unit']))
+            ->where('rushFeePercentage', 15)
         );
 });
 

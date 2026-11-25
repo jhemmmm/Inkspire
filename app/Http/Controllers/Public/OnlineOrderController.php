@@ -15,6 +15,7 @@ use App\Models\OnlineOrder;
 use App\Models\PricingEntry;
 use App\Models\QueueEntry;
 use App\Models\SpecificationOption;
+use App\Models\SystemConfiguration;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -33,8 +34,9 @@ class OnlineOrderController extends Controller
     private const int WINDOW_SECONDS = 600;
 
     /**
-     * Show the public order form. Prices are deliberately never sent: the
-     * shop confirms the price after the order is placed.
+     * Show the public order form, with the catalog prices it estimates from.
+     * The estimate is for display only: store() ignores any price sent back,
+     * and the shop confirms the final one after the order is placed.
      */
     public function create(): Response
     {
@@ -42,9 +44,10 @@ class OnlineOrderController extends Controller
             'pricingEntries' => PricingEntry::query()
                 ->where('is_active', true)
                 ->orderBy('name')
-                ->get(['id', 'name', 'unit']),
+                ->get(['id', 'name', 'base_price', 'unit']),
             'specificationOptions' => SpecificationOption::activeLabelsByCategory(),
             'printSizeDimensions' => SpecificationOption::printSizeDimensionsByLabel(),
+            'rushFeePercentage' => SystemConfiguration::getFloat('rush_fee_percentage', 0.0),
             'acceptedFileFormats' => ValidateJobOrderFile::acceptedFormats(),
             'sentTo' => session('orderSentTo'),
         ]);

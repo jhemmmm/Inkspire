@@ -31,8 +31,7 @@ export interface JobOrderPriceRow {
 interface PricingEntryOption {
     id: number;
     name: string;
-    /** Absent when the audience must not see prices. */
-    base_price?: string;
+    base_price: string;
     unit: string | null;
 }
 
@@ -49,14 +48,14 @@ const props = withDefaults(
         idPrefix: string;
         /** Render hidden inputs so SearchableSelect values submit in an uncontrolled `<Form>`. */
         nativeNames?: boolean;
-        /** False hides every price, formula and the Adjust control. */
-        showPrices?: boolean;
+        /** False shows a customer's estimate, with no way to set the price. */
+        adjustable?: boolean;
         /** Bare field-name keyed — the caller slices/prefixes it already. */
         errors?: Record<string, string | undefined>;
     }>(),
     {
         nativeNames: false,
-        showPrices: true,
+        adjustable: true,
         errors: () => ({}),
     },
 );
@@ -65,15 +64,11 @@ const serviceOptions = computed<SearchableOption[]>(() =>
     props.pricingEntries.map((entry) => ({
         value: String(entry.id),
         label: entry.name,
-        hint: props.showPrices ? servicePriceLabel(entry) : undefined,
+        hint: servicePriceLabel(entry),
     })),
 );
 
 function servicePriceLabel(entry: PricingEntryOption): string {
-    if (entry.base_price === undefined) {
-        return '';
-    }
-
     const price = money(Number(entry.base_price));
 
     return entry.unit ? `${price} / ${entry.unit}` : price;
@@ -84,16 +79,6 @@ const selectedEntry = computed(() =>
         (entry) => String(entry.id) === props.row.pricing_entry_id,
     ),
 );
-
-const pricedEntry = computed(() => {
-    const entry = selectedEntry.value;
-
-    if (!props.showPrices || !entry || entry.base_price === undefined) {
-        return undefined;
-    }
-
-    return { base_price: entry.base_price, unit: entry.unit };
-});
 
 const isSqFt = computed(() => isSqFtUnit(selectedEntry.value?.unit));
 
@@ -144,7 +129,7 @@ const quantity = computed(() => parseQuantity(props.row.quantity));
 
 const computedAmount = computed(() =>
     quoteLineAmount(
-        pricedEntry.value,
+        selectedEntry.value,
         widthFt.value,
         heightFt.value,
         quantity.value,
@@ -159,12 +144,19 @@ const rushHint = computed(() => {
     return rushFee(computedAmount.value, props.rushFeePercentage);
 });
 
+/** The customer's figure: the catalog price plus any rush fee. */
+const estimate = computed(() =>
+    computedAmount.value === null
+        ? null
+        : round2(computedAmount.value + (rushHint.value ?? 0)),
+);
+
 const priceFormula = computed(() => {
-    if (!pricedEntry.value) {
+    if (!selectedEntry.value) {
         return null;
     }
 
-    const base = money(Number(pricedEntry.value.base_price));
+    const base = money(Number(selectedEntry.value.base_price));
 
     if (isSqFt.value) {
         if (widthFt.value === null || heightFt.value === null) {
@@ -197,7 +189,7 @@ function useComputed(): void {
                 :model-value="row.pricing_entry_id"
                 :options="serviceOptions"
                 :placeholder="
-                    showPrices ? 'Search the price list…' : 'Search products…'
+                    adjustable ? 'Search the price list…' : 'Search products…'
                 "
                 empty-text="No service matches that search."
                 @update:model-value="selectService"
@@ -280,10 +272,7 @@ function useComputed(): void {
             <InputError :message="errors.quantity" />
         </div>
 
-        <div
-            v-if="showPrices"
-            class="border-border bg-muted/30 min-w-0 rounded-xl border p-4"
-        >
+        <div class="border-border bg-muted/30 min-w-0 rounded-xl border p-4">
             <p
                 v-if="!selectedEntry"
                 class="text-muted-foreground text-sm"
@@ -298,13 +287,34 @@ function useComputed(): void {
                     {{ priceFormula }}
                 </p>
                 <p
-                    v-if="rushHint !== null"
+                    v-if="rushHint !== null && (adjustable || rushHint > 0)"
                     class="text-muted-foreground text-sm tabular-nums"
                 >
                     + rush {{ money(rushHint) }}
                 </p>
 
-                <div class="mt-3 flex items-center justify-between gap-3">
+                <div v-if="!adjustable" class="mt-3" aria-live="polite">
+                    <div
+                        v-if="estimate !== null"
+                        class="flex flex-wrap items-baseline justify-between gap-x-3"
+                    >
+                        <p class="text-sm font-medium">Estimated price</p>
+                        <p
+                            class="text-lg font-semibold tabular-nums"
+                            :data-test="`${idPrefix}-estimate`"
+                        >
+                            {{ money(estimate) }}
+                        </p>
+                    </div>
+                    <p class="text-muted-foreground text-sm">
+                        The shop confirms the final price.
+                    </p>
+                </div>
+
+                <div
+                    v-else
+                    class="mt-3 flex items-center justify-between gap-3"
+                >
                     <template v-if="row.quoted_amount_overridden">
                         <div class="grid gap-2">
                             <Input

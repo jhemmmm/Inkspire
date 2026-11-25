@@ -23,22 +23,25 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { money, round2, rowLineAmount, rushFee } from '@/lib/jobOrders';
 import { create } from '@/routes/public/orders';
 import { show as trackingShow } from '@/routes/public/tracking';
 
 interface PricingEntry {
     id: number;
     name: string;
+    base_price: string;
     unit: string | null;
 }
 
-defineProps<{
+const props = defineProps<{
     pricingEntries: PricingEntry[];
     specificationOptions: Record<string, string[]>;
     printSizeDimensions: Record<
         string,
         { width_inches: number | null; height_inches: number | null }
     >;
+    rushFeePercentage: number;
     acceptedFileFormats: string[];
     sentTo?: string | null;
 }>();
@@ -64,6 +67,35 @@ function addRow(): void {
 function removeRow(index: number): void {
     form.job_orders.splice(index, 1);
 }
+
+/** Each item's estimate with its rush fee; null until it can be priced. */
+const itemEstimates = computed(() =>
+    form.job_orders.map((row: JobOrderRow) => {
+        const amount = rowLineAmount(row, props.pricingEntries);
+
+        return amount !== null && row.is_rush
+            ? amount + rushFee(amount, props.rushFeePercentage)
+            : amount;
+    }),
+);
+
+const estimatedTotal = computed(() =>
+    round2(
+        itemEstimates.value.reduce(
+            (sum: number, amount: number | null) => sum + (amount ?? 0),
+            0,
+        ),
+    ),
+);
+
+/** Some items have no price yet, so the sum is not the whole order. */
+const estimateIsPartial = computed(() =>
+    itemEstimates.value.some((amount: number | null) => amount === null),
+);
+
+const hasEstimate = computed(() =>
+    itemEstimates.value.some((amount: number | null) => amount !== null),
+);
 
 /** Every distinct problem in one list, so none hides below the fold. */
 const errorSummary = computed(() => [
@@ -136,7 +168,8 @@ function submit(): void {
                 </h1>
                 <p class="text-muted-foreground mt-1 text-sm">
                     Tell us what you need printed. We email you a link to
-                    confirm, then your order goes to the shop.
+                    confirm, then your order goes to the shop. Prices here are
+                    estimates; the shop confirms the final price.
                 </p>
             </div>
 
@@ -254,7 +287,7 @@ function submit(): void {
                     :pricing-entries="pricingEntries"
                     :specification-options="specificationOptions"
                     :print-size-dimensions="printSizeDimensions"
-                    :rush-fee-percentage="0"
+                    :rush-fee-percentage="rushFeePercentage"
                     :accepted-file-formats="acceptedFileFormats"
                     :removable="form.job_orders.length > 1"
                     @remove="removeRow(index)"
@@ -288,10 +321,24 @@ function submit(): void {
                 <div
                     class="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6"
                 >
-                    <p class="text-muted-foreground text-xs sm:text-sm">
+                    <p
+                        class="text-muted-foreground text-xs tabular-nums sm:text-sm"
+                        data-test="order-estimate"
+                    >
                         {{ form.job_orders.length }} item{{
                             form.job_orders.length === 1 ? '' : 's'
                         }}
+                        <template v-if="hasEstimate">
+                            ·
+                            {{
+                                estimateIsPartial
+                                    ? 'Estimated total so far'
+                                    : 'Estimated total'
+                            }}
+                            <span class="text-foreground font-semibold">{{
+                                money(estimatedTotal)
+                            }}</span>
+                        </template>
                     </p>
                     <Button
                         type="button"
