@@ -63,9 +63,9 @@ const customerName = computed(
                         This sends
                         {{ CUSTOMER_EMAIL_LABELS[receivable.aging_bracket] }}
                         to
-                        <span class="text-foreground font-semibold break-all">{{
-                            receivable.customer_email
-                        }}</span
+                        <span
+                            class="text-foreground font-semibold break-words"
+                            >{{ receivable.customer_email }}</span
                         >. The wording follows how old the balance is.
                     </DialogDescription>
                 </DialogHeader>
